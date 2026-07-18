@@ -126,6 +126,45 @@ export function sfCreateOrder(input: CreateConsignmentInput): Promise<CreateOrde
   });
 }
 
+export type BulkConsignmentItem = {
+  invoice: string;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  cod_amount: number;
+  note?: string;
+};
+
+export type BulkConsignmentResult = {
+  invoice: string;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  cod_amount: string | number;
+  note?: string | null;
+  consignment_id: number | null;
+  tracking_code: string | null;
+  status: "success" | "error" | string;
+};
+
+export type BulkCreateResponse =
+  | BulkConsignmentResult[]
+  | { data: BulkConsignmentResult[]; status?: number; message?: string };
+
+/**
+ * POST /create_order/bulk-order
+ * Body: { data: "<json-encoded array of items>" }  (max 500)
+ */
+export async function sfCreateBulk(items: BulkConsignmentItem[]): Promise<BulkConsignmentResult[]> {
+  if (items.length === 0) return [];
+  const res = await request<BulkCreateResponse>("/create_order/bulk-order", {
+    method: "POST",
+    body: { data: JSON.stringify(items) },
+    timeoutMs: 60_000,
+  });
+  return Array.isArray(res) ? res : (res.data ?? []);
+}
+
 export function sfStatusByCid(id: number): Promise<DeliveryStatusResponse> {
   return request<DeliveryStatusResponse>(`/status_by_cid/${id}`);
 }
