@@ -212,6 +212,13 @@
   will-change: transform, color;
 }
 
+@keyframes avatar-wiggle {
+  0%, 100% { transform: rotate(-6deg) scale(1); }
+  25%      { transform: rotate(6deg) scale(1.06); }
+  50%      { transform: rotate(-4deg) scale(0.98); }
+  75%      { transform: rotate(5deg) scale(1.04); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .logo-fun, .hero-letter { animation: none; color: inherit; }
 }
