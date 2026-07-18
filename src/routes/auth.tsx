@@ -144,14 +144,18 @@ function AuthPage() {
     <div className="min-h-screen bg-background">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* ── Left / brand panel ──────────────────────────────────────── */}
-        <aside className="relative hidden overflow-hidden lg:block" style={{ backgroundColor: "#06131a" }}>
+        <aside
+          className="relative hidden overflow-hidden lg:block"
+          style={{
+            backgroundColor: "oklch(0.16 0.04 230)",
+          }}
+        >
           {/* Rich, layered canvas — brand gradient + aurora + dotted grid */}
           <div
             className="absolute inset-0"
             style={{
-              backgroundColor: "#06131a",
               backgroundImage:
-                "radial-gradient(1200px 600px at 0% 0%, rgba(34,211,238,0.28), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(14,165,233,0.22), transparent 60%), linear-gradient(160deg, #06131a 0%, #0a1f2a 55%, #061218 100%)",
+                "radial-gradient(1200px 600px at 0% 0%, color-mix(in oklab, var(--primary) 45%, transparent), transparent 60%), radial-gradient(900px 500px at 100% 100%, color-mix(in oklab, var(--primary-glow) 38%, transparent), transparent 60%), linear-gradient(160deg, oklch(0.18 0.05 230) 0%, oklch(0.14 0.045 235) 55%, oklch(0.11 0.035 240) 100%)",
             }}
             aria-hidden
           />
@@ -168,15 +172,21 @@ function AuthPage() {
             }}
             aria-hidden
           />
-          {/* Aurora blobs */}
+          {/* Aurora blobs — brand primary + glow */}
           <div
             className="absolute -left-24 -top-24 h-96 w-96 rounded-full blur-3xl"
-            style={{ backgroundColor: "rgba(34,211,238,0.28)" }}
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--primary) 55%, transparent)",
+            }}
             aria-hidden
           />
           <div
             className="absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
-            style={{ backgroundColor: "rgba(14,165,233,0.22)" }}
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--primary-glow) 45%, transparent)",
+            }}
             aria-hidden
           />
 
