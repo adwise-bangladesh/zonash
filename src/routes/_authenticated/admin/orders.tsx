@@ -272,15 +272,12 @@ function AdminOrders() {
     );
   };
 
-  const bulkSendSteadfast = async () => {
-    if (selected.size === 0) return;
-    const ids = Array.from(selected);
-    if (!confirm(`Send ${ids.length} order(s) to Steadfast?`)) return;
+  const performBulkSend = async (ids: number[]) => {
     const CHUNK = 500;
     const batches: number[][] = [];
     for (let i = 0; i < ids.length; i += CHUNK) batches.push(ids.slice(i, i + CHUNK));
 
-    setBulkBusy({ label: "Send to Steadfast", done: 0, total: ids.length });
+    setBulkBusy({ label: "Send to Courier", done: 0, total: ids.length });
     let success = 0;
     let failed = 0;
     const errorMsgs: string[] = [];
@@ -299,13 +296,13 @@ function AdminOrders() {
         errorMsgs.push(e instanceof Error ? e.message : "Batch failed");
       }
       done += batch.length;
-      setBulkBusy({ label: "Send to Steadfast", done, total: ids.length });
+      setBulkBusy({ label: "Send to Courier", done, total: ids.length });
     }
     setBulkBusy(null);
-    if (failed === 0) toast.success(`Sent ${success} order(s) to Steadfast`);
+    if (failed === 0) toast.success(`Sent ${success} order(s) to courier`);
     else {
       toast.error(
-        `Steadfast: ${success} sent · ${failed} failed${
+        `Courier: ${success} sent · ${failed} failed${
           errorMsgs.length ? ` — ${errorMsgs.slice(0, 3).join("; ")}${errorMsgs.length > 3 ? "…" : ""}` : ""
         }`,
       );
@@ -313,6 +310,17 @@ function AdminOrders() {
     invalidate();
     setSelected(new Set());
   };
+
+  const bulkSendSteadfast = () => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    toast(`Send ${ids.length} order(s) to courier?`, {
+      description: "This will dispatch all selected orders via Steadfast.",
+      action: { label: "Send", onClick: () => void performBulkSend(ids) },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
+  };
+
 
   const bulkPrintLabels = () => {
     if (selectedOrders.length === 0) return;
