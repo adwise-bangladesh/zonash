@@ -6,14 +6,16 @@
  * shows the connection state, current balance, and the webhook URL to paste
  * into the Steadfast dashboard.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink, ShieldCheck, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { getSteadfastStatus } from "@/lib/steadfast.functions";
+import { getHoorinStatus, verifyCustomerPhone } from "@/lib/hoorin.functions";
+import type { HoorinReport } from "@/lib/hoorin.server";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({
