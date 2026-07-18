@@ -21,11 +21,13 @@ import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminBackfillRouteImport } from './routes/_authenticated/admin/backfill'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
 import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
+import { Route as ApiPublicWebhooksSteadfastRouteImport } from './routes/api/public/webhooks/steadfast'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -86,6 +88,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
     id: '/orders',
@@ -115,6 +123,12 @@ const ApiPublicWebhooksWooRoute = ApiPublicWebhooksWooRouteImport.update({
   path: '/api/public/webhooks/woo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksSteadfastRoute =
+  ApiPublicWebhooksSteadfastRouteImport.update({
+    id: '/api/public/webhooks/steadfast',
+    path: '/api/public/webhooks/steadfast',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,7 +145,9 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesByTo {
@@ -148,7 +164,9 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesById {
@@ -168,7 +186,9 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRouteTypes {
@@ -188,7 +208,9 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/backfill'
     | '/admin/orders'
+    | '/admin/settings'
     | '/admin/'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -205,7 +227,9 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/backfill'
     | '/admin/orders'
+    | '/admin/settings'
     | '/admin'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   id:
     | '__root__'
@@ -224,7 +248,9 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/backfill'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/settings'
     | '/_authenticated/admin/'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesById: FileRoutesById
 }
@@ -239,6 +265,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
 
@@ -328,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
@@ -363,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksWooRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/steadfast': {
+      id: '/api/public/webhooks/steadfast'
+      path: '/api/public/webhooks/steadfast'
+      fullPath: '/api/public/webhooks/steadfast'
+      preLoaderRoute: typeof ApiPublicWebhooksSteadfastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -370,6 +411,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminBackfillRoute: typeof AuthenticatedAdminBackfillRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -378,6 +420,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
     AuthenticatedAdminBackfillRoute: AuthenticatedAdminBackfillRoute,
     AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+    AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 
@@ -410,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
 export const routeTree = rootRouteImport
