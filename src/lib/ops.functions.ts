@@ -24,6 +24,7 @@ export type OrderOps = {
   tracking_number: string | null;
   pickup_slot: string | null;
   internal_notes: string | null;
+  steadfast_consignment_id: number | null;
   updated_at: string | null;
 };
 
