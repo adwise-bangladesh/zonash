@@ -459,8 +459,7 @@ function AuthPage() {
             </form>
 
             <div className="mt-8 rounded-lg border border-dashed border-border/70 bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-              Access is invitation-only. Contact an administrator if you need an account
-              or a password reset.
+              Contact an administrator if you need an account or a password reset.
             </div>
 
             <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
