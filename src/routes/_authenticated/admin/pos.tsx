@@ -344,7 +344,7 @@ function PosPage() {
               </span>
             </div>
             <span className="text-[11px] text-muted-foreground">
-              {cart.reduce((s, l) => s + l.quantity, 0)} items · ৳ {subtotal.toFixed(0)}
+              {cart.reduce((s, l) => s + l.quantity, 0)} items · {formatBDT(subtotal)}
             </span>
           </div>
 
