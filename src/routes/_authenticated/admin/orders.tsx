@@ -1578,3 +1578,110 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Steadfast integration panel (inside the order drawer's Operations section).
+// ---------------------------------------------------------------------------
+function SteadfastPanel({
+  wcOrderId,
+  initialOps,
+  onSynced,
+}: {
+  wcOrderId: number;
+  initialOps?: OrderOps;
+  onSynced: (patch: { courier?: string; tracking?: string }) => void;
+}) {
+  const sendFn = useServerFn(sendOrderToSteadfast);
+  const refreshFn = useServerFn(refreshSteadfastStatus);
+
+  const ops = initialOps as
+    | (OrderOps & {
+        steadfast_consignment_id?: number | null;
+        steadfast_tracking_code?: string | null;
+        steadfast_status?: string | null;
+      })
+    | undefined;
+
+  const cid = ops?.steadfast_consignment_id ?? null;
+  const trackingCode = ops?.steadfast_tracking_code ?? null;
+  const sfStatus = ops?.steadfast_status ?? null;
+
+  const sendM = useMutation({
+    mutationFn: () => sendFn({ data: { wc_order_id: wcOrderId } }),
+    onSuccess: (r: { consignment_id: number; tracking_code: string; status: string }) => {
+      toast.success(`Sent to Steadfast · ${r.tracking_code}`);
+      onSynced({ courier: "Steadfast", tracking: r.tracking_code });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const refreshM = useMutation({
+    mutationFn: () => refreshFn({ data: { wc_order_id: wcOrderId } }),
+    onSuccess: (r: { status: string }) => {
+      toast.success(`Status: ${r.status}`);
+      onSynced({});
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="rounded-lg border border-input bg-muted/30 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Truck className="h-3 w-3" /> Steadfast Courier
+        </div>
+        {sfStatus && (
+          <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium capitalize">
+            {sfStatus.replace(/_/g, " ")}
+          </span>
+        )}
+      </div>
+      {cid ? (
+        <div className="mb-2 grid grid-cols-2 gap-2 text-[11px]">
+          <div>
+            <div className="text-[10px] uppercase text-muted-foreground">Consignment</div>
+            <div className="tabular-nums">{cid}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-muted-foreground">Tracking</div>
+            <div className="font-mono">{trackingCode ?? "—"}</div>
+          </div>
+        </div>
+      ) : (
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          Not sent to Steadfast yet. This will push the recipient, address, and COD amount to portal.packzy.com.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => sendM.mutate()}
+          disabled={sendM.isPending || !!cid}
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+        >
+          {sendM.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+          {cid ? "Already sent" : "Send to Steadfast"}
+        </button>
+        {cid && (
+          <button
+            onClick={() => refreshM.mutate()}
+            disabled={refreshM.isPending}
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
+          >
+            {refreshM.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+            Refresh status
+          </button>
+        )}
+        {trackingCode && (
+          <a
+            href={`https://steadfast.com.bd/t/${trackingCode}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted"
+          >
+            Track
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
