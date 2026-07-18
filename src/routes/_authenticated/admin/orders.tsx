@@ -413,12 +413,74 @@ function AdminOrders() {
             className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[13px] outline-none focus:border-ring"
           />
         </div>
-        <div className="text-[11px] text-muted-foreground">
-          {q.isLoading
-            ? "Loading…"
-            : `${orders.length} on this page · Revenue ${money(currency || "৳", pageRevenue)}`}
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          {q.isFetching && (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Syncing…
+            </span>
+          )}
+          <span>
+            {orders.length} on this page · Revenue{" "}
+            {money(currency || "৳", pageRevenue)}
+          </span>
         </div>
       </div>
+
+      {/* Bulk actions bar */}
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-foreground/20 bg-foreground text-background p-2 shadow-sm">
+          <span className="px-1 text-[12px] font-medium">
+            {selected.size} selected
+          </span>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20"
+          >
+            Clear
+          </button>
+          <div className="mx-1 h-4 w-px bg-background/20" />
+          <select
+            defaultValue=""
+            disabled={!!bulkBusy}
+            onChange={(e) => {
+              const v = e.target.value;
+              e.target.value = "";
+              if (v) bulkUpdateStatus(v);
+            }}
+            className="h-7 rounded-md border border-background/20 bg-background/10 px-2 text-[11px] text-background outline-none disabled:opacity-50"
+          >
+            <option value="" className="text-foreground">
+              Update status…
+            </option>
+            {wooStatuses.map((s) => (
+              <option key={s.slug} value={s.slug} className="text-foreground">
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={bulkSendSteadfast}
+            disabled={!!bulkBusy}
+            className="inline-flex items-center gap-1 rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20 disabled:opacity-50"
+          >
+            <Truck className="h-3.5 w-3.5" /> Send to Steadfast
+          </button>
+          <button
+            onClick={bulkPrintLabels}
+            disabled={!!bulkBusy}
+            className="inline-flex items-center gap-1 rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20 disabled:opacity-50"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print labels
+          </button>
+          {bulkBusy && (
+            <span className="ml-auto inline-flex items-center gap-2 text-[11px]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {bulkBusy.label} · {bulkBusy.done}/{bulkBusy.total}
+            </span>
+          )}
+        </div>
+      )}
+
 
       <div className="overflow-x-auto rounded-xl border border-input bg-card">
         <div className="min-w-[1200px]">
