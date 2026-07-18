@@ -70,11 +70,11 @@ function PosPage() {
   const [channel, setChannel] = useState<string>(initialChannel);
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
-  useMemo(() => {
+  useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 250);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
 
   const productsQ = useQuery({
     queryKey: ["pos", "products", debounced],
