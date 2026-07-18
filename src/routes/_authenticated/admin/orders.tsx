@@ -862,6 +862,11 @@ function OrderDrawer({
                     key={it.id ?? `new-${idx}`}
                     className={`flex flex-wrap items-end gap-2 rounded-md border border-input p-2 ${it.removed ? "opacity-40 line-through" : ""}`}
                   >
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-input bg-muted">
+                      {it.image ? (
+                        <img src={it.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      ) : null}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[12px] font-medium">{it.name || `Product #${it.product_id}`}</div>
                       <div className="font-mono text-[10px] text-muted-foreground">
