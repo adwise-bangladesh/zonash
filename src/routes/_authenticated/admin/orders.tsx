@@ -1390,9 +1390,7 @@ function OrderDrawer({
         </div>
 
         {q.isLoading || !o ? (
-          <div className="flex flex-1 items-center gap-2 p-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading order…
-          </div>
+          <OrderDrawerSkeleton />
         ) : (
           <div className="flex-1 overflow-y-auto">
             {/* Workflow / status */}
