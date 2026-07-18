@@ -11,15 +11,19 @@ import {
   Users,
   RotateCcw,
   LogOut,
-  Search,
   Bell,
-  Plus,
   BarChart3,
   UserCircle,
   Settings,
+  Maximize2,
+  Minimize2,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { GlobalSearch } from "@/components/admin/GlobalSearch";
+import { NewOrderMenu } from "@/components/admin/NewOrderMenu";
+
 
 
 type NavItem = {
@@ -261,28 +265,17 @@ export function AdminShell({
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div className="relative min-w-0 flex-1 md:max-w-md">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search…"
-              className="h-9 w-full rounded-md border border-border bg-muted/40 pl-8 pr-3 text-[13px] outline-none transition placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
-            />
+
+          <GlobalSearch />
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <Clock />
+            <FullscreenToggle />
+            <IssuesBell count={issuesCount} onClick={() => navigate({ to: "/admin/returns" })} />
+            <NewOrderMenu />
           </div>
-          <button
-            type="button"
-            className="hidden h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground md:grid"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
-          <Link
-            to="/admin/orders"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Plus className="h-3.5 w-3.5" />{" "}
-            <span className="hidden md:inline">New</span>
-          </Link>
         </header>
+
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
@@ -311,3 +304,87 @@ export function AdminShell({
     </div>
   );
 }
+
+// ---------- Topbar widgets ----------
+
+function Clock() {
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const fmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-GB", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Dhaka",
+      }),
+    [],
+  );
+  return (
+    <div
+      className="hidden items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
+      title="Asia/Dhaka"
+    >
+      <ClockIcon className="h-3 w-3 text-primary" />
+      <span className="tabular-nums">{fmt.format(now)}</span>
+    </div>
+  );
+}
+
+function FullscreenToggle() {
+  const [isFs, setIsFs] = useState(false);
+  useEffect(() => {
+    const onChange = () => setIsFs(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggle = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+      className="hidden h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground md:grid"
+    >
+      {isFs ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function IssuesBell({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={count > 0 ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
+      className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+    >
+      <Bell className="h-4 w-4" />
+      {count > 0 && (
+        <span
+          className="absolute -right-0.5 -top-0.5 inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
+          style={{
+            background: "var(--primary)",
+            animation: "badge-shake 1.8s ease-in-out infinite",
+          }}
+        >
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </button>
+  );
+}
+

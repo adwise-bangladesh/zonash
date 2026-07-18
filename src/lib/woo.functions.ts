@@ -674,4 +674,98 @@ export const listShippingMethods = createServerFn({ method: "GET" })
     }
   });
 
+// -------------------- Global search (top-bar) --------------------
+// Fans out to multiple WC endpoints and de-dupes.
+export const searchOrders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ q: z.string().trim().min(1).max(120) }).parse(raw ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    const q = data.q.replace(/^#/, "").trim();
+    if (!q) return { orders: [] as WooOrder[] };
+
+    const { wooFetch } = await import("./woo.server");
+    const isEmail = q.includes("@");
+    const digits = q.replace(/\D+/g, "");
+    const isMostlyDigits = digits.length >= 4 && digits.length / q.length > 0.6;
+
+    const tasks: Promise<WooOrder[]>[] = [];
+
+    // Direct order ID lookup for numeric queries.
+    if (/^\d{1,10}$/.test(q)) {
+      tasks.push(
+        wooFetch<WooOrder>({ path: `/orders/${q}`, timeoutMs: 6000 })
+          .then((o) => (o ? [o] : []))
+          .catch(() => []),
+      );
+    }
+
+    // Broad WC search (covers billing name/email/phone/address).
+    tasks.push(
+      wooFetch<WooOrder[]>({
+        path: "/orders",
+        query: {
+          search: q,
+          per_page: 10,
+          orderby: "date",
+          order: "desc",
+        },
+        timeoutMs: 8000,
+      }).catch(() => [] as WooOrder[]),
+    );
+
+    // For phone-like input, also try billing phone via meta search.
+    if (isMostlyDigits && digits.length >= 6) {
+      tasks.push(
+        wooFetch<WooOrder[]>({
+          path: "/orders",
+          query: { search: digits, per_page: 10, orderby: "date", order: "desc" },
+          timeoutMs: 8000,
+        }).catch(() => [] as WooOrder[]),
+      );
+    }
+
+    // Consignment ID lookup — check order_ops table.
+    if (!isEmail) {
+      tasks.push(
+        (async (): Promise<WooOrder[]> => {
+          try {
+            const { data: rows } = await (context as { supabase: import("@supabase/supabase-js").SupabaseClient })
+              .supabase
+              .from("order_ops")
+              .select("wc_order_id")
+              .or(`tracking_number.ilike.%${q}%,consignment_id.ilike.%${q}%`)
+              .limit(5);
+            const ids = (rows ?? []).map((r: { wc_order_id: number }) => r.wc_order_id);
+            const orders = await Promise.all(
+              ids.map((id) =>
+                wooFetch<WooOrder>({ path: `/orders/${id}`, timeoutMs: 6000 }).catch(() => null),
+              ),
+            );
+            return orders.filter(Boolean) as WooOrder[];
+          } catch {
+            return [];
+          }
+        })(),
+      );
+    }
+
+    const results = (await Promise.all(tasks)).flat();
+    const seen = new Set<number>();
+    const merged: WooOrder[] = [];
+    for (const o of results) {
+      if (!o || seen.has(o.id)) continue;
+      seen.add(o.id);
+      merged.push(o);
+      if (merged.length >= 10) break;
+    }
+    merged.sort(
+      (a, b) => new Date(b.date_created).getTime() - new Date(a.date_created).getTime(),
+    );
+    return { orders: merged };
+  });
+
+
 

@@ -1,97 +1,98 @@
+# Admin Header + POS Upgrade
 
-# Industrial-Grade Orders Management
+## 1. Global search bar
 
-Two problems to solve:
-1. **Custom WooCommerce statuses** (e.g. `wc-shipped`, `wc-out-for-delivery`) aren't in the hardcoded tab list, so those orders are invisible.
-2. **Admin Orders page is slow** because it queries WooCommerce REST directly on every page load — WC REST is the bottleneck (single MySQL, no proper indexes on 50M rows, ~1–3s per call, rate-limited).
+Replace the placeholder search input with a **command-palette-style global search** wired to WooCommerce.
 
-To handle **3,000 orders/day and 50M+ lifetime**, the dashboard must never touch WooCommerce for list/search/filter. Everything reads from a Postgres `orders_cache` in Lovable Cloud, kept in sync by webhooks + a reconciliation worker.
+- **Scope**: Name, Mobile, Order ID (`#12345`), Consignment ID (Steadfast tracking/invoice), Email.
+- **Behaviour**:
+  - 300 ms debounce, min 2 chars.
+  - Detects intent from input:
+    - Pure digits ≥ 5 → try Order ID + Mobile + Consignment ID in parallel.
+    - Contains `@` → email search.
+    - Starts with `#` → strip and treat as Order ID.
+    - Otherwise → name + mobile fuzzy.
+  - Results dropdown shows up to 8 orders (order #, customer, phone, status pill, total).
+  - Click → open the existing `OrderDrawer` for that order.
+  - `⌘K` / `Ctrl+K` shortcut opens/focuses; `Esc` closes.
+- **Server**: new `searchOrders` server fn that fans out WooCommerce queries:
+  - `GET /orders?search={q}` for name/email/phone
+  - `GET /orders/{id}` when numeric
+  - `GET /orders?meta_key=_steadfast_consignment_id&meta_value={q}` for consignment lookup
+  - De-duplicate by order ID, sort by date desc.
 
----
+## 2. Header enhancements
 
-## Part 1 — Dynamic custom statuses (quick fix, ships first)
-
-- New server fn `listOrderStatuses` → calls WooCommerce `/reports/orders/totals` **and** merges with distinct statuses seen in `orders_cache`. Returns `{ slug, name, count }[]`.
-- Admin Orders page renders tabs dynamically from that list — no hardcoded status array. Custom slugs like `shipped`, `out-for-delivery`, `ready-to-ship` appear automatically with correct counters.
-- Status dropdown in the row + drawer also uses this dynamic list, so staff can move an order into any custom status the store defines.
-- Unknown-status badge gets a neutral color fallback.
-
-## Part 2 — Cache-first architecture (the real fix)
+Redesign `AdminShell` topbar into these zones (left → right):
 
 ```text
-WooCommerce  ──webhooks──▶  /api/public/webhooks/woo  ──▶  orders_cache (Postgres)
-                                                                │
-Admin dashboard  ◀── fast SQL (indexed, paginated, FTS) ────────┘
-                                                                ▲
-Reconciliation cron (every 5 min) ──── polls WC "updated_after" ┘
-Backfill job (one-off) ──────────────── pages entire WC history ┘
+[☰] [Search…                    ⌘K]   [Clock]  [⛶ Fullscreen]  [🔔 Issues N]  [+ New Order ▾]  [avatar]
 ```
 
-### Schema upgrades to `orders_cache`
-- Add columns: `sku_summary text`, `shipping_address jsonb`, `subtotal numeric`, `shipping_total numeric`, `line_items jsonb`, `payment_method text`, `payment_method_title text`, `date_created timestamptz`.
-- Indexes:
-  - `btree (status, date_created desc)` — status tabs sorted newest first
-  - `btree (date_created desc)` — global feed
-  - `btree (customer_email)`
-  - `btree (wc_order_id)` unique
-  - `gin (fts)` — full-text search across order#, name, email, phone, SKU
-  - Optional: **monthly partitioning** on `date_created` once row count > ~10M. Keeps hot partition tiny and vacuum cheap. Deferred until needed; schema designed to allow it.
-- Materialized view `order_status_counts(status, count)` refreshed every 30s via cron for O(1) tab counters at 50M rows.
+- **Live clock**: shows `Sat, 18 Jul · 09:42 AM` — updates every 30 s, uses Asia/Dhaka timezone.
+- **Fullscreen toggle**: uses `document.documentElement.requestFullscreen()` / `exitFullscreen()`; swaps icon between `Maximize2` and `Minimize2`.
+- **Issues badge**: mirrors the sidebar shake-badge but as a top-bar bell icon. Same `useIssuesCount` hook (already built). Clicking navigates to `/admin/returns`.
+- **New Order dropdown**: `[+ New Order ▾]` opens a small menu:
+  - Phone call → `/admin/pos?channel=phone`
+  - WhatsApp → `/admin/pos?channel=whatsapp`
+  - Messenger → `/admin/pos?channel=messenger`
+  - Instagram → `/admin/pos?channel=instagram`
+  - In-store → `/admin/pos?channel=instore`
+  - Other → `/admin/pos?channel=other`
 
-### Webhook handler (already exists, harden it)
-- Verify HMAC (already done).
-- Idempotent upsert into `orders_cache` keyed on `wc_order_id`; store full raw payload in `raw jsonb`.
-- Populate all denormalized columns (SKU list, shipping address, totals) in the same upsert so the dashboard never needs to unpack JSON.
-- Insert `notifications` row for realtime toast on new order.
+## 3. POS page — `/admin/pos`
 
-### Reconciliation cron (`/api/public/hooks/reconcile-orders`, every 5 min via pg_cron)
-- Pulls `orders?modified_after=<last_sync>&per_page=100` from WC in a loop.
-- Upserts anything missing (covers webhook drops, downtime, historical edits).
-- Stores `last_sync_at` in a `sync_state` table.
-- Backfill mode: same route with `?full=1` walks the entire WC history in pages — one-time seed for existing orders.
+A focused single-page order creation flow for staff to punch in manual orders.
 
-### Admin dashboard reads from cache
-- New server fn `listOrders` queries `orders_cache` with parameterized filters (status, date range, search) — sub-50ms even at 50M rows because of the indexes.
-- `getOrderStatusCounts` reads the materialized view instead of hitting WC — instant.
-- Detail view still fetches `getWooOrder` live for edits (single-row WC hit is fine).
-- Status writes go to WC first, then update the cache row + append `order_audit_log`.
+**Layout**: two-column desktop, single column mobile.
 
-### Search
-- Postgres FTS on generated `fts` tsvector (order#, customer name, email, phone, SKU list). Handles typos with `websearch_to_tsquery`. No Elasticsearch needed at this scale.
+- **Left — Cart / product search**
+  - Search box: name / SKU with debounced WooCommerce product lookup.
+  - Result rows: image, name, SKU, price, "+ Add" button. Handles variations (pick variation before add).
+  - Cart list: qty +/−, unit price editable, per-line remove, live subtotal.
+  - Shipping: same Dhaka Inside / Outside toggle used in checkout (80 / 130 BDT fixed).
+  - Discount field (flat BDT).
 
-### Real-time
-- Supabase Realtime subscription on `orders_cache` INSERT/UPDATE → dashboard live-updates rows without refresh.
+- **Right — Customer & meta**
+  - Channel pill pre-filled from `?channel=` (editable).
+  - Customer: Name, Mobile, Email (optional), Address, Thana, Notes — the same minimal set as checkout.
+  - Auto-verify: as soon as a valid mobile is entered, call `getCustomerStats` + Hoorin ratio pill inline (helps staff spot risky callers before confirming).
+  - Payment: fixed to Cash on Delivery.
+  - Totals card: items + shipping − discount = grand total.
+  - Buttons: **Save as draft** (status `on-hold`) / **Confirm order** (status `processing`).
 
-## Part 3 — Performance targets
+- **Server fn**: `createManualOrder` — builds a WooCommerce `POST /orders` payload with:
+  - `set_paid: false`, `payment_method: cod`, `payment_method_title: "Cash on Delivery"`
+  - `meta_data: [{ key: "_zonash_channel", value: channel }, { key: "_zonash_created_by", value: staff name }]`
+  - `customer_note`, billing/shipping blocks, `line_items`, `shipping_lines`, `fee_lines` (discount as negative fee).
+- On success → toast + redirect to `/admin/orders` with new order preselected (via `?open={orderId}`).
 
-| Operation | Before | After |
-|---|---|---|
-| Load 100 orders | 2–4s (WC) | < 100ms (Postgres) |
-| Status counters | 800ms (WC totals) | < 10ms (matview) |
-| Search "9821 / email / SKU" | 3–8s (WC) | < 80ms (FTS) |
-| Status change | 1s | 1s (unchanged; WC is source of truth) |
-| Peak throughput | ~50 req/min (WC rate limit) | thousands/sec (Postgres) |
+## 4. Additional recommended improvements
 
-50M orders in `orders_cache` with the index set above uses ~40–60 GB and stays fast; partition by month later if needed.
+Bundled in the same pass:
 
-## Part 4 — Security & reliability
+1. **Persist orders-page filters in URL** — status tab, page, and search now live in TanStack `validateSearch`, so refresh and share-links keep state.
+2. **Toast on new inbound orders** — every 60 s, quietly refetch order counts; when count of `processing` increases, toast "🛎️ New order received" and animate the sidebar Orders row.
+3. **Keyboard shortcuts**: `⌘K` search, `⌘N` new order menu, `g o` → orders, `g d` → dashboard.
+4. **`?open={orderId}` deep link** on `/admin/orders` opens the drawer automatically — used by search results, POS success redirect, and shareable links.
+5. **Header compaction on scroll** — reduces topbar height from 56 → 44 px after 40 px scroll for more vertical room on order lists.
 
-- All webhook + cron endpoints under `/api/public/*` with HMAC + shared-secret verification.
-- RLS on `orders_cache` unchanged: staff/admin/viewer read all; customers see their own by email.
-- `order_audit_log` records every staff status change (already exists).
-- Rate-limit reconcile cron with an advisory lock so overlapping runs can't stampede WC.
-- Retries with exponential backoff on WC 429/5xx (already exists in `woo.server.ts`).
-- Errors from WC never blank the dashboard — cache read always succeeds independently.
+## Technical file changes
 
-## Build order
+```text
+src/components/admin/AdminShell.tsx           — new topbar layout, clock, fullscreen, bell, New-Order menu
+src/components/admin/GlobalSearch.tsx         — new command-palette search + dropdown
+src/components/admin/NewOrderMenu.tsx         — new dropdown with channel choices
+src/lib/orders.functions.ts                   — add searchOrders({ q, signal })
+src/lib/pos.functions.ts                      — new createManualOrder server fn
+src/routes/_authenticated/admin/pos.tsx       — new POS page
+src/routes/_authenticated/admin/orders.tsx    — support ?open= deep link + URL-persisted filters
+```
 
-1. **Dynamic statuses** — `listOrderStatuses` + tab/dropdown refactor (fastest visible win).
-2. **Schema migration** — add denormalized columns, indexes, matview, `sync_state` table.
-3. **Webhook enrichment** — write all new columns on upsert.
-4. **Backfill route** — seed `orders_cache` from full WC history.
-5. **Reconciliation cron** — pg_cron every 5 min.
-6. **Switch admin Orders page to cache reads** — `listOrders`, matview counts, FTS search.
-7. **Realtime subscription** on `orders_cache`.
-8. **Load test** — simulate 3k orders/day burst, verify p95 < 100ms.
+No DB migration required — POS orders live in WooCommerce like every other order; the `_zonash_channel` / `_zonash_created_by` order meta drives analytics later.
 
-Milestone 1 ships immediately (custom statuses visible + faster tab counts). Milestones 2–7 land the cache-first architecture. Confirm and I'll start with milestone 1.
+## Out of scope (for this milestone)
+
+- POS receipt printing (can reuse the existing label print later).
+- Inventory reservation before order confirmation.
+- Split payments / partial COD.

@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminProfileRouteImport } from './routes/_authenticated/admin/profile'
+import { Route as AuthenticatedAdminPosRouteImport } from './routes/_authenticated/admin/pos'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminBackfillRouteImport } from './routes/_authenticated/admin/backfill'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
@@ -107,6 +108,11 @@ const AuthenticatedAdminProfileRoute =
     path: '/profile',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminPosRoute = AuthenticatedAdminPosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
     id: '/orders',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pos': typeof AuthenticatedAdminPosRoute
   '/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pos': typeof AuthenticatedAdminPosRoute
   '/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/pos': typeof AuthenticatedAdminPosRoute
   '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/backfill'
     | '/admin/orders'
+    | '/admin/pos'
     | '/admin/profile'
     | '/admin/settings'
     | '/admin/users'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/backfill'
     | '/admin/orders'
+    | '/admin/pos'
     | '/admin/profile'
     | '/admin/settings'
     | '/admin/users'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/backfill'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/pos'
     | '/_authenticated/admin/profile'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
@@ -401,6 +413,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminProfileRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/pos': {
+      id: '/_authenticated/admin/pos'
+      path: '/pos'
+      fullPath: '/admin/pos'
+      preLoaderRoute: typeof AuthenticatedAdminPosRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
@@ -450,6 +469,7 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminBackfillRoute: typeof AuthenticatedAdminBackfillRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminPosRoute: typeof AuthenticatedAdminPosRoute
   AuthenticatedAdminProfileRoute: typeof AuthenticatedAdminProfileRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -461,6 +481,7 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
     AuthenticatedAdminBackfillRoute: AuthenticatedAdminBackfillRoute,
     AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+    AuthenticatedAdminPosRoute: AuthenticatedAdminPosRoute,
     AuthenticatedAdminProfileRoute: AuthenticatedAdminProfileRoute,
     AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
     AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,

@@ -3,7 +3,10 @@
  * SKU-driven items column, address on the row, and price + delivery totals.
  */
 import { useEffect, useMemo, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z as zSearch } from "zod";
+
 import { useServerFn } from "@tanstack/react-start";
 import {
   useMutation,
@@ -58,8 +61,12 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
     meta: [{ title: "Orders — Admin" }, { name: "robots", content: "noindex" }],
   }),
+  validateSearch: zodValidator(
+    zSearch.object({ open: fallback(zSearch.number().int().positive().optional(), undefined) }),
+  ),
   component: AdminOrders,
 });
+
 
 // Human-friendly fallback label for unknown/custom status slugs.
 function humanize(slug: string) {
@@ -79,6 +86,8 @@ function money(currency: string, n: number | string) {
 
 function AdminOrders() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { open: openFromUrl } = Route.useSearch();
   const listFn = useServerFn(listWooOrders);
   const updFn = useServerFn(updateOrderStatus);
   const detailFn = useServerFn(getWooOrder);
@@ -92,6 +101,20 @@ function AdminOrders() {
   const [insight, setInsight] = useState<{ email: string; phone?: string; name?: string } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<null | { label: string; done: number; total: number }>(null);
+
+  // Deep-link support: /admin/orders?open=<id> opens the drawer, then clears the param.
+  useEffect(() => {
+    if (openFromUrl && openId !== openFromUrl) {
+      setOpenId(openFromUrl);
+      navigate({
+        to: "/admin/orders",
+        search: (prev: Record<string, unknown>) => ({ ...prev, open: undefined }),
+        replace: true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openFromUrl]);
+
 
   // Reset selection whenever the visible list changes (page/tab/search).
   useEffect(() => {
