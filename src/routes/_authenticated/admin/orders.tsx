@@ -1545,16 +1545,19 @@ function OrderDrawer({
               </div>
             </Section>
 
-            {/* Totals — shipping charge + fees/discount */}
+            {/* Totals — fixed delivery + fees/discount */}
             <Section title="Totals & discounts" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
-              {/* Shipping charge — pick from available WooCommerce shipping methods */}
-              <div className="mb-3">
-                <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
-                <ShippingLinesEditor
-                  currency={o.currency}
-                  shipLines={shipLines}
-                  onChange={setShipLines}
-                />
+              {/* Delivery charge — fixed, read-only */}
+              <div className="mb-3 flex items-center justify-between rounded-md border border-input bg-muted/30 px-3 py-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {shipLines[0]?.method_title || "Delivery"} · fixed
+                  </div>
+                </div>
+                <div className="tabular-nums text-[13px] font-semibold">
+                  {money(o.currency, shippingTotal)}
+                </div>
               </div>
 
               {/* Fees / discounts */}
@@ -1569,7 +1572,9 @@ function OrderDrawer({
                     <Plus className="h-3 w-3" /> Add line
                   </button>
                 </div>
-                <p className="mb-2 text-[10px] text-muted-foreground">Use a negative amount for a discount (e.g. <span className="font-mono">-100</span>).</p>
+                {fees.length > 0 && (
+                  <p className="mb-2 text-[10px] text-muted-foreground">Negative for a discount (e.g. <span className="font-mono">-100</span>).</p>
+                )}
                 {fees.map((f, i) => (
                   <div key={f.id ?? `f-${i}`} className="mt-1 flex items-end gap-2">
                     <TextField
@@ -1603,53 +1608,22 @@ function OrderDrawer({
                 <TotalRow label="Delivery">{money(o.currency, shippingTotal)}</TotalRow>
                 {feesTotal !== 0 && <TotalRow label="Fees / discounts">{money(o.currency, feesTotal)}</TotalRow>}
                 <div className="flex items-center justify-between pt-1 text-base font-semibold">
-                  <span>Preview total</span>
+                  <span>Total</span>
                   <span className="tabular-nums">{money(o.currency, grandTotal)}</span>
                 </div>
-                <p className="pt-1 text-[10px] text-muted-foreground">
-                  WooCommerce will recalculate the authoritative total after save (current: {money(o.currency, o.total)}).
-                </p>
               </div>
+
+              {/* Consignment ID (if linked to Steadfast) */}
+              {initialOps?.steadfast_consignment_id ? (
+                <div className="mt-3 flex items-center justify-between rounded-md border border-input px-3 py-2 text-[12px]">
+                  <span className="text-muted-foreground">Consignment ID</span>
+                  <span className="font-mono font-medium">{initialOps.steadfast_consignment_id}</span>
+                </div>
+              ) : null}
             </Section>
 
-            {/* Customer note merged into Customer & delivery */}
-
-
-            {/* Operations (dashboard-owned) */}
-            <Section title="Operations" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
-              <SteadfastPanel
-                wcOrderId={id}
-                initialOps={initialOps}
-                onSynced={(patch) => {
-                  if (patch.courier) setCourier(patch.courier);
-                  if (patch.tracking) setTracking(patch.tracking);
-                  qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
-                }}
-              />
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <TextField label="Courier" value={courier} onChange={setCourier} />
-                <TextField label="Tracking #" value={tracking} onChange={setTracking} />
-                <TextField label="Pickup slot" value={pickup} onChange={setPickup} full />
-              </div>
-              <label className="mt-2 block">
-                <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">Internal notes</span>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Staff only — not shown to the customer"
-                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
-                />
-              </label>
-              <button
-                onClick={() => saveOps.mutate()}
-                disabled={saveOps.isPending}
-                className="mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
-              >
-                {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Save operations
-              </button>
-            </Section>
+            {/* Order notes — WooCommerce private notes */}
+            <OrderNotesSection orderId={id} />
 
             {/* Timeline */}
             <Section title="Timeline" icon={<Clock className="h-3.5 w-3.5" />}>
@@ -1658,7 +1632,6 @@ function OrderDrawer({
                 {o.date_paid && <li><span className="text-muted-foreground">Paid:</span> {new Date(o.date_paid).toLocaleString()}</li>}
                 {o.date_completed && <li><span className="text-muted-foreground">Completed:</span> {new Date(o.date_completed).toLocaleString()}</li>}
                 <li><span className="text-muted-foreground">Last modified:</span> {new Date(o.date_modified).toLocaleString()}</li>
-                
               </ul>
             </Section>
           </div>
