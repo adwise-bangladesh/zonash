@@ -645,6 +645,8 @@ function AdminOrders() {
           email={insight.email}
           phone={insight.phone}
           name={insight.name}
+          statuses={wooStatuses}
+          onUpdateStatus={(id, s) => updM.mutate({ id, status: s })}
           onClose={() => setInsight(null)}
           onOpenOrder={(id) => {
             setInsight(null);
@@ -652,6 +654,7 @@ function AdminOrders() {
           }}
         />
       )}
+
 
 
 
@@ -2024,18 +2027,21 @@ function CustomerInsightDrawer({
   email,
   phone,
   name,
+  statuses,
+  onUpdateStatus,
   onClose,
   onOpenOrder,
 }: {
   email: string;
   phone?: string;
   name?: string;
+  statuses: WooStatus[];
+  onUpdateStatus: (id: number, s: string) => void;
   onClose: () => void;
   onOpenOrder: (id: number) => void;
 }) {
   const listFn = useServerFn(listCustomerOrders);
   const verifyFn = useServerFn(verifyCustomerPhone);
-  const [tab, setTab] = useState<"overview" | "courier" | "orders">("overview");
 
   const ordersQ = useQuery({
     queryKey: ["admin", "customer-orders", email],
@@ -2052,13 +2058,14 @@ function CustomerInsightDrawer({
   });
 
   const orders = ordersQ.data?.orders ?? [];
+  const latest = orders[0];
   const displayName =
     name ||
-    (orders[0]
-      ? `${orders[0].billing?.first_name ?? ""} ${orders[0].billing?.last_name ?? ""}`.trim()
+    (latest
+      ? `${latest.billing?.first_name ?? ""} ${latest.billing?.last_name ?? ""}`.trim()
       : "");
-  const displayPhone = phone || orders[0]?.billing?.phone;
-  const currency = orders[0]?.currency ?? "";
+  const displayPhone = phone || latest?.billing?.phone;
+  const currency = latest?.currency ?? "";
   const totalSpent = orders
     .filter((o) => o.status === "completed")
     .reduce((s, o) => s + Number(o.total || 0), 0);
@@ -2079,38 +2086,91 @@ function CustomerInsightDrawer({
           ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
           : "bg-rose-500/10 text-rose-700 ring-rose-500/20";
   const totalDeliveries = overall ? Number(overall.total_parcels ?? 0) : 0;
+  const delivered = overall ? Number(overall.delivered_parcels ?? 0) : 0;
+  const cancelled = overall ? Number(overall.cancelled_parcels ?? 0) : 0;
+
+  // Derive a stable profile from the most recent order.
+  const addr = latest
+    ? [
+        latest.shipping?.address_1 || latest.billing?.address_1,
+        latest.shipping?.address_2 || latest.billing?.address_2,
+        latest.shipping?.city || latest.billing?.city,
+        latest.shipping?.state || latest.billing?.state,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
+  const initials =
+    (displayName || email)
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+
+  // Customer tag
+  const rating: CustomerRating =
+    orders.length === 0
+      ? "new"
+      : ratio !== null && ratio < 50
+        ? "risk"
+        : ratio !== null && ratio >= 80
+          ? "perfect"
+          : "average";
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <button
         aria-label="Close"
         onClick={onClose}
         className="flex-1 bg-foreground/40 backdrop-blur-sm"
       />
-      <aside className="flex h-full w-full max-w-3xl flex-col border-l border-border bg-card">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-border bg-gradient-to-br from-muted/50 to-transparent px-5 py-4">
-          <div className="min-w-0">
-            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Customer insight
-            </div>
-            <div className="mt-0.5 truncate text-[18px] font-semibold">
-              {displayName || email}
+      <aside
+        role="dialog"
+        aria-label="Customer insight"
+        className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-card"
+      >
+        {/* Header — profile card */}
+        <div className="flex items-start gap-3 border-b border-border bg-gradient-to-br from-muted/60 to-transparent px-5 py-4">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-foreground text-[13px] font-semibold text-background">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="truncate text-[16px] font-semibold">
+                {displayName || email}
+              </div>
+              <CustomerBadge rating={rating} />
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-              {displayPhone && <span className="tabular-nums">{displayPhone}</span>}
-              <span className="truncate">{email}</span>
+              {displayPhone && (
+                <a
+                  href={`tel:${displayPhone}`}
+                  className="tabular-nums hover:text-foreground hover:underline"
+                >
+                  {displayPhone}
+                </a>
+              )}
+              <a href={`mailto:${email}`} className="truncate hover:text-foreground hover:underline">
+                {email}
+              </a>
             </div>
+            {addr && (
+              <div className="mt-1 line-clamp-1 text-[11px] text-muted-foreground" title={addr}>
+                {addr}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* KPI grid */}
+        {/* KPI strip */}
         <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
           <InsightKpi
             label="Zonash orders"
@@ -2150,189 +2210,214 @@ function CustomerInsightDrawer({
             }
             sub={
               overall
-                ? `${overall.delivered_parcels ?? 0} ok · ${overall.cancelled_parcels ?? 0} cancel`
+                ? `${delivered} ok · ${cancelled} cancel`
                 : undefined
             }
           />
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-border px-3 pt-2">
-          {(
-            [
-              { id: "overview", label: "Overview" },
-              { id: "courier", label: "Courier history" },
-              { id: "orders", label: `Orders (${orders.length})` },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative rounded-t-md px-3 py-1.5 text-[12px] font-medium transition-colors ${
-                tab === t.id
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-              {tab === t.id && (
-                <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-foreground" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {tab === "overview" && (
-            <div className="space-y-4 p-4">
-              <div>
-                <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Zonash status breakdown
-                </div>
-                {ordersQ.isLoading ? (
-                  <div className="text-[11px] text-muted-foreground">Loading…</div>
-                ) : Object.keys(statusCounts).length === 0 ? (
-                  <div className="text-[11px] italic text-muted-foreground">
-                    No orders yet.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(statusCounts).map(([s, c]) => (
-                      <span
-                        key={s}
-                        className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-foreground"
-                      >
-                        {s.replace(/-/g, " ")} · {c}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {phone && (
-                <div>
-                  <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Courier snapshot
-                  </div>
-                  {hoorinQ.isLoading ? (
-                    <div className="text-[11px] text-muted-foreground">
-                      Checking Hoorin…
-                    </div>
-                  ) : hoorinQ.error ? (
-                    <div className="text-[11px] text-rose-700">
-                      {(hoorinQ.error as Error).message}
-                    </div>
-                  ) : report ? (
-                    <div className="rounded-lg border border-border bg-background p-3 text-[11px]">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-[2px] text-[10px] font-semibold ring-1 ${ratioCls}`}
-                        >
-                          {ratio}% success
-                        </span>
-                        <span className="text-muted-foreground">
-                          across {totalDeliveries} parcels
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setTab("courier")}
-                        className="mt-2 text-[11px] font-medium text-foreground underline underline-offset-2"
-                      >
-                        View full courier report →
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-[11px] italic text-muted-foreground">
-                      No courier history.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Recent orders
-                  </div>
-                  {orders.length > 3 && (
-                    <button
-                      onClick={() => setTab("orders")}
-                      className="text-[11px] font-medium text-foreground underline underline-offset-2"
-                    >
-                      View all →
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  {orders.slice(0, 3).map((o) => (
-                    <OrderMiniRow
-                      key={o.id}
-                      o={o}
-                      onClick={() => onOpenOrder(o.id)}
-                    />
-                  ))}
-                  {orders.length === 0 && !ordersQ.isLoading && (
-                    <div className="text-[11px] italic text-muted-foreground">
-                      No orders yet.
-                    </div>
-                  )}
-                </div>
+        {/* Body — single scroll, no tabs */}
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          {/* Status breakdown chips */}
+          {Object.keys(statusCounts).length > 0 && (
+            <div>
+              <SectionHeader>Status breakdown</SectionHeader>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(statusCounts).map(([s, c]) => (
+                  <span
+                    key={s}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize"
+                  >
+                    <StatusBadge status={s} />
+                    <span className="tabular-nums text-muted-foreground">×{c}</span>
+                  </span>
+                ))}
               </div>
             </div>
           )}
 
-          {tab === "courier" && (
-            <div className="p-4">
-              {!phone ? (
-                <div className="text-[12px] italic text-muted-foreground">
-                  No phone number available for courier lookup.
-                </div>
-              ) : hoorinQ.isLoading ? (
-                <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading courier report…
+          {/* Courier snapshot — always inline */}
+          {phone && (
+            <div>
+              <SectionHeader>Courier report</SectionHeader>
+              {hoorinQ.isLoading ? (
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking Hoorin…
                 </div>
               ) : hoorinQ.error ? (
-                <div className="text-[12px] text-rose-700">
+                <div className="text-[11px] text-rose-700">
                   {(hoorinQ.error as Error).message}
                 </div>
               ) : report ? (
-                <HoorinReportView report={report} />
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <div className="mb-2 flex items-center gap-2 text-[11px]">
+                    <span
+                      className={`rounded-full px-2 py-[2px] text-[10px] font-semibold ring-1 ${ratioCls}`}
+                    >
+                      {ratio}% success
+                    </span>
+                    <span className="text-muted-foreground">
+                      {totalDeliveries} parcels · {delivered} delivered · {cancelled} cancelled
+                    </span>
+                  </div>
+                  <HoorinReportView report={report} />
+                </div>
               ) : (
-                <div className="text-[12px] italic text-muted-foreground">
+                <div className="text-[11px] italic text-muted-foreground">
                   No courier history.
                 </div>
               )}
             </div>
           )}
 
-          {tab === "orders" && (
-            <div>
-              {ordersQ.isLoading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
-                </div>
-              ) : orders.length === 0 ? (
-                <div className="py-10 text-center text-[12px] italic text-muted-foreground">
-                  No orders found.
-                </div>
-              ) : (
-                orders.map((o) => (
-                  <OrderMiniRow
+          {/* Orders — full list with inline status controls */}
+          <div>
+            <SectionHeader>Orders ({orders.length})</SectionHeader>
+            {ordersQ.isLoading ? (
+              <div className="flex items-center gap-2 py-6 text-[12px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="py-6 text-center text-[12px] italic text-muted-foreground">
+                No orders yet.
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {orders.map((o) => (
+                  <OrderInsightRow
                     key={o.id}
                     o={o}
-                    onClick={() => onOpenOrder(o.id)}
-                    expanded
+                    statuses={statuses}
+                    onOpen={() => onOpenOrder(o.id)}
+                    onUpdateStatus={(s) => onUpdateStatus(o.id, s)}
                   />
-                ))
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </div>
   );
 }
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function OrderInsightRow({
+  o,
+  statuses,
+  onOpen,
+  onUpdateStatus,
+}: {
+  o: import("@/lib/woo.server").WooOrder;
+  statuses: WooStatus[];
+  onOpen: () => void;
+  onUpdateStatus: (s: string) => void;
+}) {
+  const shipping = Number(o.shipping_total || 0);
+  const items = Number(o.total || 0) - shipping;
+  const skus = (o.line_items ?? [])
+    .map((li) => li.sku || li.name)
+    .filter(Boolean);
+
+  // Quick-action targets: only actionable transitions relative to current status.
+  const quick: { slug: string; label: string; cls: string }[] = [];
+  const has = (s: string) => statuses.some((x) => x.slug === s);
+  if (o.status !== "processing" && has("processing"))
+    quick.push({
+      slug: "processing",
+      label: "Confirm",
+      cls: "bg-blue-500/10 text-blue-700 hover:bg-blue-500/20",
+    });
+  if (o.status !== "completed" && has("completed"))
+    quick.push({
+      slug: "completed",
+      label: "Complete",
+      cls: "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20",
+    });
+  if (o.status !== "cancelled" && has("cancelled"))
+    quick.push({
+      slug: "cancelled",
+      label: "Cancel",
+      cls: "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20",
+    });
+
+  return (
+    <div className="group rounded-lg border border-border bg-background p-2.5 transition-colors hover:border-foreground/20">
+      <div className="flex items-start gap-3">
+        <button
+          onClick={onOpen}
+          className="min-w-0 flex-1 text-left"
+          aria-label={`Open order ${o.number}`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-semibold">#{o.number}</span>
+            <StatusBadge status={o.status} />
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {new Date(o.date_created).toLocaleDateString()}
+            </span>
+          </div>
+          {skus.length > 0 && (
+            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {skus.slice(0, 3).join(", ")}
+              {skus.length > 3 && ` +${skus.length - 3}`}
+            </div>
+          )}
+        </button>
+        <div className="shrink-0 text-right text-[11px] leading-tight">
+          <div className="text-muted-foreground tabular-nums">
+            {money(o.currency, items)} + {money(o.currency, shipping)}
+          </div>
+          <div className="text-[13px] font-semibold tabular-nums">
+            {money(o.currency, o.total)}
+          </div>
+        </div>
+      </div>
+      {/* Status quick actions */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {quick.map((q) => (
+          <button
+            key={q.slug}
+            onClick={() => onUpdateStatus(q.slug)}
+            className={`inline-flex h-6 items-center rounded-md px-2 text-[10px] font-medium transition-colors ${q.cls}`}
+          >
+            {q.label}
+          </button>
+        ))}
+        <select
+          value={o.status}
+          onChange={(e) => {
+            if (e.target.value !== o.status) onUpdateStatus(e.target.value);
+          }}
+          className="ml-auto h-6 rounded-md border border-input bg-background px-1.5 text-[10px]"
+          aria-label="Change status"
+        >
+          {!statuses.some((s) => s.slug === o.status) && (
+            <option value={o.status}>{o.status}</option>
+          )}
+          {statuses.map((s) => (
+            <option key={s.slug} value={s.slug}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={onOpen}
+          className="inline-flex h-6 items-center gap-1 rounded-md border border-input bg-background px-2 text-[10px] font-medium hover:bg-muted"
+        >
+          Open
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 function InsightKpi({
   label,
