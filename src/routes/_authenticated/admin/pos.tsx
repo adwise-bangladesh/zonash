@@ -316,7 +316,7 @@ function PosPage() {
                         </div>
                         <div className="shrink-0 text-right">
                           <div className="text-[12.5px] font-semibold tabular-nums text-foreground">
-                            ৳ {price.toFixed(0)}
+                            {formatBDT(price)}
                           </div>
                           <span
                             className="mt-1 inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-2 text-[10.5px] font-semibold text-primary group-hover:bg-primary group-hover:text-primary-foreground"
