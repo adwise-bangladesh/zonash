@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { data } = useSuspenseQuery(featuredProductsQuery);
-  const products = data.products;
+  const products = data.products as import("@/lib/woo.server").WooProduct[];
 
   return (
     <div className="min-h-screen bg-background">

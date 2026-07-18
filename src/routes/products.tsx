@@ -55,7 +55,7 @@ function Products() {
         )}
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-          {data.products.map((p) => (
+          {(data.products as import("@/lib/woo.server").WooProduct[]).map((p) => (
             <Card key={p.id} className="overflow-hidden p-0">
               <div className="aspect-square bg-muted">
                 {p.images[0] ? (
