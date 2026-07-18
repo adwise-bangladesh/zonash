@@ -94,7 +94,8 @@ function AdminOrders() {
   const statusesQ = useQuery({
     queryKey: ["admin", "woo-order-statuses"],
     queryFn: () => statusesFn(),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const wooStatuses = statusesQ.data?.statuses ?? [];
   const totalAll = statusesQ.data?.all ?? 0;
