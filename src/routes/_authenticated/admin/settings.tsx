@@ -101,6 +101,10 @@ function SettingsPage() {
               </div>
             )}
 
+            {tab === "templates" && <TemplatesPanel />}
+
+
+
             {tab === "general" && (
               <EmptyPanel
                 title="General preferences"
