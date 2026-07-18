@@ -43,7 +43,7 @@ export const Route = createFileRoute("/products/$slug")({
     const desc = (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) || `Buy ${p.name} at Zonash.`;
     return {
       meta: [
-        { title: `${p.name} — ৳${p.price}` },
+        { title: `${p.name} — ${p.price} Tk` },
         { name: "description", content: desc },
         { property: "og:type", content: "product" },
         { property: "og:title", content: p.name },

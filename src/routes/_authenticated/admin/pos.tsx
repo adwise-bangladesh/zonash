@@ -22,6 +22,8 @@ import {
   Minus,
   ShieldCheck,
   ShieldAlert,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -30,6 +32,7 @@ import { createManualOrder } from "@/lib/pos.functions";
 import { getPoliceStations } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { getCustomerHistory } from "@/lib/customer-history.functions";
+import { formatBDT } from "@/lib/format";
 
 const searchSchema = z.object({
   channel: fallback(
@@ -176,7 +179,10 @@ function PosPage() {
 
   const subtotal = cart.reduce((s, l) => s + l.price * l.quantity, 0);
   const shippingAmount = insideDhaka ? 80 : 130;
-  const grand = Math.max(0, subtotal + shippingAmount - discount);
+  const maxDiscount = Math.floor(subtotal * 0.4);
+  const effectiveDiscount = Math.min(Math.max(0, discount), maxDiscount);
+  const discountCapped = discount > maxDiscount && subtotal > 0;
+  const grand = Math.max(0, subtotal + shippingAmount - effectiveDiscount);
 
   const canSubmit =
     cart.length > 0 &&
@@ -206,7 +212,7 @@ function PosPage() {
           })),
           shipping_amount: shippingAmount,
           shipping_label: insideDhaka ? "ঢাকা সিটির ভিতরে" : "ঢাকা সিটির বাহিরে",
-          discount,
+          discount: effectiveDiscount,
         },
       }),
     onSuccess: (order) => {
@@ -265,9 +271,6 @@ function PosPage() {
                 <Loader2 className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
               )}
             </div>
-            <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:inline">
-              {debounced.length >= 2 ? "Results" : "Most ordered"}
-            </span>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -313,7 +316,7 @@ function PosPage() {
                         </div>
                         <div className="shrink-0 text-right">
                           <div className="text-[12.5px] font-semibold tabular-nums text-foreground">
-                            ৳ {price.toFixed(0)}
+                            {formatBDT(price)}
                           </div>
                           <span
                             className="mt-1 inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-2 text-[10.5px] font-semibold text-primary group-hover:bg-primary group-hover:text-primary-foreground"
@@ -341,7 +344,7 @@ function PosPage() {
               </span>
             </div>
             <span className="text-[11px] text-muted-foreground">
-              {cart.reduce((s, l) => s + l.quantity, 0)} items · ৳ {subtotal.toFixed(0)}
+              {cart.reduce((s, l) => s + l.quantity, 0)} items · {formatBDT(subtotal)}
             </span>
           </div>
 
@@ -400,7 +403,7 @@ function PosPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <div className="text-[12.5px] font-semibold tabular-nums">
-                        ৳ {(l.price * l.quantity).toFixed(0)}
+                        {formatBDT(l.price * l.quantity)}
                       </div>
                       <button
                         type="button"
@@ -499,40 +502,14 @@ function PosPage() {
               />
 
               {/* Thana — from Steadfast police stations */}
-              <div>
-                <input
-                  value={thana}
-                  onChange={(e) => setThana(e.target.value)}
-                  list="pos-thana-list"
-                  className="posinput"
-                  placeholder={
-                    policeQ.isFetching
-                      ? "Thana (loading…)"
-                      : policeItems.length > 0
-                        ? `Thana — ${policeItems.length} stations`
-                        : "Thana"
-                  }
-                />
-                <datalist id="pos-thana-list">
-                  {policeItems.map((t) => (
-                    <option key={t} value={t} />
-                  ))}
-                </datalist>
-                {historyThanas.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {historyThanas.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setThana(t)}
-                        className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10.5px] text-foreground/80 hover:bg-primary/10 hover:text-primary"
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ThanaCombobox
+                value={thana}
+                onChange={setThana}
+                options={policeItems}
+                loading={policeQ.isFetching}
+                recent={historyThanas}
+              />
+
 
               <textarea
                 value={notes}
@@ -556,7 +533,7 @@ function PosPage() {
                     : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা ভিতরে · ৳80
+                ঢাকা ভিতরে · 80 Tk
               </button>
               <button
                 type="button"
@@ -567,7 +544,7 @@ function PosPage() {
                     : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা বাহিরে · ৳130
+                ঢাকা বাহিরে · 130 Tk
               </button>
             </div>
           </div>
@@ -575,15 +552,22 @@ function PosPage() {
           {/* Totals + actions (sticky footer of column) */}
           <div className="shrink-0 border-t border-border bg-muted/30 p-3">
             <div className="space-y-1">
-              <Row label="Subtotal" value={`৳ ${subtotal.toFixed(0)}`} />
-              <Row label="Delivery" value={`৳ ${shippingAmount.toFixed(0)}`} />
+              <Row label="Subtotal" value={formatBDT(subtotal)} />
+              <Row label="Delivery" value={formatBDT(shippingAmount)} />
               <div className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="text-muted-foreground">Discount</span>
+                <span className="text-muted-foreground">
+                  Discount
+                  {subtotal > 0 && (
+                    <span className="ml-1 text-[10px] text-muted-foreground/70">
+                      (max {formatBDT(maxDiscount)})
+                    </span>
+                  )}
+                </span>
                 <div className="inline-flex items-center gap-1">
-                  <span className="text-muted-foreground">৳</span>
                   <input
                     type="number"
                     min={0}
+                    max={maxDiscount}
                     value={discount}
                     onChange={(e) =>
                       setDiscount(Math.max(0, Number(e.target.value)))
@@ -591,13 +575,20 @@ function PosPage() {
                     className="h-7 w-20 rounded-md border border-border bg-background px-1.5 text-right text-[11.5px] outline-none tabular-nums focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                     placeholder="0"
                   />
+                  <span className="text-muted-foreground">Tk</span>
                 </div>
               </div>
+              {discountCapped && (
+                <div className="text-right text-[10px] font-medium text-amber-600">
+                  Capped to 40% of cart · {formatBDT(effectiveDiscount)}
+                </div>
+              )}
               <div className="mt-1.5 flex items-center justify-between border-t border-border pt-2 text-[14px] font-bold">
                 <span>Total (COD)</span>
-                <span className="tabular-nums">৳ {grand.toFixed(0)}</span>
+                <span className="tabular-nums">{formatBDT(grand)}</span>
               </div>
             </div>
+
             <div className="mt-2.5 grid grid-cols-[1fr_1.4fr] gap-2">
               <button
                 type="button"
@@ -710,6 +701,141 @@ function VerifyPill({
       {!loading && !error && (cancelled ?? 0) > 0 && (
         <div className="mt-1 text-[10.5px] text-muted-foreground">
           {cancelled} cancelled parcel{(cancelled ?? 0) === 1 ? "" : "s"} on courier record
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ThanaCombobox({
+  value,
+  onChange,
+  options,
+  loading,
+  recent,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  loading: boolean;
+  recent: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest?.("[data-thana-root]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const src = options ?? [];
+    if (!needle) return src.slice(0, 100);
+    return src.filter((s) => s.toLowerCase().includes(needle)).slice(0, 100);
+  }, [q, options]);
+
+  const placeholder = loading
+    ? "Loading thanas…"
+    : options.length > 0
+      ? `Select thana — ${options.length} stations`
+      : "Thana";
+
+  return (
+    <div className="relative" data-thana-root>
+      <button
+        type="button"
+        onClick={() => setOpen((s) => !s)}
+        className="posinput flex items-center justify-between gap-2 text-left"
+      >
+        <span className={value ? "text-foreground" : "text-muted-foreground"}>
+          {value || placeholder}
+        </span>
+        <span className="flex items-center gap-1">
+          {value && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+              }}
+              className="grid h-4 w-4 place-items-center rounded text-muted-foreground hover:bg-muted"
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+          <div className="border-b border-border p-1.5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search thana…"
+                className="h-8 w-full rounded border border-border bg-background pl-7 pr-2 text-[12px] outline-none focus:border-primary/40"
+              />
+            </div>
+          </div>
+          {recent.length > 0 && !q && (
+            <div className="border-b border-border px-2 py-1.5">
+              <div className="mb-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Recent
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {recent.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      onChange(t);
+                      setOpen(false);
+                    }}
+                    className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10.5px] hover:bg-primary/10 hover:text-primary"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <ul className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                {loading ? "Loading…" : "No matches"}
+              </li>
+            ) : (
+              filtered.map((t) => (
+                <li key={t}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(t);
+                      setOpen(false);
+                      setQ("");
+                    }}
+                    className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] hover:bg-muted ${
+                      t === value ? "bg-primary/5 text-primary" : ""
+                    }`}
+                  >
+                    <span>{t}</span>
+                    {t === value && <Check className="h-3 w-3" />}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
       )}
     </div>

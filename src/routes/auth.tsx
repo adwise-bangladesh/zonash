@@ -308,7 +308,7 @@ function AuthPage() {
                     Today · Revenue
                   </div>
                   <div className="mt-2 font-display text-2xl font-semibold text-white">
-                    ৳ 84,220
+                    84,220 Tk
                   </div>
                   <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/20">
                     <Zap className="h-3 w-3" /> +12.4%

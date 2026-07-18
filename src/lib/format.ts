@@ -1,7 +1,11 @@
 export function formatBDT(n: number | string | undefined | null): string {
   const num = typeof n === "string" ? parseFloat(n) : n;
-  if (num == null || Number.isNaN(num)) return "৳0";
-  return `৳${new Intl.NumberFormat("en-BD", { maximumFractionDigits: 0 }).format(num)}`;
+  if (num == null || Number.isNaN(num)) return "0 Tk";
+  const s = new Intl.NumberFormat("en-BD", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(num);
+  return `${s} Tk`;
 }
 
 export function formatCount(n: number): string {

@@ -199,7 +199,7 @@ export function GlobalSearch() {
                       </span>
                     )}
                     <span className="ml-auto text-[11.5px] font-semibold text-foreground/80 tabular-nums">
-                      ৳ {Number(o.total || 0).toFixed(0)}
+                      {Number(o.total || 0).toFixed(0)} Tk
                     </span>
                   </div>
                   <div className="truncate text-[11.5px] font-medium text-foreground">

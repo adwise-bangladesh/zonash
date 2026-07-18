@@ -60,7 +60,7 @@ function SettingsPage() {
       {/* Status strip */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatusCard label="Steadfast" value={sf.isLoading ? "…" : sfOk ? "Connected" : sf.data?.configured ? "Auth failed" : "Not set"} ok={sfOk} warn={!sfOk} />
-        <StatusCard label="Balance" value={typeof sf.data?.balance === "number" ? `৳ ${sf.data.balance.toLocaleString()}` : "—"} />
+        <StatusCard label="Balance" value={typeof sf.data?.balance === "number" ? `${sf.data.balance.toLocaleString()} Tk` : "—"} />
         <StatusCard label="Hoorin" value={ho.isLoading ? "…" : hoOk ? "Connected" : ho.data?.configured ? "Auth failed" : "Not set"} ok={hoOk} warn={!hoOk} />
         <StatusCard label="Domain" value="zonash.com" />
       </div>
@@ -193,7 +193,7 @@ function SteadfastCard() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard
             label="Current balance"
-            value={q.isLoading ? "…" : configured && typeof balance === "number" ? `৳ ${balance.toLocaleString()}` : "—"}
+            value={q.isLoading ? "…" : configured && typeof balance === "number" ? `${balance.toLocaleString()} Tk` : "—"}
             hint={err ?? undefined}
           />
           <StatCard label="API key" value={configured ? "•••• saved" : "not set"} tone={configured ? "ok" : "warn"} />

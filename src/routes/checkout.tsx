@@ -35,7 +35,7 @@ const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: ""
 const STORAGE_KEY = "zonash:checkout:form";
 const COUPONS: Record<string, { label: string; type: "percent" | "flat"; value: number }> = {
   ZONASH10: { label: "10% off", type: "percent", value: 10 },
-  SAVE50: { label: "৳50 off", type: "flat", value: 50 },
+  SAVE50: { label: "50 Tk off", type: "flat", value: 50 },
 };
 
 function splitName(full: string): { first: string; last: string } {

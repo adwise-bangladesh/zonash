@@ -6,7 +6,7 @@ export function TopAnnouncementBar() {
       <div className="container-page flex h-9 items-center justify-between">
         <div className="flex items-center gap-2">
           <Truck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          <span>Free shipping on orders over ৳1,500 across Bangladesh</span>
+          <span>Free shipping on orders over 1,500 Tk across Bangladesh</span>
         </div>
         <div className="flex items-center gap-5">
           <a href="/track" className="hover:text-primary">Track order</a>
