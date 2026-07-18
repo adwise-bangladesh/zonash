@@ -22,6 +22,7 @@ import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
+import { Route as AuthenticatedAdminBackfillRouteImport } from './routes/_authenticated/admin/backfill'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
 import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
@@ -91,6 +92,12 @@ const AuthenticatedAdminOrdersRoute =
     path: '/orders',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminBackfillRoute =
+  AuthenticatedAdminBackfillRouteImport.update({
+    id: '/backfill',
+    path: '/backfill',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminAnalyticsRoute =
   AuthenticatedAdminAnalyticsRouteImport.update({
     id: '/analytics',
@@ -122,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/products/': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -138,6 +146,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -157,6 +166,7 @@ export interface FileRoutesById {
   '/products/': typeof ProductsIndexRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/account/orders'
     | '/admin/analytics'
+    | '/admin/backfill'
     | '/admin/orders'
     | '/admin/'
     | '/api/public/webhooks/woo'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/account/orders'
     | '/admin/analytics'
+    | '/admin/backfill'
     | '/admin/orders'
     | '/admin'
     | '/api/public/webhooks/woo'
@@ -210,6 +222,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/_authenticated/account/orders'
     | '/_authenticated/admin/analytics'
+    | '/_authenticated/admin/backfill'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/'
     | '/api/public/webhooks/woo'
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/backfill': {
+      id: '/_authenticated/admin/backfill'
+      path: '/backfill'
+      fullPath: '/admin/backfill'
+      preLoaderRoute: typeof AuthenticatedAdminBackfillRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/admin/analytics': {
       id: '/_authenticated/admin/analytics'
       path: '/analytics'
@@ -348,6 +368,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
+  AuthenticatedAdminBackfillRoute: typeof AuthenticatedAdminBackfillRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -355,6 +376,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
+    AuthenticatedAdminBackfillRoute: AuthenticatedAdminBackfillRoute,
     AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }

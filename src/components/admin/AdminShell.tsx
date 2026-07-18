@@ -58,6 +58,7 @@ const navGroups: NavGroup[] = [
     label: "Sales",
     items: [
       { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
+      { title: "Backfill", url: "/admin/backfill", icon: RotateCcw },
       { title: "Returns", url: "/admin/returns", icon: RotateCcw },
       { title: "Coupons", url: "/admin/coupons", icon: Tag },
       { title: "Reviews", url: "/admin/reviews", icon: Star },
