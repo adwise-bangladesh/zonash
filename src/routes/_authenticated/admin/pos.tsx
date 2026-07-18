@@ -22,6 +22,8 @@ import {
   Minus,
   ShieldCheck,
   ShieldAlert,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -30,6 +32,7 @@ import { createManualOrder } from "@/lib/pos.functions";
 import { getPoliceStations } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { getCustomerHistory } from "@/lib/customer-history.functions";
+import { formatBDT } from "@/lib/format";
 
 const searchSchema = z.object({
   channel: fallback(
