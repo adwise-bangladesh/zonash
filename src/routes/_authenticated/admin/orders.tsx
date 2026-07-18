@@ -191,14 +191,29 @@ function AdminOrders() {
     qc.invalidateQueries({ queryKey: ["admin", "woo-order-statuses"] });
   };
 
+  // Track in-flight status changes per order id so rows can render
+  // an optimistic status + spinner instead of appearing "frozen".
+  const [pendingStatus, setPendingStatus] = useState<Record<number, string>>({});
+
   const updM = useMutation({
     mutationFn: (v: { id: number; status: string }) => updFn({ data: v }),
+    onMutate: (v) => {
+      setPendingStatus((m) => ({ ...m, [v.id]: v.status }));
+    },
     onSuccess: (_d, v) => {
       invalidate();
       toast.success(`Marked ${humanize(v.status)}`);
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: (_d, _e, v) => {
+      setPendingStatus((m) => {
+        const next = { ...m };
+        delete next[v.id];
+        return next;
+      });
+    },
   });
+
 
   const pageRevenue = useMemo(
     () => orders.reduce((s, o) => s + Number(o.total || 0), 0),
@@ -670,8 +685,10 @@ function AdminOrders() {
                   itemsTotal={itemsTotal}
                   shipping={shipping}
                   onInvalidate={invalidate}
+                  pendingStatus={pendingStatus[o.id]}
                 />
               );
+
             })}
           </div>
         )}
@@ -870,6 +887,7 @@ type OrderRowProps = {
   itemsTotal: number;
   shipping: number;
   onInvalidate: () => void;
+  pendingStatus?: string;
 };
 
 function OrderRow({
@@ -887,7 +905,9 @@ function OrderRow({
   itemsTotal,
   shipping,
   onInvalidate,
+  pendingStatus,
 }: OrderRowProps) {
+
   const verifyFn = useServerFn(verifyCustomerPhone);
   const sendFn = useServerFn(sendOrderToSteadfast);
   const [verify, setVerify] = useState<{
@@ -975,7 +995,10 @@ function OrderRow({
     cancelled: "bg-muted text-muted-foreground border-input",
     failed: "bg-rose-500/10 text-rose-700 border-rose-500/30",
   };
-  const statusCls = statusColors[o.status] ?? "bg-muted text-foreground border-input";
+  const isStatusUpdating = !!pendingStatus;
+  const effectiveStatus = pendingStatus ?? o.status;
+  const statusCls = statusColors[effectiveStatus] ?? "bg-muted text-foreground border-input";
+
 
   const lineItems = o.line_items ?? [];
   const shownSkus = lineItems.slice(0, 2);
@@ -1000,9 +1023,14 @@ function OrderRow({
           onOpen();
         }
       }}
-      className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-colors ${
-        isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"
+      className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-all duration-300 ${
+        isStatusUpdating
+          ? "bg-primary/[0.04] ring-1 ring-inset ring-primary/20"
+          : isSel
+            ? "bg-primary/[0.06]"
+            : "hover:bg-muted/40"
       }`}
+
     >
       {/* Checkbox */}
       <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
@@ -1156,20 +1184,37 @@ function OrderRow({
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col items-stretch justify-center gap-1 min-w-0 self-stretch"
       >
-        <select
-          value={o.status}
-          onChange={(e) => onUpdateStatus(e.target.value)}
-          className={`w-full h-7 rounded-md border px-1.5 text-[11px] font-medium capitalize outline-none ${statusCls}`}
-        >
-          {!wooStatuses.some((s) => s.slug === o.status) && (
-            <option value={o.status}>{humanize(o.status)}</option>
+        <div className="relative">
+          <select
+            value={effectiveStatus}
+            disabled={isStatusUpdating}
+            onChange={(e) => onUpdateStatus(e.target.value)}
+            aria-busy={isStatusUpdating}
+            className={`w-full h-7 rounded-md border px-1.5 pr-6 text-[11px] font-medium capitalize outline-none transition-all duration-200 ${statusCls} ${
+              isStatusUpdating
+                ? "opacity-80 cursor-wait ring-2 ring-primary/30"
+                : "focus:ring-2 focus:ring-primary/30"
+            }`}
+          >
+            {!wooStatuses.some((s) => s.slug === effectiveStatus) && (
+              <option value={effectiveStatus}>{humanize(effectiveStatus)}</option>
+            )}
+            {wooStatuses.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {isStatusUpdating && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center"
+            >
+              <Loader2 className="h-3 w-3 animate-spin text-current opacity-80" />
+            </span>
           )}
-          {wooStatuses.map((s) => (
-            <option key={s.slug} value={s.slug}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        </div>
+
         {hasCourier ? (
           <a
             href={`https://steadfast.com.bd/t/${tracking || ops?.tracking_number}`}
