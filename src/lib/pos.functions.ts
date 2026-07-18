@@ -22,7 +22,10 @@ const posOrderSchema = z.object({
     "instore",
     "other",
   ]),
-  status: z.enum(["on-hold", "processing"]).default("processing"),
+  status: z.enum(["on-hold", "pending", "processing"]).default("pending"),
+  delivery_zone: z.enum(["inside_dhaka", "outside_dhaka"]).optional(),
+  subtotal: z.number().min(0).optional(),
+  grand_total: z.number().min(0).optional(),
   customer: z.object({
     name: z.string().trim().min(1).max(120),
     phone: z.string().trim().min(3).max(30),
@@ -107,7 +110,17 @@ export const createManualOrder = createServerFn({ method: "POST" })
       meta_data: [
         { key: "_zonash_channel", value: data.channel },
         { key: "_zonash_created_by", value: author },
+        { key: "_zonash_created_by_id", value: context.userId },
+        { key: "_zonash_created_at", value: new Date().toISOString() },
         { key: "_zonash_pos", value: "1" },
+        { key: "_zonash_thana", value: data.customer.thana || "" },
+        { key: "_zonash_delivery_zone", value: data.delivery_zone || "" },
+        { key: "_zonash_shipping_label", value: data.shipping_label },
+        { key: "_zonash_shipping_amount", value: data.shipping_amount.toFixed(2) },
+        { key: "_zonash_discount", value: data.discount.toFixed(2) },
+        { key: "_zonash_subtotal", value: (data.subtotal ?? 0).toFixed(2) },
+        { key: "_zonash_grand_total", value: (data.grand_total ?? 0).toFixed(2) },
+        { key: "_zonash_customer_notes", value: data.customer.notes || "" },
       ],
     };
 
