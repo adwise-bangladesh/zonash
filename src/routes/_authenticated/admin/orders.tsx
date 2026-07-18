@@ -80,7 +80,7 @@ function AdminOrders() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
-  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [insight, setInsight] = useState<{ email: string; phone?: string; name?: string } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<null | { label: string; done: number; total: number }>(null);
 
