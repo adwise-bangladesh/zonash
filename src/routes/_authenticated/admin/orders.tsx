@@ -846,7 +846,7 @@ function OrderRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone]);
 
-  const doSend = async (e: React.MouseEvent) => {
+  const doSend = async (e: ReactMouseEvent) => {
     e.stopPropagation();
     if (hasCourier) {
       toast.info("Already sent to courier");
