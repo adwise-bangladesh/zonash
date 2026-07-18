@@ -394,10 +394,7 @@ function AdminOrders() {
 
 
   return (
-    <AdminShell
-      title="Orders"
-      subtitle="Order lifecycle — live from WooCommerce"
-    >
+    <AdminShell title="">
       {/* Dynamic status tabs (built-in + custom WooCommerce statuses) */}
       <div className="mb-3 flex gap-1.5 overflow-x-auto whitespace-nowrap rounded-xl border border-input bg-card p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => {
@@ -430,7 +427,7 @@ function AdminOrders() {
         })}
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — search + inline bulk actions */}
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-input bg-card p-2">
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -445,78 +442,69 @@ function AdminOrders() {
             className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[13px] outline-none focus:border-ring"
           />
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+
+        <div className="flex items-center gap-2">
           {q.isFetching && (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" /> Syncing…
             </span>
           )}
-          <span>
-            {orders.length} on this page · Revenue{" "}
-            {money(currency || "৳", pageRevenue)}
-          </span>
-        </div>
-      </div>
-
-      {/* Bulk actions bar */}
-      {selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-foreground/20 bg-foreground text-background p-2 shadow-sm">
-          <span className="px-1 text-[12px] font-medium">
-            {selected.size} selected
-          </span>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20"
-          >
-            Clear
-          </button>
-          <div className="mx-1 h-4 w-px bg-background/20" />
+          {selected.size > 0 && (
+            <span className="rounded-md bg-foreground/10 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-foreground">
+              {selected.size} selected
+            </span>
+          )}
           <select
             defaultValue=""
-            disabled={!!bulkBusy}
+            disabled={!!bulkBusy || selected.size === 0}
             onChange={(e) => {
               const v = e.target.value;
               e.target.value = "";
               if (v) bulkUpdateStatus(v);
             }}
-            className="h-7 rounded-md border border-background/20 bg-background/10 px-2 text-[11px] text-background outline-none disabled:opacity-50"
+            className="h-8 rounded-md border border-input bg-background px-2 text-[11px] outline-none disabled:opacity-50"
           >
-            <option value="" className="text-foreground">
-              Update status…
-            </option>
+            <option value="">Update status…</option>
             {wooStatuses.map((s) => (
-              <option key={s.slug} value={s.slug} className="text-foreground">
+              <option key={s.slug} value={s.slug}>
                 {s.name}
               </option>
             ))}
           </select>
           <button
             onClick={bulkSendSteadfast}
-            disabled={!!bulkBusy}
-            className="inline-flex items-center gap-1 rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20 disabled:opacity-50"
+            disabled={!!bulkBusy || selected.size === 0}
+            className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
           >
-            <Truck className="h-3.5 w-3.5" /> Send to Steadfast
+            <Truck className="h-3.5 w-3.5" /> Send to Courier
           </button>
           <button
             onClick={bulkPrintLabels}
-            disabled={!!bulkBusy}
-            className="inline-flex items-center gap-1 rounded-md bg-background/10 px-2 py-1 text-[11px] hover:bg-background/20 disabled:opacity-50"
+            disabled={!!bulkBusy || selected.size === 0}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-input bg-background px-2.5 text-[11px] font-medium hover:bg-muted disabled:opacity-40"
           >
             <Printer className="h-3.5 w-3.5" /> Print labels
           </button>
+          {selected.size > 0 && (
+            <button
+              onClick={() => setSelected(new Set())}
+              className="inline-flex h-8 items-center rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted"
+            >
+              Clear
+            </button>
+          )}
           {bulkBusy && (
-            <span className="ml-auto inline-flex items-center gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[11px] font-medium">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {bulkBusy.label} · {bulkBusy.done}/{bulkBusy.total}
             </span>
           )}
         </div>
-      )}
-
+      </div>
 
       <div className="rounded-xl border border-input bg-card overflow-hidden">
         {/* Header row — visible on lg+, compact on smaller screens */}
-        <div className="hidden lg:grid items-center gap-2 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_130px_120px]">
+        <div className="hidden lg:grid items-center gap-2 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px]">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -529,9 +517,9 @@ function AdminOrders() {
           <div>Items</div>
           <div>Verification</div>
           <div className="text-right">Total</div>
-          <div>Status</div>
-          <div className="text-right">Ship</div>
+          <div>Actions</div>
         </div>
+
 
         {q.isLoading &&
           Array.from({ length: 8 }).map((_, i) => (
