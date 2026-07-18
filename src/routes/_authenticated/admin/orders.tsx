@@ -50,9 +50,11 @@ import {
   type CustomerRating,
 } from "@/lib/ops.functions";
 import { sendOrderToSteadfast, refreshSteadfastStatus, bulkSendOrdersToSteadfast } from "@/lib/steadfast.functions";
+import { getPoliceStations } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { getCustomerHistory, type CustomerHistory } from "@/lib/customer-history.functions";
 import { HoorinReportView } from "@/routes/_authenticated/admin/settings";
+import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
 import type { HoorinReport } from "@/lib/hoorin.server";
 
 
@@ -1353,6 +1355,31 @@ function OrderDrawer({
     setCustomerNote(o.customer_note ?? "");
   }, [o?.id, o?.date_modified]);
 
+  // Steadfast police stations (thana list) — cached 24h.
+  const policeFn = useServerFn(getPoliceStations);
+  const policeQ = useQuery({
+    queryKey: ["admin", "police-stations"],
+    queryFn: () => policeFn(),
+    staleTime: 24 * 60 * 60_000,
+  });
+  const policeItems = (policeQ.data?.items ?? []) as string[];
+
+  // Customer history — recent thanas for this phone (drives Recent chips).
+  const historyFnDrawer = useServerFn(getCustomerHistory);
+  const phoneDigits = (billing.phone ?? "").replace(/\D+/g, "");
+  const historyQ = useQuery({
+    queryKey: ["admin", "drawer-history", phoneDigits],
+    queryFn: () => historyFnDrawer({ data: { phone: phoneDigits } }),
+    enabled: phoneDigits.length >= 10,
+    staleTime: 10 * 60_000,
+  });
+  const recentThanas = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of historyQ.data?.thanas ?? []) if (t) set.add(t);
+    for (const t of historyQ.data?.courierThanas ?? []) if (t) set.add(t);
+    return Array.from(set).slice(0, 8);
+  }, [historyQ.data]);
+
   // Ops fields
   const opsFn = useServerFn(updateOrderOps);
   const [courier, setCourier] = useState(initialOps?.courier ?? "");
@@ -1562,15 +1589,21 @@ function OrderDrawer({
                   }}
                   full
                 />
-                <TextField
-                  label="Thana"
-                  value={billing.city}
-                  onChange={(v) => {
-                    setBilling({ ...billing, city: v, state: v });
-                    setShipping({ ...shipping, city: v, state: v });
-                  }}
-                  full
-                />
+                <div className="col-span-2">
+                  <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Thana
+                  </span>
+                  <ThanaCombobox
+                    value={billing.city ?? ""}
+                    onChange={(v) => {
+                      setBilling({ ...billing, city: v, state: v });
+                      setShipping({ ...shipping, city: v, state: v });
+                    }}
+                    options={policeItems}
+                    loading={policeQ.isLoading}
+                    recent={recentThanas}
+                  />
+                </div>
               </div>
               <label className="mt-2 block">
                 <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">Notes</span>
