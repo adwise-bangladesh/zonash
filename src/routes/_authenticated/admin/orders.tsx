@@ -289,14 +289,19 @@ function AdminOrders() {
                       onChange={(e) =>
                         updM.mutate({
                           id: o.id,
-                          status: e.target.value as WooStatus,
+                          status: e.target.value,
                         })
                       }
                       className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
                     >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
+                      {/* Include current status even if it isn't in the reported
+                          list (defensive fallback for exotic custom statuses). */}
+                      {!wooStatuses.some((s) => s.slug === o.status) && (
+                        <option value={o.status}>{humanize(o.status)}</option>
+                      )}
+                      {wooStatuses.map((s) => (
+                        <option key={s.slug} value={s.slug}>
+                          {s.name}
                         </option>
                       ))}
                     </select>
