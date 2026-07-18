@@ -30,8 +30,13 @@ import {
   listShippingMethods,
   listOrderNotes,
   addOrderNote,
+  sendCustomerMessage,
   type WooOrderNote,
 } from "@/lib/woo.functions";
+import {
+  listMessageTemplates,
+  type MessageTemplate,
+} from "@/lib/templates.functions";
 
 import {
   getOrderOps,
