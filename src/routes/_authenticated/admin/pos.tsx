@@ -502,40 +502,14 @@ function PosPage() {
               />
 
               {/* Thana — from Steadfast police stations */}
-              <div>
-                <input
-                  value={thana}
-                  onChange={(e) => setThana(e.target.value)}
-                  list="pos-thana-list"
-                  className="posinput"
-                  placeholder={
-                    policeQ.isFetching
-                      ? "Thana (loading…)"
-                      : policeItems.length > 0
-                        ? `Thana — ${policeItems.length} stations`
-                        : "Thana"
-                  }
-                />
-                <datalist id="pos-thana-list">
-                  {policeItems.map((t) => (
-                    <option key={t} value={t} />
-                  ))}
-                </datalist>
-                {historyThanas.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {historyThanas.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setThana(t)}
-                        className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10.5px] text-foreground/80 hover:bg-primary/10 hover:text-primary"
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ThanaCombobox
+                value={thana}
+                onChange={setThana}
+                options={policeItems}
+                loading={policeQ.isFetching}
+                recent={historyThanas}
+              />
+
 
               <textarea
                 value={notes}
