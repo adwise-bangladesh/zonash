@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { WooOrder } from "@/lib/woo.server";
+import { mapOrderToCacheRow, type WooOrder } from "@/lib/woo.server";
+
 
 // WooCommerce sends a base64 HMAC-SHA256 of the raw body using the shared secret
 // configured in WooCommerce → Settings → Advanced → Webhooks.
@@ -64,7 +65,7 @@ export const Route = createFileRoute("/api/public/webhooks/woo")({
           if (topic === "order.deleted") {
             await supabaseAdmin.from("orders_cache").delete().eq("wc_order_id", payload.id);
           } else {
-            const row = mapOrder(payload);
+            const row = mapOrderToCacheRow(payload);
             const { error } = await supabaseAdmin
               .from("orders_cache")
               .upsert(row, { onConflict: "wc_order_id" });
@@ -90,22 +91,3 @@ export const Route = createFileRoute("/api/public/webhooks/woo")({
   },
 });
 
-function mapOrder(o: WooOrder) {
-  const name = `${o.billing?.first_name ?? ""} ${o.billing?.last_name ?? ""}`.trim();
-  return {
-    wc_order_id: o.id,
-    order_number: o.number,
-    status: o.status,
-    total: Number(o.total ?? 0),
-    currency: o.currency,
-    customer_email: o.billing?.email ?? null,
-    customer_name: name || null,
-    payment_method: o.payment_method ?? null,
-    payment_method_title: o.payment_method_title ?? null,
-    items_count: (o.line_items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0),
-    date_created: o.date_created,
-    date_modified: o.date_modified,
-    raw: o as never,
-    synced_at: new Date().toISOString(),
-  };
-}
