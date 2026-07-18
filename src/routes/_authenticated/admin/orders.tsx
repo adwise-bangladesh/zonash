@@ -11,7 +11,10 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { Search, Loader2, Eye, ShoppingBag, X, Truck } from "lucide-react";
+import {
+  Search, Loader2, Eye, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
+  User, MapPin, Package, Receipt, Clock, Plus, Trash2, Save, Tag,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
@@ -20,6 +23,8 @@ import {
   getWooOrder,
   listOrderStatuses,
   listCustomerOrders,
+  updateWooOrder,
+  listProducts,
 } from "@/lib/woo.functions";
 
 import {
@@ -30,6 +35,7 @@ import {
   type OrderOps,
   type CustomerRating,
 } from "@/lib/ops.functions";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
