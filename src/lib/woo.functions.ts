@@ -199,6 +199,39 @@ export const listWooOrders = createServerFn({ method: "GET" })
     }
   });
 
+// All orders for one customer (by email) — used by the customer history drawer.
+export const listCustomerOrders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ email: z.string().email().max(254) }).parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const orders = await wooFetch<WooOrder[]>({
+        path: "/orders",
+        query: {
+          search: data.email,
+          per_page: 100,
+          status: "any",
+          orderby: "date",
+          order: "desc",
+        },
+        timeoutMs: 15000,
+      });
+      // WooCommerce `search` matches many fields; keep only exact billing-email matches.
+      const filtered = orders.filter(
+        (o) => o.billing?.email?.toLowerCase().trim() === data.email.toLowerCase().trim(),
+      );
+      return { orders: filtered, error: null as string | null };
+    } catch (e) {
+      console.error("listCustomerOrders failed", e);
+      return { orders: [] as WooOrder[], error: "Could not load customer history." };
+    }
+  });
+
+
 export const getOrderStatusCounts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
