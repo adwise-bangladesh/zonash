@@ -1310,7 +1310,7 @@ function ShippingLinesEditor({
               method_id: m.method_id,
               method_title: `${m.method_title}${m.zone_name ? ` (${m.zone_name})` : ""}`,
               instance_id: m.instance_id,
-              total: m.cost || s.total || "0",
+              total: m.cost || "0",
             }
           : s,
       ),

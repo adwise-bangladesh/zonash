@@ -19,26 +19,49 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
-        path: "/products",
-        query: {
-          page: data.page,
-          per_page: data.perPage,
-          search: data.search,
-          category: data.category,
-          featured: data.featured,
-          orderby: data.orderby,
-          order: data.order,
-          status: "publish",
-        },
-        timeoutMs: 8000,
-      });
+      const { wooFetch } = await import("./woo.server");
+      const baseQuery = {
+        page: data.page,
+        per_page: data.perPage,
+        category: data.category,
+        featured: data.featured,
+        orderby: data.orderby,
+        order: data.order,
+        status: "publish",
+      } as Record<string, unknown>;
+
+      // Run name/description search AND SKU search in parallel, then merge unique.
+      const term = data.search?.trim();
+      const [byText, bySku] = await Promise.all([
+        wooFetch<WooProduct[]>({
+          path: "/products",
+          query: { ...baseQuery, search: term || undefined },
+          timeoutMs: 8000,
+        }).catch(() => [] as WooProduct[]),
+        term
+          ? wooFetch<WooProduct[]>({
+              path: "/products",
+              query: { ...baseQuery, sku: term },
+              timeoutMs: 8000,
+            }).catch(() => [] as WooProduct[])
+          : Promise.resolve([] as WooProduct[]),
+      ]);
+
+      const seen = new Set<number>();
+      const products: WooProduct[] = [];
+      // SKU matches first — usually the more precise intent for staff.
+      for (const p of [...bySku, ...byText]) {
+        if (seen.has(p.id)) continue;
+        seen.add(p.id);
+        products.push(p);
+      }
       return { products, error: null as string | null };
     } catch (e) {
       console.error("listProducts failed", e);
       return { products: [] as WooProduct[], error: "Product catalog is temporarily unavailable." };
     }
   });
+
 
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
@@ -479,11 +502,21 @@ export const listShippingMethods = createServerFn({ method: "GET" })
             >({ path: `/shipping/zones/${z.id}/methods`, timeoutMs: 8000 });
             for (const m of list) {
               if (!m.enabled) continue;
-              const cost = m.settings?.cost?.value ?? m.settings?.min_amount?.value ?? "0";
+              // Cost can live in a few places depending on the method type
+              // (flat_rate uses settings.cost, some plugins use min_amount,
+              // others expose a top-level cost). Values may look like "80",
+              // "80.00", or "৳80" — strip to a plain number-as-string.
+              const anyM = m as unknown as Record<string, unknown>;
+              const raw =
+                (m.settings?.cost?.value as string | undefined) ??
+                (m.settings?.min_amount?.value as string | undefined) ??
+                (typeof anyM.cost === "string" ? (anyM.cost as string) : undefined) ??
+                "0";
+              const numeric = String(raw).replace(/[^\d.]/g, "");
               methods.push({
                 method_id: m.method_id,
                 method_title: m.title || m.method_title,
-                cost: String(cost || "0"),
+                cost: numeric || "0",
                 zone_id: z.id,
                 zone_name: z.name,
                 instance_id: m.instance_id,
