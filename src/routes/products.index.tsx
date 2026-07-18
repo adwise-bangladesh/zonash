@@ -24,7 +24,7 @@ const catQuery = queryOptions({
   queryFn: () => listCategories(),
 });
 
-export const Route = createFileRoute("/products")({
+export const Route = createFileRoute("/products/")({
   validateSearch: (s) => searchSchema.parse(s),
   loaderDeps: ({ search }) => ({ category: search.category, q: search.q }),
   head: () => ({
