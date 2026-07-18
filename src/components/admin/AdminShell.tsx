@@ -178,6 +178,7 @@ export function AdminShell({
             {navItems.map((item) => {
               const active = isActive(item.url);
               const Icon = item.icon;
+              const count = item.badgeKey ? badgeCounts[item.badgeKey] ?? 0 : 0;
               return (
                 <li key={item.url}>
                   <Link
@@ -198,11 +199,25 @@ export function AdminShell({
                       className="h-[16px] w-[16px] shrink-0"
                       style={{ color: "var(--primary)" }}
                     />
-                    <span className="truncate">{item.title}</span>
+                    <span className="truncate flex-1">{item.title}</span>
+                    {count > 0 && (
+                      <span
+                        aria-label={`${count} pending`}
+                        className="inline-grid min-w-[20px] h-5 place-items-center rounded-full px-1.5 text-[10px] font-bold text-white shadow-sm motion-reduce:animate-none"
+                        style={{
+                          background: "var(--primary)",
+                          animation: "badge-shake 1.8s ease-in-out infinite",
+                          transformOrigin: "center",
+                        }}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
             })}
+
           </ul>
         </nav>
 
