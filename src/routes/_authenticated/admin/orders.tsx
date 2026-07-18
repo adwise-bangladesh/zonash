@@ -813,6 +813,7 @@ function OrderRow({
     error?: string;
   }>({ loading: false });
   const [sending, setSending] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [tracking, setTracking] = useState<string | null>(
     ops?.tracking_number ?? null,
   );
@@ -905,6 +906,7 @@ function OrderRow({
     "—";
 
   return (
+    <>
     <div
       role="button"
       tabIndex={0}
@@ -946,22 +948,7 @@ function OrderRow({
 
       {/* Customer: name, phone, address (clamped w/ tooltip) */}
       <div className="min-w-0 leading-snug">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-medium">{custName}</span>
-          {totalOrders >= 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenCustomer();
-              }}
-              title="View all orders from this customer"
-              className="shrink-0 rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
-            >
-              {totalOrders}
-            </button>
-          )}
-        </div>
+        <div className="truncate text-[13px] font-medium">{custName}</div>
         <div className="truncate text-[11px] text-muted-foreground tabular-nums">
           {phone || o.billing?.email || "—"}
         </div>
@@ -978,6 +965,7 @@ function OrderRow({
           </div>
         )}
       </div>
+
 
       {/* Items — 2 SKUs then "+N more" with tooltip */}
       <div className="min-w-0 space-y-0.5 text-[12px]">
@@ -1004,8 +992,8 @@ function OrderRow({
         )}
       </div>
 
-      {/* Verification — auto-loaded stats */}
-      <div className="min-w-0 text-[11px] leading-tight">
+      {/* Verification — auto-loaded; click pill for full report */}
+      <div className="min-w-0 text-[11px] leading-tight" onClick={(e) => e.stopPropagation()}>
         {!phone ? (
           <span className="italic text-muted-foreground">No phone</span>
         ) : verify.loading ? (
@@ -1020,15 +1008,42 @@ function OrderRow({
             Verify error
           </span>
         ) : overall ? (
-          <span
-            title={`Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0} · Total ${overall.total_parcels ?? 0}`}
-            className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
-          >
-            {ratio}% success
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              title="View full courier history"
+              className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 hover:brightness-95 ${ratioCls}`}
+            >
+              {ratio}% success
+            </button>
+            {totalOrders >= 1 && (
+              <button
+                type="button"
+                onClick={onOpenCustomer}
+                title="View all orders from this customer"
+                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+              >
+                {totalOrders} order{totalOrders === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
         ) : (
-          <span className="italic text-muted-foreground">No history</span>
+          <div className="flex flex-col items-start gap-1">
+            <span className="italic text-muted-foreground">No history</span>
+            {totalOrders >= 1 && (
+              <button
+                type="button"
+                onClick={onOpenCustomer}
+                title="View all orders from this customer"
+                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+              >
+                {totalOrders} order{totalOrders === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
         )}
+
       </div>
 
       {/* Total */}
@@ -1089,6 +1104,39 @@ function OrderRow({
 
 
     </div>
+    {reportOpen && verify.report && (
+      <div className="fixed inset-0 z-50 flex" onClick={(e) => e.stopPropagation()}>
+        <button
+          aria-label="Close"
+          onClick={() => setReportOpen(false)}
+          className="flex-1 bg-foreground/40 backdrop-blur-sm"
+        />
+        <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase text-muted-foreground">
+                Courier verification
+              </div>
+              <div className="truncate text-[16px] font-semibold">{custName}</div>
+              <div className="truncate text-[11px] text-muted-foreground">
+                {phone}
+                {totalOrders >= 1 && ` · ${totalOrders} order${totalOrders === 1 ? "" : "s"} with us`}
+              </div>
+            </div>
+            <button
+              onClick={() => setReportOpen(false)}
+              className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <HoorinReportView report={verify.report} />
+          </div>
+        </aside>
+      </div>
+    )}
+    </>
   );
 }
 
