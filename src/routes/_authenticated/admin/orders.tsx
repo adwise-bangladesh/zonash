@@ -148,7 +148,7 @@ function AdminOrders() {
                 setPage(1);
                 setStatus(t.slug);
               }}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
                 active
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
