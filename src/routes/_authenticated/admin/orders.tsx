@@ -1023,9 +1023,14 @@ function OrderRow({
           onOpen();
         }
       }}
-      className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-colors ${
-        isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"
+      className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-all duration-300 ${
+        isStatusUpdating
+          ? "bg-primary/[0.04] ring-1 ring-inset ring-primary/20"
+          : isSel
+            ? "bg-primary/[0.06]"
+            : "hover:bg-muted/40"
       }`}
+
     >
       {/* Checkbox */}
       <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
