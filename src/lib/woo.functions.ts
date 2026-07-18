@@ -181,6 +181,28 @@ async function assertStaff(ctx: {
   }
 }
 
+/** Best-effort lookup of the signed-in staff member's display name. */
+async function getStaffName(ctx: {
+  supabase: { from: (t: string) => { select: (c: string) => { eq: (col: string, v: string) => { maybeSingle: () => Promise<{ data: { full_name: string | null; email: string | null } | null; error: unknown }> } } } };
+  userId: string;
+  claims?: { email?: string } | null;
+}): Promise<string> {
+  try {
+    const { data } = await ctx.supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", ctx.userId)
+      .maybeSingle();
+    const name = data?.full_name?.trim();
+    if (name) return name;
+    const email = data?.email?.trim() || ctx.claims?.email?.trim();
+    if (email) return email.split("@")[0];
+  } catch {
+    /* ignore */
+  }
+  return "Staff";
+}
+
 export const getWooOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) => z.object({ id: z.number().int().positive() }).parse(raw))
@@ -298,10 +320,12 @@ export const addOrderNote = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertStaff(context as never);
+    const staffName = await getStaffName(context as never);
+    const stamped = `[${staffName}] ${data.note}`;
     const created = await (await import("./woo.server")).wooFetch<WooOrderNote>({
       path: `/orders/${data.id}/notes`,
       method: "POST",
-      body: { note: data.note, customer_note: data.customer_note },
+      body: { note: stamped, customer_note: data.customer_note },
       timeoutMs: 10000,
     });
     return created;
@@ -342,8 +366,9 @@ export const sendCustomerMessage = createServerFn({ method: "POST" })
     const sms = await sendSms({ phone: phone || "", message: data.message });
 
     // 3) Log to Woo as a customer-visible note (prefixed) so the trail is preserved.
+    const staffName = await getStaffName(context as never);
     const notePrefix = sms.ok ? "📱 SMS sent" : "⚠️ SMS FAILED";
-    const noteBody = `${notePrefix}${phone ? ` → ${phone}` : ""}\n\n${data.message}${
+    const noteBody = `[${staffName}] ${notePrefix}${phone ? ` → ${phone}` : ""}\n\n${data.message}${
       sms.ok ? "" : `\n\n(${sms.message})`
     }`;
     try {

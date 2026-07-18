@@ -48,6 +48,7 @@ import {
 } from "@/lib/ops.functions";
 import { sendOrderToSteadfast, refreshSteadfastStatus, bulkSendOrdersToSteadfast } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
+import { getCustomerHistory, type CustomerHistory } from "@/lib/customer-history.functions";
 import { HoorinReportView } from "@/routes/_authenticated/admin/settings";
 import type { HoorinReport } from "@/lib/hoorin.server";
 
@@ -758,8 +759,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CustomerBadge({ rating }: { rating: CustomerRating }) {
-  const cfg: Record<CustomerRating, { label: string; cls: string }> = {
-    new: { label: "New", cls: "bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20" },
+  // "New" badge intentionally hidden — not useful signal on its own.
+  if (rating === "new") return null;
+  const cfg: Record<Exclude<CustomerRating, "new">, { label: string; cls: string }> = {
     average: {
       label: "Average",
       cls: "bg-muted text-foreground/70 ring-1 ring-input",
@@ -2808,10 +2810,27 @@ function SteadfastPanel({
 
 function HoorinVerifyPanel({ phone }: { phone: string }) {
   const verifyFn = useServerFn(verifyCustomerPhone);
-  const [open, setOpen] = useState(false);
+  const historyFn = useServerFn(getCustomerHistory);
+  const [open, setOpen] = useState(true);
   const [report, setReport] = useState<HoorinReport | null>(null);
+  const [history, setHistory] = useState<CustomerHistory | null>(null);
 
-  const mut = useMutation({
+  const trimmed = (phone || "").replace(/\D+/g, "");
+  const hasPhone = trimmed.length >= 10;
+
+  // Auto-load cached customer history (past Zonash orders + saved thanas) on mount.
+  const histQ = useQuery({
+    queryKey: ["admin", "customer-history", trimmed],
+    queryFn: () => historyFn({ data: { phone: trimmed } }),
+    enabled: hasPhone,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  useEffect(() => {
+    if (histQ.data) setHistory(histQ.data);
+  }, [histQ.data]);
+
+  const verifyMut = useMutation({
     mutationFn: async (fresh: boolean) => verifyFn({ data: { phone, fresh } }),
     onSuccess: (r) => {
       setReport(r);
@@ -2821,8 +2840,26 @@ function HoorinVerifyPanel({ phone }: { phone: string }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Verification failed"),
   });
 
-  const trimmed = (phone || "").replace(/\D+/g, "");
-  const disabled = trimmed.length < 10 || mut.isPending;
+  const refreshHistMut = useMutation({
+    mutationFn: () => historyFn({ data: { phone: trimmed, refresh: true } }),
+    onSuccess: (r) => {
+      setHistory(r);
+      toast.success("Customer history refreshed");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "History refresh failed"),
+  });
+
+  const disabled = !hasPhone || verifyMut.isPending;
+  const thanaSet = Array.from(
+    new Set(
+      [
+        ...(history?.thanas ?? []),
+        ...(history?.courierThanas ?? []),
+      ]
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 12);
 
   return (
     <div className="mb-2 rounded-md border border-input bg-muted/30 p-2">
@@ -2830,10 +2867,12 @@ function HoorinVerifyPanel({ phone }: { phone: string }) {
         <div className="flex items-center gap-1.5 text-[11px] font-medium">
           <ShieldCheck className="h-3.5 w-3.5" />
           Customer verification
-          <span className="text-muted-foreground">(Steadfast · RedX · Pathao · Carrybee)</span>
+          <span className="text-muted-foreground">
+            (Zonash · Steadfast · RedX · Pathao · Carrybee)
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {report && (
+          {(report || history) && (
             <button
               onClick={() => setOpen((v) => !v)}
               className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
@@ -2842,16 +2881,110 @@ function HoorinVerifyPanel({ phone }: { phone: string }) {
             </button>
           )}
           <button
-            onClick={() => mut.mutate(false)}
+            onClick={() => verifyMut.mutate(false)}
             disabled={disabled}
             className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
           >
-            {mut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            {verifyMut.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Search className="h-3 w-3" />
+            )}
             {report ? "Re-check" : "Verify"}
           </button>
         </div>
       </div>
-      {open && report && <HoorinReportView report={report} />}
+
+      {open && (
+        <div className="mt-2 space-y-2">
+          {/* Past Zonash orders + cached thanas */}
+          {hasPhone && (
+            <div className="rounded-md border border-input bg-background/60 p-2">
+              <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+                <span>
+                  Past orders on Zonash
+                  {history?.cached && (
+                    <span className="ml-1 rounded bg-muted px-1 py-[1px] text-[9px] normal-case tracking-normal">
+                      cached
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => refreshHistMut.mutate()}
+                  disabled={refreshHistMut.isPending}
+                  className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+                >
+                  {refreshHistMut.isPending ? "Refreshing…" : "Refresh"}
+                </button>
+              </div>
+
+              {histQ.isLoading && !history ? (
+                <p className="text-[11px] text-muted-foreground">Loading history…</p>
+              ) : !history || history.orders.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  No previous orders found for this phone.
+                </p>
+              ) : (
+                <>
+                  <div className="mb-1 text-[11px] text-muted-foreground">
+                    {history.orders.length} order{history.orders.length === 1 ? "" : "s"} ·{" "}
+                    {thanaSet.length} thana{thanaSet.length === 1 ? "" : "s"} on file
+                  </div>
+                  <ul className="max-h-40 space-y-1 overflow-auto pr-1">
+                    {history.orders.slice(0, 10).map((o) => (
+                      <li
+                        key={o.id}
+                        className="flex items-center justify-between gap-2 rounded border border-input/60 bg-muted/20 px-2 py-1 text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">#{o.number}</span>
+                            <span className="rounded bg-muted px-1 py-[1px] text-[9px] uppercase tracking-wide text-foreground/70">
+                              {o.status.replace(/-/g, " ")}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {new Date(o.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          {o.thana && (
+                            <div className="truncate text-[10px] text-muted-foreground">
+                              📍 {o.thana}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right text-[11px] tabular-nums">
+                          BDT {Number(o.total || 0).toFixed(0)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {thanaSet.length > 0 && (
+                    <div className="mt-2">
+                      <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Known thanas (courier + past orders)
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {thanaSet.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full border border-input bg-background px-1.5 py-[1px] text-[10px]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {report && <HoorinReportView report={report} />}
+        </div>
+      )}
     </div>
   );
 }
