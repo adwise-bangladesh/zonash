@@ -1039,8 +1039,11 @@ function OrderRow({
         </div>
       </div>
 
-      {/* Status — colored select */}
-      <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+      {/* Actions — status select + send-to-courier */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex flex-col items-stretch gap-1 min-w-0"
+      >
         <select
           value={o.status}
           onChange={(e) => onUpdateStatus(e.target.value)}
@@ -1055,18 +1058,11 @@ function OrderRow({
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Ship */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex flex-col items-end gap-1"
-      >
         <button
           onClick={doSend}
           disabled={sending || hasCourier}
-          title={hasCourier ? "Already dispatched" : "Send to Steadfast"}
-          className={`inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-70 ${
+          title={hasCourier ? "Already dispatched" : "Send to Courier"}
+          className={`inline-flex h-7 w-full items-center justify-center gap-1 rounded-md px-2 text-[11px] font-medium disabled:opacity-70 ${
             hasCourier
               ? "bg-emerald-500/10 text-emerald-700"
               : "bg-foreground text-background hover:opacity-90"
@@ -1077,14 +1073,15 @@ function OrderRow({
           ) : (
             <Truck className="h-3 w-3" />
           )}
-          {hasCourier ? "Sent" : "Ship"}
+          {hasCourier ? "Sent" : "Send to Courier"}
         </button>
         {(tracking || ops?.tracking_number) && (
-          <div className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-mono text-emerald-700">
+          <div className="inline-flex items-center justify-center gap-1 rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-mono text-emerald-700">
             {tracking || ops?.tracking_number}
           </div>
         )}
       </div>
+
     </div>
   );
 }
