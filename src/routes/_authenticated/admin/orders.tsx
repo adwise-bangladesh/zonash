@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-query";
 import {
   Search, Loader2, Eye, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
-  User, MapPin, Package, Receipt, Clock, Plus, Trash2, Save, Tag,
+  User, Package, Receipt, Clock, Plus, Trash2, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
