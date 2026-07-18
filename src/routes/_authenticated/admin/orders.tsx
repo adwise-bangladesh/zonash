@@ -5,27 +5,20 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Search,
-  Loader2,
-  Eye,
-  ShoppingBag,
-  Clock,
-  CheckCircle2,
-  Package,
-  Ban,
-  RotateCcw,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import { Search, Loader2, Eye, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
   listWooOrders,
   updateOrderStatus,
   getWooOrder,
-  getOrderStatusCounts,
+  listOrderStatuses,
 } from "@/lib/woo.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
@@ -35,31 +28,12 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
   component: AdminOrders,
 });
 
-const STATUSES = [
-  "pending",
-  "processing",
-  "on-hold",
-  "completed",
-  "cancelled",
-  "refunded",
-  "failed",
-] as const;
-type WooStatus = (typeof STATUSES)[number];
-
-const STATUS_TABS: {
-  value: WooStatus | "any";
-  label: string;
-  icon: LucideIcon;
-}[] = [
-  { value: "any", label: "All", icon: ShoppingBag },
-  { value: "pending", label: "Pending", icon: Clock },
-  { value: "processing", label: "Processing", icon: Package },
-  { value: "on-hold", label: "On hold", icon: Clock },
-  { value: "completed", label: "Completed", icon: CheckCircle2 },
-  { value: "cancelled", label: "Cancelled", icon: Ban },
-  { value: "refunded", label: "Refunded", icon: RotateCcw },
-  { value: "failed", label: "Failed", icon: Ban },
-];
+// Human-friendly fallback label for unknown/custom status slugs.
+function humanize(slug: string) {
+  return slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 const GRID =
   "grid-cols-[100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
@@ -74,20 +48,32 @@ function AdminOrders() {
   const listFn = useServerFn(listWooOrders);
   const updFn = useServerFn(updateOrderStatus);
   const detailFn = useServerFn(getWooOrder);
-  const countsFn = useServerFn(getOrderStatusCounts);
+  const statusesFn = useServerFn(listOrderStatuses);
 
-  const [status, setStatus] = useState<WooStatus | "any">("any");
+  const [status, setStatus] = useState<string>("any");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
 
-  const countsQ = useQuery({
-    queryKey: ["admin", "woo-order-counts"],
-    queryFn: () => countsFn(),
+  const statusesQ = useQuery({
+    queryKey: ["admin", "woo-order-statuses"],
+    queryFn: () => statusesFn(),
     staleTime: 60_000,
   });
-  const counts = countsQ.data?.counts ?? {};
+  const wooStatuses = statusesQ.data?.statuses ?? [];
+  const totalAll = statusesQ.data?.all ?? 0;
+  const countOf = (slug: string) =>
+    wooStatuses.find((s) => s.slug === slug)?.count ?? 0;
+
+  // Dynamic tabs: "All" + every status WooCommerce reports (built-in + custom).
+  const tabs = useMemo(
+    () => [
+      { slug: "any", name: "All", count: totalAll },
+      ...wooStatuses.map((s) => ({ slug: s.slug, name: s.name, count: s.count })),
+    ],
+    [wooStatuses, totalAll],
+  );
 
   const q = useQuery({
     queryKey: ["admin", "woo-orders", status, search, page, pageSize],
@@ -100,19 +86,22 @@ function AdminOrders() {
           perPage: pageSize,
         },
       }),
+    // Keep the previous grid visible while a new tab/page loads — no blank flashes.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
   });
 
   const orders = q.data?.orders ?? [];
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] });
-    qc.invalidateQueries({ queryKey: ["admin", "woo-order-counts"] });
+    qc.invalidateQueries({ queryKey: ["admin", "woo-order-statuses"] });
   };
 
   const updM = useMutation({
-    mutationFn: (v: { id: number; status: WooStatus }) => updFn({ data: v }),
+    mutationFn: (v: { id: number; status: string }) => updFn({ data: v }),
     onSuccess: (_d, v) => {
       invalidate();
-      toast.success(`Marked ${v.status.replace(/-/g, " ")}`);
+      toast.success(`Marked ${humanize(v.status)}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -128,17 +117,16 @@ function AdminOrders() {
       title="Orders"
       subtitle="Order lifecycle — live from WooCommerce"
     >
-      {/* Status tabs with counters */}
+      {/* Dynamic status tabs (built-in + custom WooCommerce statuses) */}
       <div className="mb-3 flex flex-wrap gap-1.5 rounded-xl border border-input bg-card p-1.5">
-        {STATUS_TABS.map((t) => {
-          const active = status === t.value;
-          const count = counts[t.value] ?? (t.value === "any" ? counts.any : 0);
+        {tabs.map((t) => {
+          const active = status === t.slug;
           return (
             <button
-              key={t.value}
+              key={t.slug}
               onClick={() => {
                 setPage(1);
-                setStatus(t.value);
+                setStatus(t.slug);
               }}
               className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
                 active
@@ -146,8 +134,7 @@ function AdminOrders() {
                   : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
-              <t.icon className="h-3.5 w-3.5" />
-              <span>{t.label}</span>
+              <span>{t.name}</span>
               <span
                 className={`rounded-full px-1.5 text-[10px] font-semibold tabular-nums ${
                   active
@@ -155,7 +142,7 @@ function AdminOrders() {
                     : "bg-muted text-foreground"
                 }`}
               >
-                {countsQ.isLoading ? "…" : (count ?? 0).toLocaleString()}
+                {statusesQ.isLoading && t.count === 0 ? "…" : t.count.toLocaleString()}
               </span>
             </button>
           );
@@ -302,14 +289,19 @@ function AdminOrders() {
                       onChange={(e) =>
                         updM.mutate({
                           id: o.id,
-                          status: e.target.value as WooStatus,
+                          status: e.target.value,
                         })
                       }
                       className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
                     >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
+                      {/* Include current status even if it isn't in the reported
+                          list (defensive fallback for exotic custom statuses). */}
+                      {!wooStatuses.some((s) => s.slug === o.status) && (
+                        <option value={o.status}>{humanize(o.status)}</option>
+                      )}
+                      {wooStatuses.map((s) => (
+                        <option key={s.slug} value={s.slug}>
+                          {s.name}
                         </option>
                       ))}
                     </select>
@@ -332,8 +324,8 @@ function AdminOrders() {
           <span>
             Page {page} · {orders.length} orders shown ·{" "}
             {status === "any"
-              ? `${counts.any ?? 0} total`
-              : `${counts[status] ?? 0} in ${status}`}
+              ? `${totalAll.toLocaleString()} total`
+              : `${countOf(status).toLocaleString()} in ${humanize(status)}`}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -360,7 +352,8 @@ function AdminOrders() {
           id={openId}
           onClose={() => setOpenId(null)}
           detailFn={detailFn}
-          onUpdate={(s) => updM.mutate({ id: openId, status: s as WooStatus })}
+          statuses={wooStatuses}
+          onUpdate={(s) => updM.mutate({ id: openId, status: s })}
         />
       )}
     </AdminShell>
@@ -390,11 +383,13 @@ function OrderDrawer({
   id,
   onClose,
   detailFn,
+  statuses,
   onUpdate,
 }: {
   id: number;
   onClose: () => void;
   detailFn: (a: { data: { id: number } }) => Promise<any>;
+  statuses: { slug: string; name: string; count: number }[];
   onUpdate: (status: string) => void;
 }) {
   const q = useQuery({
@@ -518,15 +513,15 @@ function OrderDrawer({
                   Change status
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {STATUSES.map((s) => (
+                  {statuses.map((s) => (
                     <button
-                      key={s}
-                      onClick={() => onUpdate(s)}
-                      className={`rounded-md border border-input px-2 py-1 text-[12px] capitalize hover:bg-muted ${
-                        o.status === s ? "bg-foreground text-background" : ""
+                      key={s.slug}
+                      onClick={() => onUpdate(s.slug)}
+                      className={`rounded-md border border-input px-2 py-1 text-[12px] hover:bg-muted ${
+                        o.status === s.slug ? "bg-foreground text-background" : ""
                       }`}
                     >
-                      {s.replace(/-/g, " ")}
+                      {s.name}
                     </button>
                   ))}
                 </div>

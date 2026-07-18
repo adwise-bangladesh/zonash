@@ -224,16 +224,44 @@ export const getOrderStatusCounts = createServerFn({ method: "GET" })
 
 const updateStatusSchema = z.object({
   id: z.number().int().positive(),
-  status: z.enum([
-    "pending",
-    "processing",
-    "on-hold",
-    "completed",
-    "cancelled",
-    "refunded",
-    "failed",
-  ]),
+  // Accept any WooCommerce status slug (built-in or custom, e.g. "shipped",
+  // "out-for-delivery"). WooCommerce validates the slug on its end.
+  status: z
+    .string()
+    .trim()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Invalid status slug"),
 });
+
+// Returns the full list of order statuses registered in WooCommerce
+// (built-in + custom), each with its live count. Powers the dynamic tab bar.
+export const listOrderStatuses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context as never);
+    try {
+      const totals = await (await import("./woo.server")).wooFetch<
+        { slug: string; name: string; total: number }[]
+      >({ path: "/reports/orders/totals", timeoutMs: 10000 });
+      const statuses = totals.map((t) => ({
+        // WC prefixes report slugs with "wc-" for some custom statuses; the
+        // REST API expects/returns them without the prefix.
+        slug: t.slug.replace(/^wc-/, ""),
+        name: t.name,
+        count: t.total,
+      }));
+      const all = statuses.reduce((s, x) => s + x.count, 0);
+      return { statuses, all, error: null as string | null };
+    } catch (e) {
+      console.error("listOrderStatuses failed", e);
+      return {
+        statuses: [] as { slug: string; name: string; count: number }[],
+        all: 0,
+        error: "Could not load statuses.",
+      };
+    }
+  });
 
 export const updateOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
