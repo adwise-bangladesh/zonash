@@ -296,13 +296,43 @@ function AdminOrders() {
                     >
                       #{o.number}
                     </button>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {o.billing?.first_name} {o.billing?.last_name}
+                    <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        {o.billing?.first_name} {o.billing?.last_name}
+                      </span>
+                      {(() => {
+                        const email = o.billing?.email?.toLowerCase().trim();
+                        const stat = email ? statsMap[email] : undefined;
+                        const rating = ratingFromStats(stat);
+                        return (
+                          <>
+                            <CustomerBadge rating={rating} />
+                            {stat && stat.total > 1 && (
+                              <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold text-foreground tabular-nums">
+                                {stat.total} orders
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {o.billing?.phone || o.billing?.email}
                     </div>
+                    {(() => {
+                      const ops = opsMap[o.id];
+                      if (!ops || (!ops.courier && !ops.tracking_number)) return null;
+                      return (
+                        <div className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                          <Truck className="h-3 w-3" />
+                          <span className="truncate">
+                            {[ops.courier, ops.tracking_number].filter(Boolean).join(" · ")}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
+
                   <div className="min-w-0 space-y-0.5 text-[12px]">
                     {(o.line_items ?? []).slice(0, 3).map((li) => (
                       <div key={li.id} className="truncate">
