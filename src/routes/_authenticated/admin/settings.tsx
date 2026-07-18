@@ -11,12 +11,20 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink,
   ShieldCheck, Search, Plug, Store as StoreIcon, Bell, KeyRound,
+  MessageSquare, Plus, Trash2, Save, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { getSteadfastStatus } from "@/lib/steadfast.functions";
 import { getHoorinStatus, verifyCustomerPhone } from "@/lib/hoorin.functions";
 import type { HoorinReport } from "@/lib/hoorin.server";
+import {
+  listMessageTemplates,
+  upsertMessageTemplate,
+  deleteMessageTemplate,
+  type MessageTemplate,
+} from "@/lib/templates.functions";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({
