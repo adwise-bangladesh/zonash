@@ -506,3 +506,214 @@ function StatCard({
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Message Templates (private notes + customer SMS)
+// -----------------------------------------------------------------------------
+
+type TplKind = "note" | "sms";
+
+function TemplatesPanel() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listMessageTemplates);
+  const upsertFn = useServerFn(upsertMessageTemplate);
+  const delFn = useServerFn(deleteMessageTemplate);
+
+  const [kind, setKind] = useState<TplKind>("sms");
+  const [editing, setEditing] = useState<
+    | { id?: string; kind: TplKind; title: string; body: string; sort_order: number }
+    | null
+  >(null);
+
+  const q = useQuery({
+    queryKey: ["admin", "message-templates"],
+    queryFn: () => listFn(),
+    staleTime: 60_000,
+  });
+
+  const list: MessageTemplate[] = (q.data ?? []).filter((t) => t.kind === kind);
+
+  const save = useMutation({
+    mutationFn: (v: NonNullable<typeof editing>) => upsertFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Template saved");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["admin", "message-templates"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Template deleted");
+      qc.invalidateQueries({ queryKey: ["admin", "message-templates"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-input bg-muted/20 p-3 text-[12px] leading-relaxed">
+        <div className="mb-1 font-semibold">How templates are used</div>
+        <p className="text-muted-foreground">
+          Private notes live only on the WooCommerce order. Customer SMS templates
+          are sent via BulkSMSBD to the order's billing phone — the message is also
+          logged on the WooCommerce order as a customer-visible note.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="inline-flex rounded-lg border border-input bg-card p-1">
+          {(["sms", "note"] as TplKind[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKind(k)}
+              className={`h-7 rounded-md px-3 text-[12px] font-medium ${
+                kind === k
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {k === "sms" ? "Customer SMS" : "Private notes"}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setEditing({ kind, title: "", body: "", sort_order: (list.length + 1) * 10 })
+          }
+          className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-3 text-[12px] font-medium text-background hover:opacity-90"
+        >
+          <Plus className="h-3.5 w-3.5" /> New template
+        </button>
+      </div>
+
+      {editing && (
+        <div className="rounded-xl border border-input bg-card p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-[12px] font-semibold">
+              {editing.id ? "Edit template" : "New template"} ·{" "}
+              <span className="text-muted-foreground">
+                {editing.kind === "sms" ? "Customer SMS" : "Private note"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="space-y-2">
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">Title</span>
+              <input
+                value={editing.title}
+                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-[13px]"
+                placeholder="e.g. Order confirmed"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                Body {editing.kind === "sms" && <span className="text-muted-foreground/70">· keep under 160 chars for 1 SMS unit (unicode: 70)</span>}
+              </span>
+              <textarea
+                value={editing.body}
+                onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                rows={4}
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
+                placeholder={
+                  editing.kind === "sms"
+                    ? "Zonash: apnar order confirm kora hoyeche. Dhonnobad!"
+                    : "Called customer, no answer — retry tomorrow."
+                }
+              />
+              {editing.kind === "sms" && (
+                <span className="mt-0.5 block text-right text-[10px] text-muted-foreground">
+                  {editing.body.length} chars
+                </span>
+              )}
+            </label>
+            <label className="block w-32">
+              <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">Sort order</span>
+              <input
+                type="number"
+                value={editing.sort_order}
+                onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) || 0 })}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-[13px]"
+              />
+            </label>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => save.mutate(editing)}
+                disabled={!editing.title.trim() || !editing.body.trim() || save.isPending}
+                className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-3 text-[12px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+              >
+                {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Save template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {q.isLoading && (
+          <p className="text-[12px] text-muted-foreground">Loading…</p>
+        )}
+        {!q.isLoading && list.length === 0 && (
+          <div className="rounded-lg border border-dashed border-input p-6 text-center text-[12px] text-muted-foreground">
+            No {kind === "sms" ? "SMS" : "note"} templates yet.
+          </div>
+        )}
+        {list.map((t) => (
+          <div key={t.id} className="flex items-start justify-between gap-2 rounded-lg border border-input bg-card p-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <div className="text-[13px] font-semibold">{t.title}</div>
+                <span className="rounded-full border border-input px-1.5 py-px text-[10px] text-muted-foreground">
+                  #{t.sort_order}
+                </span>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-[12px] text-muted-foreground">{t.body}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setEditing({
+                    id: t.id,
+                    kind: t.kind,
+                    title: t.title,
+                    body: t.body,
+                    sort_order: t.sort_order,
+                  })
+                }
+                className="rounded-md border border-input p-1.5 hover:bg-muted"
+                aria-label="Edit"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Delete "${t.title}"?`)) del.mutate(t.id);
+                }}
+                className="rounded-md border border-input p-1.5 text-destructive hover:bg-destructive/10"
+                aria-label="Delete"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
