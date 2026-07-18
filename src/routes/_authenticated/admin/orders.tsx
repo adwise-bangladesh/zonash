@@ -513,18 +513,56 @@ function OrderDrawer({
   detailFn,
   statuses,
   onUpdate,
+  initialOps,
+  customerStat,
 }: {
   id: number;
   onClose: () => void;
   detailFn: (a: { data: { id: number } }) => Promise<any>;
   statuses: { slug: string; name: string; count: number }[];
   onUpdate: (status: string) => void;
+  initialOps?: OrderOps;
+  customerStat?: import("@/lib/ops.functions").CustomerStat;
 }) {
+  const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["admin", "woo-order", id],
     queryFn: () => detailFn({ data: { id } }),
   });
   const o = q.data;
+
+  const opsFn = useServerFn(updateOrderOps);
+  const [courier, setCourier] = useState(initialOps?.courier ?? "");
+  const [tracking, setTracking] = useState(initialOps?.tracking_number ?? "");
+  const [pickup, setPickup] = useState(initialOps?.pickup_slot ?? "");
+  const [notes, setNotes] = useState(initialOps?.internal_notes ?? "");
+  useEffect(() => {
+    setCourier(initialOps?.courier ?? "");
+    setTracking(initialOps?.tracking_number ?? "");
+    setPickup(initialOps?.pickup_slot ?? "");
+    setNotes(initialOps?.internal_notes ?? "");
+  }, [initialOps?.wc_order_id, initialOps?.updated_at]);
+
+  const saveOps = useMutation({
+    mutationFn: () =>
+      opsFn({
+        data: {
+          wc_order_id: id,
+          courier: courier || null,
+          tracking_number: tracking || null,
+          pickup_slot: pickup || null,
+          internal_notes: notes || null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Operations saved");
+      qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rating = ratingFromStats(customerStat);
+
 
   return (
     <div className="fixed inset-0 z-50 flex">
