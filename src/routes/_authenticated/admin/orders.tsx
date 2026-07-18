@@ -81,6 +81,14 @@ function AdminOrders() {
   const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
   const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState<null | { label: string; done: number; total: number }>(null);
+
+  // Reset selection whenever the visible list changes (page/tab/search).
+  useEffect(() => {
+    setSelected(new Set());
+  }, [status, search, page]);
+
 
 
   const statusesQ = useQuery({
