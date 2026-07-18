@@ -82,54 +82,123 @@ export type Database = {
       }
       orders_cache: {
         Row: {
+          billing_city: string | null
+          billing_country: string | null
           currency: string
           customer_email: string | null
           customer_name: string | null
+          customer_note: string | null
+          customer_phone: string | null
+          date_completed: string | null
           date_created: string
           date_modified: string
+          date_paid: string | null
+          discount_total: number
           fts: unknown
+          ip_address: string | null
+          items: Json
           items_count: number
           order_number: string
           payment_method: string | null
           payment_method_title: string | null
           raw: Json
+          shipping_address_1: string | null
+          shipping_address_2: string | null
+          shipping_city: string | null
+          shipping_country: string | null
+          shipping_name: string | null
+          shipping_phone: string | null
+          shipping_postcode: string | null
+          shipping_state: string | null
+          shipping_total: number
+          skus: string[]
+          source_channel: string | null
           status: string
+          subtotal: number
           synced_at: string
+          tax_total: number
           total: number
+          transaction_id: string | null
           wc_order_id: number
         }
         Insert: {
+          billing_city?: string | null
+          billing_country?: string | null
           currency?: string
           customer_email?: string | null
           customer_name?: string | null
+          customer_note?: string | null
+          customer_phone?: string | null
+          date_completed?: string | null
           date_created: string
           date_modified: string
+          date_paid?: string | null
+          discount_total?: number
           fts?: unknown
+          ip_address?: string | null
+          items?: Json
           items_count?: number
           order_number: string
           payment_method?: string | null
           payment_method_title?: string | null
           raw: Json
+          shipping_address_1?: string | null
+          shipping_address_2?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          shipping_postcode?: string | null
+          shipping_state?: string | null
+          shipping_total?: number
+          skus?: string[]
+          source_channel?: string | null
           status: string
+          subtotal?: number
           synced_at?: string
+          tax_total?: number
           total?: number
+          transaction_id?: string | null
           wc_order_id: number
         }
         Update: {
+          billing_city?: string | null
+          billing_country?: string | null
           currency?: string
           customer_email?: string | null
           customer_name?: string | null
+          customer_note?: string | null
+          customer_phone?: string | null
+          date_completed?: string | null
           date_created?: string
           date_modified?: string
+          date_paid?: string | null
+          discount_total?: number
           fts?: unknown
+          ip_address?: string | null
+          items?: Json
           items_count?: number
           order_number?: string
           payment_method?: string | null
           payment_method_title?: string | null
           raw?: Json
+          shipping_address_1?: string | null
+          shipping_address_2?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
+          shipping_name?: string | null
+          shipping_phone?: string | null
+          shipping_postcode?: string | null
+          shipping_state?: string | null
+          shipping_total?: number
+          skus?: string[]
+          source_channel?: string | null
           status?: string
+          subtotal?: number
           synced_at?: string
+          tax_total?: number
           total?: number
+          transaction_id?: string | null
           wc_order_id?: number
         }
         Relationships: []
@@ -222,6 +291,15 @@ export type Database = {
         Returns: boolean
       }
       is_staff_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      orders_cache_status_counts: {
+        Args: never
+        Returns: {
+          count: number
+          status: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "staff" | "viewer" | "customer"
