@@ -141,6 +141,39 @@ function AdminOrders() {
   );
   const currency = orders[0]?.currency ?? "";
 
+  // Batch-fetch dashboard-owned ops fields + per-customer stats for visible orders.
+  const opsFn = useServerFn(getOrderOps);
+  const statsFn = useServerFn(getCustomerStats);
+  const visibleIds = useMemo(() => orders.map((o) => o.id), [orders]);
+  const visibleEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          orders
+            .map((o) => o.billing?.email?.toLowerCase().trim())
+            .filter((e): e is string => !!e && e.includes("@")),
+        ),
+      ),
+    [orders],
+  );
+  const opsQ = useQuery({
+    queryKey: ["admin", "order-ops", visibleIds],
+    queryFn: () => opsFn({ data: { ids: visibleIds } }),
+    enabled: visibleIds.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const statsQ = useQuery({
+    queryKey: ["admin", "customer-stats", visibleEmails],
+    queryFn: () => statsFn({ data: { emails: visibleEmails } }),
+    enabled: visibleEmails.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+  const opsMap = opsQ.data ?? {};
+  const statsMap = statsQ.data ?? {};
+
+
   return (
     <AdminShell
       title="Orders"
