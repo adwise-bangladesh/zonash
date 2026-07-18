@@ -11,15 +11,19 @@ import {
   Users,
   RotateCcw,
   LogOut,
-  Search,
   Bell,
-  Plus,
   BarChart3,
   UserCircle,
   Settings,
+  Maximize2,
+  Minimize2,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { GlobalSearch } from "@/components/admin/GlobalSearch";
+import { NewOrderMenu } from "@/components/admin/NewOrderMenu";
+
 
 
 type NavItem = {
