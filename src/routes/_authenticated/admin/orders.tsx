@@ -483,10 +483,19 @@ function AdminOrders() {
 
 
       <div className="overflow-x-auto rounded-xl border border-input bg-card">
-        <div className="min-w-[1200px]">
+        <div className="min-w-[1232px]">
           <div
             className={`grid ${GRID} gap-3 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}
           >
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleAll}
+                aria-label="Select all on this page"
+                className="h-3.5 w-3.5 cursor-pointer accent-foreground"
+              />
+            </div>
             <div>Date</div>
             <div>Order / Customer</div>
             <div>Items (SKU)</div>
@@ -496,11 +505,25 @@ function AdminOrders() {
             <div className="text-right">Actions</div>
           </div>
 
-          {q.isLoading && (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </div>
-          )}
+          {q.isLoading &&
+            Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={`sk-${i}`}
+                className={`grid ${GRID} items-center gap-3 border-b border-input px-3 py-3`}
+              >
+                <div className="h-3.5 w-3.5 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                <div className="space-y-1.5">
+                  <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                  <div className="h-2.5 w-32 rounded bg-muted animate-pulse" />
+                </div>
+                <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                <div className="ml-auto h-4 w-20 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+                <div className="ml-auto h-6 w-24 rounded bg-muted animate-pulse" />
+              </div>
+            ))}
 
           {!q.isLoading && orders.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -511,186 +534,189 @@ function AdminOrders() {
             </div>
           )}
 
-          {!q.isLoading &&
-            orders.map((o) => {
-              const shipping = Number(o.shipping_total || 0);
-              const itemsTotal = Number(o.total || 0) - shipping;
-              const ship = o.shipping;
-              const addrParts = [
-                ship?.address_1,
-                ship?.address_2,
-                ship?.city,
-                ship?.state,
-                ship?.postcode,
-                ship?.country,
-              ].filter(Boolean);
-              return (
-                <div
-                  key={o.id}
-                  className={`grid ${GRID} items-center gap-3 border-b border-input px-3 py-2.5 last:border-b-0 hover:bg-muted/30`}
-                >
-                  <div className="text-[11px] text-muted-foreground tabular-nums">
-                    {new Date(o.date_created).toLocaleDateString()}
-                    <div className="text-[10px]">
-                      {new Date(o.date_created).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+          {!q.isLoading && (
+            <div
+              className={`transition-opacity duration-200 ${q.isFetching ? "opacity-60" : "opacity-100"}`}
+            >
+              {orders.map((o) => {
+                const shipping = Number(o.shipping_total || 0);
+                const itemsTotal = Number(o.total || 0) - shipping;
+                const ship = o.shipping;
+                const addrParts = [
+                  ship?.address_1,
+                  ship?.address_2,
+                  ship?.city,
+                  ship?.state,
+                  ship?.postcode,
+                  ship?.country,
+                ].filter(Boolean);
+                const isSel = selected.has(o.id);
+                return (
+                  <div
+                    key={o.id}
+                    className={`grid ${GRID} items-center gap-3 border-b border-input px-3 py-2.5 last:border-b-0 transition-colors ${
+                      isSel ? "bg-foreground/[0.04]" : "hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isSel}
+                        onChange={() => toggleOne(o.id)}
+                        aria-label={`Select order ${o.number}`}
+                        className="h-3.5 w-3.5 cursor-pointer accent-foreground"
+                      />
                     </div>
-                  </div>
-                  <div className="min-w-0">
-                    <button
-                      onClick={() => setOpenId(o.id)}
-                      className="truncate text-sm font-medium hover:underline"
-                    >
-                      #{o.number}
-                    </button>
-                    <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-                      <span className="truncate">
-                        {o.billing?.first_name} {o.billing?.last_name}
-                      </span>
+                    <div className="text-[11px] text-muted-foreground tabular-nums">
+                      {new Date(o.date_created).toLocaleDateString()}
+                      <div className="text-[10px]">
+                        {new Date(o.date_created).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <button
+                        onClick={() => setOpenId(o.id)}
+                        className="truncate text-sm font-medium hover:underline"
+                      >
+                        #{o.number}
+                      </button>
+                      <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                        <span className="truncate">
+                          {o.billing?.first_name} {o.billing?.last_name}
+                        </span>
+                        {(() => {
+                          const email = o.billing?.email?.toLowerCase().trim();
+                          const stat = email ? statsMap[email] : undefined;
+                          const rating = ratingFromStats(stat);
+                          const total = stat?.total ?? 0;
+                          return (
+                            <>
+                              <CustomerBadge rating={rating} />
+                              {email && total >= 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCustomerEmail(email)}
+                                  title="View all orders from this customer"
+                                  className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                                >
+                                  {total} {total === 1 ? "order" : "orders"}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {o.billing?.phone || o.billing?.email}
+                      </div>
                       {(() => {
-                        const email = o.billing?.email?.toLowerCase().trim();
-                        const stat = email ? statsMap[email] : undefined;
-                        const rating = ratingFromStats(stat);
-                        const total = stat?.total ?? 0;
+                        const ops = opsMap[o.id];
+                        if (!ops || (!ops.courier && !ops.tracking_number)) return null;
                         return (
-                          <>
-                            <CustomerBadge rating={rating} />
-                            {email && total >= 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setCustomerEmail(email)}
-                                title="View all orders from this customer"
-                                className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
-                              >
-                                {total} {total === 1 ? "order" : "orders"}
-                              </button>
-                            )}
-                          </>
+                          <div className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            <Truck className="h-3 w-3" />
+                            <span className="truncate">
+                              {[ops.courier, ops.tracking_number].filter(Boolean).join(" · ")}
+                            </span>
+                          </div>
                         );
                       })()}
+                    </div>
 
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {o.billing?.phone || o.billing?.email}
-                    </div>
-                    {(() => {
-                      const ops = opsMap[o.id];
-                      if (!ops || (!ops.courier && !ops.tracking_number)) return null;
-                      return (
-                        <div className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                          <Truck className="h-3 w-3" />
-                          <span className="truncate">
-                            {[ops.courier, ops.tracking_number].filter(Boolean).join(" · ")}
+                    <div className="min-w-0 space-y-0.5 text-[12px]">
+                      {(o.line_items ?? []).slice(0, 3).map((li) => (
+                        <div key={li.id} className="truncate">
+                          <span className="font-mono text-[11px] text-foreground">
+                            {li.sku || `#${li.product_id}`}
+                          </span>
+                          <span className="ml-1 text-muted-foreground">
+                            × {li.quantity}
                           </span>
                         </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="min-w-0 space-y-0.5 text-[12px]">
-                    {(o.line_items ?? []).slice(0, 3).map((li) => (
-                      <div key={li.id} className="truncate">
-                        <span className="font-mono text-[11px] text-foreground">
-                          {li.sku || `#${li.product_id}`}
-                        </span>
-                        <span className="ml-1 text-muted-foreground">
-                          × {li.quantity}
-                        </span>
-                      </div>
-                    ))}
-                    {(o.line_items?.length ?? 0) > 3 && (
-                      <div className="text-[10px] text-muted-foreground">
-                        +{o.line_items.length - 3} more
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 text-[11px] leading-snug text-muted-foreground">
-                    {addrParts.length ? (
-                      <span title={addrParts.join(", ")} className="line-clamp-2">
-                        {addrParts.join(", ")}
-                      </span>
-                    ) : (
-                      <span className="italic">No shipping address</span>
-                    )}
-                  </div>
-                  <div className="text-right text-[12px] leading-tight">
-                    <div className="tabular-nums text-muted-foreground">
-                      {money(o.currency, itemsTotal)}
-                      <span className="mx-1">+</span>
-                      {money(o.currency, shipping)}
-                    </div>
-                    <div className="mt-0.5 text-sm font-semibold tabular-nums">
-                      = {money(o.currency, o.total)}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <StatusBadge status={o.status} />
-                  </div>
-                  <div className="flex justify-end gap-1">
-                    <select
-                      value={o.status}
-                      onChange={(e) =>
-                        updM.mutate({
-                          id: o.id,
-                          status: e.target.value,
-                        })
-                      }
-                      className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
-                    >
-                      {/* Include current status even if it isn't in the reported
-                          list (defensive fallback for exotic custom statuses). */}
-                      {!wooStatuses.some((s) => s.slug === o.status) && (
-                        <option value={o.status}>{humanize(o.status)}</option>
-                      )}
-                      {wooStatuses.map((s) => (
-                        <option key={s.slug} value={s.slug}>
-                          {s.name}
-                        </option>
                       ))}
-                    </select>
-                    <button
-                      onClick={() => setOpenId(o.id)}
-                      title="View"
-                      className="rounded-md border border-input p-1.5 hover:bg-muted"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </button>
+                      {(o.line_items?.length ?? 0) > 3 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          +{o.line_items.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 text-[11px] leading-snug text-muted-foreground">
+                      {addrParts.length ? (
+                        <span title={addrParts.join(", ")} className="line-clamp-2">
+                          {addrParts.join(", ")}
+                        </span>
+                      ) : (
+                        <span className="italic">No shipping address</span>
+                      )}
+                    </div>
+                    <div className="text-right text-[12px] leading-tight">
+                      <div className="tabular-nums text-muted-foreground">
+                        {money(o.currency, itemsTotal)}
+                        <span className="mx-1">+</span>
+                        {money(o.currency, shipping)}
+                      </div>
+                      <div className="mt-0.5 text-sm font-semibold tabular-nums">
+                        = {money(o.currency, o.total)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <StatusBadge status={o.status} />
+                    </div>
+                    <div className="flex justify-end gap-1">
+                      <select
+                        value={o.status}
+                        onChange={(e) =>
+                          updM.mutate({
+                            id: o.id,
+                            status: e.target.value,
+                          })
+                        }
+                        className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
+                      >
+                        {!wooStatuses.some((s) => s.slug === o.status) && (
+                          <option value={o.status}>{humanize(o.status)}</option>
+                        )}
+                        {wooStatuses.map((s) => (
+                          <option key={s.slug} value={s.slug}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setOpenId(o.id)}
+                        title="View"
+                        className="rounded-md border border-input p-1.5 hover:bg-muted"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {!q.isLoading && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>
-            Page {page} · {orders.length} orders shown ·{" "}
-            {status === "any"
-              ? `${totalAll.toLocaleString()} total`
-              : `${countOf(status).toLocaleString()} in ${humanize(status)}`}
+            Showing {(page - 1) * pageSize + 1}–
+            {(page - 1) * pageSize + orders.length} of{" "}
+            {totalCount.toLocaleString()}
+            {status !== "any" ? ` in ${humanize(status)}` : ""}
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="rounded-md border border-input bg-card px-2 py-1 hover:bg-muted disabled:opacity-30"
-            >
-              Prev
-            </button>
-            <span className="px-2 tabular-nums">Page {page}</span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={orders.length < pageSize}
-              className="rounded-md border border-input bg-card px-2 py-1 hover:bg-muted disabled:opacity-30"
-            >
-              Next
-            </button>
-          </div>
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            onChange={(p) => setPage(p)}
+          />
         </div>
       )}
+
 
       {openId !== null && (
         <OrderDrawer
