@@ -38,7 +38,7 @@ export const getOrderOps = createServerFn({ method: "POST" })
     if (data.ids.length === 0) return {};
     const { data: rows, error } = await supabase
       .from("order_ops")
-      .select("wc_order_id, courier, tracking_number, pickup_slot, internal_notes, updated_at")
+      .select("wc_order_id, courier, tracking_number, pickup_slot, internal_notes, steadfast_consignment_id, updated_at")
       .in("wc_order_id", data.ids);
     if (error) throw new Error(error.message);
     const map: Record<number, OrderOps> = {};
@@ -84,7 +84,7 @@ export const updateOrderOps = createServerFn({ method: "POST" })
     const { data: row, error } = await supabase
       .from("order_ops")
       .upsert(payload as never, { onConflict: "wc_order_id" })
-      .select("wc_order_id, courier, tracking_number, pickup_slot, internal_notes, updated_at")
+      .select("wc_order_id, courier, tracking_number, pickup_slot, internal_notes, steadfast_consignment_id, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return row as OrderOps;
