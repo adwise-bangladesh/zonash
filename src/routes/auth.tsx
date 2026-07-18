@@ -278,11 +278,10 @@ function AuthPage() {
                               : r.tone === "cyan"
                                 ? {
                                     backgroundColor:
-                                      "color-mix(in oklab, var(--primary) 18%, transparent)",
-                                    color:
-                                      "color-mix(in oklab, var(--primary-glow) 90%, white)",
+                                      "color-mix(in oklab, #38bdf8 14%, transparent)",
+                                    color: "#7dd3fc",
                                     boxShadow:
-                                      "inset 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent)",
+                                      "inset 0 0 0 1px color-mix(in oklab, #38bdf8 30%, transparent)",
                                   }
                                 : {
                                     backgroundColor:
