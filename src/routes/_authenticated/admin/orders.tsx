@@ -66,14 +66,34 @@ function AdminOrders() {
   const countOf = (slug: string) =>
     wooStatuses.find((s) => s.slug === slug)?.count ?? 0;
 
-  // Dynamic tabs: "All" + every status WooCommerce reports (built-in + custom).
-  const tabs = useMemo(
-    () => [
+  // Preferred order for the status tabs; unknown/custom statuses trail after.
+  const STATUS_ORDER = [
+    "pending",
+    "on-hold",
+    "confirmed",
+    "processing",
+    "completed",
+    "cancelled",
+    "refunded",
+    "failed",
+  ];
+  const tabs = useMemo(() => {
+    const rank = (slug: string) => {
+      const i = STATUS_ORDER.indexOf(slug);
+      return i === -1 ? STATUS_ORDER.length : i;
+    };
+    const sorted = [...wooStatuses].sort((a, b) => {
+      const ra = rank(a.slug);
+      const rb = rank(b.slug);
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+    return [
       { slug: "any", name: "All", count: totalAll },
-      ...wooStatuses.map((s) => ({ slug: s.slug, name: s.name, count: s.count })),
-    ],
-    [wooStatuses, totalAll],
-  );
+      ...sorted.map((s) => ({ slug: s.slug, name: s.name, count: s.count })),
+    ];
+  }, [wooStatuses, totalAll]);
+
 
   const q = useQuery({
     queryKey: ["admin", "woo-orders", status, search, page, pageSize],
