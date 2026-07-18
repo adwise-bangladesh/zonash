@@ -533,7 +533,7 @@ function PosPage() {
                     : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা ভিতরে · ৳80
+                ঢাকা ভিতরে · 80 Tk
               </button>
               <button
                 type="button"
@@ -544,7 +544,7 @@ function PosPage() {
                     : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা বাহিরে · ৳130
+                ঢাকা বাহিরে · 130 Tk
               </button>
             </div>
           </div>
@@ -552,15 +552,22 @@ function PosPage() {
           {/* Totals + actions (sticky footer of column) */}
           <div className="shrink-0 border-t border-border bg-muted/30 p-3">
             <div className="space-y-1">
-              <Row label="Subtotal" value={`৳ ${subtotal.toFixed(0)}`} />
-              <Row label="Delivery" value={`৳ ${shippingAmount.toFixed(0)}`} />
+              <Row label="Subtotal" value={formatBDT(subtotal)} />
+              <Row label="Delivery" value={formatBDT(shippingAmount)} />
               <div className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="text-muted-foreground">Discount</span>
+                <span className="text-muted-foreground">
+                  Discount
+                  {subtotal > 0 && (
+                    <span className="ml-1 text-[10px] text-muted-foreground/70">
+                      (max {formatBDT(maxDiscount)})
+                    </span>
+                  )}
+                </span>
                 <div className="inline-flex items-center gap-1">
-                  <span className="text-muted-foreground">৳</span>
                   <input
                     type="number"
                     min={0}
+                    max={maxDiscount}
                     value={discount}
                     onChange={(e) =>
                       setDiscount(Math.max(0, Number(e.target.value)))
@@ -568,13 +575,20 @@ function PosPage() {
                     className="h-7 w-20 rounded-md border border-border bg-background px-1.5 text-right text-[11.5px] outline-none tabular-nums focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                     placeholder="0"
                   />
+                  <span className="text-muted-foreground">Tk</span>
                 </div>
               </div>
+              {discountCapped && (
+                <div className="text-right text-[10px] font-medium text-amber-600">
+                  Capped to 40% of cart · {formatBDT(effectiveDiscount)}
+                </div>
+              )}
               <div className="mt-1.5 flex items-center justify-between border-t border-border pt-2 text-[14px] font-bold">
                 <span>Total (COD)</span>
-                <span className="tabular-nums">৳ {grand.toFixed(0)}</span>
+                <span className="tabular-nums">{formatBDT(grand)}</span>
               </div>
             </div>
+
             <div className="mt-2.5 grid grid-cols-[1fr_1.4fr] gap-2">
               <button
                 type="button"
