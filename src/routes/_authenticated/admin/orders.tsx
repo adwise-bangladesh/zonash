@@ -199,6 +199,167 @@ function AdminOrders() {
   const opsMap = opsQ.data ?? {};
   const statsMap = statsQ.data ?? {};
 
+  // Bulk actions ------------------------------------------------------------
+  const detailFnBulk = useServerFn(getWooOrder);
+  const sendSfFn = useServerFn(sendOrderToSteadfast);
+
+  const selectedOrders = useMemo(
+    () => orders.filter((o) => selected.has(o.id)),
+    [orders, selected],
+  );
+  const allVisibleSelected =
+    orders.length > 0 && orders.every((o) => selected.has(o.id));
+  const toggleAll = () => {
+    setSelected((prev) => {
+      if (allVisibleSelected) return new Set();
+      const next = new Set(prev);
+      for (const o of orders) next.add(o.id);
+      return next;
+    });
+  };
+  const toggleOne = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  async function runBulk<T>(
+    label: string,
+    ids: number[],
+    concurrency: number,
+    worker: (id: number) => Promise<T>,
+  ) {
+    setBulkBusy({ label, done: 0, total: ids.length });
+    let done = 0;
+    let ok = 0;
+    let fail = 0;
+    let idx = 0;
+    async function run() {
+      while (idx < ids.length) {
+        const my = idx++;
+        try {
+          await worker(ids[my]);
+          ok++;
+        } catch (e) {
+          fail++;
+          console.error("bulk", label, ids[my], e);
+        } finally {
+          done++;
+          setBulkBusy({ label, done, total: ids.length });
+        }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, ids.length) }, run),
+    );
+    setBulkBusy(null);
+    if (fail === 0) toast.success(`${label}: ${ok} done`);
+    else toast.error(`${label}: ${ok} done · ${fail} failed`);
+    invalidate();
+    setSelected(new Set());
+  }
+
+  const bulkUpdateStatus = (next: string) => {
+    if (!next || selected.size === 0) return;
+    void runBulk(
+      `Update → ${humanize(next)}`,
+      Array.from(selected),
+      4,
+      (id) => updFn({ data: { id, status: next } }),
+    );
+  };
+
+  const bulkSendSteadfast = () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Send ${selected.size} order(s) to Steadfast?`)) return;
+    void runBulk(
+      "Send to Steadfast",
+      Array.from(selected),
+      3,
+      (id) => sendSfFn({ data: { wc_order_id: id } }),
+    );
+  };
+
+  const bulkPrintLabels = () => {
+    if (selectedOrders.length === 0) return;
+    const opsList = opsMap;
+    const win = window.open("", "_blank", "width=900,height=1000");
+    if (!win) {
+      toast.error("Popup blocked. Allow popups to print labels.");
+      return;
+    }
+    const esc = (s: unknown) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    const html = selectedOrders
+      .map((o) => {
+        const s = o.shipping ?? {};
+        const b = o.billing ?? {};
+        const name =
+          [s.first_name || b.first_name, s.last_name || b.last_name]
+            .filter(Boolean)
+            .join(" ") || "Customer";
+        const addr = [
+          s.address_1 || b.address_1,
+          s.address_2 || b.address_2,
+          s.city || b.city,
+          s.state || b.state,
+          s.postcode || b.postcode,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        const phone = b.phone || "";
+        const ops = opsList[o.id];
+        const tracking = ops?.tracking_number || "";
+        const courier = ops?.courier || "";
+        const items = (o.line_items ?? [])
+          .map((li) => `${li.quantity}× ${esc(li.sku || li.name)}`)
+          .join(", ");
+        return `
+          <div class="label">
+            <div class="row"><div class="brand">ZONASH</div><div class="ord">#${esc(o.number)}</div></div>
+            <div class="to">TO:</div>
+            <div class="name">${esc(name)}</div>
+            <div class="addr">${esc(addr)}</div>
+            <div class="phone">📞 ${esc(phone)}</div>
+            <div class="row small"><div>${esc(courier)}</div><div class="mono">${esc(tracking)}</div></div>
+            <div class="items">${esc(items)}</div>
+            <div class="row small"><div>COD</div><div class="mono">${esc(o.currency)} ${Number(o.total || 0).toFixed(2)}</div></div>
+          </div>`;
+      })
+      .join("");
+    win.document.write(`<!doctype html><html><head><title>Labels</title>
+      <style>
+        *{box-sizing:border-box;font-family:ui-sans-serif,system-ui,sans-serif}
+        body{margin:0;padding:12px;background:#f6f6f6}
+        .label{background:#fff;border:1px solid #000;padding:12px;margin:0 0 8px;page-break-inside:avoid;width:100mm}
+        .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .brand{font-weight:800;letter-spacing:2px;font-size:14px}
+        .ord{font-weight:700;font-size:14px}
+        .to{margin-top:8px;font-size:10px;color:#666;letter-spacing:1px}
+        .name{font-weight:700;font-size:16px;margin-top:2px}
+        .addr{font-size:13px;margin-top:4px;line-height:1.3}
+        .phone{font-size:13px;margin-top:4px}
+        .small{font-size:11px;margin-top:6px;color:#333}
+        .items{font-size:10px;color:#555;margin-top:6px;border-top:1px dashed #ccc;padding-top:6px}
+        .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+        @media print{body{background:#fff;padding:0}.label{margin:0;border:1px dashed #000}}
+      </style></head><body>${html}
+      <script>window.onload=()=>{setTimeout(()=>window.print(),200)}</script>
+      </body></html>`);
+    win.document.close();
+  };
+
+  const totalCount =
+    status === "any" ? totalAll : countOf(status);
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+
+
+
 
   return (
     <AdminShell
