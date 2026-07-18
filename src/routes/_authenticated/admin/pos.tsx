@@ -179,7 +179,10 @@ function PosPage() {
 
   const subtotal = cart.reduce((s, l) => s + l.price * l.quantity, 0);
   const shippingAmount = insideDhaka ? 80 : 130;
-  const grand = Math.max(0, subtotal + shippingAmount - discount);
+  const maxDiscount = Math.floor(subtotal * 0.4);
+  const effectiveDiscount = Math.min(Math.max(0, discount), maxDiscount);
+  const discountCapped = discount > maxDiscount && subtotal > 0;
+  const grand = Math.max(0, subtotal + shippingAmount - effectiveDiscount);
 
   const canSubmit =
     cart.length > 0 &&
