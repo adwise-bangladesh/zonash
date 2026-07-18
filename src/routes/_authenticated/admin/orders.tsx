@@ -2940,7 +2940,9 @@ function HoorinVerifyPanel({ phone }: { phone: string }) {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium">#{o.number}</span>
-                            <StatusPill status={o.status} />
+                            <span className="rounded bg-muted px-1 py-[1px] text-[9px] uppercase tracking-wide text-foreground/70">
+                              {o.status.replace(/-/g, " ")}
+                            </span>
                             <span className="text-muted-foreground">
                               {new Date(o.date).toLocaleDateString()}
                             </span>
