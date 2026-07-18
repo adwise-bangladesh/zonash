@@ -1690,3 +1690,57 @@ function SteadfastPanel({
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Hoorin customer verification (compact inline panel in the order drawer)
+// -----------------------------------------------------------------------------
+
+function HoorinVerifyPanel({ phone }: { phone: string }) {
+  const verifyFn = useServerFn(verifyCustomerPhone);
+  const [open, setOpen] = useState(false);
+  const [report, setReport] = useState<HoorinReport | null>(null);
+
+  const mut = useMutation({
+    mutationFn: async (fresh: boolean) => verifyFn({ data: { phone, fresh } }),
+    onSuccess: (r) => {
+      setReport(r);
+      setOpen(true);
+      if (!r?.success) toast.warning(r?.message || "No delivery history found");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Verification failed"),
+  });
+
+  const trimmed = (phone || "").replace(/\D+/g, "");
+  const disabled = trimmed.length < 10 || mut.isPending;
+
+  return (
+    <div className="mb-2 rounded-md border border-input bg-muted/30 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Customer verification
+          <span className="text-muted-foreground">(Steadfast · RedX · Pathao · Carrybee)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {report && (
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+            >
+              {open ? "Hide" : "Show"}
+            </button>
+          )}
+          <button
+            onClick={() => mut.mutate(false)}
+            disabled={disabled}
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
+          >
+            {mut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            {report ? "Re-check" : "Verify"}
+          </button>
+        </div>
+      </div>
+      {open && report && <HoorinReportView report={report} />}
+    </div>
+  );
+}
