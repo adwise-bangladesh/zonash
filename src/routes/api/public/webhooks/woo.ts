@@ -105,7 +105,7 @@ function mapOrder(o: WooOrder) {
     items_count: (o.line_items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0),
     date_created: o.date_created,
     date_modified: o.date_modified,
-    raw: o as unknown as Record<string, unknown>,
+    raw: o as never,
     synced_at: new Date().toISOString(),
   };
 }
