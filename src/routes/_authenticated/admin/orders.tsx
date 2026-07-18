@@ -1697,13 +1697,17 @@ function TotalRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Order notes — reads/writes WooCommerce private (and customer) notes. */
+/** Order notes — reads/writes WooCommerce notes and sends SMS to the customer. */
 function OrderNotesSection({ orderId }: { orderId: number }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listOrderNotes);
   const addFn = useServerFn(addOrderNote);
+  const smsFn = useServerFn(sendCustomerMessage);
+  const tplFn = useServerFn(listMessageTemplates);
+
   const [text, setText] = useState("");
   const [asCustomer, setAsCustomer] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const q = useQuery({
     queryKey: ["admin", "order-notes", orderId],
@@ -1711,9 +1715,18 @@ function OrderNotesSection({ orderId }: { orderId: number }) {
     staleTime: 60_000,
   });
 
-  const add = useMutation({
+  const tpls = useQuery({
+    queryKey: ["admin", "message-templates"],
+    queryFn: () => tplFn(),
+    staleTime: 5 * 60_000,
+  });
+
+  const kind: "note" | "sms" = asCustomer ? "sms" : "note";
+  const filteredTpls: MessageTemplate[] = (tpls.data ?? []).filter((t) => t.kind === kind);
+
+  const addNote = useMutation({
     mutationFn: () =>
-      addFn({ data: { id: orderId, note: text.trim(), customer_note: asCustomer } }),
+      addFn({ data: { id: orderId, note: text.trim(), customer_note: false } }),
     onSuccess: () => {
       setText("");
       toast.success("Note added");
@@ -1722,37 +1735,122 @@ function OrderNotesSection({ orderId }: { orderId: number }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const sendSms = useMutation({
+    mutationFn: () => smsFn({ data: { id: orderId, message: text.trim() } }),
+    onSuccess: (r) => {
+      setText("");
+      if (r.ok) toast.success(`SMS sent${r.phone ? ` → ${r.phone}` : ""}`);
+      else toast.error(`SMS failed: ${r.providerMessage || "unknown error"}`);
+      qc.invalidateQueries({ queryKey: ["admin", "order-notes", orderId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const notes = (q.data?.notes ?? []) as WooOrderNote[];
+  const busy = addNote.isPending || sendSms.isPending;
+
+  const applyTemplate = (t: MessageTemplate) => {
+    setText(t.body);
+    setPickerOpen(false);
+  };
+
+  const submit = () => {
+    const v = text.trim();
+    if (!v) return;
+    if (asCustomer) sendSms.mutate();
+    else addNote.mutate();
+  };
 
   return (
     <Section title="Order notes" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
       <div className="space-y-2">
+        {/* Template picker */}
+        <div className="relative">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {asCustomer ? "Customer SMS templates" : "Private note templates"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPickerOpen((o) => !o)}
+              className="inline-flex h-6 items-center gap-1 rounded-md border border-input px-2 text-[10px] hover:bg-muted"
+            >
+              {pickerOpen ? "Close" : "Choose template"}
+              <ChevronDown className={`h-3 w-3 transition ${pickerOpen ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+          {pickerOpen && (
+            <div className="mb-2 max-h-56 overflow-auto rounded-md border border-input bg-background p-1">
+              {tpls.isLoading && (
+                <p className="p-2 text-[11px] text-muted-foreground">Loading…</p>
+              )}
+              {!tpls.isLoading && filteredTpls.length === 0 && (
+                <p className="p-2 text-[11px] text-muted-foreground">
+                  No {kind === "sms" ? "SMS" : "note"} templates yet. Add them in Settings → Templates.
+                </p>
+              )}
+              {filteredTpls.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => applyTemplate(t)}
+                  className="block w-full rounded px-2 py-1.5 text-left text-[12px] hover:bg-muted"
+                >
+                  <div className="font-medium">{t.title}</div>
+                  <div className="line-clamp-1 text-[11px] text-muted-foreground">{t.body}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={2}
-          placeholder="Add a private note (stored on WooCommerce)…"
+          rows={3}
+          placeholder={
+            asCustomer
+              ? "Write an SMS to send to the customer…"
+              : "Add a private note (stored on WooCommerce)…"
+          }
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
         />
+
         <div className="flex items-center justify-between">
           <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <input
               type="checkbox"
               checked={asCustomer}
-              onChange={(e) => setAsCustomer(e.target.checked)}
+              onChange={(e) => {
+                setAsCustomer(e.target.checked);
+                setPickerOpen(false);
+              }}
               className="h-3 w-3"
             />
-            Notify customer
+            Notify customer (send SMS)
           </label>
-          <button
-            type="button"
-            onClick={() => text.trim() && add.mutate()}
-            disabled={add.isPending || !text.trim()}
-            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
-          >
-            {add.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-            Add note
-          </button>
+          <div className="flex items-center gap-2">
+            {asCustomer && (
+              <span className="text-[10px] text-muted-foreground">
+                {text.trim().length}/1000
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy || !text.trim()}
+              className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+            >
+              {busy ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : asCustomer ? (
+                <Send className="h-3 w-3" />
+              ) : (
+                <Plus className="h-3 w-3" />
+              )}
+              {asCustomer ? "Send Message" : "Add note"}
+            </button>
+          </div>
         </div>
 
         <div className="mt-2 space-y-1.5">
