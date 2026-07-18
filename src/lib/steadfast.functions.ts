@@ -38,6 +38,67 @@ export const getSteadfastStatus = createServerFn({ method: "GET" })
   });
 
 // -----------------------------------------------------------------------------
+// Police stations (thana list) — cached at the client via React Query.
+// -----------------------------------------------------------------------------
+
+export const getPoliceStations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<{ items: string[]; grouped: Record<string, string[]> }> => {
+    const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
+    if (!steadfastConfigured()) return { items: [], grouped: {} };
+    try {
+      const res = await sfGetPoliceStations();
+      // Response shape is flexible; try common variants.
+      const raw: unknown =
+        (res as { data?: unknown }).data ??
+        (res as { police_stations?: unknown }).police_stations ??
+        res;
+
+      const items = new Set<string>();
+      const grouped: Record<string, Set<string>> = {};
+
+      function addPair(city: string | undefined, station: string | undefined) {
+        const s = (station || "").toString().trim();
+        if (!s) return;
+        items.add(s);
+        const c = (city || "").toString().trim() || "Other";
+        (grouped[c] ??= new Set()).add(s);
+      }
+
+      const walk = (node: unknown, cityHint?: string) => {
+        if (!node) return;
+        if (Array.isArray(node)) {
+          for (const it of node) {
+            if (typeof it === "string") addPair(cityHint, it);
+            else walk(it, cityHint);
+          }
+          return;
+        }
+        if (typeof node === "object") {
+          for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+            if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
+              for (const s of v as string[]) addPair(k, s);
+            } else if (typeof v === "string" && /station|thana|name/i.test(k)) {
+              addPair(cityHint, v);
+            } else {
+              walk(v, cityHint || (typeof k === "string" ? k : undefined));
+            }
+          }
+        }
+      };
+      walk(raw);
+
+      const outGrouped: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(grouped)) outGrouped[k] = Array.from(v).sort();
+      return { items: Array.from(items).sort(), grouped: outGrouped };
+    } catch (e) {
+      console.error("getPoliceStations failed", e);
+      return { items: [], grouped: {} };
+    }
+  });
+
+
+// -----------------------------------------------------------------------------
 // Send an order to Steadfast
 // -----------------------------------------------------------------------------
 
