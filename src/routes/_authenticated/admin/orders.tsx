@@ -28,6 +28,9 @@ import {
   listProducts,
   listProductVariations,
   listShippingMethods,
+  listOrderNotes,
+  addOrderNote,
+  type WooOrderNote,
 } from "@/lib/woo.functions";
 
 import {
