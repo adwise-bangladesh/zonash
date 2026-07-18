@@ -446,8 +446,15 @@ function AdminOrders() {
           detailFn={detailFn}
           statuses={wooStatuses}
           onUpdate={(s) => updM.mutate({ id: openId, status: s })}
+          initialOps={opsMap[openId]}
+          customerStat={(() => {
+            const o = orders.find((x) => x.id === openId);
+            const e = o?.billing?.email?.toLowerCase().trim();
+            return e ? statsMap[e] : undefined;
+          })()}
         />
       )}
+
     </AdminShell>
   );
 }
