@@ -19,7 +19,9 @@ import {
   updateOrderStatus,
   getWooOrder,
   listOrderStatuses,
+  listCustomerOrders,
 } from "@/lib/woo.functions";
+
 import {
   getOrderOps,
   updateOrderOps,
@@ -64,6 +66,8 @@ function AdminOrders() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+
 
   const statusesQ = useQuery({
     queryKey: ["admin", "woo-order-statuses"],
@@ -304,17 +308,24 @@ function AdminOrders() {
                         const email = o.billing?.email?.toLowerCase().trim();
                         const stat = email ? statsMap[email] : undefined;
                         const rating = ratingFromStats(stat);
+                        const total = stat?.total ?? 0;
                         return (
                           <>
                             <CustomerBadge rating={rating} />
-                            {stat && stat.total > 1 && (
-                              <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold text-foreground tabular-nums">
-                                {stat.total} orders
-                              </span>
+                            {email && total >= 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setCustomerEmail(email)}
+                                title="View all orders from this customer"
+                                className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                              >
+                                {total} {total === 1 ? "order" : "orders"}
+                              </button>
                             )}
                           </>
                         );
                       })()}
+
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {o.billing?.phone || o.billing?.email}
@@ -454,6 +465,19 @@ function AdminOrders() {
           })()}
         />
       )}
+
+      {customerEmail !== null && (
+        <CustomerOrdersDrawer
+          email={customerEmail}
+          onClose={() => setCustomerEmail(null)}
+          onOpenOrder={(id) => {
+            setCustomerEmail(null);
+            setOpenId(id);
+          }}
+        />
+      )}
+
+
 
     </AdminShell>
   );
@@ -782,3 +806,148 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
+
+function CustomerOrdersDrawer({
+  email,
+  onClose,
+  onOpenOrder,
+}: {
+  email: string;
+  onClose: () => void;
+  onOpenOrder: (id: number) => void;
+}) {
+  const fn = useServerFn(listCustomerOrders);
+  const q = useQuery({
+    queryKey: ["admin", "customer-orders", email],
+    queryFn: () => fn({ data: { email } }),
+    staleTime: 30_000,
+  });
+  const orders = q.data?.orders ?? [];
+  const customerName = orders[0]
+    ? `${orders[0].billing?.first_name ?? ""} ${orders[0].billing?.last_name ?? ""}`.trim()
+    : "";
+  const phone = orders[0]?.billing?.phone;
+  const totalSpent = orders
+    .filter((o) => o.status === "completed")
+    .reduce((s, o) => s + Number(o.total || 0), 0);
+  const currency = orders[0]?.currency ?? "";
+  const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
+    acc[o.status] = (acc[o.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <button
+        aria-label="Close"
+        onClick={onClose}
+        className="flex-1 bg-foreground/40 backdrop-blur-sm"
+      />
+      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase text-muted-foreground">
+              Customer history
+            </div>
+            <div className="truncate text-[16px] font-semibold">
+              {customerName || email}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {email}
+              {phone && ` · ${phone}`}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {q.isLoading ? (
+          <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+            No orders found for this customer.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3 text-center">
+              <Stat label="Total orders" value={orders.length.toString()} />
+              <Stat
+                label="Completed"
+                value={(statusCounts.completed ?? 0).toString()}
+              />
+              <Stat label="Spent" value={money(currency, totalSpent)} />
+            </div>
+            <div className="flex flex-wrap gap-1 border-b border-border px-4 py-2">
+              {Object.entries(statusCounts).map(([s, c]) => (
+                <span
+                  key={s}
+                  className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground"
+                >
+                  {s.replace(/-/g, " ")} · {c}
+                </span>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {orders.map((o) => {
+                const shipping = Number(o.shipping_total || 0);
+                const items = Number(o.total || 0) - shipping;
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => onOpenOrder(o.id)}
+                    className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left hover:bg-muted/40"
+                  >
+                    <div className="w-20 shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                      {new Date(o.date_created).toLocaleDateString()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">#{o.number}</span>
+                        <StatusBadge status={o.status} />
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {(o.line_items ?? [])
+                          .map((li) => li.sku || li.name)
+                          .filter(Boolean)
+                          .slice(0, 3)
+                          .join(", ")}
+                        {(o.line_items?.length ?? 0) > 3 &&
+                          ` +${o.line_items.length - 3}`}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right text-[12px] leading-tight">
+                      <div className="text-muted-foreground tabular-nums">
+                        {money(o.currency, items)} + {money(o.currency, shipping)}
+                      </div>
+                      <div className="text-sm font-semibold tabular-nums">
+                        = {money(o.currency, o.total)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
