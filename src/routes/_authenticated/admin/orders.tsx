@@ -5,27 +5,20 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Search,
-  Loader2,
-  Eye,
-  ShoppingBag,
-  Clock,
-  CheckCircle2,
-  Package,
-  Ban,
-  RotateCcw,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import { Search, Loader2, Eye, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
   listWooOrders,
   updateOrderStatus,
   getWooOrder,
-  getOrderStatusCounts,
+  listOrderStatuses,
 } from "@/lib/woo.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
@@ -35,31 +28,12 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
   component: AdminOrders,
 });
 
-const STATUSES = [
-  "pending",
-  "processing",
-  "on-hold",
-  "completed",
-  "cancelled",
-  "refunded",
-  "failed",
-] as const;
-type WooStatus = (typeof STATUSES)[number];
-
-const STATUS_TABS: {
-  value: WooStatus | "any";
-  label: string;
-  icon: LucideIcon;
-}[] = [
-  { value: "any", label: "All", icon: ShoppingBag },
-  { value: "pending", label: "Pending", icon: Clock },
-  { value: "processing", label: "Processing", icon: Package },
-  { value: "on-hold", label: "On hold", icon: Clock },
-  { value: "completed", label: "Completed", icon: CheckCircle2 },
-  { value: "cancelled", label: "Cancelled", icon: Ban },
-  { value: "refunded", label: "Refunded", icon: RotateCcw },
-  { value: "failed", label: "Failed", icon: Ban },
-];
+// Human-friendly fallback label for unknown/custom status slugs.
+function humanize(slug: string) {
+  return slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 const GRID =
   "grid-cols-[100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
