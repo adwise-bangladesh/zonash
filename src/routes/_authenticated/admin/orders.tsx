@@ -61,8 +61,12 @@ export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
     meta: [{ title: "Orders — Admin" }, { name: "robots", content: "noindex" }],
   }),
+  validateSearch: zodValidator(
+    zSearch.object({ open: fallback(zSearch.number().int().positive().optional(), undefined) }),
+  ),
   component: AdminOrders,
 });
+
 
 // Human-friendly fallback label for unknown/custom status slugs.
 function humanize(slug: string) {
