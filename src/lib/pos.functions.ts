@@ -22,7 +22,10 @@ const posOrderSchema = z.object({
     "instore",
     "other",
   ]),
-  status: z.enum(["on-hold", "processing"]).default("processing"),
+  status: z.enum(["on-hold", "pending", "processing"]).default("pending"),
+  delivery_zone: z.enum(["inside_dhaka", "outside_dhaka"]).optional(),
+  subtotal: z.number().min(0).optional(),
+  grand_total: z.number().min(0).optional(),
   customer: z.object({
     name: z.string().trim().min(1).max(120),
     phone: z.string().trim().min(3).max(30),
