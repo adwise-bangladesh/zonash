@@ -2,13 +2,21 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Store, LayoutGrid, LifeBuoy, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/cart";
 
-const items = [
+type NavItem = {
+  label: string;
+  href: "/" | "/products" | "/categories" | "/support" | "/cart";
+  icon: typeof Home;
+  exact?: boolean;
+  cart?: boolean;
+};
+
+const items: NavItem[] = [
   { label: "Home", href: "/", icon: Home, exact: true },
   { label: "Shop", href: "/products", icon: Store },
   { label: "Categories", href: "/categories", icon: LayoutGrid },
   { label: "Support", href: "/support", icon: LifeBuoy },
   { label: "Cart", href: "/cart", icon: ShoppingBag, cart: true },
-] as const;
+];
 
 /**
  * Mobile bottom navigation shown only on small screens. Fixed to the viewport
