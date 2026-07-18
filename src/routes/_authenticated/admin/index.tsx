@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 function formatBDT(n: number) {
-  return `৳${(n || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
+  return `${(n || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })} Tk`;
 }
 
 function AdminHome() {

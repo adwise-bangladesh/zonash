@@ -110,7 +110,7 @@ function Products() {
                 <p className="text-sm">
                   {p.sale_price && p.on_sale ? (
                     <><span className="text-foreground">{p.sale_price} Tk</span>{" "}<span className="text-muted-foreground line-through opacity-70">{p.regular_price} Tk</span></>
-                  ) : p.price ? <span className="text-foreground">৳{p.price}</span> : "—"}
+                  ) : p.price ? <span className="text-foreground">{p.price} Tk</span> : "—"}
                 </p>
               </div>
             </Link>
