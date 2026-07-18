@@ -60,7 +60,8 @@ function humanize(slug: string) {
 }
 
 const GRID =
-  "grid-cols-[100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
+  "grid-cols-[32px_100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
+
 
 function money(currency: string, n: number | string) {
   const v = typeof n === "string" ? Number(n) : n;
