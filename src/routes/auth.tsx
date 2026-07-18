@@ -278,11 +278,10 @@ function AuthPage() {
                               : r.tone === "cyan"
                                 ? {
                                     backgroundColor:
-                                      "color-mix(in oklab, var(--primary) 18%, transparent)",
-                                    color:
-                                      "color-mix(in oklab, var(--primary-glow) 90%, white)",
+                                      "color-mix(in oklab, #38bdf8 14%, transparent)",
+                                    color: "#7dd3fc",
                                     boxShadow:
-                                      "inset 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent)",
+                                      "inset 0 0 0 1px color-mix(in oklab, #38bdf8 30%, transparent)",
                                   }
                                 : {
                                     backgroundColor:
@@ -322,7 +321,7 @@ function AuthPage() {
                         style={{
                           height: `${h}%`,
                           background:
-                            "linear-gradient(180deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 30%, transparent) 100%)",
+                            "linear-gradient(180deg, #f5d68a 0%, rgba(245, 214, 138, 0.25) 100%)",
                         }}
                       />
                     ))}
@@ -460,8 +459,7 @@ function AuthPage() {
             </form>
 
             <div className="mt-8 rounded-lg border border-dashed border-border/70 bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-              Access is invitation-only. Contact an administrator if you need an account
-              or a password reset.
+              Contact an administrator if you need an account or a password reset.
             </div>
 
             <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
