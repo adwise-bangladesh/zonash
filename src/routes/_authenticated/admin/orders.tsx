@@ -1547,17 +1547,16 @@ function OrderDrawer({
 
             {/* Totals — fixed delivery + fees/discount */}
             <Section title="Totals & discounts" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
-              {/* Delivery charge — fixed, read-only */}
-              <div className="mb-3 flex items-center justify-between rounded-md border border-input bg-muted/30 px-3 py-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {shipLines[0]?.method_title || "Delivery"} · fixed
-                  </div>
+              {/* Delivery charge — editable */}
+              <div className="mb-3">
+                <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Delivery charge
                 </div>
-                <div className="tabular-nums text-[13px] font-semibold">
-                  {money(o.currency, shippingTotal)}
-                </div>
+                <ShippingLinesEditor
+                  currency={o.currency}
+                  shipLines={shipLines}
+                  onChange={setShipLines}
+                />
               </div>
 
               {/* Fees / discounts */}
