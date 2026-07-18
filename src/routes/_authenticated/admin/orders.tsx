@@ -142,7 +142,7 @@ function AdminOrders() {
                     : "bg-muted text-foreground"
                 }`}
               >
-                {countsQ.isLoading ? "…" : (count ?? 0).toLocaleString()}
+                {statusesQ.isLoading && t.count === 0 ? "…" : t.count.toLocaleString()}
               </span>
             </button>
           );
