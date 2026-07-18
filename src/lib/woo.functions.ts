@@ -346,3 +346,72 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
 
     return { id: updated.id, status: updated.status };
   });
+
+// -------------------- Full order update (staff/admin) --------------------
+
+const addressSchema = z.object({
+  first_name: z.string().trim().max(60).optional(),
+  last_name: z.string().trim().max(60).optional(),
+  company: z.string().trim().max(120).optional(),
+  address_1: z.string().trim().max(200).optional(),
+  address_2: z.string().trim().max(200).optional(),
+  city: z.string().trim().max(80).optional(),
+  state: z.string().trim().max(80).optional(),
+  postcode: z.string().trim().max(20).optional(),
+  country: z.string().trim().max(2).optional(),
+  email: z.string().trim().max(254).optional(),
+  phone: z.string().trim().max(30).optional(),
+});
+
+const lineItemInputSchema = z.object({
+  id: z.number().int().positive().optional(),        // existing line item id (update/remove)
+  product_id: z.number().int().nonnegative().optional(), // new item
+  variation_id: z.number().int().nonnegative().optional(),
+  quantity: z.number().int().min(0).max(999),        // 0 removes existing
+  subtotal: z.string().max(20).optional(),           // override price (per subtotal)
+  total: z.string().max(20).optional(),
+});
+
+const feeLineSchema = z.object({
+  id: z.number().int().positive().optional(),
+  name: z.string().max(120).optional(),
+  total: z.string().max(20).optional(),              // negative for discount
+});
+
+const shippingLineSchema = z.object({
+  id: z.number().int().positive().optional(),
+  method_title: z.string().max(120).optional(),
+  method_id: z.string().max(60).optional(),
+  total: z.string().max(20).optional(),
+});
+
+const updateOrderSchema = z.object({
+  id: z.number().int().positive(),
+  billing: addressSchema.optional(),
+  shipping: addressSchema.optional(),
+  line_items: z.array(lineItemInputSchema).max(100).optional(),
+  fee_lines: z.array(feeLineSchema).max(20).optional(),
+  shipping_lines: z.array(shippingLineSchema).max(10).optional(),
+  customer_note: z.string().max(2000).optional(),
+});
+
+export const updateWooOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => updateOrderSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    const { id, ...rest } = data;
+    const body: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rest)) {
+      if (v === undefined) continue;
+      body[k] = v;
+    }
+    const updated = await (await import("./woo.server")).wooFetch<WooOrder>({
+      path: `/orders/${id}`,
+      method: "PUT",
+      body,
+      timeoutMs: 15000,
+    });
+    return updated;
+  });
+
