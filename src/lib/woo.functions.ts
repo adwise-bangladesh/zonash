@@ -307,6 +307,66 @@ export const addOrderNote = createServerFn({ method: "POST" })
     return created;
   });
 
+/**
+ * Send an SMS to the order's customer via BulkSMSBD AND log a customer-visible
+ * note on the WooCommerce order so the message is preserved in order history.
+ */
+export const sendCustomerMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        id: z.number().int().positive(),
+        message: z.string().trim().min(1).max(1000),
+        // Optional override phone; otherwise pulled from the order's billing.phone
+        phone: z.string().trim().max(40).optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    const { wooFetch } = await import("./woo.server");
+
+    // 1) Resolve customer phone from the order if not supplied.
+    let phone = data.phone?.trim();
+    if (!phone) {
+      const order = await wooFetch<WooOrder>({
+        path: `/orders/${data.id}`,
+        timeoutMs: 10000,
+      });
+      phone = order.billing?.phone?.trim() || "";
+    }
+
+    // 2) Send SMS
+    const { sendSms } = await import("./sms.server");
+    const sms = await sendSms({ phone: phone || "", message: data.message });
+
+    // 3) Log to Woo as a customer-visible note (prefixed) so the trail is preserved.
+    const notePrefix = sms.ok ? "📱 SMS sent" : "⚠️ SMS FAILED";
+    const noteBody = `${notePrefix}${phone ? ` → ${phone}` : ""}\n\n${data.message}${
+      sms.ok ? "" : `\n\n(${sms.message})`
+    }`;
+    try {
+      await wooFetch<WooOrderNote>({
+        path: `/orders/${data.id}/notes`,
+        method: "POST",
+        body: { note: noteBody, customer_note: sms.ok },
+        timeoutMs: 10000,
+      });
+    } catch (e) {
+      console.error("sendCustomerMessage: note upsert failed", e);
+    }
+
+    return {
+      ok: sms.ok,
+      phone,
+      providerMessage: sms.message,
+      responseCode: sms.responseCode,
+    };
+  });
+
+
+
 
 
 
