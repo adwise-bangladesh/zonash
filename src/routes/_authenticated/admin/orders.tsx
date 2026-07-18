@@ -186,9 +186,11 @@ function AdminOrders() {
   });
 
   const orders = q.data?.orders ?? [];
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] });
-    qc.invalidateQueries({ queryKey: ["admin", "woo-order-statuses"] });
+  const invalidate = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] }),
+      qc.invalidateQueries({ queryKey: ["admin", "woo-order-statuses"] }),
+    ]);
   };
 
   // Track in-flight status changes per order id so rows can render
@@ -200,12 +202,20 @@ function AdminOrders() {
     onMutate: (v) => {
       setPendingStatus((m) => ({ ...m, [v.id]: v.status }));
     },
-    onSuccess: (_d, v) => {
-      invalidate();
+    onSuccess: async (_d, v) => {
+      // Await refetch so the row's real data reflects the new status
+      // BEFORE we clear the optimistic override — prevents the brief
+      // flash back to the old status.
+      await invalidate();
       toast.success(`Marked ${humanize(v.status)}`);
+      setPendingStatus((m) => {
+        const next = { ...m };
+        delete next[v.id];
+        return next;
+      });
     },
-    onError: (e: Error) => toast.error(e.message),
-    onSettled: (_d, _e, v) => {
+    onError: (e: Error, v) => {
+      toast.error(e.message);
       setPendingStatus((m) => {
         const next = { ...m };
         delete next[v.id];
