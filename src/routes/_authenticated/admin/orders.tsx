@@ -1184,20 +1184,37 @@ function OrderRow({
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col items-stretch justify-center gap-1 min-w-0 self-stretch"
       >
-        <select
-          value={o.status}
-          onChange={(e) => onUpdateStatus(e.target.value)}
-          className={`w-full h-7 rounded-md border px-1.5 text-[11px] font-medium capitalize outline-none ${statusCls}`}
-        >
-          {!wooStatuses.some((s) => s.slug === o.status) && (
-            <option value={o.status}>{humanize(o.status)}</option>
+        <div className="relative">
+          <select
+            value={effectiveStatus}
+            disabled={isStatusUpdating}
+            onChange={(e) => onUpdateStatus(e.target.value)}
+            aria-busy={isStatusUpdating}
+            className={`w-full h-7 rounded-md border px-1.5 pr-6 text-[11px] font-medium capitalize outline-none transition-all duration-200 ${statusCls} ${
+              isStatusUpdating
+                ? "opacity-80 cursor-wait ring-2 ring-primary/30"
+                : "focus:ring-2 focus:ring-primary/30"
+            }`}
+          >
+            {!wooStatuses.some((s) => s.slug === effectiveStatus) && (
+              <option value={effectiveStatus}>{humanize(effectiveStatus)}</option>
+            )}
+            {wooStatuses.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {isStatusUpdating && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center"
+            >
+              <Loader2 className="h-3 w-3 animate-spin text-current opacity-80" />
+            </span>
           )}
-          {wooStatuses.map((s) => (
-            <option key={s.slug} value={s.slug}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        </div>
+
         {hasCourier ? (
           <a
             href={`https://steadfast.com.bd/t/${tracking || ops?.tracking_number}`}
