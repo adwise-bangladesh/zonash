@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminBackfillRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
 import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
+import { Route as ApiPublicWebhooksSteadfastRouteImport } from './routes/api/public/webhooks/steadfast'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -115,6 +116,12 @@ const ApiPublicWebhooksWooRoute = ApiPublicWebhooksWooRouteImport.update({
   path: '/api/public/webhooks/woo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksSteadfastRoute =
+  ApiPublicWebhooksSteadfastRouteImport.update({
+    id: '/api/public/webhooks/steadfast',
+    path: '/api/public/webhooks/steadfast',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesByTo {
@@ -149,6 +157,7 @@ export interface FileRoutesByTo {
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesById {
@@ -169,6 +178,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRouteTypes {
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/admin/backfill'
     | '/admin/orders'
     | '/admin/'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin/backfill'
     | '/admin/orders'
     | '/admin'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   id:
     | '__root__'
@@ -225,6 +237,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/backfill'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/'
+    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesById: FileRoutesById
 }
@@ -239,6 +252,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
 
@@ -363,6 +377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksWooRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/steadfast': {
+      id: '/api/public/webhooks/steadfast'
+      path: '/api/public/webhooks/steadfast'
+      fullPath: '/api/public/webhooks/steadfast'
+      preLoaderRoute: typeof ApiPublicWebhooksSteadfastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -410,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
 export const routeTree = rootRouteImport

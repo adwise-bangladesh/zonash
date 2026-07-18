@@ -98,9 +98,6 @@ export const Route = createFileRoute("/api/public/webhooks/steadfast")({
         if (payload.notification_type === "delivery_status" && payload.status) {
           update.steadfast_status = payload.status;
         }
-        if (payload.tracking_message) {
-          update.internal_notes_last_tracking = null; // reserved
-        }
 
         const { error } = await supabaseAdmin
           .from("order_ops")
