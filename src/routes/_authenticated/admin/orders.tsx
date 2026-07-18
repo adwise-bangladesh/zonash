@@ -990,8 +990,8 @@ function OrderRow({
         )}
       </div>
 
-      {/* Verification — auto-loaded stats */}
-      <div className="min-w-0 text-[11px] leading-tight">
+      {/* Verification — auto-loaded; click pill for full report */}
+      <div className="min-w-0 text-[11px] leading-tight" onClick={(e) => e.stopPropagation()}>
         {!phone ? (
           <span className="italic text-muted-foreground">No phone</span>
         ) : verify.loading ? (
@@ -1006,15 +1006,42 @@ function OrderRow({
             Verify error
           </span>
         ) : overall ? (
-          <span
-            title={`Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0} · Total ${overall.total_parcels ?? 0}`}
-            className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
-          >
-            {ratio}% success
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              title="View full courier history"
+              className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 hover:brightness-95 ${ratioCls}`}
+            >
+              {ratio}% success
+            </button>
+            {totalOrders >= 1 && (
+              <button
+                type="button"
+                onClick={onOpenCustomer}
+                title="View all orders from this customer"
+                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+              >
+                {totalOrders} order{totalOrders === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
         ) : (
-          <span className="italic text-muted-foreground">No history</span>
+          <div className="flex flex-col items-start gap-1">
+            <span className="italic text-muted-foreground">No history</span>
+            {totalOrders >= 1 && (
+              <button
+                type="button"
+                onClick={onOpenCustomer}
+                title="View all orders from this customer"
+                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+              >
+                {totalOrders} order{totalOrders === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
         )}
+
       </div>
 
       {/* Total */}
