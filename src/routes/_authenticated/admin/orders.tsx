@@ -3,7 +3,10 @@
  * SKU-driven items column, address on the row, and price + delivery totals.
  */
 import { useEffect, useMemo, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z as zSearch } from "zod";
+
 import { useServerFn } from "@tanstack/react-start";
 import {
   useMutation,
