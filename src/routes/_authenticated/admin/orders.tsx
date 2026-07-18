@@ -200,8 +200,8 @@ function AdminOrders() {
   const statsMap = statsQ.data ?? {};
 
   // Bulk actions ------------------------------------------------------------
-  const detailFnBulk = useServerFn(getWooOrder);
   const sendSfFn = useServerFn(sendOrderToSteadfast);
+
 
   const selectedOrders = useMemo(
     () => orders.filter((o) => selected.has(o.id)),
