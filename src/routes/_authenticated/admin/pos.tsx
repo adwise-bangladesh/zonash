@@ -604,7 +604,7 @@ function PosPage() {
               <button
                 type="button"
                 disabled={!canSubmit || submit.isPending}
-                onClick={() => submit.mutate("processing")}
+                onClick={() => submit.mutate("pending")}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary text-[12.5px] font-semibold text-primary-foreground shadow-sm hover:brightness-110 disabled:opacity-50"
               >
                 {submit.isPending ? (
@@ -612,7 +612,7 @@ function PosPage() {
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
-                Confirm order
+                Create order
               </button>
             </div>
           </div>
