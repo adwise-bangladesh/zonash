@@ -600,8 +600,11 @@ function OrderDrawer({
                   <div className="text-[10px] uppercase text-muted-foreground">
                     Customer
                   </div>
-                  <div className="font-medium">
-                    {o.billing.first_name} {o.billing.last_name}
+                  <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                    <span>
+                      {o.billing.first_name} {o.billing.last_name}
+                    </span>
+                    <CustomerBadge rating={rating} />
                   </div>
                   <div className="text-[12px] text-muted-foreground">
                     {o.billing.email}
@@ -609,7 +612,14 @@ function OrderDrawer({
                   <div className="text-[12px] text-muted-foreground">
                     {o.billing.phone}
                   </div>
+                  {customerStat && (
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      {customerStat.total} orders · {customerStat.completed} completed ·{" "}
+                      {customerStat.cancelled} cancelled
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <div className="text-[10px] uppercase text-muted-foreground">
                     Shipping address
