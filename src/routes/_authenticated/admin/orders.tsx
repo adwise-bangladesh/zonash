@@ -11,7 +11,10 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { Search, Loader2, Eye, ShoppingBag, X, Truck } from "lucide-react";
+import {
+  Search, Loader2, Eye, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
+  User, MapPin, Package, Receipt, Clock, Plus, Trash2, Save, Tag,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
@@ -20,6 +23,8 @@ import {
   getWooOrder,
   listOrderStatuses,
   listCustomerOrders,
+  updateWooOrder,
+  listProducts,
 } from "@/lib/woo.functions";
 
 import {
@@ -30,6 +35,7 @@ import {
   type OrderOps,
   type CustomerRating,
 } from "@/lib/ops.functions";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
@@ -531,14 +537,54 @@ function CustomerBadge({ rating }: { rating: CustomerRating }) {
 
 
 
+/* ============================================================ ORDER DRAWER
+   Fully editable order detail — Nori-style collapsible sections.
+   Edits: customer/billing, shipping address, line items (qty/price/remove/add),
+   shipping charge, fees/discount, notes, ops fields, status.
+============================================================ */
+
+type AddressForm = {
+  first_name: string; last_name: string;
+  email?: string; phone?: string;
+  address_1: string; address_2: string;
+  city: string; state: string; postcode: string; country: string;
+};
+
+type LineItemDraft = {
+  id?: number;              // present = existing WC line item
+  product_id?: number;      // present = new item
+  variation_id?: number;
+  name: string;
+  sku?: string;
+  quantity: number;
+  unit_price: number;       // per-unit; used to compute subtotal on save
+  removed?: boolean;
+};
+
+type FeeDraft = { id?: number; name: string; total: string };
+type ShippingLineDraft = { id?: number; method_title: string; total: string };
+
+function emptyAddr(): AddressForm {
+  return { first_name: "", last_name: "", email: "", phone: "", address_1: "", address_2: "", city: "", state: "", postcode: "", country: "" };
+}
+
+function toAddrForm(a: any, includeContact = false): AddressForm {
+  return {
+    first_name: a?.first_name ?? "",
+    last_name: a?.last_name ?? "",
+    email: includeContact ? (a?.email ?? "") : undefined,
+    phone: a?.phone ?? "",
+    address_1: a?.address_1 ?? "",
+    address_2: a?.address_2 ?? "",
+    city: a?.city ?? "",
+    state: a?.state ?? "",
+    postcode: a?.postcode ?? "",
+    country: a?.country ?? "",
+  };
+}
+
 function OrderDrawer({
-  id,
-  onClose,
-  detailFn,
-  statuses,
-  onUpdate,
-  initialOps,
-  customerStat,
+  id, onClose, detailFn, statuses, onUpdate, initialOps, customerStat,
 }: {
   id: number;
   onClose: () => void;
@@ -555,6 +601,43 @@ function OrderDrawer({
   });
   const o = q.data;
 
+  // ---- Editable form state ----
+  const [billing, setBilling] = useState<AddressForm>(emptyAddr());
+  const [shipping, setShipping] = useState<AddressForm>(emptyAddr());
+  const [items, setItems] = useState<LineItemDraft[]>([]);
+  const [fees, setFees] = useState<FeeDraft[]>([]);
+  const [shipLines, setShipLines] = useState<ShippingLineDraft[]>([]);
+  const [customerNote, setCustomerNote] = useState("");
+
+  // Hydrate form when order loads
+  useEffect(() => {
+    if (!o) return;
+    setBilling(toAddrForm(o.billing, true));
+    setShipping(toAddrForm(o.shipping, false));
+    setItems(
+      (o.line_items ?? []).map((li: any) => ({
+        id: li.id,
+        name: li.name,
+        sku: li.sku,
+        quantity: li.quantity,
+        unit_price:
+          Number(li.subtotal ?? li.total ?? 0) / Math.max(1, li.quantity),
+      })),
+    );
+    setFees(
+      (o.fee_lines ?? []).map((f: any) => ({
+        id: f.id, name: f.name ?? "Fee", total: String(f.total ?? "0"),
+      })),
+    );
+    setShipLines(
+      (o.shipping_lines ?? []).map((s: any) => ({
+        id: s.id, method_title: s.method_title ?? "Shipping", total: String(s.total ?? "0"),
+      })),
+    );
+    setCustomerNote(o.customer_note ?? "");
+  }, [o?.id, o?.date_modified]);
+
+  // Ops fields
   const opsFn = useServerFn(updateOrderOps);
   const [courier, setCourier] = useState(initialOps?.courier ?? "");
   const [tracking, setTracking] = useState(initialOps?.tracking_number ?? "");
@@ -585,220 +668,425 @@ function OrderDrawer({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Save order edits (billing/shipping/items/fees/shipping charge/note)
+  const updateFn = useServerFn(updateWooOrder);
+  const saveOrder = useMutation({
+    mutationFn: async () => {
+      // Build line_items payload:
+      //  - existing kept: { id, quantity, subtotal, total }
+      //  - existing removed: { id, quantity: 0 }
+      //  - new: { product_id, quantity, subtotal, total }
+      const li = items
+        .filter((i) => !(i.removed && !i.id))
+        .map((i) => {
+          if (i.removed && i.id) return { id: i.id, quantity: 0 };
+          const line = (i.unit_price * i.quantity).toFixed(2);
+          if (i.id) return { id: i.id, quantity: i.quantity, subtotal: line, total: line };
+          return {
+            product_id: i.product_id ?? 0,
+            variation_id: i.variation_id,
+            quantity: i.quantity,
+            subtotal: line,
+            total: line,
+          };
+        });
+
+      return updateFn({
+        data: {
+          id,
+          billing: { ...billing },
+          shipping: {
+            first_name: shipping.first_name, last_name: shipping.last_name,
+            address_1: shipping.address_1, address_2: shipping.address_2,
+            city: shipping.city, state: shipping.state,
+            postcode: shipping.postcode, country: shipping.country,
+            phone: shipping.phone,
+          },
+          line_items: li,
+          fee_lines: fees.map((f) => ({ id: f.id, name: f.name, total: f.total })),
+          shipping_lines: shipLines.map((s) => ({
+            id: s.id, method_title: s.method_title, method_id: "flat_rate", total: s.total,
+          })),
+          customer_note: customerNote,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Order updated");
+      qc.invalidateQueries({ queryKey: ["admin", "woo-order", id] });
+      qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const rating = ratingFromStats(customerStat);
 
+  // Computed totals preview
+  const itemsSubtotal = items
+    .filter((i) => !i.removed)
+    .reduce((s, i) => s + i.unit_price * i.quantity, 0);
+  const shippingTotal = shipLines.reduce((s, l) => s + Number(l.total || 0), 0);
+  const feesTotal = fees.reduce((s, f) => s + Number(f.total || 0), 0);
+  const grandTotal = itemsSubtotal + shippingTotal + feesTotal;
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <button
-        aria-label="Close"
-        onClick={onClose}
-        className="flex-1 bg-foreground/40 backdrop-blur-sm"
-      />
-      <aside className="flex h-full w-full max-w-xl flex-col border-l border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <button aria-label="Close" onClick={onClose} className="flex-1 bg-foreground/40 backdrop-blur-sm" />
+      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-background shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-input px-4 py-3">
           <div>
-            <div className="text-[11px] uppercase text-muted-foreground">
-              Order
-            </div>
-            <div className="text-[16px] font-semibold">
-              #{o?.number ?? "…"}
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Order</div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">#{o?.number ?? "…"}</h2>
+              {o && <StatusBadge status={o.status} />}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => saveOrder.mutate()}
+              disabled={saveOrder.isPending || !o}
+              className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-3 text-[12px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+            >
+              {saveOrder.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Save changes
+            </button>
+            <button onClick={onClose} className="rounded-md border border-input p-1.5 hover:bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 text-sm">
-          {q.isLoading || !o ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Customer
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 font-medium">
-                    <span>
-                      {o.billing.first_name} {o.billing.last_name}
-                    </span>
-                    <CustomerBadge rating={rating} />
-                  </div>
-                  <div className="text-[12px] text-muted-foreground">
-                    {o.billing.email}
-                  </div>
-                  <div className="text-[12px] text-muted-foreground">
-                    {o.billing.phone}
-                  </div>
-                  {customerStat && (
-                    <div className="mt-1 text-[11px] text-muted-foreground">
-                      {customerStat.total} orders · {customerStat.completed} completed ·{" "}
-                      {customerStat.cancelled} cancelled
-                    </div>
-                  )}
-                </div>
 
-                <div>
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Shipping address
-                  </div>
-                  <div>{o.shipping.address_1}</div>
-                  {o.shipping.address_2 && <div>{o.shipping.address_2}</div>}
-                  <div className="text-[12px] text-muted-foreground">
-                    {[o.shipping.city, o.shipping.state, o.shipping.postcode]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
-                  <div className="text-[12px] text-muted-foreground">
-                    {o.shipping.country}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 text-[10px] uppercase text-muted-foreground">
-                  Items
-                </div>
-                <div className="rounded-md border border-border">
-                  {o.line_items.map((li: any) => (
-                    <div
-                      key={li.id}
-                      className="flex items-start justify-between gap-3 border-b border-border/60 px-3 py-2 last:border-b-0"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-mono text-[12px]">
-                          {li.sku || `#${li.product_id}`}
-                        </div>
-                        <div className="truncate text-[11px] text-muted-foreground">
-                          {li.name} × {li.quantity}
-                        </div>
-                      </div>
-                      <span className="shrink-0 font-mono tabular-nums">
-                        {money(o.currency, li.total)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1 border-t border-border pt-3 text-[13px]">
-                <Row label="Items subtotal">
-                  {money(
-                    o.currency,
-                    Number(o.total) - Number(o.shipping_total || 0),
-                  )}
-                </Row>
-                <Row label="Delivery charge">
-                  {money(o.currency, o.shipping_total || 0)}
-                </Row>
-                <div className="flex items-center justify-between pt-1 text-base font-semibold">
-                  <span>Total</span>
-                  <span className="tabular-nums">
-                    {money(o.currency, o.total)}
-                  </span>
-                </div>
-                <div className="pt-1 text-[11px] text-muted-foreground">
-                  Payment: {o.payment_method_title || o.payment_method}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-border bg-muted/20 p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Operations
-                  </div>
+        {q.isLoading || !o ? (
+          <div className="flex flex-1 items-center gap-2 p-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading order…
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            {/* Workflow / status */}
+            <Section title="Workflow" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
+              <div className="flex flex-wrap gap-1.5">
+                {statuses.map((s) => (
                   <button
-                    onClick={() => saveOps.mutate()}
-                    disabled={saveOps.isPending}
-                    className="inline-flex items-center gap-1 rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+                    key={s.slug}
+                    onClick={() => onUpdate(s.slug)}
+                    className={`inline-flex h-7 items-center rounded-md border px-2 text-[11px] font-medium capitalize ${
+                      o.status === s.slug
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-input bg-background hover:bg-muted"
+                    }`}
                   >
-                    {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                    Save
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            {/* Customer / Billing */}
+            <Section
+              title="Customer"
+              icon={<User className="h-3.5 w-3.5" />}
+              defaultOpen
+              rightSlot={<CustomerBadge rating={rating} />}
+            >
+              {customerStat && (
+                <div className="mb-2 text-[11px] text-muted-foreground">
+                  {customerStat.total} orders · {customerStat.completed} completed · {customerStat.cancelled} cancelled
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <TextField label="First name" value={billing.first_name} onChange={(v) => setBilling({ ...billing, first_name: v })} />
+                <TextField label="Last name" value={billing.last_name} onChange={(v) => setBilling({ ...billing, last_name: v })} />
+                <TextField label="Email" value={billing.email ?? ""} onChange={(v) => setBilling({ ...billing, email: v })} />
+                <TextField label="Phone" value={billing.phone ?? ""} onChange={(v) => setBilling({ ...billing, phone: v })} />
+                <TextField label="Address line 1" value={billing.address_1} onChange={(v) => setBilling({ ...billing, address_1: v })} full />
+                <TextField label="Address line 2" value={billing.address_2} onChange={(v) => setBilling({ ...billing, address_2: v })} full />
+                <TextField label="City" value={billing.city} onChange={(v) => setBilling({ ...billing, city: v })} />
+                <TextField label="State / Division" value={billing.state} onChange={(v) => setBilling({ ...billing, state: v })} />
+                <TextField label="Postcode" value={billing.postcode} onChange={(v) => setBilling({ ...billing, postcode: v })} />
+                <TextField label="Country (ISO2)" value={billing.country} onChange={(v) => setBilling({ ...billing, country: v.toUpperCase() })} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShipping({ ...billing, email: undefined })}
+                className="mt-2 text-[11px] text-muted-foreground underline hover:text-foreground"
+              >
+                Copy to shipping address
+              </button>
+            </Section>
+
+            {/* Shipping address */}
+            <Section title="Shipping address" icon={<MapPin className="h-3.5 w-3.5" />} defaultOpen>
+              <div className="grid grid-cols-2 gap-2">
+                <TextField label="First name" value={shipping.first_name} onChange={(v) => setShipping({ ...shipping, first_name: v })} />
+                <TextField label="Last name" value={shipping.last_name} onChange={(v) => setShipping({ ...shipping, last_name: v })} />
+                <TextField label="Phone" value={shipping.phone ?? ""} onChange={(v) => setShipping({ ...shipping, phone: v })} full />
+                <TextField label="Address line 1" value={shipping.address_1} onChange={(v) => setShipping({ ...shipping, address_1: v })} full />
+                <TextField label="Address line 2" value={shipping.address_2} onChange={(v) => setShipping({ ...shipping, address_2: v })} full />
+                <TextField label="City" value={shipping.city} onChange={(v) => setShipping({ ...shipping, city: v })} />
+                <TextField label="State / Division" value={shipping.state} onChange={(v) => setShipping({ ...shipping, state: v })} />
+                <TextField label="Postcode" value={shipping.postcode} onChange={(v) => setShipping({ ...shipping, postcode: v })} />
+                <TextField label="Country (ISO2)" value={shipping.country} onChange={(v) => setShipping({ ...shipping, country: v.toUpperCase() })} />
+              </div>
+            </Section>
+
+            {/* Items — editable */}
+            <Section
+              title={`Items (${items.filter((i) => !i.removed).length})`}
+              icon={<Package className="h-3.5 w-3.5" />}
+              defaultOpen
+            >
+              <div className="space-y-2">
+                {items.map((it, idx) => (
+                  <div
+                    key={it.id ?? `new-${idx}`}
+                    className={`flex flex-wrap items-end gap-2 rounded-md border border-input p-2 ${it.removed ? "opacity-40 line-through" : ""}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[12px] font-medium">{it.name || `Product #${it.product_id}`}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">
+                        {it.sku ? it.sku : it.id ? `#${it.id}` : "new"}
+                      </div>
+                    </div>
+                    <label className="text-[10px] text-muted-foreground">
+                      Qty
+                      <input
+                        type="number" min="0"
+                        value={it.quantity}
+                        disabled={it.removed}
+                        onChange={(e) =>
+                          setItems((arr) => arr.map((x, i) => i === idx ? { ...x, quantity: Math.max(0, Number(e.target.value)) } : x))
+                        }
+                        className="mt-0.5 block h-8 w-20 rounded-md border border-input bg-background px-2 text-[12px]"
+                      />
+                    </label>
+                    <label className="text-[10px] text-muted-foreground">
+                      Unit price
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={it.unit_price}
+                        disabled={it.removed}
+                        onChange={(e) =>
+                          setItems((arr) => arr.map((x, i) => i === idx ? { ...x, unit_price: Number(e.target.value) } : x))
+                        }
+                        className="mt-0.5 block h-8 w-24 rounded-md border border-input bg-background px-2 text-[12px]"
+                      />
+                    </label>
+                    <div className="text-right text-[12px] font-semibold tabular-nums">
+                      {money(o.currency, it.unit_price * it.quantity)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setItems((arr) =>
+                          arr
+                            .map((x, i) => i === idx ? { ...x, removed: !x.removed } : x)
+                            .filter((x, i) => !(i === idx && !x.id && x.removed))
+                        )
+                      }
+                      className="rounded-md border border-input p-1.5 text-destructive hover:bg-destructive/10"
+                      title={it.removed ? "Restore" : "Remove"}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                <AddItemInline
+                  currency={o.currency}
+                  onAdd={(p) => setItems((arr) => [...arr, p])}
+                />
+              </div>
+            </Section>
+
+            {/* Totals — shipping charge + fees/discount */}
+            <Section title="Totals & discounts" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
+              {/* Shipping charge */}
+              <div className="mb-3">
+                <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
+                {shipLines.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShipLines([{ method_title: "Delivery", total: "0" }])}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[11px] hover:bg-muted"
+                  >
+                    <Plus className="h-3 w-3" /> Add delivery charge
+                  </button>
+                )}
+                {shipLines.map((s, i) => (
+                  <div key={s.id ?? `s-${i}`} className="mt-1 flex items-end gap-2">
+                    <TextField
+                      label="Method"
+                      value={s.method_title}
+                      onChange={(v) => setShipLines((a) => a.map((x, j) => (j === i ? { ...x, method_title: v } : x)))}
+                    />
+                    <label className="text-[10px] text-muted-foreground">
+                      Amount
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={s.total}
+                        onChange={(e) => setShipLines((a) => a.map((x, j) => (j === i ? { ...x, total: e.target.value } : x)))}
+                        className="mt-0.5 block h-8 w-28 rounded-md border border-input bg-background px-2 text-[12px]"
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Fees / discounts */}
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fees / discounts</div>
+                  <button
+                    type="button"
+                    onClick={() => setFees((a) => [...a, { name: "Discount", total: "-0" }])}
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[10px] hover:bg-muted"
+                  >
+                    <Plus className="h-3 w-3" /> Add line
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="col-span-1">
-                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
-                      Courier
-                    </span>
-                    <input
-                      value={courier}
-                      onChange={(e) => setCourier(e.target.value)}
-                      placeholder="Pathao, Steadfast, RedX…"
-                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+                <p className="mb-2 text-[10px] text-muted-foreground">Use a negative amount for a discount (e.g. <span className="font-mono">-100</span>).</p>
+                {fees.map((f, i) => (
+                  <div key={f.id ?? `f-${i}`} className="mt-1 flex items-end gap-2">
+                    <TextField
+                      label="Name"
+                      value={f.name}
+                      onChange={(v) => setFees((a) => a.map((x, j) => (j === i ? { ...x, name: v } : x)))}
                     />
-                  </label>
-                  <label className="col-span-1">
-                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
-                      Tracking #
-                    </span>
-                    <input
-                      value={tracking}
-                      onChange={(e) => setTracking(e.target.value)}
-                      placeholder="Consignment / AWB"
-                      className="h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[12px] outline-none focus:border-ring"
-                    />
-                  </label>
-                  <label className="col-span-2">
-                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
-                      Pickup slot
-                    </span>
-                    <input
-                      value={pickup}
-                      onChange={(e) => setPickup(e.target.value)}
-                      placeholder="e.g. 20 Jul, 2–4 PM"
-                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
-                    />
-                  </label>
-                  <label className="col-span-2">
-                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
-                      Internal notes
-                    </span>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      placeholder="Only visible to staff — not shown to the customer."
-                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px] outline-none focus:border-ring"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 text-[10px] uppercase text-muted-foreground">
-                  Change status
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {statuses.map((s) => (
+                    <label className="text-[10px] text-muted-foreground">
+                      Amount
+                      <input
+                        type="number" step="0.01"
+                        value={f.total}
+                        onChange={(e) => setFees((a) => a.map((x, j) => (j === i ? { ...x, total: e.target.value } : x)))}
+                        className="mt-0.5 block h-8 w-28 rounded-md border border-input bg-background px-2 text-[12px]"
+                      />
+                    </label>
                     <button
-                      key={s.slug}
-                      onClick={() => onUpdate(s.slug)}
-                      className={`rounded-md border border-input px-2 py-1 text-[12px] hover:bg-muted ${
-                        o.status === s.slug ? "bg-foreground text-background" : ""
-                      }`}
+                      type="button"
+                      onClick={() => setFees((a) => a.filter((_, j) => j !== i))}
+                      className="rounded-md border border-input p-1.5 text-destructive hover:bg-destructive/10"
                     >
-                      {s.name}
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
+
+              {/* Preview totals */}
+              <div className="mt-4 space-y-1 rounded-md border border-input bg-muted/30 p-3 text-[13px]">
+                <TotalRow label="Items subtotal">{money(o.currency, itemsSubtotal)}</TotalRow>
+                <TotalRow label="Delivery">{money(o.currency, shippingTotal)}</TotalRow>
+                {feesTotal !== 0 && <TotalRow label="Fees / discounts">{money(o.currency, feesTotal)}</TotalRow>}
+                <div className="flex items-center justify-between pt-1 text-base font-semibold">
+                  <span>Preview total</span>
+                  <span className="tabular-nums">{money(o.currency, grandTotal)}</span>
+                </div>
+                <p className="pt-1 text-[10px] text-muted-foreground">
+                  WooCommerce will recalculate the authoritative total after save (current: {money(o.currency, o.total)}).
+                </p>
+              </div>
+            </Section>
+
+            {/* Customer note */}
+            <Section title="Customer note" icon={<Tag className="h-3.5 w-3.5" />}>
+              <textarea
+                value={customerNote}
+                onChange={(e) => setCustomerNote(e.target.value)}
+                rows={2}
+                placeholder="Visible to the customer"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
+              />
+            </Section>
+
+            {/* Operations (dashboard-owned) */}
+            <Section title="Operations" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
+              <div className="grid grid-cols-2 gap-2">
+                <TextField label="Courier" value={courier} onChange={setCourier} />
+                <TextField label="Tracking #" value={tracking} onChange={setTracking} />
+                <TextField label="Pickup slot" value={pickup} onChange={setPickup} full />
+              </div>
+              <label className="mt-2 block">
+                <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">Internal notes</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Staff only — not shown to the customer"
+                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
+                />
+              </label>
+              <button
+                onClick={() => saveOps.mutate()}
+                disabled={saveOps.isPending}
+                className="mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
+              >
+                {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                Save operations
+              </button>
+            </Section>
+
+            {/* Timeline */}
+            <Section title="Timeline" icon={<Clock className="h-3.5 w-3.5" />}>
+              <ul className="space-y-1 text-[12px]">
+                <li><span className="text-muted-foreground">Placed:</span> {new Date(o.date_created).toLocaleString()}</li>
+                {o.date_paid && <li><span className="text-muted-foreground">Paid:</span> {new Date(o.date_paid).toLocaleString()}</li>}
+                {o.date_completed && <li><span className="text-muted-foreground">Completed:</span> {new Date(o.date_completed).toLocaleString()}</li>}
+                <li><span className="text-muted-foreground">Last modified:</span> {new Date(o.date_modified).toLocaleString()}</li>
+                <li><span className="text-muted-foreground">Payment:</span> {o.payment_method_title || o.payment_method || "—"}</li>
+              </ul>
+            </Section>
+          </div>
+        )}
       </aside>
     </div>
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Section({
+  title, icon, children, defaultOpen = false, rightSlot,
+}: {
+  title: string; icon: ReactNode; children: ReactNode; defaultOpen?: boolean; rightSlot?: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-input">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/30"
+      >
+        <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {icon} {title}
+        </span>
+        <span className="flex items-center gap-2">
+          {rightSlot}
+          {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        </span>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
+function TextField({
+  label, value, onChange, full,
+}: {
+  label: string; value: string; onChange: (v: string) => void; full?: boolean;
+}) {
+  return (
+    <label className={full ? "col-span-2 block" : "block"}>
+      <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+      />
+    </label>
+  );
+}
+
+function TotalRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between text-muted-foreground">
       <span>{label}</span>
@@ -806,6 +1094,82 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
+
+/** Inline "add product" — searches Woo products and appends a new line item. */
+function AddItemInline({
+  currency, onAdd,
+}: {
+  currency: string;
+  onAdd: (item: LineItemDraft) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchFn = useServerFn(listProducts);
+  const results = useQuery({
+    queryKey: ["admin", "add-item-search", query],
+    queryFn: () => searchFn({ data: { search: query, perPage: 8 } }),
+    enabled: open && query.trim().length >= 2,
+    staleTime: 30_000,
+  });
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex h-8 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[11px] hover:bg-muted"
+      >
+        <Plus className="h-3 w-3" /> Add product
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-md border border-input p-2">
+      <div className="mb-1 flex items-center gap-2">
+        <Search className="h-3.5 w-3.5 text-muted-foreground" />
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search product name or SKU…"
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px]"
+        />
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setQuery(""); }}
+          className="rounded-md border border-input p-1.5 hover:bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {results.isLoading && query.trim().length >= 2 && (
+        <div className="flex items-center gap-1 py-1 text-[11px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Searching…
+        </div>
+      )}
+      {(results.data?.products ?? []).map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => {
+            onAdd({
+              product_id: p.id,
+              name: p.name,
+              quantity: 1,
+              unit_price: Number(p.price || p.regular_price || 0),
+            });
+            setOpen(false); setQuery("");
+          }}
+          className="flex w-full items-center gap-2 border-t border-input px-1 py-1.5 text-left text-[12px] first:border-t-0 hover:bg-muted"
+        >
+          <div className="min-w-0 flex-1 truncate">{p.name}</div>
+          <div className="tabular-nums text-muted-foreground">{money(currency, Number(p.price || 0))}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 
 function CustomerOrdersDrawer({
   email,
