@@ -26,6 +26,11 @@ export function MobileBottomNav() {
   const { count } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  // Hide on admin surfaces — the admin shell has its own chrome.
+  if (pathname.startsWith("/admin")) return null;
+
+
+
   return (
     <>
       {/* Spacer so page content isn't hidden behind the fixed nav on mobile */}
