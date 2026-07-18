@@ -144,14 +144,18 @@ function AuthPage() {
     <div className="min-h-screen bg-background">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* ── Left / brand panel ──────────────────────────────────────── */}
-        <aside className="relative hidden overflow-hidden lg:block" style={{ backgroundColor: "#06131a" }}>
+        <aside
+          className="relative hidden overflow-hidden lg:block"
+          style={{
+            backgroundColor: "oklch(0.16 0.04 230)",
+          }}
+        >
           {/* Rich, layered canvas — brand gradient + aurora + dotted grid */}
           <div
             className="absolute inset-0"
             style={{
-              backgroundColor: "#06131a",
               backgroundImage:
-                "radial-gradient(1200px 600px at 0% 0%, rgba(34,211,238,0.28), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(14,165,233,0.22), transparent 60%), linear-gradient(160deg, #06131a 0%, #0a1f2a 55%, #061218 100%)",
+                "radial-gradient(1200px 600px at 0% 0%, color-mix(in oklab, var(--primary) 45%, transparent), transparent 60%), radial-gradient(900px 500px at 100% 100%, color-mix(in oklab, var(--primary-glow) 38%, transparent), transparent 60%), linear-gradient(160deg, oklch(0.18 0.05 230) 0%, oklch(0.14 0.045 235) 55%, oklch(0.11 0.035 240) 100%)",
             }}
             aria-hidden
           />
@@ -168,15 +172,21 @@ function AuthPage() {
             }}
             aria-hidden
           />
-          {/* Aurora blobs */}
+          {/* Aurora blobs — brand primary + glow */}
           <div
             className="absolute -left-24 -top-24 h-96 w-96 rounded-full blur-3xl"
-            style={{ backgroundColor: "rgba(34,211,238,0.28)" }}
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--primary) 55%, transparent)",
+            }}
             aria-hidden
           />
           <div
             className="absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
-            style={{ backgroundColor: "rgba(14,165,233,0.22)" }}
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--primary-glow) 45%, transparent)",
+            }}
             aria-hidden
           />
 
@@ -254,13 +264,33 @@ function AuthPage() {
                           </div>
                         </div>
                         <span
-                          className={
-                            "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider " +
-                            (r.tone === "emerald"
-                              ? "bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20"
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ring-1"
+                          style={
+                            r.tone === "emerald"
+                              ? {
+                                  backgroundColor:
+                                    "color-mix(in oklab, #34d399 12%, transparent)",
+                                  color: "#6ee7b7",
+                                  borderColor: "transparent",
+                                  boxShadow:
+                                    "inset 0 0 0 1px color-mix(in oklab, #34d399 25%, transparent)",
+                                }
                               : r.tone === "cyan"
-                                ? "bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20"
-                                : "bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/20")
+                                ? {
+                                    backgroundColor:
+                                      "color-mix(in oklab, var(--primary) 18%, transparent)",
+                                    color:
+                                      "color-mix(in oklab, var(--primary-glow) 90%, white)",
+                                    boxShadow:
+                                      "inset 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent)",
+                                  }
+                                : {
+                                    backgroundColor:
+                                      "color-mix(in oklab, #fbbf24 12%, transparent)",
+                                    color: "#fcd34d",
+                                    boxShadow:
+                                      "inset 0 0 0 1px color-mix(in oklab, #fbbf24 25%, transparent)",
+                                  }
                           }
                         >
                           {r.tag}
@@ -292,7 +322,7 @@ function AuthPage() {
                         style={{
                           height: `${h}%`,
                           background:
-                            "linear-gradient(180deg, #22d3ee 0%, rgba(34,211,238,0.35) 100%)",
+                            "linear-gradient(180deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 30%, transparent) 100%)",
                         }}
                       />
                     ))}
