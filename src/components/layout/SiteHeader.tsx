@@ -1,0 +1,104 @@
+import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Search, ShoppingBag, User, Heart } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
+import { useCart } from "@/lib/cart";
+
+export function SiteHeader() {
+  const [q, setQ] = useState("");
+  const navigate = useNavigate();
+  const { count: cartCount } = useCart();
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    navigate({ to: "/products", search: term ? { q: term } : {} });
+  };
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+      {/* Mobile */}
+      <div className="container-page flex h-12 items-center gap-2 md:hidden">
+        <Link to="/" aria-label="Home" className="shrink-0">
+          <Logo />
+        </Link>
+        <div className="min-w-0 flex-1" />
+        <div className="flex shrink-0 items-center gap-1">
+          <Link to="/products" aria-label="Search" className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted">
+            <Search className="h-5 w-5" />
+          </Link>
+          <Link
+            to="/cart"
+            aria-label="Cart"
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted"
+          >
+            <ShoppingBag className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+
+      {/* Desktop */}
+      <div className="container-page hidden h-14 items-center gap-4 md:flex">
+        <Link to="/" aria-label="Home" className="shrink-0">
+          <Logo />
+        </Link>
+        <form onSubmit={submit} className="flex flex-1 items-center" role="search">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search for jewelry, collections and more"
+              aria-label="Search products"
+              className="h-9 w-full rounded-[3px] border border-border bg-surface-muted pl-9 pr-24 text-[13px] outline-none focus:border-primary focus:bg-background"
+            />
+            <button
+              type="submit"
+              className="absolute right-1 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-[3px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+        <nav className="flex items-center gap-1" aria-label="Account">
+          <Link
+            to="/products"
+            preload="intent"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[3px] text-foreground hover:bg-secondary"
+            aria-label="Wishlist"
+          >
+            <Heart className="h-4 w-4" />
+          </Link>
+          <Link
+            to="/auth"
+            preload="intent"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[3px] px-2.5 text-[13px] font-medium text-foreground hover:bg-secondary"
+          >
+            <User className="h-4 w-4" />
+            <span>Account</span>
+          </Link>
+          <Link
+            to="/cart"
+            preload="intent"
+            className="relative inline-flex h-9 items-center gap-1.5 rounded-[3px] bg-secondary px-2.5 text-[13px] font-medium text-foreground hover:bg-accent"
+            aria-label="Cart"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            <span>Cart</span>
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-[3px] bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
