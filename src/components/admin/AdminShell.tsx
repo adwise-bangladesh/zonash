@@ -26,17 +26,38 @@ type NavItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  badgeKey?: "issues";
 };
 
 const navItems: NavItem[] = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
-  { title: "Returns", url: "/admin/returns", icon: RotateCcw },
+  { title: "Issues", url: "/admin/returns", icon: RotateCcw, badgeKey: "issues" },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "My profile", url: "/admin/profile", icon: UserCircle },
   { title: "Store settings", url: "/admin/settings", icon: Settings },
 ];
+
+function useIssuesCount() {
+  return useQuery({
+    queryKey: ["admin", "issues-count"],
+    queryFn: async () => {
+      try {
+        const { count } = await supabase
+          .from("orders_cache" as any)
+          .select("*", { count: "exact", head: true })
+          .in("status", ["on-hold", "failed", "refunded"]);
+        return count ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 
 export function AdminShell({
   title,
