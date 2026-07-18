@@ -633,12 +633,14 @@ function AdminOrders() {
         />
       )}
 
-      {customerEmail !== null && (
-        <CustomerOrdersDrawer
-          email={customerEmail}
-          onClose={() => setCustomerEmail(null)}
+      {insight !== null && (
+        <CustomerInsightDrawer
+          email={insight.email}
+          phone={insight.phone}
+          name={insight.name}
+          onClose={() => setInsight(null)}
           onOpenOrder={(id) => {
-            setCustomerEmail(null);
+            setInsight(null);
             setOpenId(id);
           }}
         />
