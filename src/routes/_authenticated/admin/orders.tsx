@@ -388,9 +388,6 @@ function AdminOrders() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <StatusBadge status={o.status} />
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {o.payment_method_title || o.payment_method || "—"}
-                    </span>
                   </div>
                   <div className="flex justify-end gap-1">
                     <select
