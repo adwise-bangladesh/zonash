@@ -574,18 +574,54 @@ function AdminOrders() {
           Array.from({ length: 8 }).map((_, i) => (
             <div
               key={`sk-${i}`}
-              className="flex items-center gap-3 border-b border-input px-3 py-3"
+              style={{ animationDelay: `${i * 40}ms` }}
+              className="skeleton-row-fade grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0"
             >
-              <div className="h-3.5 w-3.5 rounded bg-muted animate-pulse shrink-0" />
-              <div className="h-3 w-14 rounded bg-muted animate-pulse shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3 w-40 rounded bg-muted animate-pulse" />
-                <div className="h-2.5 w-64 rounded bg-muted animate-pulse" />
+              {/* Checkbox */}
+              <div className="pt-1">
+                <div className="skeleton-shimmer h-3.5 w-3.5 rounded-sm" />
               </div>
-              <div className="h-5 w-20 rounded bg-muted animate-pulse" />
-              <div className="h-7 w-40 rounded bg-muted animate-pulse" />
+
+              {/* Date · Order */}
+              <div className="space-y-1.5">
+                <div className="skeleton-shimmer h-3.5 w-16" />
+                <div className="skeleton-shimmer h-2.5 w-20" />
+                <div className="skeleton-shimmer h-2 w-14" />
+              </div>
+
+              {/* Customer */}
+              <div className="min-w-0 space-y-1.5">
+                <div className="skeleton-shimmer h-3.5 w-32" />
+                <div className="skeleton-shimmer h-2.5 w-28" />
+                <div className="skeleton-shimmer h-2.5 w-[85%] max-w-[240px]" />
+              </div>
+
+              {/* Items */}
+              <div className="min-w-0 space-y-1.5">
+                <div className="skeleton-shimmer h-3 w-24" />
+                <div className="skeleton-shimmer h-3 w-20" />
+                <div className="skeleton-shimmer h-2.5 w-14 rounded-full" />
+              </div>
+
+              {/* Verification */}
+              <div>
+                <div className="skeleton-shimmer h-5 w-20 rounded-full" />
+              </div>
+
+              {/* Total */}
+              <div className="flex flex-col items-end space-y-1.5">
+                <div className="skeleton-shimmer h-3.5 w-16" />
+                <div className="skeleton-shimmer h-2.5 w-12" />
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-1.5">
+                <div className="skeleton-shimmer h-7 w-full rounded-md" />
+                <div className="skeleton-shimmer h-7 w-full rounded-md" />
+              </div>
             </div>
           ))}
+
 
         {!q.isLoading && orders.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
