@@ -846,8 +846,8 @@ function OrderRow({
     setSending(true);
     try {
       const r = await sendFn({ data: { wc_order_id: o.id } });
-      setTracking(r.consignment.tracking_code);
-      toast.success(`Sent · ${r.consignment.tracking_code}`);
+      setTracking(r.tracking_code);
+      toast.success(`Sent · ${r.tracking_code}`);
       onInvalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Send failed");
