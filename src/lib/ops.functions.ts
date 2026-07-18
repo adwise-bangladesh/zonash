@@ -114,11 +114,11 @@ export const getCustomerStats = createServerFn({ method: "POST" })
       new Set(data.emails.map((e) => e.toLowerCase().trim()).filter(Boolean)),
     );
     if (emails.length === 0) return {};
+    const map: Record<string, CustomerStat> = {};
     const { data: rows, error } = await supabase.rpc("customer_order_stats", {
       emails,
     });
     if (error) throw new Error(error.message);
-    const map: Record<string, CustomerStat> = {};
     for (const r of (rows ?? []) as {
       email: string;
       total: number | string;
@@ -132,8 +132,46 @@ export const getCustomerStats = createServerFn({ method: "POST" })
         cancelled: Number(r.cancelled || 0),
       };
     }
+
+    // Fallback: for emails not covered by orders_cache (backfill pending),
+    // count from WooCommerce directly. Capped + concurrency-limited.
+    const missing = emails.filter((e) => !map[e] || map[e].total === 0).slice(0, 40);
+    if (missing.length > 0) {
+      const { wooFetch } = await import("./woo.server");
+      const CONC = 5;
+      let idx = 0;
+      async function worker() {
+        while (idx < missing.length) {
+          const my = idx++;
+          const email = missing[my];
+          try {
+            const orders = await wooFetch<{ status: string; billing?: { email?: string } }[]>({
+              path: "/orders",
+              query: { search: email, per_page: 100, status: "any" },
+              timeoutMs: 12000,
+            });
+            const mine = orders.filter(
+              (o) => o.billing?.email?.toLowerCase().trim() === email,
+            );
+            const total = mine.length;
+            const completed = mine.filter((o) => o.status === "completed").length;
+            const cancelled = mine.filter(
+              (o) => o.status === "cancelled" || o.status === "failed" || o.status === "refunded",
+            ).length;
+            if (total > 0) {
+              map[email] = { email, total, completed, cancelled };
+            }
+          } catch (e) {
+            console.error("customer stats woo fallback failed", email, e);
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(CONC, missing.length) }, worker));
+    }
+
     return map;
   });
+
 
 export type CustomerRating = "new" | "average" | "risk" | "perfect";
 
