@@ -322,7 +322,7 @@ function AuthPage() {
                         style={{
                           height: `${h}%`,
                           background:
-                            "linear-gradient(180deg, #22d3ee 0%, rgba(34,211,238,0.35) 100%)",
+                            "linear-gradient(180deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 30%, transparent) 100%)",
                         }}
                       />
                     ))}
