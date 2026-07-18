@@ -27,7 +27,6 @@ import {
   Lock,
   Mail,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from "lucide-react";
 
@@ -145,73 +144,188 @@ function AuthPage() {
     <div className="min-h-screen bg-background">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* ── Left / brand panel ──────────────────────────────────────── */}
-        <aside className="relative hidden overflow-hidden lg:block">
+        <aside className="relative hidden overflow-hidden lg:block" style={{ backgroundColor: "#06131a" }}>
+          {/* Rich, layered canvas — brand gradient + aurora + dotted grid */}
           <div
             className="absolute inset-0"
             style={{
-              background:
-                "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.85) 55%, hsl(var(--primary)/0.65) 100%)",
+              backgroundColor: "#06131a",
+              backgroundImage:
+                "radial-gradient(1200px 600px at 0% 0%, rgba(34,211,238,0.28), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(14,165,233,0.22), transparent 60%), linear-gradient(160deg, #06131a 0%, #0a1f2a 55%, #061218 100%)",
             }}
             aria-hidden
           />
           <div
-            className="absolute inset-0 opacity-[0.15]"
+            className="absolute inset-0 opacity-[0.18]"
             style={{
               backgroundImage:
-                "radial-gradient(circle at 20% 10%, white 1px, transparent 1px), radial-gradient(circle at 70% 40%, white 1px, transparent 1px)",
-              backgroundSize: "36px 36px, 52px 52px",
+                "radial-gradient(circle at center, rgba(255,255,255,0.9) 1px, transparent 1.2px)",
+              backgroundSize: "26px 26px",
+              maskImage:
+                "radial-gradient(ellipse at center, black 40%, transparent 75%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at center, black 40%, transparent 75%)",
             }}
             aria-hidden
           />
+          {/* Aurora blobs */}
+          <div
+            className="absolute -left-24 -top-24 h-96 w-96 rounded-full blur-3xl"
+            style={{ backgroundColor: "rgba(34,211,238,0.28)" }}
+            aria-hidden
+          />
+          <div
+            className="absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
+            style={{ backgroundColor: "rgba(14,165,233,0.22)" }}
+            aria-hidden
+          />
 
-          <div className="relative z-10 flex h-full flex-col justify-between p-12 text-primary-foreground">
+
+          <div className="relative z-10 flex h-full flex-col justify-between p-12 text-white">
+            {/* Brand */}
             <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/15 backdrop-blur-sm ring-1 ring-white/25">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
                 <span className="font-display text-lg font-bold">Z</span>
               </div>
               <div>
-                <div className="font-display text-xl font-semibold leading-none">Zonash</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-primary-foreground/70">
+                <div className="font-display text-xl font-semibold leading-none">
+                  Zonash <span className="text-white/60">Ops</span>
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-white/60">
                   Operations Console
                 </div>
               </div>
             </div>
 
-            <div className="max-w-md space-y-6">
-              <h2 className="font-display text-4xl font-semibold leading-tight">
-                Move fast.
-                <br />
-                Ship every order on time.
-              </h2>
-              <p className="text-primary-foreground/80">
-                A unified dashboard for orders, couriers, customer verification and
-                messaging — built for high-volume commerce teams.
-              </p>
+            {/* Headline + floating mock */}
+            <div className="relative -mt-6">
+              <div className="max-w-md">
+                <h2 className="font-display text-4xl font-semibold leading-[1.1] tracking-tight">
+                  Command center for
+                  <br />
+                  <span className="text-white/80">every order.</span>
+                </h2>
+                <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/60">
+                  Orders, couriers, verification and SMS — orchestrated from a
+                  single high-performance surface.
+                </p>
+              </div>
 
-              <ul className="space-y-3 text-sm text-primary-foreground/90">
-                <li className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 ring-1 ring-white/20">
-                    <Zap className="h-4 w-4" />
-                  </span>
-                  Realtime WooCommerce sync
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 ring-1 ring-white/20">
-                    <ShieldCheck className="h-4 w-4" />
-                  </span>
-                  Role-based access & audit trail
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 ring-1 ring-white/20">
-                    <Sparkles className="h-4 w-4" />
-                  </span>
-                  Bulk courier dispatch & SMS templates
-                </li>
-              </ul>
+              {/* Floating dashboard preview */}
+              <div className="relative mt-10 h-[300px]">
+                {/* Main orders card */}
+                <div
+                  className="absolute left-0 top-0 w-[420px] -rotate-[1.5deg] rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-xl"
+                  style={{ boxShadow: "0 30px 60px -20px rgba(0,0,0,0.6)" }}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                    </div>
+                    <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/50">
+                      Orders · Live
+                    </div>
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { id: "#8291", name: "Gold Filigree Cuff", meta: "Steadfast · Dhaka", tag: "PROCESSING", tone: "amber" },
+                      { id: "#8288", name: "Pearl Pendant Set", meta: "RedX · Chittagong", tag: "SHIPPED", tone: "cyan" },
+                      { id: "#8285", name: "Amethyst Studs", meta: "Pathao · Sylhet", tag: "DELIVERED", tone: "emerald" },
+                    ].map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="grid h-9 w-9 place-items-center rounded-md bg-white/5 font-mono text-[10px] font-semibold text-white/70 ring-1 ring-white/10">
+                            {r.id.replace("#", "")}
+                          </div>
+                          <div>
+                            <div className="text-[13px] font-medium text-white/90">
+                              {r.name}
+                            </div>
+                            <div className="text-[10px] text-white/45">{r.meta}</div>
+                          </div>
+                        </div>
+                        <span
+                          className={
+                            "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider " +
+                            (r.tone === "emerald"
+                              ? "bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20"
+                              : r.tone === "cyan"
+                                ? "bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20"
+                                : "bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/20")
+                          }
+                        >
+                          {r.tag}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* KPI tile */}
+                <div
+                  className="absolute right-0 top-6 w-[190px] rotate-[3deg] rounded-2xl border border-white/10 bg-[#0b1f2a]/80 p-5 shadow-2xl backdrop-blur-xl"
+                  style={{ boxShadow: "0 24px 50px -18px rgba(0,0,0,0.7)" }}
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">
+                    Today · Revenue
+                  </div>
+                  <div className="mt-2 font-display text-2xl font-semibold text-white">
+                    ৳ 84,220
+                  </div>
+                  <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/20">
+                    <Zap className="h-3 w-3" /> +12.4%
+                  </div>
+                  <div className="mt-3 flex h-8 items-end gap-1">
+                    {[30, 55, 42, 70, 48, 82, 96].map((h, i) => (
+                      <span
+                        key={i}
+                        className="w-2 rounded-sm"
+                        style={{
+                          height: `${h}%`,
+                          background:
+                            "linear-gradient(180deg, #22d3ee 0%, rgba(34,211,238,0.35) 100%)",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Verification toast */}
+                <div className="absolute -bottom-4 right-6 flex w-[240px] -rotate-[2deg] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] p-3 shadow-xl backdrop-blur-xl">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-emerald-400/15 ring-1 ring-emerald-400/25">
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold text-white/90">
+                      Customer verified
+                    </div>
+                    <div className="truncate text-[10px] text-white/50">
+                      95.24% success · 63 parcels
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="text-xs text-primary-foreground/70">
-              © {year} Zonash. Access is invitation-only.
+            {/* Footer meta */}
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-white/45">
+              <span>© {year} Zonash</span>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </span>
+                All systems operational
+              </div>
             </div>
           </div>
         </aside>
