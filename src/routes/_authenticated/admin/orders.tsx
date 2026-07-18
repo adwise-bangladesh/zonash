@@ -2219,24 +2219,7 @@ function CustomerInsightDrawer({
         {/* Body — single scroll, no tabs */}
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {/* Status breakdown chips */}
-          {Object.keys(statusCounts).length > 0 && (
-            <div>
-              <SectionHeader>Status breakdown</SectionHeader>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(statusCounts).map(([s, c]) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize"
-                  >
-                    <StatusBadge status={s} />
-                    <span className="tabular-nums text-muted-foreground">×{c}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Courier snapshot — always inline */}
+          {/* Courier report — inline, no duplicate summary */}
           {phone && (
             <div>
               <SectionHeader>Courier report</SectionHeader>
@@ -2250,16 +2233,6 @@ function CustomerInsightDrawer({
                 </div>
               ) : report ? (
                 <div className="rounded-lg border border-border bg-background p-3">
-                  <div className="mb-2 flex items-center gap-2 text-[11px]">
-                    <span
-                      className={`rounded-full px-2 py-[2px] text-[10px] font-semibold ring-1 ${ratioCls}`}
-                    >
-                      {ratio}% success
-                    </span>
-                    <span className="text-muted-foreground">
-                      {totalDeliveries} parcels · {delivered} delivered · {cancelled} cancelled
-                    </span>
-                  </div>
                   <HoorinReportView report={report} />
                 </div>
               ) : (
@@ -2269,6 +2242,8 @@ function CustomerInsightDrawer({
               )}
             </div>
           )}
+
+
 
           {/* Orders — full list with inline status controls */}
           <div>
