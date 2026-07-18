@@ -415,3 +415,90 @@ export const updateWooOrder = createServerFn({ method: "POST" })
     return updated;
   });
 
+// -------------------- Product variations (staff) --------------------
+
+export const listProductVariations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ productId: z.number().int().positive() }).parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    try {
+      const variations = await (await import("./woo.server")).wooFetch<WooVariation[]>({
+        path: `/products/${data.productId}/variations`,
+        query: { per_page: 100 },
+        timeoutMs: 10000,
+      });
+      return { variations, error: null as string | null };
+    } catch (e) {
+      console.error("listProductVariations failed", e);
+      return { variations: [] as WooVariation[], error: "Could not load variations." };
+    }
+  });
+
+// -------------------- Shipping methods (staff) --------------------
+
+export type ShippingMethodOption = {
+  method_id: string;
+  method_title: string;
+  cost: string;
+  zone_id: number;
+  zone_name: string;
+  instance_id: number;
+};
+
+export const listShippingMethods = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context as never);
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const zones = await wooFetch<{ id: number; name: string }[]>({
+        path: "/shipping/zones",
+        timeoutMs: 10000,
+      });
+      const allZones = zones.some((z) => z.id === 0)
+        ? zones
+        : [...zones, { id: 0, name: "Rest of the World" }];
+
+      const methods: ShippingMethodOption[] = [];
+      await Promise.all(
+        allZones.map(async (z) => {
+          try {
+            const list = await wooFetch<
+              {
+                id: number;
+                instance_id: number;
+                title: string;
+                method_id: string;
+                method_title: string;
+                enabled: boolean;
+                settings?: Record<string, { id: string; value: string }>;
+              }[]
+            >({ path: `/shipping/zones/${z.id}/methods`, timeoutMs: 8000 });
+            for (const m of list) {
+              if (!m.enabled) continue;
+              const cost = m.settings?.cost?.value ?? m.settings?.min_amount?.value ?? "0";
+              methods.push({
+                method_id: m.method_id,
+                method_title: m.title || m.method_title,
+                cost: String(cost || "0"),
+                zone_id: z.id,
+                zone_name: z.name,
+                instance_id: m.instance_id,
+              });
+            }
+          } catch (err) {
+            console.error(`shipping zone ${z.id} methods failed`, err);
+          }
+        }),
+      );
+      return { methods, error: null as string | null };
+    } catch (e) {
+      console.error("listShippingMethods failed", e);
+      return { methods: [] as ShippingMethodOption[], error: "Could not load shipping methods." };
+    }
+  });
+
+
