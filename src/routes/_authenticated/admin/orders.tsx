@@ -1020,23 +1020,12 @@ function OrderRow({
             Verify error
           </span>
         ) : overall ? (
-          <div className="space-y-0.5">
-            <span
-              className={`inline-block rounded-full px-1.5 py-[1px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
-            >
-              {ratio}% success
-            </span>
-            <div
-              className="tabular-nums text-muted-foreground"
-              title={`Total ${overall.total_parcels ?? 0} · Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0}`}
-            >
-              {overall.delivered_parcels ?? 0}✓ /{" "}
-              {overall.cancelled_parcels ?? 0}✗
-              <span className="ml-1 text-[10px]">
-                of {overall.total_parcels ?? 0}
-              </span>
-            </div>
-          </div>
+          <span
+            title={`Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0} · Total ${overall.total_parcels ?? 0}`}
+            className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
+          >
+            {ratio}% success
+          </span>
         ) : (
           <span className="italic text-muted-foreground">No history</span>
         )}
