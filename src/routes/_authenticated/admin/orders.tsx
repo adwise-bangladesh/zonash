@@ -645,6 +645,8 @@ function AdminOrders() {
           email={insight.email}
           phone={insight.phone}
           name={insight.name}
+          statuses={wooStatuses}
+          onUpdateStatus={(id, s) => updM.mutate({ id, status: s })}
           onClose={() => setInsight(null)}
           onOpenOrder={(id) => {
             setInsight(null);
@@ -652,6 +654,7 @@ function AdminOrders() {
           }}
         />
       )}
+
 
 
 
