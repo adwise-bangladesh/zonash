@@ -144,7 +144,6 @@ function AuthPage() {
     <div className="min-h-screen bg-background">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* ── Left / brand panel ──────────────────────────────────────── */}
-        <aside className="relative hidden overflow-hidden lg:block">
         <aside className="relative hidden overflow-hidden bg-slate-950 lg:block">
           {/* Rich, layered canvas — brand gradient + aurora + dotted grid */}
           <div
