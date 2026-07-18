@@ -1,16 +1,17 @@
 /**
- * Admin Settings — courier integrations.
+ * Admin Settings — Nori-style tabbed layout.
  *
- * Currently supports Steadfast Courier Ltd (Bangladesh). API keys are stored
- * as server-side secrets (STEADFAST_API_KEY / STEADFAST_SECRET_KEY). The page
- * shows the connection state, current balance, and the webhook URL to paste
- * into the Steadfast dashboard.
+ * Sidebar tabs on the left, status strip on top, panels on the right.
+ * Preserves Steadfast Courier and Hoorin OG-Connect integrations.
  */
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink, ShieldCheck, Search } from "lucide-react";
+import {
+  CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink,
+  ShieldCheck, Search, Plug, Store as StoreIcon, Bell, KeyRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { getSteadfastStatus } from "@/lib/steadfast.functions";
@@ -24,7 +25,115 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
 });
 
+type TabKey = "integrations" | "general" | "notifications" | "security";
+
+const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }> = [
+  { key: "integrations",  label: "Integrations",  icon: Plug,        desc: "Couriers and third-party services" },
+  { key: "general",       label: "General",       icon: StoreIcon,   desc: "Business preferences" },
+  { key: "notifications", label: "Notifications", icon: Bell,        desc: "Customer alerts and staff pings" },
+  { key: "security",      label: "Security",      icon: KeyRound,    desc: "Credentials and access" },
+];
+
 function SettingsPage() {
+  const [tab, setTab] = useState<TabKey>("integrations");
+
+  const sfFn = useServerFn(getSteadfastStatus);
+  const hoFn = useServerFn(getHoorinStatus);
+
+  const sf = useQuery({ queryKey: ["admin", "steadfast-status"], queryFn: () => sfFn(), staleTime: 30_000 });
+  const ho = useQuery({ queryKey: ["admin", "hoorin-status"], queryFn: () => hoFn(), staleTime: 60_000 });
+
+  const sfOk = !!sf.data?.configured && !sf.data?.error;
+  const hoOk = !!ho.data?.configured && !!ho.data?.ok;
+
+  return (
+    <AdminShell title="Settings" subtitle="Couriers, integrations and preferences">
+      {/* Status strip */}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatusCard label="Steadfast" value={sf.isLoading ? "…" : sfOk ? "Connected" : sf.data?.configured ? "Auth failed" : "Not set"} ok={sfOk} warn={!sfOk} />
+        <StatusCard label="Balance" value={typeof sf.data?.balance === "number" ? `৳ ${sf.data.balance.toLocaleString()}` : "—"} />
+        <StatusCard label="Hoorin" value={ho.isLoading ? "…" : hoOk ? "Connected" : ho.data?.configured ? "Auth failed" : "Not set"} ok={hoOk} warn={!hoOk} />
+        <StatusCard label="Domain" value="zonash.com" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+        {/* Tabs */}
+        <nav className="flex flex-row gap-1 overflow-x-auto rounded-xl border border-input bg-card p-1.5 md:flex-col md:overflow-visible">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={`flex shrink-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition ${
+                  active
+                    ? "bg-foreground/[0.06] text-foreground"
+                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="whitespace-nowrap">{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Panel */}
+        <div className="min-w-0 rounded-xl border border-input bg-card">
+          <div className="p-4 sm:p-6">
+            <PanelHeader meta={TABS.find((t) => t.key === tab)!} />
+
+            {tab === "integrations" && (
+              <div className="space-y-4">
+                <SteadfastCard />
+                <HoorinCard />
+              </div>
+            )}
+
+            {tab === "general" && (
+              <EmptyPanel
+                title="General preferences"
+                desc="Business name, currency and contact details will live here. Storefront branding and SEO are managed on the site config."
+              />
+            )}
+
+            {tab === "notifications" && (
+              <EmptyPanel
+                title="Notifications"
+                desc="Configure customer email/SMS alerts and staff order pings. Coming soon."
+              />
+            )}
+
+            {tab === "security" && (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-input bg-muted/30 p-3 text-[12px] leading-relaxed">
+                  <div className="mb-1 font-semibold">Backend secrets</div>
+                  <p className="text-muted-foreground">
+                    All third-party credentials are stored encrypted on the server.
+                    To rotate any key, ask in chat — you'll be prompted through a secure form.
+                  </p>
+                  <ul className="mt-2 space-y-1 text-muted-foreground">
+                    <li>• <code>STEADFAST_API_KEY</code> / <code>STEADFAST_SECRET_KEY</code></li>
+                    <li>• <code>HOORIN_API_KEY</code></li>
+                    <li>• WooCommerce consumer key / secret</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </AdminShell>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Steadfast Courier
+// -----------------------------------------------------------------------------
+
+function SteadfastCard() {
   const statusFn = useServerFn(getSteadfastStatus);
   const q = useQuery({
     queryKey: ["admin", "steadfast-status"],
@@ -51,119 +160,93 @@ function SettingsPage() {
   const err = q.data?.error;
 
   return (
-    <AdminShell title="Settings" subtitle="Couriers, integrations and preferences">
-      <div className="max-w-3xl space-y-4">
-        <section className="rounded-2xl border border-input bg-card">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3 border-b border-input px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground/5">
-                <Truck className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-[13px] font-semibold">Steadfast Courier</div>
-                <div className="text-[11px] text-muted-foreground">
-                  portal.packzy.com · Bangladesh delivery partner
-                </div>
-              </div>
-            </div>
-            <ConnectionBadge loading={q.isLoading} configured={!!configured} error={!!err} />
+    <section className="rounded-2xl border border-input bg-background">
+      <div className="flex items-center justify-between gap-3 border-b border-input px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground/5">
+            <Truck className="h-4 w-4" />
           </div>
-
-          {/* Body */}
-          <div className="space-y-4 p-4">
-            {/* Balance */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <StatCard
-                label="Current balance"
-                value={
-                  q.isLoading
-                    ? "…"
-                    : configured && typeof balance === "number"
-                      ? `৳ ${balance.toLocaleString()}`
-                      : "—"
-                }
-                hint={err ?? undefined}
-              />
-              <StatCard
-                label="API key"
-                value={configured ? "•••• saved" : "not set"}
-                tone={configured ? "ok" : "warn"}
-              />
-              <StatCard
-                label="Secret key"
-                value={configured ? "•••• saved" : "not set"}
-                tone={configured ? "ok" : "warn"}
-              />
+          <div>
+            <div className="text-[13px] font-semibold">Steadfast Courier</div>
+            <div className="text-[11px] text-muted-foreground">
+              portal.packzy.com · Bangladesh delivery partner
             </div>
-
-            <button
-              onClick={() => q.refetch()}
-              disabled={q.isFetching}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-[12px] hover:bg-muted disabled:opacity-60"
-            >
-              {q.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Refresh
-            </button>
-
-            {/* Webhook */}
-            <div className="rounded-xl border border-input bg-muted/30 p-3">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Webhook URL
-              </div>
-              <p className="mb-2 text-[12px] text-muted-foreground">
-                Paste this URL into your Steadfast dashboard webhook settings. Delivery
-                status and tracking updates will sync automatically.
-              </p>
-              <div className="flex items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5">
-                <code className="flex-1 truncate text-[12px]">{webhookUrl || "—"}</code>
-                <button
-                  onClick={() => webhookUrl && copy(webhookUrl, "Webhook URL")}
-                  className="inline-flex h-6 items-center gap-1 rounded border border-input px-1.5 text-[11px] hover:bg-muted"
-                >
-                  <Copy className="h-3 w-3" /> Copy
-                </button>
-              </div>
-              <div className="mt-2 text-[11px] text-muted-foreground">
-                Authorization header: <code className="rounded bg-background px-1">Bearer &lt;your API key&gt;</code>
-              </div>
-            </div>
-
-            {/* Key management notice */}
-            <div className="rounded-xl border border-input bg-muted/30 p-3 text-[12px] leading-relaxed">
-              <div className="mb-1 font-semibold">Manage API credentials</div>
-              <p className="text-muted-foreground">
-                Steadfast credentials are stored encrypted as backend secrets
-                (<code>STEADFAST_API_KEY</code>, <code>STEADFAST_SECRET_KEY</code>).
-                To rotate them, ask in chat: <em>"update Steadfast API keys"</em> —
-                you'll be prompted through a secure form.
-              </p>
-              <a
-                href="https://portal.packzy.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-foreground underline-offset-2 hover:underline"
-              >
-                Open Steadfast dashboard <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-
-            {err && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-[12px] text-red-800">
-                {err}
-              </div>
-            )}
           </div>
-        </section>
-
-        <HoorinCard />
+        </div>
+        <ConnectionBadge loading={q.isLoading} configured={!!configured} error={!!err} />
       </div>
-    </AdminShell>
+
+      <div className="space-y-4 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard
+            label="Current balance"
+            value={q.isLoading ? "…" : configured && typeof balance === "number" ? `৳ ${balance.toLocaleString()}` : "—"}
+            hint={err ?? undefined}
+          />
+          <StatCard label="API key" value={configured ? "•••• saved" : "not set"} tone={configured ? "ok" : "warn"} />
+          <StatCard label="Secret key" value={configured ? "•••• saved" : "not set"} tone={configured ? "ok" : "warn"} />
+        </div>
+
+        <button
+          onClick={() => q.refetch()}
+          disabled={q.isFetching}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-[12px] hover:bg-muted disabled:opacity-60"
+        >
+          {q.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Refresh
+        </button>
+
+        <div className="rounded-xl border border-input bg-muted/30 p-3">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Webhook URL
+          </div>
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            Paste this URL into your Steadfast dashboard webhook settings. Delivery
+            status and tracking updates will sync automatically.
+          </p>
+          <div className="flex items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5">
+            <code className="flex-1 truncate text-[12px]">{webhookUrl || "—"}</code>
+            <button
+              onClick={() => webhookUrl && copy(webhookUrl, "Webhook URL")}
+              className="inline-flex h-6 items-center gap-1 rounded border border-input px-1.5 text-[11px] hover:bg-muted"
+            >
+              <Copy className="h-3 w-3" /> Copy
+            </button>
+          </div>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Authorization header: <code className="rounded bg-background px-1">Bearer &lt;your API key&gt;</code>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-input bg-muted/30 p-3 text-[12px] leading-relaxed">
+          <div className="mb-1 font-semibold">Manage API credentials</div>
+          <p className="text-muted-foreground">
+            Credentials are stored encrypted (<code>STEADFAST_API_KEY</code>,{" "}
+            <code>STEADFAST_SECRET_KEY</code>). To rotate, ask in chat:{" "}
+            <em>"update Steadfast API keys"</em>.
+          </p>
+          <a
+            href="https://portal.packzy.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-foreground underline-offset-2 hover:underline"
+          >
+            Open Steadfast dashboard <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {err && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-[12px] text-red-800">
+            {err}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
 // -----------------------------------------------------------------------------
-// Hoorin OG-Connect — customer verification
+// Hoorin OG-Connect
 // -----------------------------------------------------------------------------
 
 function HoorinCard() {
@@ -192,7 +275,7 @@ function HoorinCard() {
   const ok = q.data?.ok;
 
   return (
-    <section className="rounded-2xl border border-input bg-card">
+    <section className="rounded-2xl border border-input bg-background">
       <div className="flex items-center justify-between gap-3 border-b border-input px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground/5">
@@ -201,7 +284,7 @@ function HoorinCard() {
           <div>
             <div className="text-[13px] font-semibold">Customer verification (Hoorin OG-Connect)</div>
             <div className="text-[11px] text-muted-foreground">
-              plugin.hoorin.com · Live delivery history across Steadfast, RedX, Pathao, Carrybee
+              plugin.hoorin.com · Delivery history across Steadfast, RedX, Pathao, Carrybee
             </div>
           </div>
         </div>
@@ -247,8 +330,8 @@ function HoorinCard() {
         <div className="rounded-xl border border-input bg-muted/30 p-3 text-[12px] leading-relaxed">
           <div className="mb-1 font-semibold">Manage API key</div>
           <p className="text-muted-foreground">
-            Hoorin credentials are stored encrypted as a backend secret (<code>HOORIN_API_KEY</code>).
-            To rotate it, ask in chat: <em>"update Hoorin API key"</em>.
+            Stored encrypted as <code>HOORIN_API_KEY</code>. To rotate, ask in chat:{" "}
+            <em>"update Hoorin API key"</em>.
           </p>
           <a
             href="https://dash.hoorin.com/settings"
@@ -316,6 +399,45 @@ export function HoorinReportView({ report }: { report: HoorinReport }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Shared UI
+// -----------------------------------------------------------------------------
+
+function PanelHeader({ meta }: { meta: { label: string; desc: string; icon: React.ComponentType<{ className?: string }> } }) {
+  const Icon = meta.icon;
+  return (
+    <div className="mb-4 flex items-center gap-2.5 border-b border-border pb-3">
+      <span className="grid h-8 w-8 place-items-center rounded-md bg-foreground/[0.06] text-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[14px] font-semibold">{meta.label}</div>
+        <div className="text-[12px] text-muted-foreground">{meta.desc}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusCard({ label, value, ok, warn }: { label: string; value: string; ok?: boolean; warn?: boolean }) {
+  return (
+    <div className="rounded-xl border border-input bg-card px-3 py-2.5">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 truncate text-[14px] font-semibold ${warn && !ok ? "text-amber-600" : ok ? "text-emerald-600" : ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-input bg-muted/20 p-8 text-center">
+      <div className="text-[13px] font-semibold">{title}</div>
+      <p className="mx-auto mt-1 max-w-md text-[12px] text-muted-foreground">{desc}</p>
     </div>
   );
 }
