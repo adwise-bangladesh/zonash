@@ -316,17 +316,25 @@ export function AdminShell({
 function Clock() {
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
+    const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  const fmt = useMemo(
+  const dateFmt = useMemo(
     () =>
       new Intl.DateTimeFormat("en-GB", {
         weekday: "short",
         day: "2-digit",
         month: "short",
-        hour: "numeric",
+        timeZone: "Asia/Dhaka",
+      }),
+    [],
+  );
+  const timeFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-GB", {
+        hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
         hour12: true,
         timeZone: "Asia/Dhaka",
       }),
@@ -334,11 +342,13 @@ function Clock() {
   );
   return (
     <div
-      className="hidden items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
+      className="hidden items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
       title="Asia/Dhaka"
     >
       <ClockIcon className="h-3 w-3 text-primary" />
-      <span className="tabular-nums">{fmt.format(now)}</span>
+      <span className="tabular-nums">{dateFmt.format(now)}</span>
+      <span className="text-border">·</span>
+      <span className="tabular-nums text-foreground">{timeFmt.format(now)}</span>
     </div>
   );
 }
