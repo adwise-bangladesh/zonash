@@ -52,11 +52,26 @@ async function request<T>(
       /* non-JSON */
     }
     if (!res.ok) {
-      const msg =
-        (json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
-          ? (json as { message: string }).message
-          : `Steadfast ${res.status}`);
-      throw new SteadfastError(msg, res.status, json ?? text);
+      // Log full context server-side for debugging (never reaches the browser).
+      console.error(`[steadfast] ${init?.method ?? "GET"} ${path} → ${res.status}`, {
+        body: init?.body,
+        response: text.slice(0, 1000),
+      });
+      const j = json as { message?: unknown; errors?: Record<string, string[] | string> } | null;
+      const baseMsg =
+        j && typeof j.message === "string" && j.message.trim()
+          ? j.message
+          : `Steadfast ${res.status}`;
+      // Include validation-style errors when present (e.g. { errors: { invoice: ["already exists"] } })
+      let detail = "";
+      if (j?.errors && typeof j.errors === "object") {
+        detail = Object.entries(j.errors)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+          .join("; ");
+      } else if (!json && text) {
+        detail = text.slice(0, 200);
+      }
+      throw new SteadfastError(detail ? `${baseMsg} — ${detail}` : baseMsg, res.status, json ?? text);
     }
     return json as T;
   } finally {
