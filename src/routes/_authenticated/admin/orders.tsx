@@ -1015,7 +1015,16 @@ function OrderDrawer({
 
             {/* Operations (dashboard-owned) */}
             <Section title="Operations" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
-              <div className="grid grid-cols-2 gap-2">
+              <SteadfastPanel
+                wcOrderId={id}
+                initialOps={initialOps}
+                onSynced={(patch) => {
+                  if (patch.courier) setCourier(patch.courier);
+                  if (patch.tracking) setTracking(patch.tracking);
+                  qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
+                }}
+              />
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <TextField label="Courier" value={courier} onChange={setCourier} />
                 <TextField label="Tracking #" value={tracking} onChange={setTracking} />
                 <TextField label="Pickup slot" value={pickup} onChange={setPickup} full />
