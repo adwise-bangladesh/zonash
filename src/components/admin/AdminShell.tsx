@@ -19,23 +19,45 @@ import {
   Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 
 type NavItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  badgeKey?: "issues";
 };
 
 const navItems: NavItem[] = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
-  { title: "Returns", url: "/admin/returns", icon: RotateCcw },
+  { title: "Issues", url: "/admin/returns", icon: RotateCcw, badgeKey: "issues" },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "My profile", url: "/admin/profile", icon: UserCircle },
   { title: "Store settings", url: "/admin/settings", icon: Settings },
 ];
+
+function useIssuesCount() {
+  return useQuery({
+    queryKey: ["admin", "issues-count"],
+    queryFn: async () => {
+      try {
+        const { count } = await supabase
+          .from("orders_cache" as any)
+          .select("*", { count: "exact", head: true })
+          .in("status", ["on-hold", "failed", "refunded"]);
+        return count ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 
 export function AdminShell({
   title,
@@ -55,6 +77,10 @@ export function AdminShell({
   const [email, setEmail] = useState<string>("");
   const [fullName, setFullName] = useState<string>("");
   const [role, setRole] = useState<string>("Staff");
+  const { data: issuesCount = 0 } = useIssuesCount();
+  const badgeCounts: Record<string, number> = { issues: issuesCount };
+
+
 
   const avatarSeed = useMemo(
     () => Math.random().toString(36).slice(2, 10),
@@ -152,6 +178,7 @@ export function AdminShell({
             {navItems.map((item) => {
               const active = isActive(item.url);
               const Icon = item.icon;
+              const count = item.badgeKey ? badgeCounts[item.badgeKey] ?? 0 : 0;
               return (
                 <li key={item.url}>
                   <Link
@@ -172,11 +199,25 @@ export function AdminShell({
                       className="h-[16px] w-[16px] shrink-0"
                       style={{ color: "var(--primary)" }}
                     />
-                    <span className="truncate">{item.title}</span>
+                    <span className="truncate flex-1">{item.title}</span>
+                    {count > 0 && (
+                      <span
+                        aria-label={`${count} pending`}
+                        className="inline-grid min-w-[20px] h-5 place-items-center rounded-full px-1.5 text-[10px] font-bold text-white shadow-sm motion-reduce:animate-none"
+                        style={{
+                          background: "var(--primary)",
+                          animation: "badge-shake 1.8s ease-in-out infinite",
+                          transformOrigin: "center",
+                        }}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
             })}
+
           </ul>
         </nav>
 
