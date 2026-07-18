@@ -352,7 +352,8 @@ function AdminOrders() {
           id={openId}
           onClose={() => setOpenId(null)}
           detailFn={detailFn}
-          onUpdate={(s) => updM.mutate({ id: openId, status: s as WooStatus })}
+          statuses={wooStatuses}
+          onUpdate={(s) => updM.mutate({ id: openId, status: s })}
         />
       )}
     </AdminShell>
