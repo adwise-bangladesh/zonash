@@ -471,6 +471,32 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function CustomerBadge({ rating }: { rating: CustomerRating }) {
+  const cfg: Record<CustomerRating, { label: string; cls: string }> = {
+    new: { label: "New", cls: "bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20" },
+    average: {
+      label: "Average",
+      cls: "bg-muted text-foreground/70 ring-1 ring-input",
+    },
+    perfect: {
+      label: "Perfect",
+      cls: "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20",
+    },
+    risk: {
+      label: "Risk",
+      cls: "bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20",
+    },
+  };
+  const { label, cls } = cfg[rating];
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide ${cls}`}
+    >
+      {label}
+    </span>
+  );
+
+
 function OrderDrawer({
   id,
   onClose,
