@@ -2071,9 +2071,7 @@ function CustomerInsightDrawer({
         : ratio >= 50
           ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
           : "bg-rose-500/10 text-rose-700 ring-rose-500/20";
-  const totalDeliveries = overall
-    ? Number(overall.total_parcel ?? overall.total ?? 0)
-    : 0;
+  const totalDeliveries = overall ? Number(overall.total_parcels ?? 0) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex">
