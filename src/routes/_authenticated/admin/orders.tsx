@@ -815,8 +815,7 @@ function OrderRow({
     loading: boolean;
     report?: HoorinReport;
     error?: string;
-    open: boolean;
-  }>({ loading: false, open: false });
+  }>({ loading: false });
   const [sending, setSending] = useState(false);
   const [tracking, setTracking] = useState<string | null>(
     ops?.tracking_number ?? null,
@@ -825,22 +824,30 @@ function OrderRow({
   const phone = o.billing?.phone?.trim() || "";
   const hasCourier = !!(tracking || ops?.tracking_number);
 
-  const doVerify = async () => {
-    if (!phone) {
-      toast.error("No phone on this order");
-      return;
-    }
-    setVerify({ loading: true, open: true });
-    try {
-      const report = await verifyFn({ data: { phone } });
-      setVerify({ loading: false, report, open: true });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Verification failed";
-      setVerify({ loading: false, error: msg, open: true });
-    }
-  };
+  // Auto-load Hoorin verification on mount (once per row / phone).
+  useEffect(() => {
+    if (!phone) return;
+    let cancelled = false;
+    setVerify({ loading: true });
+    verifyFn({ data: { phone } })
+      .then((report) => {
+        if (!cancelled) setVerify({ loading: false, report });
+      })
+      .catch((e) => {
+        if (!cancelled)
+          setVerify({
+            loading: false,
+            error: e instanceof Error ? e.message : "Verify failed",
+          });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone]);
 
-  const doSend = async () => {
+  const doSend = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (hasCourier) {
       toast.info("Already sent to courier");
       return;
@@ -852,245 +859,244 @@ function OrderRow({
       setTracking(r.tracking_code);
       toast.success(`Sent · ${r.tracking_code}`);
       onInvalidate();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Send failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
     } finally {
       setSending(false);
     }
   };
 
-  // Success ratio pill for the verify result
-  const ratio = verify.report?.overall
-    ? Number(verify.report.overall.success_ratio ?? 0)
-    : null;
+  const overall = verify.report?.overall;
+  const ratio = overall ? Number(overall.success_ratio ?? 0) : null;
   const ratioCls =
     ratio === null
-      ? ""
+      ? "bg-muted text-muted-foreground"
       : ratio >= 80
         ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
         : ratio >= 50
           ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
           : "bg-rose-500/10 text-rose-700 ring-rose-500/20";
 
+  // Status colors — reuse from StatusBadge map so the action-bar select is color-coded.
+  const statusColors: Record<string, string> = {
+    pending: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+    "on-hold": "bg-amber-500/10 text-amber-700 border-amber-500/30",
+    confirmed: "bg-sky-500/10 text-sky-700 border-sky-500/30",
+    processing: "bg-blue-500/10 text-blue-700 border-blue-500/30",
+    completed: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
+    refunded: "bg-orange-500/10 text-orange-700 border-orange-500/30",
+    cancelled: "bg-muted text-muted-foreground border-input",
+    failed: "bg-rose-500/10 text-rose-700 border-rose-500/30",
+  };
+  const statusCls = statusColors[o.status] ?? "bg-muted text-foreground border-input";
+
+  const lineItems = o.line_items ?? [];
+  const shownSkus = lineItems.slice(0, 2);
+  const moreCount = Math.max(0, lineItems.length - 2);
+  const allSkusTooltip = lineItems
+    .map((li) => `${li.quantity}× ${li.sku || li.name}`)
+    .join("\n");
+
+  const custName =
+    [o.billing?.first_name, o.billing?.last_name].filter(Boolean).join(" ") ||
+    "—";
+
   return (
     <div
-      className={`border-b border-input px-3 py-2.5 last:border-b-0 transition-colors ${
-        isSel ? "bg-foreground/[0.04]" : "hover:bg-muted/30"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_130px_120px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-colors ${
+        isSel ? "bg-foreground/[0.04]" : "hover:bg-muted/40"
       }`}
     >
-      <div className="flex flex-wrap items-start gap-3">
-        {/* Left: checkbox + date */}
-        <div className="flex items-start gap-2 shrink-0">
-          <input
-            type="checkbox"
-            checked={isSel}
-            onChange={onToggle}
-            aria-label={`Select order ${o.number}`}
-            className="mt-1 h-3.5 w-3.5 cursor-pointer accent-foreground"
-          />
-          <div className="w-[70px] text-[11px] text-muted-foreground tabular-nums leading-tight">
-            {new Date(o.date_created).toLocaleDateString()}
-            <div className="text-[10px]">
-              {new Date(o.date_created).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
-          </div>
+      {/* Checkbox */}
+      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+        <input
+          type="checkbox"
+          checked={isSel}
+          onChange={onToggle}
+          aria-label={`Select order ${o.number}`}
+          className="h-3.5 w-3.5 cursor-pointer accent-foreground"
+        />
+      </div>
+
+      {/* Date + Order # */}
+      <div className="min-w-0 leading-tight">
+        <div className="text-sm font-semibold tabular-nums">#{o.number}</div>
+        <div className="text-[11px] text-muted-foreground tabular-nums">
+          {new Date(o.date_created).toLocaleDateString()}
         </div>
-
-        {/* Middle: order/customer + items + address (three columns that wrap) */}
-        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-1">
-          {/* Order & customer */}
-          <div className="min-w-0">
-            <button
-              onClick={onOpen}
-              className="text-sm font-semibold hover:underline"
-            >
-              #{o.number}
-            </button>
-            <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-              <span className="truncate max-w-[140px]">
-                {o.billing?.first_name} {o.billing?.last_name}
-              </span>
-              <CustomerBadge rating={rating} />
-              {totalOrders >= 1 && (
-                <button
-                  type="button"
-                  onClick={onOpenCustomer}
-                  title="View all orders from this customer"
-                  className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
-                >
-                  {totalOrders} {totalOrders === 1 ? "order" : "orders"}
-                </button>
-              )}
-            </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {phone || o.billing?.email}
-            </div>
-            <div className="mt-1">
-              <StatusBadge status={o.status} />
-            </div>
-          </div>
-
-          {/* Items */}
-          <div className="min-w-0 space-y-0.5 text-[12px]">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Items
-            </div>
-            {(o.line_items ?? []).slice(0, 3).map((li) => (
-              <div key={li.id} className="truncate">
-                <span className="font-mono text-[11px] text-foreground">
-                  {li.sku || `#${li.product_id}`}
-                </span>
-                <span className="ml-1 text-muted-foreground">
-                  × {li.quantity}
-                </span>
-              </div>
-            ))}
-            {(o.line_items?.length ?? 0) > 3 && (
-              <div className="text-[10px] text-muted-foreground">
-                +{o.line_items!.length - 3} more
-              </div>
-            )}
-          </div>
-
-          {/* Address */}
-          <div className="min-w-0 text-[11px] leading-snug text-muted-foreground">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Shipping
-            </div>
-            {addr ? (
-              <span title={addr} className="line-clamp-3">
-                {addr}
-              </span>
-            ) : (
-              <span className="italic">No shipping address</span>
-            )}
-          </div>
-        </div>
-
-        {/* Right: total + actions */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0 w-full sm:w-auto">
-          <div className="text-right text-[11px] leading-tight">
-            <div className="tabular-nums text-muted-foreground">
-              {money(o.currency, itemsTotal)}
-              <span className="mx-0.5">+</span>
-              {money(o.currency, shipping)}
-            </div>
-            <div className="text-sm font-semibold tabular-nums">
-              = {money(o.currency, o.total)}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-1">
-            {/* Verify */}
-            <button
-              onClick={doVerify}
-              disabled={verify.loading || !phone}
-              title={phone ? "Verify customer phone" : "No phone"}
-              className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-[11px] hover:bg-muted disabled:opacity-50"
-            >
-              {verify.loading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-3 w-3" />
-              )}
-              Verify
-            </button>
-
-            {ratio !== null && (
-              <span
-                className={`rounded-full px-1.5 py-[1px] text-[10px] font-semibold ring-1 tabular-nums ${ratioCls}`}
-                title="Success ratio"
-              >
-                {ratio}%
-              </span>
-            )}
-
-            {/* Send to courier */}
-            <button
-              onClick={doSend}
-              disabled={sending || hasCourier}
-              title={hasCourier ? "Already dispatched" : "Send to Steadfast"}
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] disabled:opacity-60 ${
-                hasCourier
-                  ? "bg-emerald-500/10 text-emerald-700"
-                  : "bg-foreground text-background hover:opacity-90"
-              }`}
-            >
-              {sending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Truck className="h-3 w-3" />
-              )}
-              {hasCourier ? "Sent" : "Ship"}
-            </button>
-
-            {/* Status quick-change */}
-            <select
-              value={o.status}
-              onChange={(e) => onUpdateStatus(e.target.value)}
-              className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
-            >
-              {!wooStatuses.some((s) => s.slug === o.status) && (
-                <option value={o.status}>{humanize(o.status)}</option>
-              )}
-              {wooStatuses.map((s) => (
-                <option key={s.slug} value={s.slug}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={onOpen}
-              title="View / edit"
-              className="rounded-md border border-input p-1.5 hover:bg-muted"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          {(tracking || ops?.tracking_number) && (
-            <div className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-              <Truck className="h-3 w-3" />
-              <span className="font-mono tabular-nums">
-                {tracking || ops?.tracking_number}
-              </span>
-            </div>
-          )}
+        <div className="text-[10px] text-muted-foreground tabular-nums">
+          {new Date(o.date_created).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </div>
       </div>
 
-      {/* Verification detail panel — expands inline, no scroll away */}
-      {verify.open && (
-        <div className="mt-2 rounded-lg border border-input bg-muted/30 p-2">
-          <div className="mb-1 flex items-center justify-between">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Customer verification · {phone}
-            </div>
+      {/* Customer: name, phone, address (clamped w/ tooltip) */}
+      <div className="min-w-0 leading-snug">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-medium">{custName}</span>
+          {totalOrders >= 1 && (
             <button
-              onClick={() => setVerify((v) => ({ ...v, open: false }))}
-              className="rounded p-0.5 hover:bg-muted"
-              aria-label="Close"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCustomer();
+              }}
+              title="View all orders from this customer"
+              className="shrink-0 rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
             >
-              <X className="h-3.5 w-3.5" />
+              {totalOrders}
             </button>
-          </div>
-          {verify.loading && (
-            <div className="flex items-center gap-2 py-2 text-[12px] text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking Hoorin…
-            </div>
           )}
-          {verify.error && (
-            <div className="rounded bg-rose-500/10 px-2 py-1 text-[11px] text-rose-700">
-              {verify.error}
-            </div>
-          )}
-          {verify.report && <HoorinReportView report={verify.report} />}
         </div>
-      )}
+        <div className="truncate text-[11px] text-muted-foreground tabular-nums">
+          {phone || o.billing?.email || "—"}
+        </div>
+        {addr ? (
+          <div
+            title={addr}
+            className="text-[11px] text-muted-foreground line-clamp-2"
+          >
+            {addr}
+          </div>
+        ) : (
+          <div className="text-[11px] italic text-muted-foreground">
+            No shipping address
+          </div>
+        )}
+      </div>
+
+      {/* Items — 2 SKUs then "+N more" with tooltip */}
+      <div className="min-w-0 space-y-0.5 text-[12px]">
+        {shownSkus.map((li) => (
+          <div key={li.id} className="truncate" title={li.name}>
+            <span className="font-mono text-[11px]">
+              {li.sku || `#${li.product_id}`}
+            </span>
+            <span className="ml-1 text-muted-foreground">× {li.quantity}</span>
+          </div>
+        ))}
+        {moreCount > 0 && (
+          <div
+            title={allSkusTooltip}
+            className="inline-block cursor-help rounded bg-muted px-1.5 py-[1px] text-[10px] font-medium text-foreground/70"
+          >
+            + {moreCount} more sku{moreCount === 1 ? "" : "s"}
+          </div>
+        )}
+        {lineItems.length === 0 && (
+          <div className="text-[10px] italic text-muted-foreground">
+            No items
+          </div>
+        )}
+      </div>
+
+      {/* Verification — auto-loaded stats */}
+      <div className="min-w-0 text-[11px] leading-tight">
+        {!phone ? (
+          <span className="italic text-muted-foreground">No phone</span>
+        ) : verify.loading ? (
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Checking…
+          </span>
+        ) : verify.error ? (
+          <span
+            title={verify.error}
+            className="rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-700"
+          >
+            Verify error
+          </span>
+        ) : overall ? (
+          <div className="space-y-0.5">
+            <span
+              className={`inline-block rounded-full px-1.5 py-[1px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
+            >
+              {ratio}% success
+            </span>
+            <div
+              className="tabular-nums text-muted-foreground"
+              title={`Total ${overall.total_parcels ?? 0} · Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0}`}
+            >
+              {overall.delivered_parcels ?? 0}✓ /{" "}
+              {overall.cancelled_parcels ?? 0}✗
+              <span className="ml-1 text-[10px]">
+                of {overall.total_parcels ?? 0}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className="italic text-muted-foreground">No history</span>
+        )}
+      </div>
+
+      {/* Total */}
+      <div className="text-right text-[11px] leading-tight">
+        <div className="tabular-nums text-muted-foreground">
+          {money(o.currency, itemsTotal)}
+          <span className="mx-0.5">+</span>
+          {money(o.currency, shipping)}
+        </div>
+        <div className="text-sm font-semibold tabular-nums">
+          {money(o.currency, o.total)}
+        </div>
+      </div>
+
+      {/* Status — colored select */}
+      <div onClick={(e) => e.stopPropagation()} className="min-w-0">
+        <select
+          value={o.status}
+          onChange={(e) => onUpdateStatus(e.target.value)}
+          className={`w-full h-7 rounded-md border px-1.5 text-[11px] font-medium capitalize outline-none ${statusCls}`}
+        >
+          {!wooStatuses.some((s) => s.slug === o.status) && (
+            <option value={o.status}>{humanize(o.status)}</option>
+          )}
+          {wooStatuses.map((s) => (
+            <option key={s.slug} value={s.slug}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Ship */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex flex-col items-end gap-1"
+      >
+        <button
+          onClick={doSend}
+          disabled={sending || hasCourier}
+          title={hasCourier ? "Already dispatched" : "Send to Steadfast"}
+          className={`inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-70 ${
+            hasCourier
+              ? "bg-emerald-500/10 text-emerald-700"
+              : "bg-foreground text-background hover:opacity-90"
+          }`}
+        >
+          {sending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Truck className="h-3 w-3" />
+          )}
+          {hasCourier ? "Sent" : "Ship"}
+        </button>
+        {(tracking || ops?.tracking_number) && (
+          <div className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-mono text-emerald-700">
+            {tracking || ops?.tracking_number}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
