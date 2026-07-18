@@ -48,30 +48,26 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const since = new Date();
     since.setHours(0, 0, 0, 0);
 
-    const [{ data: today }, { data: pending }, { count: totalToday }] = await Promise.all([
+    const [todayRes, pendingRes] = await Promise.all([
       ctx.supabase
         .from("orders_cache")
-        .select("total, status")
+        .select("total")
         .gte("date_created", since.toISOString()),
       ctx.supabase
         .from("orders_cache")
         .select("wc_order_id", { count: "exact", head: true })
         .in("status", ["pending", "processing", "on-hold"]),
-      ctx.supabase
-        .from("orders_cache")
-        .select("wc_order_id", { count: "exact", head: true })
-        .gte("date_created", since.toISOString())
-        .then((r) => ({ count: r.count ?? 0 })),
     ]);
 
-    const revenue = (today ?? []).reduce((s: number, r: { total: number }) => s + Number(r.total ?? 0), 0);
-    const orders = totalToday;
+    const rows = (todayRes.data ?? []) as { total: number | string }[];
+    const revenue = rows.reduce((s, r) => s + Number(r.total ?? 0), 0);
+    const orders = rows.length;
     const aov = orders > 0 ? revenue / orders : 0;
 
     return {
       todayRevenue: revenue,
       todayOrders: orders,
       todayAov: aov,
-      pendingCount: (pending as unknown as { count: number } | null)?.count ?? 0,
+      pendingCount: pendingRes.count ?? 0,
     };
   });
