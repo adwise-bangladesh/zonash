@@ -45,11 +45,11 @@ export function NewOrderMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        title="New order"
         className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
       >
         <Plus className="h-3.5 w-3.5" />
-        <span className="hidden md:inline">New Order</span>
-        <ChevronDown className="h-3 w-3 opacity-80" />
+        <span className="hidden md:inline">New order</span>
       </button>
 
       {open && (
