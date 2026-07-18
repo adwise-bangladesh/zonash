@@ -1,5 +1,6 @@
 /**
- * Orders — Nori-style admin list with stats strip, filter toolbar and grid list.
+ * Orders — Nori-style admin list with status tabs (with counters),
+ * SKU-driven items column, address on the row, and price + delivery totals.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -7,27 +8,30 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
-  Filter,
   Loader2,
   Eye,
   ShoppingBag,
   Clock,
   CheckCircle2,
   Package,
-  Truck,
-  Home,
   Ban,
   RotateCcw,
   X,
-  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { listWooOrders, updateOrderStatus, getWooOrder } from "@/lib/woo.functions";
+import {
+  listWooOrders,
+  updateOrderStatus,
+  getWooOrder,
+  getOrderStatusCounts,
+} from "@/lib/woo.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
-  head: () => ({ meta: [{ title: "Orders — Admin" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Orders — Admin" }, { name: "robots", content: "noindex" }],
+  }),
   component: AdminOrders,
 });
 
@@ -40,9 +44,13 @@ const STATUSES = [
   "refunded",
   "failed",
 ] as const;
-type WooStatus = typeof STATUSES[number];
+type WooStatus = (typeof STATUSES)[number];
 
-const STATUS_FILTERS: { value: WooStatus | "any"; label: string; icon: LucideIcon }[] = [
+const STATUS_TABS: {
+  value: WooStatus | "any";
+  label: string;
+  icon: LucideIcon;
+}[] = [
   { value: "any", label: "All", icon: ShoppingBag },
   { value: "pending", label: "Pending", icon: Clock },
   { value: "processing", label: "Processing", icon: Package },
@@ -54,19 +62,32 @@ const STATUS_FILTERS: { value: WooStatus | "any"; label: string; icon: LucideIco
 ];
 
 const GRID =
-  "grid-cols-[100px_minmax(150px,1.4fr)_minmax(130px,1fr)_110px_130px_170px]";
+  "grid-cols-[100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
+
+function money(currency: string, n: number | string) {
+  const v = typeof n === "string" ? Number(n) : n;
+  return `${currency} ${(v || 0).toFixed(2)}`;
+}
 
 function AdminOrders() {
   const qc = useQueryClient();
   const listFn = useServerFn(listWooOrders);
   const updFn = useServerFn(updateOrderStatus);
   const detailFn = useServerFn(getWooOrder);
+  const countsFn = useServerFn(getOrderStatusCounts);
 
   const [status, setStatus] = useState<WooStatus | "any">("any");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(50);
+  const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
+
+  const countsQ = useQuery({
+    queryKey: ["admin", "woo-order-counts"],
+    queryFn: () => countsFn(),
+    staleTime: 60_000,
+  });
+  const counts = countsQ.data?.counts ?? {};
 
   const q = useQuery({
     queryKey: ["admin", "woo-orders", status, search, page, pageSize],
@@ -82,7 +103,10 @@ function AdminOrders() {
   });
 
   const orders = q.data?.orders ?? [];
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "woo-orders"] });
+    qc.invalidateQueries({ queryKey: ["admin", "woo-order-counts"] });
+  };
 
   const updM = useMutation({
     mutationFn: (v: { id: number; status: WooStatus }) => updFn({ data: v }),
@@ -93,35 +117,53 @@ function AdminOrders() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const stats = useMemo(() => {
-    const s = {
-      total: orders.length,
-      pending: 0,
-      processing: 0,
-      completed: 0,
-      cancelled: 0,
-      revenue: 0,
-    };
-    for (const o of orders) {
-      if (o.status === "pending" || o.status === "on-hold") s.pending++;
-      else if (o.status === "processing") s.processing++;
-      else if (o.status === "completed") {
-        s.completed++;
-        s.revenue += Number(o.total);
-      } else if (o.status === "cancelled" || o.status === "failed" || o.status === "refunded")
-        s.cancelled++;
-    }
-    return s;
-  }, [orders]);
+  const pageRevenue = useMemo(
+    () => orders.reduce((s, o) => s + Number(o.total || 0), 0),
+    [orders],
+  );
+  const currency = orders[0]?.currency ?? "";
 
   return (
     <AdminShell
       title="Orders"
       subtitle="Order lifecycle — live from WooCommerce"
     >
-      <StatsStrip stats={stats} loading={q.isLoading} />
+      {/* Status tabs with counters */}
+      <div className="mb-3 flex flex-wrap gap-1.5 rounded-xl border border-input bg-card p-1.5">
+        {STATUS_TABS.map((t) => {
+          const active = status === t.value;
+          const count = counts[t.value] ?? (t.value === "any" ? counts.any : 0);
+          return (
+            <button
+              key={t.value}
+              onClick={() => {
+                setPage(1);
+                setStatus(t.value);
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
+                active
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              }`}
+            >
+              <t.icon className="h-3.5 w-3.5" />
+              <span>{t.label}</span>
+              <span
+                className={`rounded-full px-1.5 text-[10px] font-semibold tabular-nums ${
+                  active
+                    ? "bg-background/20 text-background"
+                    : "bg-muted text-foreground"
+                }`}
+              >
+                {countsQ.isLoading ? "…" : (count ?? 0).toLocaleString()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      <div className="mb-3 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-input bg-card p-2">
+      {/* Toolbar */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-input bg-card p-2">
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -135,26 +177,23 @@ function AdminOrders() {
             className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[13px] outline-none focus:border-ring"
           />
         </div>
-        <ToolbarSelect
-          icon={<Filter className="h-3.5 w-3.5" />}
-          value={status}
-          onChange={(v) => {
-            setPage(1);
-            setStatus(v as WooStatus | "any");
-          }}
-          options={STATUS_FILTERS.map((s) => ({ value: s.value, label: s.label }))}
-        />
+        <div className="text-[11px] text-muted-foreground">
+          {q.isLoading
+            ? "Loading…"
+            : `${orders.length} on this page · Revenue ${money(currency || "৳", pageRevenue)}`}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-input bg-card">
-        <div className="min-w-[900px]">
+        <div className="min-w-[1200px]">
           <div
             className={`grid ${GRID} gap-3 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}
           >
             <div>Date</div>
             <div>Order / Customer</div>
-            <div>Items</div>
-            <div className="text-right">Total</div>
+            <div>Items (SKU)</div>
+            <div>Shipping address</div>
+            <div className="text-right">Price + Delivery</div>
             <div>Status</div>
             <div className="text-right">Actions</div>
           </div>
@@ -168,20 +207,29 @@ function AdminOrders() {
           {!q.isLoading && orders.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <ShoppingBag className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium">No orders match these filters</p>
+              <p className="text-sm font-medium">
+                No orders match these filters
+              </p>
             </div>
           )}
 
           {!q.isLoading &&
             orders.map((o) => {
-              const itemCount = (o.line_items ?? []).reduce(
-                (s, i) => s + (i.quantity || 0),
-                0,
-              );
+              const shipping = Number(o.shipping_total || 0);
+              const itemsTotal = Number(o.total || 0) - shipping;
+              const ship = o.shipping;
+              const addrParts = [
+                ship?.address_1,
+                ship?.address_2,
+                ship?.city,
+                ship?.state,
+                ship?.postcode,
+                ship?.country,
+              ].filter(Boolean);
               return (
                 <div
                   key={o.id}
-                  className={`grid ${GRID} items-center gap-3 border-b border-input px-3 py-2 last:border-b-0 hover:bg-muted/30`}
+                  className={`grid ${GRID} items-center gap-3 border-b border-input px-3 py-2.5 last:border-b-0 hover:bg-muted/30`}
                 >
                   <div className="text-[11px] text-muted-foreground tabular-nums">
                     {new Date(o.date_created).toLocaleDateString()}
@@ -200,21 +248,47 @@ function AdminOrders() {
                       #{o.number}
                     </button>
                     <div className="truncate text-[11px] text-muted-foreground">
-                      {o.billing?.first_name} {o.billing?.last_name} ·{" "}
+                      {o.billing?.first_name} {o.billing?.last_name}
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground">
                       {o.billing?.phone || o.billing?.email}
                     </div>
                   </div>
-                  <div className="text-[12px] text-muted-foreground">
-                    {itemCount} item{itemCount === 1 ? "" : "s"}
-                    <div className="truncate text-[10px]">
-                      {o.line_items?.[0]?.name ?? ""}
-                      {(o.line_items?.length ?? 0) > 1
-                        ? ` +${o.line_items.length - 1}`
-                        : ""}
-                    </div>
+                  <div className="min-w-0 space-y-0.5 text-[12px]">
+                    {(o.line_items ?? []).slice(0, 3).map((li) => (
+                      <div key={li.id} className="truncate">
+                        <span className="font-mono text-[11px] text-foreground">
+                          {li.sku || `#${li.product_id}`}
+                        </span>
+                        <span className="ml-1 text-muted-foreground">
+                          × {li.quantity}
+                        </span>
+                      </div>
+                    ))}
+                    {(o.line_items?.length ?? 0) > 3 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        +{o.line_items.length - 3} more
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right text-sm font-semibold tabular-nums">
-                    {o.currency} {Number(o.total).toFixed(2)}
+                  <div className="min-w-0 text-[11px] leading-snug text-muted-foreground">
+                    {addrParts.length ? (
+                      <span title={addrParts.join(", ")} className="line-clamp-2">
+                        {addrParts.join(", ")}
+                      </span>
+                    ) : (
+                      <span className="italic">No shipping address</span>
+                    )}
+                  </div>
+                  <div className="text-right text-[12px] leading-tight">
+                    <div className="tabular-nums text-muted-foreground">
+                      {money(o.currency, itemsTotal)}
+                      <span className="mx-1">+</span>
+                      {money(o.currency, shipping)}
+                    </div>
+                    <div className="mt-0.5 text-sm font-semibold tabular-nums">
+                      = {money(o.currency, o.total)}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <StatusBadge status={o.status} />
@@ -226,7 +300,10 @@ function AdminOrders() {
                     <select
                       value={o.status}
                       onChange={(e) =>
-                        updM.mutate({ id: o.id, status: e.target.value as WooStatus })
+                        updM.mutate({
+                          id: o.id,
+                          status: e.target.value as WooStatus,
+                        })
                       }
                       className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
                     >
@@ -253,7 +330,10 @@ function AdminOrders() {
       {!q.isLoading && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>
-            Page {page} · {orders.length} orders shown
+            Page {page} · {orders.length} orders shown ·{" "}
+            {status === "any"
+              ? `${counts.any ?? 0} total`
+              : `${counts[status] ?? 0} in ${status}`}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -280,9 +360,7 @@ function AdminOrders() {
           id={openId}
           onClose={() => setOpenId(null)}
           detailFn={detailFn}
-          onUpdate={(status) =>
-            updM.mutate({ id: openId, status: status as WooStatus })
-          }
+          onUpdate={(s) => updM.mutate({ id: openId, status: s as WooStatus })}
         />
       )}
     </AdminShell>
@@ -305,85 +383,6 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status.replace(/-/g, " ")}
     </span>
-  );
-}
-
-function ToolbarSelect({
-  icon,
-  value,
-  onChange,
-  options,
-}: {
-  icon: ReactNode;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background pl-2 pr-1 text-[12px]">
-      <span className="text-muted-foreground">{icon}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-full bg-transparent pr-1 text-[12px] outline-none"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function StatsStrip({
-  stats,
-  loading,
-}: {
-  stats: {
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    cancelled: number;
-    revenue: number;
-  };
-  loading: boolean;
-}) {
-  const items: Array<{ label: string; value: string | number; icon: LucideIcon }> = [
-    { label: "Orders", value: stats.total, icon: ShoppingBag },
-    { label: "Pending", value: stats.pending, icon: Clock },
-    { label: "Processing", value: stats.processing, icon: Package },
-    { label: "Completed", value: stats.completed, icon: Home },
-    { label: "Cancelled", value: stats.cancelled, icon: Ban },
-    {
-      label: "Revenue",
-      value: `৳${stats.revenue.toLocaleString("en-BD", { maximumFractionDigits: 0 })}`,
-      icon: Receipt,
-    },
-  ];
-  return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
-      {items.map((it) => (
-        <div
-          key={it.label}
-          className="flex items-center gap-2 rounded-xl border border-input bg-card p-3"
-        >
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-muted text-muted-foreground">
-            <it.icon className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {it.label}
-            </div>
-            <div className="truncate text-[15px] font-semibold tabular-nums">
-              {loading ? "—" : it.value}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -414,8 +413,12 @@ function OrderDrawer({
       <aside className="flex h-full w-full max-w-xl flex-col border-l border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <div className="text-[11px] uppercase text-muted-foreground">Order</div>
-            <div className="text-[16px] font-semibold">#{o?.number ?? "…"}</div>
+            <div className="text-[11px] uppercase text-muted-foreground">
+              Order
+            </div>
+            <div className="text-[16px] font-semibold">
+              #{o?.number ?? "…"}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -448,11 +451,17 @@ function OrderDrawer({
                 </div>
                 <div>
                   <div className="text-[10px] uppercase text-muted-foreground">
-                    Shipping
+                    Shipping address
                   </div>
                   <div>{o.shipping.address_1}</div>
+                  {o.shipping.address_2 && <div>{o.shipping.address_2}</div>}
                   <div className="text-[12px] text-muted-foreground">
-                    {o.shipping.city}, {o.shipping.country}
+                    {[o.shipping.city, o.shipping.state, o.shipping.postcode]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </div>
+                  <div className="text-[12px] text-muted-foreground">
+                    {o.shipping.country}
                   </div>
                 </div>
               </div>
@@ -465,33 +474,42 @@ function OrderDrawer({
                   {o.line_items.map((li: any) => (
                     <div
                       key={li.id}
-                      className="flex justify-between border-b border-border/60 px-3 py-2 last:border-b-0"
+                      className="flex items-start justify-between gap-3 border-b border-border/60 px-3 py-2 last:border-b-0"
                     >
-                      <span className="truncate">
-                        {li.name} × {li.quantity}
-                      </span>
-                      <span className="font-mono tabular-nums">
-                        {o.currency} {Number(li.total).toFixed(2)}
+                      <div className="min-w-0">
+                        <div className="font-mono text-[12px]">
+                          {li.sku || `#${li.product_id}`}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {li.name} × {li.quantity}
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-mono tabular-nums">
+                        {money(o.currency, li.total)}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-border pt-3">
-                <div>
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Payment
-                  </div>
-                  <div>{o.payment_method_title}</div>
+              <div className="space-y-1 border-t border-border pt-3 text-[13px]">
+                <Row label="Items subtotal">
+                  {money(
+                    o.currency,
+                    Number(o.total) - Number(o.shipping_total || 0),
+                  )}
+                </Row>
+                <Row label="Delivery charge">
+                  {money(o.currency, o.shipping_total || 0)}
+                </Row>
+                <div className="flex items-center justify-between pt-1 text-base font-semibold">
+                  <span>Total</span>
+                  <span className="tabular-nums">
+                    {money(o.currency, o.total)}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Total
-                  </div>
-                  <div className="text-lg font-semibold tabular-nums">
-                    {o.currency} {Number(o.total).toFixed(2)}
-                  </div>
+                <div className="pt-1 text-[11px] text-muted-foreground">
+                  Payment: {o.payment_method_title || o.payment_method}
                 </div>
               </div>
 
@@ -517,6 +535,15 @@ function OrderDrawer({
           )}
         </div>
       </aside>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between text-muted-foreground">
+      <span>{label}</span>
+      <span className="tabular-nums text-foreground">{children}</span>
     </div>
   );
 }
