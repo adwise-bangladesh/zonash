@@ -1355,6 +1355,31 @@ function OrderDrawer({
     setCustomerNote(o.customer_note ?? "");
   }, [o?.id, o?.date_modified]);
 
+  // Steadfast police stations (thana list) — cached 24h.
+  const policeFn = useServerFn(getPoliceStations);
+  const policeQ = useQuery({
+    queryKey: ["admin", "police-stations"],
+    queryFn: () => policeFn(),
+    staleTime: 24 * 60 * 60_000,
+  });
+  const policeItems = (policeQ.data?.items ?? []) as string[];
+
+  // Customer history — recent thanas for this phone (drives Recent chips).
+  const historyFnDrawer = useServerFn(getCustomerHistory);
+  const phoneDigits = (billing.phone ?? "").replace(/\D+/g, "");
+  const historyQ = useQuery({
+    queryKey: ["admin", "drawer-history", phoneDigits],
+    queryFn: () => historyFnDrawer({ data: { phone: phoneDigits } }),
+    enabled: phoneDigits.length >= 10,
+    staleTime: 10 * 60_000,
+  });
+  const recentThanas = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of historyQ.data?.thanas ?? []) if (t) set.add(t);
+    for (const t of historyQ.data?.courierThanas ?? []) if (t) set.add(t);
+    return Array.from(set).slice(0, 8);
+  }, [historyQ.data]);
+
   // Ops fields
   const opsFn = useServerFn(updateOrderOps);
   const [courier, setCourier] = useState(initialOps?.courier ?? "");
