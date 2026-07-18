@@ -271,9 +271,6 @@ function PosPage() {
                 <Loader2 className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
               )}
             </div>
-            <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:inline">
-              {debounced.length >= 2 ? "Results" : "Most ordered"}
-            </span>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
