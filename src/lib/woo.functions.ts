@@ -19,26 +19,49 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
-        path: "/products",
-        query: {
-          page: data.page,
-          per_page: data.perPage,
-          search: data.search,
-          category: data.category,
-          featured: data.featured,
-          orderby: data.orderby,
-          order: data.order,
-          status: "publish",
-        },
-        timeoutMs: 8000,
-      });
+      const { wooFetch } = await import("./woo.server");
+      const baseQuery = {
+        page: data.page,
+        per_page: data.perPage,
+        category: data.category,
+        featured: data.featured,
+        orderby: data.orderby,
+        order: data.order,
+        status: "publish",
+      } as Record<string, unknown>;
+
+      // Run name/description search AND SKU search in parallel, then merge unique.
+      const term = data.search?.trim();
+      const [byText, bySku] = await Promise.all([
+        wooFetch<WooProduct[]>({
+          path: "/products",
+          query: { ...baseQuery, search: term || undefined },
+          timeoutMs: 8000,
+        }).catch(() => [] as WooProduct[]),
+        term
+          ? wooFetch<WooProduct[]>({
+              path: "/products",
+              query: { ...baseQuery, sku: term },
+              timeoutMs: 8000,
+            }).catch(() => [] as WooProduct[])
+          : Promise.resolve([] as WooProduct[]),
+      ]);
+
+      const seen = new Set<number>();
+      const products: WooProduct[] = [];
+      // SKU matches first — usually the more precise intent for staff.
+      for (const p of [...bySku, ...byText]) {
+        if (seen.has(p.id)) continue;
+        seen.add(p.id);
+        products.push(p);
+      }
       return { products, error: null as string | null };
     } catch (e) {
       console.error("listProducts failed", e);
       return { products: [] as WooProduct[], error: "Product catalog is temporarily unavailable." };
     }
   });
+
 
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
