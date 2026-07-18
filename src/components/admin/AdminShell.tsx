@@ -381,17 +381,23 @@ function FullscreenToggle() {
 }
 
 function IssuesBell({ count, onClick }: { count: number; onClick: () => void }) {
+  const has = count > 0;
   return (
     <button
       type="button"
       onClick={onClick}
-      title={count > 0 ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
-      className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      title={has ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
+      className={`relative inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-semibold transition ${
+        has
+          ? "border-primary/25 bg-primary/8 text-primary hover:bg-primary/12"
+          : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
     >
-      <Bell className="h-4 w-4" />
-      {count > 0 && (
+      <Bell className="h-3.5 w-3.5" />
+      <span className="hidden md:inline">Issues</span>
+      {has && (
         <span
-          className="absolute -right-0.5 -top-0.5 inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
+          className="inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
           style={{
             background: "var(--primary)",
             animation: "badge-shake 1.8s ease-in-out infinite",
