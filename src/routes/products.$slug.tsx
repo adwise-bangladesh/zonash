@@ -231,7 +231,7 @@ function ProductPage() {
                     <span>({formatCount(reviews)})</span>
                   </span>
                 )}
-                {p.total_sales != null && p.total_sales > 0 && <span>{formatCount(p.total_sales)} sold</span>}
+                {reviews > 0 && <span>{formatCount(reviews)} sold</span>}
                 <span className={`ml-auto rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold uppercase ${inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                   {inStock ? "In stock" : "Sold out"}
                 </span>
