@@ -548,18 +548,19 @@ type AddressForm = {
 };
 
 type LineItemDraft = {
-  id?: number;              // present = existing WC line item
-  product_id?: number;      // present = new item
+  id?: number;
+  product_id?: number;
   variation_id?: number;
   name: string;
   sku?: string;
+  image?: string;           // variant/product thumbnail
   quantity: number;
-  unit_price: number;       // per-unit; used to compute subtotal on save
+  unit_price: number;
   removed?: boolean;
 };
 
 type FeeDraft = { id?: number; name: string; total: string };
-type ShippingLineDraft = { id?: number; method_title: string; total: string };
+type ShippingLineDraft = { id?: number; method_id?: string; method_title: string; total: string; instance_id?: number };
 
 function emptyAddr(): AddressForm {
   return { first_name: "", last_name: "", email: "", phone: "", address_1: "", address_2: "", city: "", state: "", postcode: "", country: "" };
