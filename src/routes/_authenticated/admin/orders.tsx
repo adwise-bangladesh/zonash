@@ -684,10 +684,74 @@ function OrderDrawer({
                 </div>
               </div>
 
+              <div className="rounded-md border border-border bg-muted/20 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Operations
+                  </div>
+                  <button
+                    onClick={() => saveOps.mutate()}
+                    disabled={saveOps.isPending}
+                    className="inline-flex items-center gap-1 rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+                  >
+                    {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Save
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="col-span-1">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Courier
+                    </span>
+                    <input
+                      value={courier}
+                      onChange={(e) => setCourier(e.target.value)}
+                      placeholder="Pathao, Steadfast, RedX…"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-1">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Tracking #
+                    </span>
+                    <input
+                      value={tracking}
+                      onChange={(e) => setTracking(e.target.value)}
+                      placeholder="Consignment / AWB"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-2">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Pickup slot
+                    </span>
+                    <input
+                      value={pickup}
+                      onChange={(e) => setPickup(e.target.value)}
+                      placeholder="e.g. 20 Jul, 2–4 PM"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-2">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Internal notes
+                    </span>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Only visible to staff — not shown to the customer."
+                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <div className="mb-2 text-[10px] uppercase text-muted-foreground">
                   Change status
                 </div>
+
                 <div className="flex flex-wrap gap-2">
                   {statuses.map((s) => (
                     <button
