@@ -33,13 +33,14 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
 });
 
-type TabKey = "integrations" | "general" | "notifications" | "security";
+type TabKey = "integrations" | "templates" | "general" | "notifications" | "security";
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }> = [
-  { key: "integrations",  label: "Integrations",  icon: Plug,        desc: "Couriers and third-party services" },
-  { key: "general",       label: "General",       icon: StoreIcon,   desc: "Business preferences" },
-  { key: "notifications", label: "Notifications", icon: Bell,        desc: "Customer alerts and staff pings" },
-  { key: "security",      label: "Security",      icon: KeyRound,    desc: "Credentials and access" },
+  { key: "integrations",  label: "Integrations",  icon: Plug,          desc: "Couriers and third-party services" },
+  { key: "templates",     label: "Templates",     icon: MessageSquare, desc: "Reusable notes and SMS messages" },
+  { key: "general",       label: "General",       icon: StoreIcon,     desc: "Business preferences" },
+  { key: "notifications", label: "Notifications", icon: Bell,          desc: "Customer alerts and staff pings" },
+  { key: "security",      label: "Security",      icon: KeyRound,      desc: "Credentials and access" },
 ];
 
 function SettingsPage() {
