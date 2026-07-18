@@ -66,6 +66,8 @@ function AdminOrders() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(100);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+
 
   const statusesQ = useQuery({
     queryKey: ["admin", "woo-order-statuses"],
