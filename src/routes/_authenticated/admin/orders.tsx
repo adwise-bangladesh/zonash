@@ -617,6 +617,7 @@ function OrderDrawer({
         id: li.id,
         name: li.name,
         sku: li.sku,
+        image: li.image?.src ?? undefined,
         quantity: li.quantity,
         unit_price:
           Number(li.subtotal ?? li.total ?? 0) / Math.max(1, li.quantity),
@@ -629,7 +630,7 @@ function OrderDrawer({
     );
     setShipLines(
       (o.shipping_lines ?? []).map((s: any) => ({
-        id: s.id, method_title: s.method_title ?? "Shipping", total: String(s.total ?? "0"),
+        id: s.id, method_id: s.method_id ?? "flat_rate", method_title: s.method_title ?? "Shipping", total: String(s.total ?? "0"),
       })),
     );
     setCustomerNote(o.customer_note ?? "");
