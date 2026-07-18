@@ -82,12 +82,13 @@ export const updateOrderOps = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabase
       .from("order_ops")
-      .upsert(payload, { onConflict: "wc_order_id" })
+      .upsert(payload as never, { onConflict: "wc_order_id" })
       .select("wc_order_id, courier, tracking_number, pickup_slot, internal_notes, updated_at")
       .single();
     if (error) throw new Error(error.message);
     return row as OrderOps;
   });
+
 
 // ---------- customer stats + badge ----------
 
