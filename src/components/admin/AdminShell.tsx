@@ -53,15 +53,40 @@ export function AdminShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
+  const [fullName, setFullName] = useState<string>("");
+  const [role, setRole] = useState<string>("Staff");
+
+  const avatarSeed = useMemo(
+    () => Math.random().toString(36).slice(2, 10),
+    [],
+  );
+  const avatarUrl = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${avatarSeed}&radius=50`;
 
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? "");
-    });
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const user = u.user;
+      if (!user) return;
+      setEmail(user.email ?? "");
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+      ]);
+      setFullName(profile?.full_name ?? "");
+      const rs = (roles ?? []).map((r: any) => r.role as string);
+      const primary = rs.includes("admin")
+        ? "Admin"
+        : rs.includes("staff")
+          ? "Staff"
+          : rs.includes("viewer")
+            ? "Viewer"
+            : "Member";
+      setRole(primary);
+    })();
   }, []);
 
   async function signOut() {
