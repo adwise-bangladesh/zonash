@@ -2143,7 +2143,7 @@ function CustomerInsightDrawer({
             }
             sub={
               overall
-                ? `${overall.total_delivered ?? 0} ok · ${overall.total_cancelled ?? 0} cancel`
+                ? `${overall.delivered_parcels ?? 0} ok · ${overall.cancelled_parcels ?? 0} cancel`
                 : undefined
             }
           />
