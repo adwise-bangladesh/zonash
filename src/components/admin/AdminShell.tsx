@@ -64,51 +64,13 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Catalog",
-    items: [
-      { title: "Products", url: "/admin/products", icon: Package },
-      { title: "Categories", url: "/admin/categories", icon: FolderTree },
-      { title: "Brands", url: "/admin/brands", icon: Sparkles },
-      { title: "Inventory", url: "/admin/inventory", icon: Boxes },
-    ],
-  },
-  {
-    label: "Customers",
-    items: [
-      { title: "All customers", url: "/admin/customers", icon: UserCircle },
-      { title: "Staff & roles", url: "/admin/users", icon: Users },
-    ],
-  },
-  {
-    label: "Marketing",
-    items: [
-      { title: "Banners", url: "/admin/banners", icon: ImageIcon },
-      { title: "Notifications", url: "/admin/notifications", icon: Megaphone },
-      { title: "Pages", url: "/admin/pages", icon: FileText },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { title: "Transactions", url: "/admin/payments", icon: CreditCard },
-      { title: "P&L", url: "/admin/finance", icon: TrendingUp },
-      { title: "Receipts", url: "/admin/receipts", icon: Receipt },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { title: "Stores", url: "/admin/stores", icon: StoreIcon },
-      { title: "Shipping", url: "/admin/shipping", icon: Truck },
-    ],
-  },
-  {
     label: "Settings",
     items: [
       { title: "Security", url: "/admin/security", icon: Shield },
       { title: "Store settings", url: "/admin/settings", icon: Settings },
     ],
   },
+
 ];
 
 export function AdminShell({
