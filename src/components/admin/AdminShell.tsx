@@ -1,80 +1,40 @@
 /**
- * Admin shell — light sidebar + slim topbar + airy main area.
- * Mirrors the Nori marketplace admin visual language.
+ * Admin shell — premium branded sidebar (burgundy) + slim topbar + airy main.
  */
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Menu,
   X as CloseIcon,
   LayoutDashboard,
   ShoppingBag,
-  Package,
   Users,
   RotateCcw,
-  Star,
-  Tag,
   LogOut,
   Search,
   Bell,
   Plus,
-  ChevronsUpDown,
-  ChevronRight,
   BarChart3,
-  FolderTree,
-  Boxes,
   UserCircle,
-  Megaphone,
-  Image as ImageIcon,
-  FileText,
-  Truck,
-  CreditCard,
   Settings,
-  Shield,
-  Store as StoreIcon,
-  Sparkles,
-  Receipt,
-  TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
-type NavChild = {
+type NavItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
 };
-type NavGroup = { label: string; items: NavChild[] };
 
-const navGroups: NavGroup[] = [
-  {
-    label: "Overview",
-    items: [
-      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-      { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "Sales",
-    items: [
-      { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
-      { title: "Backfill", url: "/admin/backfill", icon: RotateCcw },
-      { title: "Returns", url: "/admin/returns", icon: RotateCcw },
-      { title: "Coupons", url: "/admin/coupons", icon: Tag },
-      { title: "Reviews", url: "/admin/reviews", icon: Star },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { title: "Users", url: "/admin/users", icon: Users },
-      { title: "My profile", url: "/admin/profile", icon: UserCircle },
-      { title: "Store settings", url: "/admin/settings", icon: Settings },
-    ],
-  },
-
-
-
+const navItems: NavItem[] = [
+  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "Orders", url: "/admin/orders", icon: ShoppingBag },
+  { title: "Returns", url: "/admin/returns", icon: RotateCcw },
+  { title: "Users", url: "/admin/users", icon: Users },
+  { title: "My profile", url: "/admin/profile", icon: UserCircle },
+  { title: "Store settings", url: "/admin/settings", icon: Settings },
 ];
 
 export function AdminShell({
@@ -110,6 +70,9 @@ export function AdminShell({
     navigate({ to: "/auth" });
   }
 
+  const isActive = (url: string) =>
+    url === "/admin" ? pathname === "/admin" : pathname.startsWith(url);
+
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-muted/30">
       {mobileNavOpen && (
@@ -123,67 +86,85 @@ export function AdminShell({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] shrink-0 flex-col border-r border-border bg-card transition-transform duration-200 md:static md:w-[248px] md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col text-primary-foreground transition-transform duration-200 md:static md:translate-x-0 ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{
+          background:
+            "linear-gradient(180deg, hsl(var(--primary)) 0%, color-mix(in oklab, hsl(var(--primary)) 82%, black) 100%)",
+        }}
       >
-        <div className="flex items-center gap-2 px-3 py-3">
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition hover:bg-muted/50"
+        {/* Brand */}
+        <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[14px] font-bold shadow-lg ring-1 ring-white/10"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
+              color: "hsl(var(--primary))",
+            }}
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-foreground text-[12px] font-bold text-background">
-              Z
-            </span>
-            <div className="min-w-0 flex-1 leading-tight">
-              <div className="truncate text-[13px] font-semibold">Zonash</div>
-              <div className="text-[10px] text-muted-foreground">
-                Admin workspace
-              </div>
+            Z
+          </span>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="truncate text-[14px] font-semibold tracking-tight">
+              Zonash
             </div>
-            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          </button>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/55">
+              Admin workspace
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close menu"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white md:hidden"
           >
             <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 
-        <nav
-          className="flex-1 overflow-y-auto px-2 pb-4"
-          onClick={() => setMobileNavOpen(false)}
-        >
-          {navGroups.map((group) => {
-            const hasActive = group.items.some((i) =>
-              i.url === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(i.url),
-            );
-            return (
-              <NavSection
-                key={group.label}
-                group={group}
-                pathname={pathname}
-                defaultOpen={hasActive}
-              />
-            );
-          })}
+        <div className="mx-4 mb-3 h-px bg-white/10" />
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const active = isActive(item.url);
+              const Icon = item.icon;
+              return (
+                <li key={item.url}>
+                  <Link
+                    to={item.url}
+                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                      active
+                        ? "bg-white/15 text-white shadow-sm"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-white" />
+                    )}
+                    <Icon className="h-[16px] w-[16px] shrink-0" />
+                    <span className="truncate">{item.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
 
-        <div className="border-t border-border p-2">
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-foreground text-[12px] font-semibold uppercase text-background">
+        {/* User footer */}
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-2.5 rounded-lg bg-white/5 px-2.5 py-2 ring-1 ring-white/10">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-[12px] font-semibold uppercase text-primary">
               {email.slice(0, 1) || "S"}
             </div>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="truncate text-[12px] font-semibold">
+              <div className="truncate text-[12px] font-semibold text-white">
                 {email || "Staff"}
               </div>
-              <div className="text-[10px] capitalize text-muted-foreground">
+              <div className="text-[10px] uppercase tracking-wider text-white/55">
                 Admin
               </div>
             </div>
@@ -191,7 +172,7 @@ export function AdminShell({
               type="button"
               onClick={signOut}
               title="Sign out"
-              className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="grid h-8 w-8 place-items-center rounded-md text-white/70 transition hover:bg-white/10 hover:text-white"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -226,7 +207,7 @@ export function AdminShell({
           </button>
           <Link
             to="/admin/orders"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12px] font-semibold text-background transition hover:bg-foreground/90"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" />{" "}
             <span className="hidden md:inline">New</span>
@@ -257,60 +238,6 @@ export function AdminShell({
           </div>
         </main>
       </div>
-    </div>
-  );
-}
-
-function NavSection({
-  group,
-  pathname,
-  defaultOpen,
-}: {
-  group: NavGroup;
-  pathname: string;
-  defaultOpen: boolean;
-}) {
-  void defaultOpen;
-  const open = true;
-
-  return (
-    <div className="mt-2">
-      <div className="flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        <span>{group.label}</span>
-      </div>
-      {open && (
-
-        <ul className="mt-1 space-y-0.5">
-          {group.items.map((item) => {
-            const isParentIndex = item.url === "/admin";
-            const active = isParentIndex
-              ? pathname === item.url
-              : pathname.startsWith(item.url);
-            const Icon = item.icon;
-            return (
-              <li key={item.url}>
-                <Link
-                  to={item.url}
-                  className={`group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition ${
-                    active
-                      ? "bg-foreground/[0.06] text-foreground"
-                      : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 ${
-                      active
-                        ? "text-foreground"
-                        : "text-muted-foreground group-hover:text-foreground"
-                    }`}
-                  />
-                  <span>{item.title}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </div>
   );
 }
