@@ -1,0 +1,128 @@
+/**
+ * Steadfast Courier Ltd — REST client (server-only).
+ *
+ * Base URL: https://portal.packzy.com/api/v1
+ * Auth: `Api-Key` + `Secret-Key` headers (from env secrets).
+ */
+
+const BASE_URL = "https://portal.packzy.com/api/v1";
+
+export class SteadfastError extends Error {
+  constructor(message: string, public status?: number, public body?: unknown) {
+    super(message);
+    this.name = "SteadfastError";
+  }
+}
+
+function headers(): Record<string, string> {
+  const apiKey = process.env.STEADFAST_API_KEY;
+  const secretKey = process.env.STEADFAST_SECRET_KEY;
+  if (!apiKey || !secretKey) {
+    throw new SteadfastError(
+      "Steadfast API keys are not configured. Add STEADFAST_API_KEY and STEADFAST_SECRET_KEY.",
+      412,
+    );
+  }
+  return {
+    "Api-Key": apiKey,
+    "Secret-Key": secretKey,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+}
+
+async function request<T>(
+  path: string,
+  init?: { method?: string; body?: unknown; timeoutMs?: number },
+): Promise<T> {
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), init?.timeoutMs ?? 15_000);
+  try {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: init?.method ?? "GET",
+      headers: headers(),
+      body: init?.body ? JSON.stringify(init.body) : undefined,
+      signal: ac.signal,
+    });
+    const text = await res.text();
+    let json: unknown = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      /* non-JSON */
+    }
+    if (!res.ok) {
+      const msg =
+        (json && typeof json === "object" && "message" in json && typeof (json as { message: unknown }).message === "string"
+          ? (json as { message: string }).message
+          : `Steadfast ${res.status}`);
+      throw new SteadfastError(msg, res.status, json ?? text);
+    }
+    return json as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ---------- Types ----------
+
+export type CreateConsignmentInput = {
+  invoice: string;
+  recipient_name: string;
+  recipient_phone: string;
+  alternative_phone?: string;
+  recipient_email?: string;
+  recipient_address: string;
+  cod_amount: number;
+  note?: string;
+  item_description?: string;
+  total_lot?: number;
+  delivery_type?: 0 | 1;
+};
+
+export type Consignment = {
+  consignment_id: number;
+  invoice: string;
+  tracking_code: string;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  cod_amount: number;
+  status: string;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type BalanceResponse = { status: number; current_balance: number };
+export type CreateOrderResponse = { status: number; message: string; consignment: Consignment };
+export type DeliveryStatusResponse = { status: number; delivery_status: string };
+
+// ---------- API surface ----------
+
+export function sfGetBalance(): Promise<BalanceResponse> {
+  return request<BalanceResponse>("/get_balance");
+}
+
+export function sfCreateOrder(input: CreateConsignmentInput): Promise<CreateOrderResponse> {
+  return request<CreateOrderResponse>("/create_order", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function sfStatusByCid(id: number): Promise<DeliveryStatusResponse> {
+  return request<DeliveryStatusResponse>(`/status_by_cid/${id}`);
+}
+
+export function sfStatusByInvoice(invoice: string): Promise<DeliveryStatusResponse> {
+  return request<DeliveryStatusResponse>(`/status_by_invoice/${encodeURIComponent(invoice)}`);
+}
+
+export function sfStatusByTracking(code: string): Promise<DeliveryStatusResponse> {
+  return request<DeliveryStatusResponse>(`/status_by_trackingcode/${encodeURIComponent(code)}`);
+}
+
+export function steadfastConfigured(): boolean {
+  return Boolean(process.env.STEADFAST_API_KEY && process.env.STEADFAST_SECRET_KEY);
+}
