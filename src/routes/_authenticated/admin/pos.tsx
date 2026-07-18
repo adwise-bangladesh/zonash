@@ -612,7 +612,7 @@ function PosPage() {
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
-                Create order
+                Place Order
               </button>
             </div>
           </div>
