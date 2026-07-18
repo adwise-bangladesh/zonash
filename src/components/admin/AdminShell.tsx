@@ -261,24 +261,16 @@ function NavSection({
   pathname: string;
   defaultOpen: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  useMemo(() => {
-    if (defaultOpen) setOpen(true);
-  }, [defaultOpen]);
+  void defaultOpen;
+  const open = true;
 
   return (
     <div className="mt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="group flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground"
-      >
+      <div className="flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <span>{group.label}</span>
-        <ChevronRight
-          className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`}
-        />
-      </button>
+      </div>
       {open && (
+
         <ul className="mt-1 space-y-0.5">
           {group.items.map((item) => {
             const isParentIndex = item.url === "/admin";
