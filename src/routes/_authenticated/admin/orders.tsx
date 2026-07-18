@@ -1589,15 +1589,21 @@ function OrderDrawer({
                   }}
                   full
                 />
-                <TextField
-                  label="Thana"
-                  value={billing.city}
-                  onChange={(v) => {
-                    setBilling({ ...billing, city: v, state: v });
-                    setShipping({ ...shipping, city: v, state: v });
-                  }}
-                  full
-                />
+                <div className="col-span-2">
+                  <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Thana
+                  </span>
+                  <ThanaCombobox
+                    value={billing.city ?? ""}
+                    onChange={(v) => {
+                      setBilling({ ...billing, city: v, state: v });
+                      setShipping({ ...shipping, city: v, state: v });
+                    }}
+                    options={policeItems}
+                    loading={policeQ.isLoading}
+                    recent={recentThanas}
+                  />
+                </div>
               </div>
               <label className="mt-2 block">
                 <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">Notes</span>
