@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { WooOrder } from "@/lib/woo.server";
+import { mapOrderToCacheRow, type WooOrder } from "@/lib/woo.server";
+
 
 // WooCommerce sends a base64 HMAC-SHA256 of the raw body using the shared secret
 // configured in WooCommerce → Settings → Advanced → Webhooks.
