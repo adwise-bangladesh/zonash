@@ -25,6 +25,8 @@ import {
   listCustomerOrders,
   updateWooOrder,
   listProducts,
+  listProductVariations,
+  listShippingMethods,
 } from "@/lib/woo.functions";
 
 import {
