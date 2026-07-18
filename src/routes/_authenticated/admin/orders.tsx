@@ -2,7 +2,7 @@
  * Orders — Nori-style admin list with status tabs (with counters),
  * SKU-driven items column, address on the row, and price + delivery totals.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -11,7 +11,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { Search, Loader2, Eye, ShoppingBag, X } from "lucide-react";
+import { Search, Loader2, Eye, ShoppingBag, X, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
@@ -20,6 +20,15 @@ import {
   getWooOrder,
   listOrderStatuses,
 } from "@/lib/woo.functions";
+import {
+  getOrderOps,
+  updateOrderOps,
+  getCustomerStats,
+  ratingFromStats,
+  type OrderOps,
+  type CustomerRating,
+} from "@/lib/ops.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
@@ -131,6 +140,39 @@ function AdminOrders() {
     [orders],
   );
   const currency = orders[0]?.currency ?? "";
+
+  // Batch-fetch dashboard-owned ops fields + per-customer stats for visible orders.
+  const opsFn = useServerFn(getOrderOps);
+  const statsFn = useServerFn(getCustomerStats);
+  const visibleIds = useMemo(() => orders.map((o) => o.id), [orders]);
+  const visibleEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          orders
+            .map((o) => o.billing?.email?.toLowerCase().trim())
+            .filter((e): e is string => !!e && e.includes("@")),
+        ),
+      ),
+    [orders],
+  );
+  const opsQ = useQuery({
+    queryKey: ["admin", "order-ops", visibleIds],
+    queryFn: () => opsFn({ data: { ids: visibleIds } }),
+    enabled: visibleIds.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const statsQ = useQuery({
+    queryKey: ["admin", "customer-stats", visibleEmails],
+    queryFn: () => statsFn({ data: { emails: visibleEmails } }),
+    enabled: visibleEmails.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+  const opsMap = opsQ.data ?? {};
+  const statsMap = statsQ.data ?? {};
+
 
   return (
     <AdminShell
@@ -254,13 +296,43 @@ function AdminOrders() {
                     >
                       #{o.number}
                     </button>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {o.billing?.first_name} {o.billing?.last_name}
+                    <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        {o.billing?.first_name} {o.billing?.last_name}
+                      </span>
+                      {(() => {
+                        const email = o.billing?.email?.toLowerCase().trim();
+                        const stat = email ? statsMap[email] : undefined;
+                        const rating = ratingFromStats(stat);
+                        return (
+                          <>
+                            <CustomerBadge rating={rating} />
+                            {stat && stat.total > 1 && (
+                              <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold text-foreground tabular-nums">
+                                {stat.total} orders
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {o.billing?.phone || o.billing?.email}
                     </div>
+                    {(() => {
+                      const ops = opsMap[o.id];
+                      if (!ops || (!ops.courier && !ops.tracking_number)) return null;
+                      return (
+                        <div className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                          <Truck className="h-3 w-3" />
+                          <span className="truncate">
+                            {[ops.courier, ops.tracking_number].filter(Boolean).join(" · ")}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
+
                   <div className="min-w-0 space-y-0.5 text-[12px]">
                     {(o.line_items ?? []).slice(0, 3).map((li) => (
                       <div key={li.id} className="truncate">
@@ -374,8 +446,15 @@ function AdminOrders() {
           detailFn={detailFn}
           statuses={wooStatuses}
           onUpdate={(s) => updM.mutate({ id: openId, status: s })}
+          initialOps={opsMap[openId]}
+          customerStat={(() => {
+            const o = orders.find((x) => x.id === openId);
+            const e = o?.billing?.email?.toLowerCase().trim();
+            return e ? statsMap[e] : undefined;
+          })()}
         />
       )}
+
     </AdminShell>
   );
 }
@@ -399,24 +478,91 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function CustomerBadge({ rating }: { rating: CustomerRating }) {
+  const cfg: Record<CustomerRating, { label: string; cls: string }> = {
+    new: { label: "New", cls: "bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20" },
+    average: {
+      label: "Average",
+      cls: "bg-muted text-foreground/70 ring-1 ring-input",
+    },
+    perfect: {
+      label: "Perfect",
+      cls: "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20",
+    },
+    risk: {
+      label: "Risk",
+      cls: "bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20",
+    },
+  };
+  const { label, cls } = cfg[rating];
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+
+
+
 function OrderDrawer({
   id,
   onClose,
   detailFn,
   statuses,
   onUpdate,
+  initialOps,
+  customerStat,
 }: {
   id: number;
   onClose: () => void;
   detailFn: (a: { data: { id: number } }) => Promise<any>;
   statuses: { slug: string; name: string; count: number }[];
   onUpdate: (status: string) => void;
+  initialOps?: OrderOps;
+  customerStat?: import("@/lib/ops.functions").CustomerStat;
 }) {
+  const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["admin", "woo-order", id],
     queryFn: () => detailFn({ data: { id } }),
   });
   const o = q.data;
+
+  const opsFn = useServerFn(updateOrderOps);
+  const [courier, setCourier] = useState(initialOps?.courier ?? "");
+  const [tracking, setTracking] = useState(initialOps?.tracking_number ?? "");
+  const [pickup, setPickup] = useState(initialOps?.pickup_slot ?? "");
+  const [notes, setNotes] = useState(initialOps?.internal_notes ?? "");
+  useEffect(() => {
+    setCourier(initialOps?.courier ?? "");
+    setTracking(initialOps?.tracking_number ?? "");
+    setPickup(initialOps?.pickup_slot ?? "");
+    setNotes(initialOps?.internal_notes ?? "");
+  }, [initialOps?.wc_order_id, initialOps?.updated_at]);
+
+  const saveOps = useMutation({
+    mutationFn: () =>
+      opsFn({
+        data: {
+          wc_order_id: id,
+          courier: courier || null,
+          tracking_number: tracking || null,
+          pickup_slot: pickup || null,
+          internal_notes: notes || null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Operations saved");
+      qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rating = ratingFromStats(customerStat);
+
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -454,8 +600,11 @@ function OrderDrawer({
                   <div className="text-[10px] uppercase text-muted-foreground">
                     Customer
                   </div>
-                  <div className="font-medium">
-                    {o.billing.first_name} {o.billing.last_name}
+                  <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                    <span>
+                      {o.billing.first_name} {o.billing.last_name}
+                    </span>
+                    <CustomerBadge rating={rating} />
                   </div>
                   <div className="text-[12px] text-muted-foreground">
                     {o.billing.email}
@@ -463,7 +612,14 @@ function OrderDrawer({
                   <div className="text-[12px] text-muted-foreground">
                     {o.billing.phone}
                   </div>
+                  {customerStat && (
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      {customerStat.total} orders · {customerStat.completed} completed ·{" "}
+                      {customerStat.cancelled} cancelled
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <div className="text-[10px] uppercase text-muted-foreground">
                     Shipping address
@@ -528,10 +684,74 @@ function OrderDrawer({
                 </div>
               </div>
 
+              <div className="rounded-md border border-border bg-muted/20 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Operations
+                  </div>
+                  <button
+                    onClick={() => saveOps.mutate()}
+                    disabled={saveOps.isPending}
+                    className="inline-flex items-center gap-1 rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+                  >
+                    {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Save
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="col-span-1">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Courier
+                    </span>
+                    <input
+                      value={courier}
+                      onChange={(e) => setCourier(e.target.value)}
+                      placeholder="Pathao, Steadfast, RedX…"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-1">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Tracking #
+                    </span>
+                    <input
+                      value={tracking}
+                      onChange={(e) => setTracking(e.target.value)}
+                      placeholder="Consignment / AWB"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-2">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Pickup slot
+                    </span>
+                    <input
+                      value={pickup}
+                      onChange={(e) => setPickup(e.target.value)}
+                      placeholder="e.g. 20 Jul, 2–4 PM"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                  <label className="col-span-2">
+                    <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+                      Internal notes
+                    </span>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Only visible to staff — not shown to the customer."
+                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px] outline-none focus:border-ring"
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <div className="mb-2 text-[10px] uppercase text-muted-foreground">
                   Change status
                 </div>
+
                 <div className="flex flex-wrap gap-2">
                   {statuses.map((s) => (
                     <button

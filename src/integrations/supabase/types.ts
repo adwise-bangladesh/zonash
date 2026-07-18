@@ -80,6 +80,39 @@ export type Database = {
         }
         Relationships: []
       }
+      order_ops: {
+        Row: {
+          courier: string | null
+          created_at: string
+          internal_notes: string | null
+          pickup_slot: string | null
+          tracking_number: string | null
+          updated_at: string
+          updated_by: string | null
+          wc_order_id: number
+        }
+        Insert: {
+          courier?: string | null
+          created_at?: string
+          internal_notes?: string | null
+          pickup_slot?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wc_order_id: number
+        }
+        Update: {
+          courier?: string | null
+          created_at?: string
+          internal_notes?: string | null
+          pickup_slot?: string | null
+          tracking_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wc_order_id?: number
+        }
+        Relationships: []
+      }
       orders_cache: {
         Row: {
           billing_city: string | null
@@ -283,6 +316,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      customer_order_stats: {
+        Args: { emails: string[] }
+        Returns: {
+          cancelled: number
+          completed: number
+          email: string
+          total: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
