@@ -80,7 +80,7 @@ function PosPage() {
   const verifyFn = useServerFn(verifyCustomerPhone);
   const historyFn = useServerFn(getCustomerHistory);
 
-  const [channel, setChannel] = useState<string>(initialChannel);
+  const [channel, setChannel] = useState<string>(initialChannel ?? "phone");
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
