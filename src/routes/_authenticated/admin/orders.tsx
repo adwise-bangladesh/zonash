@@ -48,6 +48,7 @@ import {
 } from "@/lib/ops.functions";
 import { sendOrderToSteadfast, refreshSteadfastStatus, bulkSendOrdersToSteadfast } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
+import { getCustomerHistory, type CustomerHistory } from "@/lib/customer-history.functions";
 import { HoorinReportView } from "@/routes/_authenticated/admin/settings";
 import type { HoorinReport } from "@/lib/hoorin.server";
 
@@ -758,8 +759,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CustomerBadge({ rating }: { rating: CustomerRating }) {
-  const cfg: Record<CustomerRating, { label: string; cls: string }> = {
-    new: { label: "New", cls: "bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20" },
+  // "New" badge intentionally hidden — not useful signal on its own.
+  if (rating === "new") return null;
+  const cfg: Record<Exclude<CustomerRating, "new">, { label: string; cls: string }> = {
     average: {
       label: "Average",
       cls: "bg-muted text-foreground/70 ring-1 ring-input",
