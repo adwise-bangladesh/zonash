@@ -181,6 +181,28 @@ async function assertStaff(ctx: {
   }
 }
 
+/** Best-effort lookup of the signed-in staff member's display name. */
+async function getStaffName(ctx: {
+  supabase: { from: (t: string) => { select: (c: string) => { eq: (col: string, v: string) => { maybeSingle: () => Promise<{ data: { full_name: string | null; email: string | null } | null; error: unknown }> } } } };
+  userId: string;
+  claims?: { email?: string } | null;
+}): Promise<string> {
+  try {
+    const { data } = await ctx.supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", ctx.userId)
+      .maybeSingle();
+    const name = data?.full_name?.trim();
+    if (name) return name;
+    const email = data?.email?.trim() || ctx.claims?.email?.trim();
+    if (email) return email.split("@")[0];
+  } catch {
+    /* ignore */
+  }
+  return "Staff";
+}
+
 export const getWooOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) => z.object({ id: z.number().int().positive() }).parse(raw))
