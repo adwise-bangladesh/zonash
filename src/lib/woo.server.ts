@@ -81,6 +81,8 @@ export type WooProduct = {
   name: string;
   slug: string;
   permalink: string;
+  type?: string; // "simple" | "variable" | "grouped" | "external"
+  sku?: string;
   price: string;
   regular_price: string;
   sale_price: string;
@@ -90,9 +92,22 @@ export type WooProduct = {
   description: string;
   images: { id: number; src: string; alt: string }[];
   categories: { id: number; name: string; slug: string }[];
+  variations?: number[];
   average_rating: string;
   rating_count: number;
 };
+
+export type WooVariation = {
+  id: number;
+  sku?: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  stock_status: string;
+  image?: { id: number; src: string; alt: string };
+  attributes: { id: number; name: string; option: string }[];
+};
+
 
 export type WooOrder = {
   id: number;
