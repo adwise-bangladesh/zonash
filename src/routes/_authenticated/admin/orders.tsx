@@ -857,8 +857,8 @@ function OrderRow({
   };
 
   // Success ratio pill for the verify result
-  const ratio = verify.report?.summary
-    ? Number(verify.report.summary.success_ratio ?? 0)
+  const ratio = verify.report?.overall
+    ? Number(verify.report.overall.success_ratio ?? 0)
     : null;
   const ratioCls =
     ratio === null
