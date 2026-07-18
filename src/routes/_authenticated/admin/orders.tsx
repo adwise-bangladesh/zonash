@@ -2180,66 +2180,126 @@ function CustomerInsightDrawer({
           </button>
         </div>
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          <InsightKpi
-            label="Zonash orders"
-            value={ordersQ.isLoading ? "…" : orders.length.toString()}
-            sub={
-              statusCounts.completed
-                ? `${statusCounts.completed} completed`
-                : undefined
-            }
-          />
-          <InsightKpi
-            label="Total spent"
-            value={ordersQ.isLoading ? "…" : money(currency, totalSpent)}
-          />
-          <InsightKpi
-            label="Courier success"
-            value={
-              !phone
-                ? "—"
-                : hoorinQ.isLoading
-                  ? "…"
-                  : ratio !== null
-                    ? `${ratio}%`
-                    : "—"
-            }
-            valueClass={ratioCls}
-            sub={overall ? `${totalDeliveries} parcels` : undefined}
-          />
-          <InsightKpi
-            label="Deliveries"
-            value={
-              !phone
-                ? "—"
-                : hoorinQ.isLoading
-                  ? "…"
-                  : totalDeliveries.toString()
-            }
-            sub={
-              overall
-                ? `${delivered} ok · ${cancelled} cancel`
-                : undefined
-            }
-          />
+        {/* Row 1 — Zonash order stats (detailed) */}
+        <div className="border-b border-border">
+          <div className="flex items-center justify-between px-4 pt-3">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Zonash orders
+            </div>
+            {ordersQ.isLoading && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-px bg-border sm:grid-cols-4 lg:grid-cols-7">
+            <InsightKpi
+              label="Total"
+              value={ordersQ.isLoading ? "…" : orders.length.toString()}
+            />
+            <InsightKpi
+              label="Completed"
+              value={(statusCounts.completed ?? 0).toString()}
+              valueClass={
+                (statusCounts.completed ?? 0) > 0
+                  ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Processing"
+              value={(statusCounts.processing ?? 0).toString()}
+              valueClass={
+                (statusCounts.processing ?? 0) > 0
+                  ? "bg-blue-500/10 text-blue-700 ring-blue-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Pending"
+              value={((statusCounts.pending ?? 0) + (statusCounts["on-hold"] ?? 0)).toString()}
+              valueClass={
+                (statusCounts.pending ?? 0) + (statusCounts["on-hold"] ?? 0) > 0
+                  ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Cancelled"
+              value={((statusCounts.cancelled ?? 0) + (statusCounts.failed ?? 0) + (statusCounts.refunded ?? 0)).toString()}
+              valueClass={
+                (statusCounts.cancelled ?? 0) + (statusCounts.failed ?? 0) + (statusCounts.refunded ?? 0) > 0
+                  ? "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Total spent"
+              value={ordersQ.isLoading ? "…" : money(currency, totalSpent)}
+              sub={
+                (statusCounts.completed ?? 0) > 0
+                  ? `avg ${money(currency, totalSpent / (statusCounts.completed ?? 1))}`
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Last order"
+              value={
+                latest
+                  ? new Date(latest.date_created).toLocaleDateString(undefined, {
+                      day: "2-digit",
+                      month: "short",
+                    })
+                  : "—"
+              }
+              sub={latest ? `#${latest.number}` : undefined}
+            />
+          </div>
         </div>
 
-        {/* Per-courier strip — same visual language as KPI strip */}
+        {/* Row 2 — Courier stats (overall + per-carrier) */}
         {phone && (
-          <div className="border-t border-border">
-            {hoorinQ.isLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking courier history…
+          <div className="border-b border-border">
+            <div className="flex items-center justify-between px-4 pt-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Courier history
               </div>
-            ) : hoorinQ.error ? (
-              <div className="px-4 py-2 text-[11px] text-rose-700">
+              {hoorinQ.isLoading && (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            {hoorinQ.error ? (
+              <div className="px-4 py-2 pb-3 text-[11px] text-rose-700">
                 {(hoorinQ.error as Error).message}
               </div>
-            ) : report?.success && report.couriers ? (
-              <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-                {(["steadfast", "redx", "pathao", "carrybee"] as const).map((k) => {
+            ) : report?.success && overall ? (
+              <div className="mt-2 grid grid-cols-3 gap-px bg-border sm:grid-cols-4 lg:grid-cols-7">
+                <InsightKpi
+                  label="Success"
+                  value={ratio !== null ? `${ratio}%` : "—"}
+                  valueClass={ratioCls}
+                />
+                <InsightKpi
+                  label="Parcels"
+                  value={totalDeliveries.toString()}
+                />
+                <InsightKpi
+                  label="Delivered"
+                  value={delivered.toString()}
+                  valueClass={
+                    delivered > 0
+                      ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                      : undefined
+                  }
+                />
+                <InsightKpi
+                  label="Cancelled"
+                  value={cancelled.toString()}
+                  valueClass={
+                    cancelled > 0
+                      ? "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                      : undefined
+                  }
+                />
+                {(["steadfast", "redx", "pathao"] as const).map((k) => {
                   const b = report.couriers?.[k];
                   const has = b && typeof b.total_parcels === "number";
                   const total = has ? Number(b!.total_parcels) : 0;
@@ -2254,21 +2314,26 @@ function CustomerInsightDrawer({
                       sub={
                         has
                           ? r !== null
-                            ? `${r}% success · ${canc} cancel`
-                            : `${canc} cancel`
-                          : (b?.message ?? "no data")
+                            ? `${r}% · ${canc} cx`
+                            : `${canc} cx`
+                          : "no data"
                       }
                     />
                   );
                 })}
               </div>
-            ) : (
-              <div className="px-4 py-2 text-[11px] italic text-muted-foreground">
+            ) : !hoorinQ.isLoading ? (
+              <div className="px-4 py-2 pb-3 text-[11px] italic text-muted-foreground">
                 No courier history for this number.
+              </div>
+            ) : (
+              <div className="px-4 py-2 pb-3 text-[11px] text-muted-foreground">
+                Checking courier history…
               </div>
             )}
           </div>
         )}
+
 
         {/* Body — single scroll, no tabs */}
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
