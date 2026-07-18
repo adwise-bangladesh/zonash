@@ -2226,32 +2226,53 @@ function CustomerInsightDrawer({
           />
         </div>
 
+        {/* Per-courier strip — same visual language as KPI strip */}
+        {phone && (
+          <div className="border-t border-border">
+            {hoorinQ.isLoading ? (
+              <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking courier history…
+              </div>
+            ) : hoorinQ.error ? (
+              <div className="px-4 py-2 text-[11px] text-rose-700">
+                {(hoorinQ.error as Error).message}
+              </div>
+            ) : report?.success && report.couriers ? (
+              <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+                {(["steadfast", "redx", "pathao", "carrybee"] as const).map((k) => {
+                  const b = report.couriers?.[k];
+                  const has = b && typeof b.total_parcels === "number";
+                  const total = has ? Number(b!.total_parcels) : 0;
+                  const del = has ? Number(b!.delivered_parcels ?? 0) : 0;
+                  const canc = has ? Number(b!.cancelled_parcels ?? 0) : 0;
+                  const r = has && total > 0 ? Math.round((del / total) * 100) : null;
+                  return (
+                    <InsightKpi
+                      key={k}
+                      label={k}
+                      value={has ? `${del}/${total}` : "—"}
+                      sub={
+                        has
+                          ? r !== null
+                            ? `${r}% success · ${canc} cancel`
+                            : `${canc} cancel`
+                          : (b?.message ?? "no data")
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="px-4 py-2 text-[11px] italic text-muted-foreground">
+                No courier history for this number.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Body — single scroll, no tabs */}
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {/* Status breakdown chips */}
-          {/* Courier report — inline, no duplicate summary */}
-          {phone && (
-            <div>
-              <SectionHeader>Courier report</SectionHeader>
-              {hoorinQ.isLoading ? (
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking Hoorin…
-                </div>
-              ) : hoorinQ.error ? (
-                <div className="text-[11px] text-rose-700">
-                  {(hoorinQ.error as Error).message}
-                </div>
-              ) : report ? (
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <HoorinReportView report={report} />
-                </div>
-              ) : (
-                <div className="text-[11px] italic text-muted-foreground">
-                  No courier history.
-                </div>
-              )}
-            </div>
-          )}
+
 
 
 
