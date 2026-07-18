@@ -17,10 +17,10 @@ const categoriesQuery = queryOptions({
   queryFn: () => listCategories(),
 });
 
-const productsByCategoryQuery = (slug: string) =>
+const productsByCategoryQuery = (id: number) =>
   queryOptions({
-    queryKey: ["products", "by-cat", slug],
-    queryFn: () => listProducts({ data: { page: 1, perPage: 30, category: slug } }),
+    queryKey: ["products", "by-cat", id],
+    queryFn: () => listProducts({ data: { page: 1, perPage: 30, category: String(id) } }),
     staleTime: 60_000,
   });
 
@@ -119,7 +119,7 @@ function CategoriesPage() {
             {parentMissing ? (
               <EmptyState icon={LayoutGrid} title="Category not found" description={`"${parent}" doesn't exist. Pick a category from the list.`} />
             ) : (
-              <CategoryProducts slug={active.slug} name={active.name} />
+              <CategoryProducts id={active.id} slug={active.slug} name={active.name} />
             )}
           </section>
         </div>
@@ -128,8 +128,8 @@ function CategoriesPage() {
   );
 }
 
-function CategoryProducts({ slug, name }: { slug: string; name: string }) {
-  const { data, isLoading } = useQuery(productsByCategoryQuery(slug));
+function CategoryProducts({ id, slug, name }: { id: number; slug: string; name: string }) {
+  const { data, isLoading } = useQuery(productsByCategoryQuery(id));
   const products = data?.products ?? [];
 
   return (
