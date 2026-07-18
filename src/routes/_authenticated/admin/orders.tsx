@@ -583,7 +583,7 @@ function AdminOrders() {
                   isSel={isSel}
                   onToggle={() => toggleOne(o.id)}
                   onOpen={() => setOpenId(o.id)}
-                  onOpenCustomer={() => email && setCustomerEmail(email)}
+                  onOpenCustomer={() => email && setInsight({ email, phone: o.billing?.phone, name: [o.billing?.first_name, o.billing?.last_name].filter(Boolean).join(" ") })}
                   onUpdateStatus={(s) => updM.mutate({ id: o.id, status: s })}
                   wooStatuses={wooStatuses}
                   ops={ops}
