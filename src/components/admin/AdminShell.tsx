@@ -24,7 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 type NavItem = {
   title: string;
   url: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 };
 
 const navItems: NavItem[] = [
