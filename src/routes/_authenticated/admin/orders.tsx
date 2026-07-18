@@ -1048,20 +1048,6 @@ function OrderRow({
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col items-stretch gap-1 min-w-0"
       >
-        <select
-          value={o.status}
-          onChange={(e) => onUpdateStatus(e.target.value)}
-          className={`w-full h-7 rounded-md border px-1.5 text-[11px] font-medium capitalize outline-none ${statusCls}`}
-        >
-          {!wooStatuses.some((s) => s.slug === o.status) && (
-            <option value={o.status}>{humanize(o.status)}</option>
-          )}
-          {wooStatuses.map((s) => (
-            <option key={s.slug} value={s.slug}>
-              {s.name}
-            </option>
-          ))}
-        </select>
         <button
           onClick={doSend}
           disabled={sending || hasCourier}
