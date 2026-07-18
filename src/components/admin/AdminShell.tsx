@@ -68,11 +68,14 @@ export function AdminShell({
   subtitle,
   action,
   children,
+  bare = false,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
+  /** When true, no title/subtitle bar and main uses hidden overflow (app-like). */
+  bare?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
