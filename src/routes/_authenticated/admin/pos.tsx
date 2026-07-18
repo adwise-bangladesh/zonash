@@ -36,9 +36,9 @@ import { formatBDT } from "@/lib/format";
 
 const searchSchema = z.object({
   channel: fallback(
-    z.enum(["phone", "whatsapp", "messenger", "instagram", "instore", "other"]),
-    "phone",
-  ).default("phone"),
+    z.enum(["phone", "whatsapp", "messenger", "instagram", "instore", "other"]).optional(),
+    undefined,
+  ).optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/admin/pos")({
