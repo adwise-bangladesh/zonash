@@ -834,18 +834,12 @@ function OrderRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone]);
 
-  const doSend = async (e: ReactMouseEvent) => {
-    e.stopPropagation();
-    if (hasCourier) {
-      toast.info("Already sent to courier");
-      return;
-    }
-    if (!confirm(`Send order #${o.number} to Steadfast?`)) return;
+  const performSend = async () => {
     setSending(true);
     try {
       const r = await sendFn({ data: { wc_order_id: o.id } });
       setTracking(r.tracking_code);
-      toast.success(`Sent · ${r.tracking_code}`);
+      toast.success(`Sent to courier · ${r.tracking_code}`);
       onInvalidate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Send failed");
@@ -853,6 +847,19 @@ function OrderRow({
       setSending(false);
     }
   };
+
+  const doSend = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    if (hasCourier) {
+      toast.info("Already sent to courier");
+      return;
+    }
+    toast(`Send order #${o.number} to courier?`, {
+      action: { label: "Send", onClick: () => void performSend() },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
+  };
+
 
   const overall = verify.report?.overall;
   const ratio = overall ? Number(overall.success_ratio ?? 0) : null;
