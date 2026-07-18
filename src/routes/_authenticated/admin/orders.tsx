@@ -138,7 +138,7 @@ function AdminOrders() {
       subtitle="Order lifecycle — live from WooCommerce"
     >
       {/* Dynamic status tabs (built-in + custom WooCommerce statuses) */}
-      <div className="mb-3 flex flex-wrap gap-1.5 rounded-xl border border-input bg-card p-1.5">
+      <div className="mb-3 flex gap-1.5 overflow-x-auto whitespace-nowrap rounded-xl border border-input bg-card p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => {
           const active = status === t.slug;
           return (
