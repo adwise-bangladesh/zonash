@@ -765,6 +765,335 @@ function CustomerBadge({ rating }: { rating: CustomerRating }) {
 }
 
 
+/* ============================================================ ORDER ROW
+   Card-style row (no horizontal scroll). Packs date/customer/items/address/
+   verification/courier into one wrapping card, with per-row Verify and
+   Send-to-Steadfast buttons.
+============================================================ */
+
+type WooStatus = { slug: string; name: string; count: number };
+
+type OrderRowProps = {
+  order: import("@/lib/woo.server").WooOrder;
+  isSel: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  onOpenCustomer: () => void;
+  onUpdateStatus: (s: string) => void;
+  wooStatuses: WooStatus[];
+  ops: OrderOps | undefined;
+  rating: CustomerRating;
+  totalOrders: number;
+  addr: string;
+  itemsTotal: number;
+  shipping: number;
+  onInvalidate: () => void;
+};
+
+function OrderRow({
+  order: o,
+  isSel,
+  onToggle,
+  onOpen,
+  onOpenCustomer,
+  onUpdateStatus,
+  wooStatuses,
+  ops,
+  rating,
+  totalOrders,
+  addr,
+  itemsTotal,
+  shipping,
+  onInvalidate,
+}: OrderRowProps) {
+  const verifyFn = useServerFn(verifyCustomerPhone);
+  const sendFn = useServerFn(sendOrderToSteadfast);
+  const [verify, setVerify] = useState<{
+    loading: boolean;
+    report?: HoorinReport;
+    error?: string;
+    open: boolean;
+  }>({ loading: false, open: false });
+  const [sending, setSending] = useState(false);
+  const [tracking, setTracking] = useState<string | null>(
+    ops?.tracking_number ?? null,
+  );
+
+  const phone = o.billing?.phone?.trim() || "";
+  const hasCourier = !!(tracking || ops?.tracking_number);
+
+  const doVerify = async () => {
+    if (!phone) {
+      toast.error("No phone on this order");
+      return;
+    }
+    setVerify({ loading: true, open: true });
+    try {
+      const report = await verifyFn({ data: { phone } });
+      setVerify({ loading: false, report, open: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Verification failed";
+      setVerify({ loading: false, error: msg, open: true });
+    }
+  };
+
+  const doSend = async () => {
+    if (hasCourier) {
+      toast.info("Already sent to courier");
+      return;
+    }
+    if (!confirm(`Send order #${o.number} to Steadfast?`)) return;
+    setSending(true);
+    try {
+      const r = await sendFn({ data: { wc_order_id: o.id } });
+      setTracking(r.consignment.tracking_code);
+      toast.success(`Sent · ${r.consignment.tracking_code}`);
+      onInvalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Success ratio pill for the verify result
+  const ratio = verify.report?.summary
+    ? Number(verify.report.summary.success_ratio ?? 0)
+    : null;
+  const ratioCls =
+    ratio === null
+      ? ""
+      : ratio >= 80
+        ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+        : ratio >= 50
+          ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
+          : "bg-rose-500/10 text-rose-700 ring-rose-500/20";
+
+  return (
+    <div
+      className={`border-b border-input px-3 py-2.5 last:border-b-0 transition-colors ${
+        isSel ? "bg-foreground/[0.04]" : "hover:bg-muted/30"
+      }`}
+    >
+      <div className="flex flex-wrap items-start gap-3">
+        {/* Left: checkbox + date */}
+        <div className="flex items-start gap-2 shrink-0">
+          <input
+            type="checkbox"
+            checked={isSel}
+            onChange={onToggle}
+            aria-label={`Select order ${o.number}`}
+            className="mt-1 h-3.5 w-3.5 cursor-pointer accent-foreground"
+          />
+          <div className="w-[70px] text-[11px] text-muted-foreground tabular-nums leading-tight">
+            {new Date(o.date_created).toLocaleDateString()}
+            <div className="text-[10px]">
+              {new Date(o.date_created).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Middle: order/customer + items + address (three columns that wrap) */}
+        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-1">
+          {/* Order & customer */}
+          <div className="min-w-0">
+            <button
+              onClick={onOpen}
+              className="text-sm font-semibold hover:underline"
+            >
+              #{o.number}
+            </button>
+            <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+              <span className="truncate max-w-[140px]">
+                {o.billing?.first_name} {o.billing?.last_name}
+              </span>
+              <CustomerBadge rating={rating} />
+              {totalOrders >= 1 && (
+                <button
+                  type="button"
+                  onClick={onOpenCustomer}
+                  title="View all orders from this customer"
+                  className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                >
+                  {totalOrders} {totalOrders === 1 ? "order" : "orders"}
+                </button>
+              )}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {phone || o.billing?.email}
+            </div>
+            <div className="mt-1">
+              <StatusBadge status={o.status} />
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="min-w-0 space-y-0.5 text-[12px]">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Items
+            </div>
+            {(o.line_items ?? []).slice(0, 3).map((li) => (
+              <div key={li.id} className="truncate">
+                <span className="font-mono text-[11px] text-foreground">
+                  {li.sku || `#${li.product_id}`}
+                </span>
+                <span className="ml-1 text-muted-foreground">
+                  × {li.quantity}
+                </span>
+              </div>
+            ))}
+            {(o.line_items?.length ?? 0) > 3 && (
+              <div className="text-[10px] text-muted-foreground">
+                +{o.line_items!.length - 3} more
+              </div>
+            )}
+          </div>
+
+          {/* Address */}
+          <div className="min-w-0 text-[11px] leading-snug text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Shipping
+            </div>
+            {addr ? (
+              <span title={addr} className="line-clamp-3">
+                {addr}
+              </span>
+            ) : (
+              <span className="italic">No shipping address</span>
+            )}
+          </div>
+        </div>
+
+        {/* Right: total + actions */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0 w-full sm:w-auto">
+          <div className="text-right text-[11px] leading-tight">
+            <div className="tabular-nums text-muted-foreground">
+              {money(o.currency, itemsTotal)}
+              <span className="mx-0.5">+</span>
+              {money(o.currency, shipping)}
+            </div>
+            <div className="text-sm font-semibold tabular-nums">
+              = {money(o.currency, o.total)}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {/* Verify */}
+            <button
+              onClick={doVerify}
+              disabled={verify.loading || !phone}
+              title={phone ? "Verify customer phone" : "No phone"}
+              className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-[11px] hover:bg-muted disabled:opacity-50"
+            >
+              {verify.loading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-3 w-3" />
+              )}
+              Verify
+            </button>
+
+            {ratio !== null && (
+              <span
+                className={`rounded-full px-1.5 py-[1px] text-[10px] font-semibold ring-1 tabular-nums ${ratioCls}`}
+                title="Success ratio"
+              >
+                {ratio}%
+              </span>
+            )}
+
+            {/* Send to courier */}
+            <button
+              onClick={doSend}
+              disabled={sending || hasCourier}
+              title={hasCourier ? "Already dispatched" : "Send to Steadfast"}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] disabled:opacity-60 ${
+                hasCourier
+                  ? "bg-emerald-500/10 text-emerald-700"
+                  : "bg-foreground text-background hover:opacity-90"
+              }`}
+            >
+              {sending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Truck className="h-3 w-3" />
+              )}
+              {hasCourier ? "Sent" : "Ship"}
+            </button>
+
+            {/* Status quick-change */}
+            <select
+              value={o.status}
+              onChange={(e) => onUpdateStatus(e.target.value)}
+              className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] outline-none"
+            >
+              {!wooStatuses.some((s) => s.slug === o.status) && (
+                <option value={o.status}>{humanize(o.status)}</option>
+              )}
+              {wooStatuses.map((s) => (
+                <option key={s.slug} value={s.slug}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={onOpen}
+              title="View / edit"
+              className="rounded-md border border-input p-1.5 hover:bg-muted"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {(tracking || ops?.tracking_number) && (
+            <div className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+              <Truck className="h-3 w-3" />
+              <span className="font-mono tabular-nums">
+                {tracking || ops?.tracking_number}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Verification detail panel — expands inline, no scroll away */}
+      {verify.open && (
+        <div className="mt-2 rounded-lg border border-input bg-muted/30 p-2">
+          <div className="mb-1 flex items-center justify-between">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Customer verification · {phone}
+            </div>
+            <button
+              onClick={() => setVerify((v) => ({ ...v, open: false }))}
+              className="rounded p-0.5 hover:bg-muted"
+              aria-label="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {verify.loading && (
+            <div className="flex items-center gap-2 py-2 text-[12px] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking Hoorin…
+            </div>
+          )}
+          {verify.error && (
+            <div className="rounded bg-rose-500/10 px-2 py-1 text-[11px] text-rose-700">
+              {verify.error}
+            </div>
+          )}
+          {verify.report && <HoorinReportView report={verify.report} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 
 
 /* ============================================================ ORDER DRAWER
