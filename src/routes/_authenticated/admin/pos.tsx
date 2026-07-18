@@ -403,7 +403,7 @@ function PosPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <div className="text-[12.5px] font-semibold tabular-nums">
-                        ৳ {(l.price * l.quantity).toFixed(0)}
+                        {formatBDT(l.price * l.quantity)}
                       </div>
                       <button
                         type="button"
