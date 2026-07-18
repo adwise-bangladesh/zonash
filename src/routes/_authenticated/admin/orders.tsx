@@ -813,6 +813,7 @@ function OrderRow({
     error?: string;
   }>({ loading: false });
   const [sending, setSending] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [tracking, setTracking] = useState<string | null>(
     ops?.tracking_number ?? null,
   );
