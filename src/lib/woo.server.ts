@@ -202,13 +202,14 @@ export function mapOrderToCacheRow(o: WooOrder) {
     source_channel: o.created_via ?? null,
     customer_note: o.customer_note ?? null,
     items_count: (o.line_items ?? []).reduce((s, i) => s + (i.quantity ?? 0), 0),
-    items: items as unknown,
+    items: items as never,
     skus,
     date_created: o.date_created,
     date_modified: o.date_modified,
     date_paid: o.date_paid ?? null,
     date_completed: o.date_completed ?? null,
-    raw: o as unknown,
+    raw: o as never,
+
   };
 }
 
