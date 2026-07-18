@@ -1,161 +1,97 @@
 
-# Fast WooCommerce Storefront + Custom Order Dashboard
+# Industrial-Grade Orders Management
 
-WooCommerce is the API-only backend (products, orders, customers, payments). This app is a fast custom storefront + admin dashboard. Everything sits on TanStack Start with Lovable Cloud for auth, caching, and audit data. Designed to comfortably handle 2000 orders/day (~1.4 orders/min average, ~10-20/min peak).
+Two problems to solve:
+1. **Custom WooCommerce statuses** (e.g. `wc-shipped`, `wc-out-for-delivery`) aren't in the hardcoded tab list, so those orders are invisible.
+2. **Admin Orders page is slow** because it queries WooCommerce REST directly on every page load — WC REST is the bottleneck (single MySQL, no proper indexes on 50M rows, ~1–3s per call, rate-limited).
 
-## Architecture
-
-```text
-[Browser]  →  TanStack Start (SSR)
-                │
-                ├─ Public storefront (products, cart, checkout)
-                ├─ Customer area (/_authenticated: my orders)
-                └─ Staff dashboard (/_authenticated/admin: order mgmt)
-                │
-                ▼
-   Server functions & /api/public/* routes
-                │
-   ┌────────────┴────────────┐
-   ▼                         ▼
-WooCommerce REST API   Lovable Cloud (Supabase)
- (via connector         - auth (customers + staff)
-  gateway; server-       - user_roles (admin/staff/viewer/customer)
-  side only)             - order cache (fast reads)
-                         - webhook events + audit log
-                         - notifications
-                         - realtime channel
-```
-
-Key decision: **WooCommerce stays source of truth**, but we mirror orders into a Lovable Cloud `orders_cache` table so the dashboard is fast and searchable. Writes (status changes, refunds) go to WC first, then update the cache. Webhooks from WC keep the cache fresh in near-realtime.
-
-## Roles & Auth
-
-Table `user_roles` (separate from profiles) with enum `app_role`:
-- `admin` — full access, user mgmt, settings
-- `staff` — manage orders, refunds, status
-- `viewer` — read-only dashboard + analytics
-- `customer` — sees only their own orders (matched by email)
-
-Security-definer `has_role()` function used in RLS and route guards. Customers auth via email/password + Google. Staff invited by admins.
-
-## Storefront (public)
-
-- `/` — landing with featured products (SSR, cached 60s)
-- `/products` — grid with filters (category, price, search), paginated
-- `/products/$slug` — product detail with variants, add-to-cart
-- `/cart` — client-side cart (localStorage) + server validation
-- `/checkout` — creates WC order via API, redirects to payment
-- `/order/$key` — thank-you page (uses WC order key, no login needed)
-
-Performance: SSR + TanStack Query, WC responses cached with stale-while-revalidate, images lazy-loaded, LCP image preloaded per route.
-
-## Customer area (`/_authenticated/`)
-
-- `/account/orders` — list of orders matching the signed-in email
-- `/account/orders/$id` — detail, tracking, invoice
-
-## Staff dashboard (`/_authenticated/admin/`)
-
-Gated by `has_role('staff' | 'admin')`.
-
-- `/admin` — today's KPIs (revenue, orders, AOV, pending count)
-- `/admin/orders` — paginated table, filters: status, date range, customer, payment method, search (order #, email, name). CSV export.
-- `/admin/orders/$id` — full detail: line items, customer, shipping, notes, timeline. Actions: change status (processing → completed / on-hold / cancelled), add note, trigger refund (full/partial), resend email.
-- `/admin/analytics` — revenue chart (day/week/month), top products, status breakdown, order volume trend.
-- `/admin/notifications` — bell in header, realtime toast on new order via Supabase Realtime channel `orders_cache`.
-- `/admin/users` (admin only) — invite staff, assign roles.
-- `/admin/settings` (admin only) — WC connection health check, webhook status.
-
-## WooCommerce integration
-
-Connect via `standard_connectors--connect` (`woocommerce`). All calls go through the connector gateway from server functions only — consumer keys never touch the browser.
-
-Server-fn helpers in `src/lib/woo.functions.ts`:
-- `listProducts`, `getProduct` (public, cached)
-- `createOrder` (from checkout)
-- `listOrders`, `getOrder` (staff)
-- `updateOrderStatus`, `refundOrder`, `addOrderNote` (staff, audited)
-- `getReports` (analytics)
-
-Rate-limit protection: server-side request coalescing + retries with exponential backoff on 429/5xx. Timeouts (5s) with typed error fallbacks so a WC hiccup never blanks the dashboard.
-
-## Webhook ingestion (`/api/public/webhooks/woo`)
-
-WC configured to send webhooks (order.created, order.updated, order.deleted) to our public endpoint. Handler:
-1. Verify HMAC signature (`x-wc-webhook-signature`, base64 HMAC-SHA256 of raw body with shared secret). Timing-safe compare.
-2. Idempotency: check `webhook_events` table by `x-wc-webhook-delivery-id`; skip if seen.
-3. Upsert into `orders_cache`.
-4. Insert notification row (triggers realtime).
-5. Return 200 quickly.
-
-## Data model (Lovable Cloud)
-
-```sql
-app_role enum: 'admin' | 'staff' | 'viewer' | 'customer'
-profiles(id, email, full_name, created_at)
-user_roles(id, user_id, role, unique(user_id, role))
-orders_cache(
-  wc_order_id bigint PK, order_number, status, total, currency,
-  customer_email, customer_name, payment_method,
-  created_at, updated_at, raw jsonb,
-  fts tsvector generated  -- for fast search
-)
-webhook_events(delivery_id PK, topic, received_at, processed_at, error)
-order_audit_log(id, wc_order_id, actor_user_id, action, before jsonb, after jsonb, at)
-notifications(id, user_id, type, payload, read_at, created_at)
-```
-
-All tables: explicit `GRANT`s + RLS. `orders_cache` readable by staff/admin/viewer; customers only see rows matching their verified email. Audit log insert-only.
-
-Indexes: `orders_cache(status)`, `(created_at desc)`, `(customer_email)`, GIN on `fts`. Comfortably handles 2000 orders/day (~730k/year — trivial for Postgres with these indexes).
-
-## Performance targets
-
-- p95 storefront TTFB < 300ms (SSR + edge)
-- p95 dashboard list < 400ms (reads from `orders_cache`, not WC)
-- Webhook processing < 200ms
-- Zero WC calls on dashboard list views — only on detail actions
-
-## Security
-
-- All WC credentials server-only (connector gateway).
-- RLS on every table; roles in separate table; `has_role()` security-definer.
-- Zod validation on every server-fn input and webhook payload.
-- HMAC-verified webhooks, idempotent.
-- Rate-limit sensitive endpoints (checkout, login) with a small Postgres-backed limiter.
-- HTTPS everywhere, secure cookies, CSRF-safe (server fns use bearer + same-origin).
-- Audit log for every staff action.
-- Leaked-password protection (HIBP) enabled.
-- Input validation client + server; encoded URL params; no `dangerouslySetInnerHTML`.
-- Error boundaries never leak raw provider errors to users.
-
-## Build order
-
-1. **Enable Lovable Cloud** — auth + DB.
-2. **Connect WooCommerce** via `standard_connectors--connect`.
-3. **Schema migration**: roles, orders_cache, webhook_events, audit, notifications + RLS + grants + indexes.
-4. **Auth foundation**: email/password + Google, `_authenticated` layout, profiles trigger, role helpers, sign-in/up UI.
-5. **WC server-fn layer**: typed wrappers around WC REST via gateway, with retries + Zod schemas.
-6. **Storefront**: products list/detail, cart, checkout → creates WC order.
-7. **Webhook endpoint** + backfill script to seed `orders_cache` from existing WC orders.
-8. **Customer area**: my orders list + detail.
-9. **Staff dashboard**: order list, filters, search, CSV export, detail + status/refund actions, audit trail.
-10. **Realtime + notifications**: subscribe to `orders_cache` changes, bell + toast.
-11. **Analytics**: KPI cards + charts (revenue, AOV, top products, volume).
-12. **Admin user mgmt**: invite staff, assign roles, settings page with WC health check.
-13. **Polish**: SEO metadata per route, error/404 boundaries, loading skeletons, mobile.
-14. **Hardening**: rate limits, run security scan, load-test webhook.
-
-## Design direction
-
-Clean, dense, utility-first admin (think Linear/Stripe dashboard) with a warmer, product-forward storefront. Dark-mode-ready via CSS variables in `src/styles.css`. Fonts + palette committed once as tokens — no generic Inter/purple defaults.
-
-## Deliverables per milestone
-
-Each build step ends with: working feature in preview, RLS + grants in place, error boundaries wired, and (where relevant) a security scan pass.
+To handle **3,000 orders/day and 50M+ lifetime**, the dashboard must never touch WooCommerce for list/search/filter. Everything reads from a Postgres `orders_cache` in Lovable Cloud, kept in sync by webhooks + a reconciliation worker.
 
 ---
 
-**Scope note:** This is a large build (12–14 milestones). I'll ship milestone 1–3 in the first pass (Cloud + WC connection + schema + auth skeleton) so you can verify the foundation before we layer features. I'll pause after each milestone for you to review.
+## Part 1 — Dynamic custom statuses (quick fix, ships first)
 
-Ready to start with milestone 1 when you approve.
+- New server fn `listOrderStatuses` → calls WooCommerce `/reports/orders/totals` **and** merges with distinct statuses seen in `orders_cache`. Returns `{ slug, name, count }[]`.
+- Admin Orders page renders tabs dynamically from that list — no hardcoded status array. Custom slugs like `shipped`, `out-for-delivery`, `ready-to-ship` appear automatically with correct counters.
+- Status dropdown in the row + drawer also uses this dynamic list, so staff can move an order into any custom status the store defines.
+- Unknown-status badge gets a neutral color fallback.
+
+## Part 2 — Cache-first architecture (the real fix)
+
+```text
+WooCommerce  ──webhooks──▶  /api/public/webhooks/woo  ──▶  orders_cache (Postgres)
+                                                                │
+Admin dashboard  ◀── fast SQL (indexed, paginated, FTS) ────────┘
+                                                                ▲
+Reconciliation cron (every 5 min) ──── polls WC "updated_after" ┘
+Backfill job (one-off) ──────────────── pages entire WC history ┘
+```
+
+### Schema upgrades to `orders_cache`
+- Add columns: `sku_summary text`, `shipping_address jsonb`, `subtotal numeric`, `shipping_total numeric`, `line_items jsonb`, `payment_method text`, `payment_method_title text`, `date_created timestamptz`.
+- Indexes:
+  - `btree (status, date_created desc)` — status tabs sorted newest first
+  - `btree (date_created desc)` — global feed
+  - `btree (customer_email)`
+  - `btree (wc_order_id)` unique
+  - `gin (fts)` — full-text search across order#, name, email, phone, SKU
+  - Optional: **monthly partitioning** on `date_created` once row count > ~10M. Keeps hot partition tiny and vacuum cheap. Deferred until needed; schema designed to allow it.
+- Materialized view `order_status_counts(status, count)` refreshed every 30s via cron for O(1) tab counters at 50M rows.
+
+### Webhook handler (already exists, harden it)
+- Verify HMAC (already done).
+- Idempotent upsert into `orders_cache` keyed on `wc_order_id`; store full raw payload in `raw jsonb`.
+- Populate all denormalized columns (SKU list, shipping address, totals) in the same upsert so the dashboard never needs to unpack JSON.
+- Insert `notifications` row for realtime toast on new order.
+
+### Reconciliation cron (`/api/public/hooks/reconcile-orders`, every 5 min via pg_cron)
+- Pulls `orders?modified_after=<last_sync>&per_page=100` from WC in a loop.
+- Upserts anything missing (covers webhook drops, downtime, historical edits).
+- Stores `last_sync_at` in a `sync_state` table.
+- Backfill mode: same route with `?full=1` walks the entire WC history in pages — one-time seed for existing orders.
+
+### Admin dashboard reads from cache
+- New server fn `listOrders` queries `orders_cache` with parameterized filters (status, date range, search) — sub-50ms even at 50M rows because of the indexes.
+- `getOrderStatusCounts` reads the materialized view instead of hitting WC — instant.
+- Detail view still fetches `getWooOrder` live for edits (single-row WC hit is fine).
+- Status writes go to WC first, then update the cache row + append `order_audit_log`.
+
+### Search
+- Postgres FTS on generated `fts` tsvector (order#, customer name, email, phone, SKU list). Handles typos with `websearch_to_tsquery`. No Elasticsearch needed at this scale.
+
+### Real-time
+- Supabase Realtime subscription on `orders_cache` INSERT/UPDATE → dashboard live-updates rows without refresh.
+
+## Part 3 — Performance targets
+
+| Operation | Before | After |
+|---|---|---|
+| Load 100 orders | 2–4s (WC) | < 100ms (Postgres) |
+| Status counters | 800ms (WC totals) | < 10ms (matview) |
+| Search "9821 / email / SKU" | 3–8s (WC) | < 80ms (FTS) |
+| Status change | 1s | 1s (unchanged; WC is source of truth) |
+| Peak throughput | ~50 req/min (WC rate limit) | thousands/sec (Postgres) |
+
+50M orders in `orders_cache` with the index set above uses ~40–60 GB and stays fast; partition by month later if needed.
+
+## Part 4 — Security & reliability
+
+- All webhook + cron endpoints under `/api/public/*` with HMAC + shared-secret verification.
+- RLS on `orders_cache` unchanged: staff/admin/viewer read all; customers see their own by email.
+- `order_audit_log` records every staff status change (already exists).
+- Rate-limit reconcile cron with an advisory lock so overlapping runs can't stampede WC.
+- Retries with exponential backoff on WC 429/5xx (already exists in `woo.server.ts`).
+- Errors from WC never blank the dashboard — cache read always succeeds independently.
+
+## Build order
+
+1. **Dynamic statuses** — `listOrderStatuses` + tab/dropdown refactor (fastest visible win).
+2. **Schema migration** — add denormalized columns, indexes, matview, `sync_state` table.
+3. **Webhook enrichment** — write all new columns on upsert.
+4. **Backfill route** — seed `orders_cache` from full WC history.
+5. **Reconciliation cron** — pg_cron every 5 min.
+6. **Switch admin Orders page to cache reads** — `listOrders`, matview counts, FTS search.
+7. **Realtime subscription** on `orders_cache`.
+8. **Load test** — simulate 3k orders/day burst, verify p95 < 100ms.
+
+Milestone 1 ships immediately (custom statuses visible + faster tab counts). Milestones 2–7 land the cache-first architecture. Confirm and I'll start with milestone 1.
