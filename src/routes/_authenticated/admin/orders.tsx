@@ -1020,23 +1020,12 @@ function OrderRow({
             Verify error
           </span>
         ) : overall ? (
-          <div className="space-y-0.5">
-            <span
-              className={`inline-block rounded-full px-1.5 py-[1px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
-            >
-              {ratio}% success
-            </span>
-            <div
-              className="tabular-nums text-muted-foreground"
-              title={`Total ${overall.total_parcels ?? 0} · Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0}`}
-            >
-              {overall.delivered_parcels ?? 0}✓ /{" "}
-              {overall.cancelled_parcels ?? 0}✗
-              <span className="ml-1 text-[10px]">
-                of {overall.total_parcels ?? 0}
-              </span>
-            </div>
-          </div>
+          <span
+            title={`Delivered ${overall.delivered_parcels ?? 0} · Cancelled ${overall.cancelled_parcels ?? 0} · Total ${overall.total_parcels ?? 0}`}
+            className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 ${ratioCls}`}
+          >
+            {ratio}% success
+          </span>
         ) : (
           <span className="italic text-muted-foreground">No history</span>
         )}
@@ -1054,7 +1043,7 @@ function OrderRow({
         </div>
       </div>
 
-      {/* Actions — status select + send-to-courier */}
+      {/* Actions — status + conditional courier control */}
       <div
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col items-stretch gap-1 min-w-0"
@@ -1073,29 +1062,31 @@ function OrderRow({
             </option>
           ))}
         </select>
-        <button
-          onClick={doSend}
-          disabled={sending || hasCourier}
-          title={hasCourier ? "Already dispatched" : "Send to Courier"}
-          className={`inline-flex h-7 w-full items-center justify-center gap-1 rounded-md px-2 text-[11px] font-medium disabled:opacity-70 ${
-            hasCourier
-              ? "bg-emerald-500/10 text-emerald-700"
-              : "bg-foreground text-background hover:opacity-90"
-          }`}
-        >
-          {sending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
+        {hasCourier ? (
+          <a
+            href={`https://steadfast.com.bd/t/${tracking || ops?.tracking_number}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Track on Steadfast"
+            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-700 hover:bg-emerald-500/20"
+          >
             <Truck className="h-3 w-3" />
-          )}
-          {hasCourier ? "Sent" : "Send to Courier"}
-        </button>
-        {(tracking || ops?.tracking_number) && (
-          <div className="inline-flex items-center justify-center gap-1 rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-mono text-emerald-700">
-            {tracking || ops?.tracking_number}
-          </div>
-        )}
+            <span className="truncate font-mono">{tracking || ops?.tracking_number}</span>
+          </a>
+        ) : o.status === "confirmed" ? (
+          <button
+            onClick={doSend}
+            disabled={sending}
+            title="Send to Courier"
+            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-70"
+          >
+            {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Truck className="h-3 w-3" />}
+            Send to Courier
+          </button>
+        ) : null}
       </div>
+
 
     </div>
   );
