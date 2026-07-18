@@ -163,6 +163,7 @@ export type WooOrder = {
     subtotal?: string;
     total: string;
     price?: number | string;
+    image?: { id: string | number; src: string };
   }[];
 };
 
