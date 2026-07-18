@@ -812,6 +812,8 @@ function OrderDrawer({
                   {customerStat.total} orders · {customerStat.completed} completed · {customerStat.cancelled} cancelled
                 </div>
               )}
+              <HoorinVerifyPanel phone={billing.phone ?? ""} />
+
               <div className="grid grid-cols-2 gap-2">
                 <TextField
                   label="Name"
