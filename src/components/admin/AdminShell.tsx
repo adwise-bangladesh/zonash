@@ -77,6 +77,10 @@ export function AdminShell({
   const [email, setEmail] = useState<string>("");
   const [fullName, setFullName] = useState<string>("");
   const [role, setRole] = useState<string>("Staff");
+  const { data: issuesCount = 0 } = useIssuesCount();
+  const badgeCounts: Record<string, number> = { issues: issuesCount };
+
+
 
   const avatarSeed = useMemo(
     () => Math.random().toString(36).slice(2, 10),
