@@ -308,17 +308,24 @@ function AdminOrders() {
                         const email = o.billing?.email?.toLowerCase().trim();
                         const stat = email ? statsMap[email] : undefined;
                         const rating = ratingFromStats(stat);
+                        const total = stat?.total ?? 0;
                         return (
                           <>
                             <CustomerBadge rating={rating} />
-                            {stat && stat.total > 1 && (
-                              <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold text-foreground tabular-nums">
-                                {stat.total} orders
-                              </span>
+                            {email && total >= 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setCustomerEmail(email)}
+                                title="View all orders from this customer"
+                                className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                              >
+                                {total} {total === 1 ? "order" : "orders"}
+                              </button>
                             )}
                           </>
                         );
                       })()}
+
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {o.billing?.phone || o.billing?.email}
