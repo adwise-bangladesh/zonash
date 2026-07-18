@@ -304,3 +304,87 @@ export function AdminShell({
     </div>
   );
 }
+
+// ---------- Topbar widgets ----------
+
+function Clock() {
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const fmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-GB", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Dhaka",
+      }),
+    [],
+  );
+  return (
+    <div
+      className="hidden items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
+      title="Asia/Dhaka"
+    >
+      <ClockIcon className="h-3 w-3 text-primary" />
+      <span className="tabular-nums">{fmt.format(now)}</span>
+    </div>
+  );
+}
+
+function FullscreenToggle() {
+  const [isFs, setIsFs] = useState(false);
+  useEffect(() => {
+    const onChange = () => setIsFs(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggle = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+      className="hidden h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground md:grid"
+    >
+      {isFs ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function IssuesBell({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={count > 0 ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
+      className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+    >
+      <Bell className="h-4 w-4" />
+      {count > 0 && (
+        <span
+          className="absolute -right-0.5 -top-0.5 inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
+          style={{
+            background: "var(--primary)",
+            animation: "badge-shake 1.8s ease-in-out infinite",
+          }}
+        >
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </button>
+  );
+}
+
