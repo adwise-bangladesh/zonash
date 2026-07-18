@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { WooOrder, WooProduct } from "./woo.server";
+import type { WooOrder, WooProduct, WooVariation } from "./woo.server";
 
 // -------------------- Products (public) --------------------
 
