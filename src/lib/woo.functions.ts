@@ -308,7 +308,7 @@ export const addOrderNote = createServerFn({ method: "POST" })
   });
 
 /**
- * Send an SMS to the order's customer via BulkSMSBD AND log a customer-visible
+ * Send an SMS to the order's customer via BDBulkSMS AND log a customer-visible
  * note on the WooCommerce order so the message is preserved in order history.
  */
 export const sendCustomerMessage = createServerFn({ method: "POST" })
