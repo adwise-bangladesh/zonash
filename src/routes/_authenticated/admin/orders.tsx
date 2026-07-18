@@ -2180,66 +2180,126 @@ function CustomerInsightDrawer({
           </button>
         </div>
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          <InsightKpi
-            label="Zonash orders"
-            value={ordersQ.isLoading ? "…" : orders.length.toString()}
-            sub={
-              statusCounts.completed
-                ? `${statusCounts.completed} completed`
-                : undefined
-            }
-          />
-          <InsightKpi
-            label="Total spent"
-            value={ordersQ.isLoading ? "…" : money(currency, totalSpent)}
-          />
-          <InsightKpi
-            label="Courier success"
-            value={
-              !phone
-                ? "—"
-                : hoorinQ.isLoading
-                  ? "…"
-                  : ratio !== null
-                    ? `${ratio}%`
-                    : "—"
-            }
-            valueClass={ratioCls}
-            sub={overall ? `${totalDeliveries} parcels` : undefined}
-          />
-          <InsightKpi
-            label="Deliveries"
-            value={
-              !phone
-                ? "—"
-                : hoorinQ.isLoading
-                  ? "…"
-                  : totalDeliveries.toString()
-            }
-            sub={
-              overall
-                ? `${delivered} ok · ${cancelled} cancel`
-                : undefined
-            }
-          />
+        {/* Row 1 — Zonash order stats (detailed) */}
+        <div className="border-b border-border">
+          <div className="flex items-center justify-between px-4 pt-3">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Zonash orders
+            </div>
+            {ordersQ.isLoading && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-px bg-border sm:grid-cols-4 lg:grid-cols-7">
+            <InsightKpi
+              label="Total"
+              value={ordersQ.isLoading ? "…" : orders.length.toString()}
+            />
+            <InsightKpi
+              label="Completed"
+              value={(statusCounts.completed ?? 0).toString()}
+              valueClass={
+                (statusCounts.completed ?? 0) > 0
+                  ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Processing"
+              value={(statusCounts.processing ?? 0).toString()}
+              valueClass={
+                (statusCounts.processing ?? 0) > 0
+                  ? "bg-blue-500/10 text-blue-700 ring-blue-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Pending"
+              value={((statusCounts.pending ?? 0) + (statusCounts["on-hold"] ?? 0)).toString()}
+              valueClass={
+                (statusCounts.pending ?? 0) + (statusCounts["on-hold"] ?? 0) > 0
+                  ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Cancelled"
+              value={((statusCounts.cancelled ?? 0) + (statusCounts.failed ?? 0) + (statusCounts.refunded ?? 0)).toString()}
+              valueClass={
+                (statusCounts.cancelled ?? 0) + (statusCounts.failed ?? 0) + (statusCounts.refunded ?? 0) > 0
+                  ? "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Total spent"
+              value={ordersQ.isLoading ? "…" : money(currency, totalSpent)}
+              sub={
+                (statusCounts.completed ?? 0) > 0
+                  ? `avg ${money(currency, totalSpent / (statusCounts.completed ?? 1))}`
+                  : undefined
+              }
+            />
+            <InsightKpi
+              label="Last order"
+              value={
+                latest
+                  ? new Date(latest.date_created).toLocaleDateString(undefined, {
+                      day: "2-digit",
+                      month: "short",
+                    })
+                  : "—"
+              }
+              sub={latest ? `#${latest.number}` : undefined}
+            />
+          </div>
         </div>
 
-        {/* Per-courier strip — same visual language as KPI strip */}
+        {/* Row 2 — Courier stats (overall + per-carrier) */}
         {phone && (
-          <div className="border-t border-border">
-            {hoorinQ.isLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking courier history…
+          <div className="border-b border-border">
+            <div className="flex items-center justify-between px-4 pt-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Courier history
               </div>
-            ) : hoorinQ.error ? (
-              <div className="px-4 py-2 text-[11px] text-rose-700">
+              {hoorinQ.isLoading && (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            {hoorinQ.error ? (
+              <div className="px-4 py-2 pb-3 text-[11px] text-rose-700">
                 {(hoorinQ.error as Error).message}
               </div>
-            ) : report?.success && report.couriers ? (
-              <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-                {(["steadfast", "redx", "pathao", "carrybee"] as const).map((k) => {
+            ) : report?.success && overall ? (
+              <div className="mt-2 grid grid-cols-3 gap-px bg-border sm:grid-cols-4 lg:grid-cols-7">
+                <InsightKpi
+                  label="Success"
+                  value={ratio !== null ? `${ratio}%` : "—"}
+                  valueClass={ratioCls}
+                />
+                <InsightKpi
+                  label="Parcels"
+                  value={totalDeliveries.toString()}
+                />
+                <InsightKpi
+                  label="Delivered"
+                  value={delivered.toString()}
+                  valueClass={
+                    delivered > 0
+                      ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+                      : undefined
+                  }
+                />
+                <InsightKpi
+                  label="Cancelled"
+                  value={cancelled.toString()}
+                  valueClass={
+                    cancelled > 0
+                      ? "bg-rose-500/10 text-rose-700 ring-rose-500/20"
+                      : undefined
+                  }
+                />
+                {(["steadfast", "redx", "pathao"] as const).map((k) => {
                   const b = report.couriers?.[k];
                   const has = b && typeof b.total_parcels === "number";
                   const total = has ? Number(b!.total_parcels) : 0;
@@ -2254,41 +2314,54 @@ function CustomerInsightDrawer({
                       sub={
                         has
                           ? r !== null
-                            ? `${r}% success · ${canc} cancel`
-                            : `${canc} cancel`
-                          : (b?.message ?? "no data")
+                            ? `${r}% · ${canc} cx`
+                            : `${canc} cx`
+                          : "no data"
                       }
                     />
                   );
                 })}
               </div>
-            ) : (
-              <div className="px-4 py-2 text-[11px] italic text-muted-foreground">
+            ) : !hoorinQ.isLoading ? (
+              <div className="px-4 py-2 pb-3 text-[11px] italic text-muted-foreground">
                 No courier history for this number.
+              </div>
+            ) : (
+              <div className="px-4 py-2 pb-3 text-[11px] text-muted-foreground">
+                Checking courier history…
               </div>
             )}
           </div>
         )}
 
-        {/* Body — single scroll, no tabs */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
 
+        {/* Body — single scroll */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Orders ({orders.length})
+            </div>
+          </div>
 
-
-
-          {/* Orders — full list with inline status controls */}
-          <div>
-            <SectionHeader>Orders ({orders.length})</SectionHeader>
-            {ordersQ.isLoading ? (
-              <div className="flex items-center gap-2 py-6 text-[12px] text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+          {ordersQ.isLoading ? (
+            <div className="flex items-center gap-2 px-4 py-6 text-[12px] text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="px-4 py-8 text-center text-[12px] italic text-muted-foreground">
+              No orders yet.
+            </div>
+          ) : (
+            <div className="border-t border-border">
+              {/* Header row */}
+              <div className="sticky top-0 z-10 grid grid-cols-[110px_minmax(0,1fr)_92px_100px_auto] items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div>Date / #</div>
+                <div>Items</div>
+                <div>Status</div>
+                <div className="text-right">Total</div>
+                <div className="text-right">Actions</div>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="py-6 text-center text-[12px] italic text-muted-foreground">
-                No orders yet.
-              </div>
-            ) : (
-              <div className="space-y-1.5">
+              <ul className="divide-y divide-border">
                 {orders.map((o) => (
                   <OrderInsightRow
                     key={o.id}
@@ -2298,10 +2371,11 @@ function CustomerInsightDrawer({
                     onUpdateStatus={(s) => onUpdateStatus(o.id, s)}
                   />
                 ))}
-              </div>
-            )}
-          </div>
+              </ul>
+            </div>
+          )}
         </div>
+
       </aside>
     </div>
   );
@@ -2355,43 +2429,65 @@ function OrderInsightRow({
     });
 
   return (
-    <div className="group rounded-lg border border-border bg-background p-2.5 transition-colors hover:border-foreground/20">
-      <div className="flex items-start gap-3">
-        <button
-          onClick={onOpen}
-          className="min-w-0 flex-1 text-left"
-          aria-label={`Open order ${o.number}`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-semibold">#{o.number}</span>
-            <StatusBadge status={o.status} />
-            <span className="text-[10px] text-muted-foreground tabular-nums">
-              {new Date(o.date_created).toLocaleDateString()}
-            </span>
-          </div>
-          {skus.length > 0 && (
-            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {skus.slice(0, 3).join(", ")}
-              {skus.length > 3 && ` +${skus.length - 3}`}
-            </div>
-          )}
-        </button>
-        <div className="shrink-0 text-right text-[11px] leading-tight">
-          <div className="text-muted-foreground tabular-nums">
-            {money(o.currency, items)} + {money(o.currency, shipping)}
-          </div>
-          <div className="text-[13px] font-semibold tabular-nums">
-            {money(o.currency, o.total)}
-          </div>
+    <li
+      className="grid cursor-pointer grid-cols-[110px_minmax(0,1fr)_92px_100px_auto] items-center gap-2 px-4 py-2 text-[12px] transition-colors hover:bg-muted/40"
+      onClick={onOpen}
+    >
+      {/* Date / # */}
+      <div className="min-w-0">
+        <div className="truncate text-[10px] text-muted-foreground tabular-nums">
+          {new Date(o.date_created).toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "2-digit",
+          })}
+        </div>
+        <div className="truncate text-[12px] font-semibold tabular-nums">
+          #{o.number}
         </div>
       </div>
-      {/* Status quick actions */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {quick.map((q) => (
+
+      {/* Items / SKUs */}
+      <div className="min-w-0">
+        {skus.length > 0 ? (
+          <div
+            className="truncate text-[11px] text-foreground/80"
+            title={skus.join(", ")}
+          >
+            {skus.slice(0, 2).join(", ")}
+            {skus.length > 2 && (
+              <span className="text-muted-foreground"> +{skus.length - 2}</span>
+            )}
+          </div>
+        ) : (
+          <div className="text-[11px] italic text-muted-foreground">—</div>
+        )}
+        <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+          {money(o.currency, items)} + {money(o.currency, shipping)}
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="min-w-0">
+        <StatusBadge status={o.status} />
+      </div>
+
+      {/* Total */}
+      <div className="text-right text-[13px] font-semibold tabular-nums">
+        {money(o.currency, o.total)}
+      </div>
+
+      {/* Actions */}
+      <div
+        className="flex items-center justify-end gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {quick.slice(0, 2).map((q) => (
           <button
             key={q.slug}
             onClick={() => onUpdateStatus(q.slug)}
             className={`inline-flex h-6 items-center rounded-md px-2 text-[10px] font-medium transition-colors ${q.cls}`}
+            title={q.label}
           >
             {q.label}
           </button>
@@ -2401,7 +2497,7 @@ function OrderInsightRow({
           onChange={(e) => {
             if (e.target.value !== o.status) onUpdateStatus(e.target.value);
           }}
-          className="ml-auto h-6 rounded-md border border-input bg-background px-1.5 text-[10px]"
+          className="h-6 rounded-md border border-input bg-background px-1.5 text-[10px]"
           aria-label="Change status"
         >
           {!statuses.some((s) => s.slug === o.status) && (
@@ -2413,16 +2509,11 @@ function OrderInsightRow({
             </option>
           ))}
         </select>
-        <button
-          onClick={onOpen}
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-input bg-background px-2 text-[10px] font-medium hover:bg-muted"
-        >
-          Open
-        </button>
       </div>
-    </div>
+    </li>
   );
 }
+
 
 
 function InsightKpi({
