@@ -1,77 +1,141 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppHeader } from "@/components/AppHeader";
-import { Button } from "@/components/ui/button";
-import { useCart, formatMoney } from "@/lib/cart";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowRight, ChevronDown, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useCart } from "@/lib/cart";
+import { formatBDT } from "@/lib/format";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
 export const Route = createFileRoute("/cart")({
-  head: () => ({ meta: [{ title: "Cart — Zonash" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [
+      { title: "Your bag — Zonash" },
+      { name: "description", content: "Review the pieces in your Zonash bag and continue to checkout." },
+    ],
+  }),
   component: CartPage,
 });
 
 function CartPage() {
   const { items, subtotal, setQty, remove } = useCart();
+  const total = subtotal;
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <main className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="mb-8 font-display text-4xl">Your bag</h1>
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-16">
+      <CheckoutHeader title="My Bag" count={items.length} />
 
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
         {items.length === 0 ? (
-          <div className="border border-dashed border-border py-24 text-center">
-            <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/50" />
-            <p className="mt-4 text-muted-foreground">Your bag is empty.</p>
-            <Link to="/products"><Button className="mt-6 rounded-none">Continue shopping</Button></Link>
-          </div>
+          <EmptyCart />
         ) : (
-          <div className="grid gap-10 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <ul className="divide-y divide-border border-y border-border">
-                {items.map((it) => (
-                  <li key={it.productId} className="flex gap-4 py-5">
-                    <Link to="/products/$slug" params={{ slug: it.slug }} className="h-24 w-24 shrink-0 overflow-hidden bg-muted">
-                      {it.image && <img src={it.image} alt={it.name} className="h-full w-full object-cover" />}
-                    </Link>
-                    <div className="flex flex-1 flex-col">
-                      <div className="flex justify-between gap-4">
-                        <Link to="/products/$slug" params={{ slug: it.slug }} className="text-sm font-medium hover:underline">{it.name}</Link>
-                        <button onClick={() => remove(it.productId)} className="text-muted-foreground hover:text-destructive" aria-label="Remove">
-                          <Trash2 className="h-4 w-4" />
+          <>
+            <ul className="space-y-2.5">
+              {items.map((item) => (
+                <li key={item.productId} className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5">
+                  <Link to="/products/$slug" params={{ slug: item.slug }} className="h-16 w-16 shrink-0 overflow-hidden rounded-[3px] bg-muted">
+                    {item.image ? (
+                      <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <span className="block h-full w-full bg-muted" />
+                    )}
+                  </Link>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-start gap-2">
+                      <Link
+                        to="/products/$slug"
+                        params={{ slug: item.slug }}
+                        className="line-clamp-2 flex-1 text-[13px] font-medium text-foreground"
+                      >
+                        {item.name}
+                      </Link>
+                      <button
+                        aria-label="Remove"
+                        onClick={() => remove(item.productId)}
+                        className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between pt-1.5">
+                      <span className="text-sm font-bold text-primary">{formatBDT(item.price * item.quantity)}</span>
+                      <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
+                        <button
+                          aria-label="Decrease"
+                          onClick={() => setQty(item.productId, item.quantity - 1)}
+                          className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-7 text-center text-xs font-semibold">{item.quantity}</span>
+                        <button
+                          aria-label="Increase"
+                          onClick={() => setQty(item.productId, item.quantity + 1)}
+                          className="grid h-7 w-7 place-items-center text-primary active:scale-95"
+                        >
+                          <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{formatMoney(it.price)}</p>
-                      <div className="mt-auto flex items-center justify-between">
-                        <div className="flex items-center border border-border">
-                          <button onClick={() => setQty(it.productId, it.quantity - 1)} className="p-2 hover:bg-accent"><Minus className="h-3 w-3" /></button>
-                          <span className="w-10 text-center text-sm">{it.quantity}</span>
-                          <button onClick={() => setQty(it.productId, it.quantity + 1)} className="p-2 hover:bg-accent"><Plus className="h-3 w-3" /></button>
-                        </div>
-                        <p className="text-sm font-medium">{formatMoney(it.price * it.quantity)}</p>
-                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-            <aside className="h-fit border border-border p-6">
-              <h2 className="font-display text-xl">Order summary</h2>
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatMoney(subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>Complimentary</span></div>
-                <div className="mt-4 flex justify-between border-t border-border pt-4 text-base font-medium">
-                  <span>Total</span><span>{formatMoney(subtotal)}</span>
+            <details open className="group mt-4 rounded-[3px] border border-border bg-background [&[open]>summary>svg]:rotate-180">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-4">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Order summary</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+              </summary>
+              <dl className="space-y-2 px-4 pb-4 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Subtotal</dt>
+                  <dd className="font-medium">{formatBDT(subtotal)}</dd>
                 </div>
-              </div>
-              <Link to="/checkout"><Button className="mt-6 w-full rounded-none" size="lg">Checkout</Button></Link>
-              <Link to="/products" className="mt-3 block text-center text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                Continue shopping
-              </Link>
-            </aside>
-          </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Shipping</dt>
+                  <dd className="text-[12px] font-medium text-muted-foreground">Estimated in checkout</dd>
+                </div>
+                <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
+                  <dt className="text-sm font-semibold">Total</dt>
+                  <dd className="text-xl font-bold text-primary">{formatBDT(total)}</dd>
+                </div>
+              </dl>
+            </details>
+
+            <div className="h-4" />
+          </>
         )}
-      </main>
+      </div>
+
+      {items.length > 0 && (
+        <div
+          className="sticky bottom-16 z-20 mt-auto border-t border-border bg-background/95 px-3 py-2.5 backdrop-blur"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
+        >
+          <Link
+            to="/checkout"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-[3px] bg-primary text-sm font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] active:scale-[0.99]"
+          >
+            Checkout • {formatBDT(total)} <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
     </div>
+  );
+}
+
+function EmptyCart() {
+  return (
+    <EmptyState
+      icon={ShoppingBag}
+      title="Your bag is empty"
+      description="Browse pieces you love and tap Add to cart to start."
+      primary={{ label: "Continue shopping", to: "/products" }}
+      secondary={{ label: "Browse categories", to: "/categories" }}
+    />
   );
 }
