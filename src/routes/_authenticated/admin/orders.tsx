@@ -2,7 +2,7 @@
  * Orders — Nori-style admin list with status tabs (with counters),
  * SKU-driven items column, address on the row, and price + delivery totals.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -12,7 +12,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import {
-  Search, Loader2, Eye, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
+  Search, Loader2, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
   User, Package, Receipt, Clock, Plus, Trash2, Save, ShieldCheck, Printer,
 } from "lucide-react";
 
