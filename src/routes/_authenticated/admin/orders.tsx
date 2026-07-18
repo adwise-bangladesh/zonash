@@ -513,15 +513,15 @@ function OrderDrawer({
                   Change status
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {STATUSES.map((s) => (
+                  {statuses.map((s) => (
                     <button
-                      key={s}
-                      onClick={() => onUpdate(s)}
-                      className={`rounded-md border border-input px-2 py-1 text-[12px] capitalize hover:bg-muted ${
-                        o.status === s ? "bg-foreground text-background" : ""
+                      key={s.slug}
+                      onClick={() => onUpdate(s.slug)}
+                      className={`rounded-md border border-input px-2 py-1 text-[12px] hover:bg-muted ${
+                        o.status === s.slug ? "bg-foreground text-background" : ""
                       }`}
                     >
-                      {s.replace(/-/g, " ")}
+                      {s.name}
                     </button>
                   ))}
                 </div>
