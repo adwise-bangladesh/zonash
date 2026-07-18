@@ -2,7 +2,7 @@
  * Orders — Nori-style admin list with status tabs (with counters),
  * SKU-driven items column, address on the row, and price + delivery totals.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -11,7 +11,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { Search, Loader2, Eye, ShoppingBag, X } from "lucide-react";
+import { Search, Loader2, Eye, ShoppingBag, X, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
@@ -20,6 +20,15 @@ import {
   getWooOrder,
   listOrderStatuses,
 } from "@/lib/woo.functions";
+import {
+  getOrderOps,
+  updateOrderOps,
+  getCustomerStats,
+  ratingFromStats,
+  type OrderOps,
+  type CustomerRating,
+} from "@/lib/ops.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({
