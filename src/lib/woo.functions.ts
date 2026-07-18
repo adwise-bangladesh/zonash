@@ -255,6 +255,61 @@ export const listCustomerOrders = createServerFn({ method: "GET" })
   });
 
 
+// -------------------- Order notes (WooCommerce private/customer notes) --------------------
+
+export type WooOrderNote = {
+  id: number;
+  author: string;
+  date_created: string;
+  note: string;
+  customer_note: boolean;
+};
+
+export const listOrderNotes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ id: z.number().int().positive() }).parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    try {
+      const notes = await (await import("./woo.server")).wooFetch<WooOrderNote[]>({
+        path: `/orders/${data.id}/notes`,
+        query: { type: "any", per_page: 50 },
+        timeoutMs: 10000,
+      });
+      return { notes, error: null as string | null };
+    } catch (e) {
+      console.error("listOrderNotes failed", e);
+      return { notes: [] as WooOrderNote[], error: "Could not load order notes." };
+    }
+  });
+
+export const addOrderNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        id: z.number().int().positive(),
+        note: z.string().trim().min(1).max(4000),
+        customer_note: z.boolean().default(false),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    const created = await (await import("./woo.server")).wooFetch<WooOrderNote>({
+      path: `/orders/${data.id}/notes`,
+      method: "POST",
+      body: { note: data.note, customer_note: data.customer_note },
+      timeoutMs: 10000,
+    });
+    return created;
+  });
+
+
+
+
 export const getOrderStatusCounts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

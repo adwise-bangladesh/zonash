@@ -28,6 +28,9 @@ import {
   listProducts,
   listProductVariations,
   listShippingMethods,
+  listOrderNotes,
+  addOrderNote,
+  type WooOrderNote,
 } from "@/lib/woo.functions";
 
 import {
@@ -1542,16 +1545,19 @@ function OrderDrawer({
               </div>
             </Section>
 
-            {/* Totals — shipping charge + fees/discount */}
+            {/* Totals — fixed delivery + fees/discount */}
             <Section title="Totals & discounts" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
-              {/* Shipping charge — pick from available WooCommerce shipping methods */}
-              <div className="mb-3">
-                <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
-                <ShippingLinesEditor
-                  currency={o.currency}
-                  shipLines={shipLines}
-                  onChange={setShipLines}
-                />
+              {/* Delivery charge — fixed, read-only */}
+              <div className="mb-3 flex items-center justify-between rounded-md border border-input bg-muted/30 px-3 py-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {shipLines[0]?.method_title || "Delivery"} · fixed
+                  </div>
+                </div>
+                <div className="tabular-nums text-[13px] font-semibold">
+                  {money(o.currency, shippingTotal)}
+                </div>
               </div>
 
               {/* Fees / discounts */}
@@ -1566,7 +1572,9 @@ function OrderDrawer({
                     <Plus className="h-3 w-3" /> Add line
                   </button>
                 </div>
-                <p className="mb-2 text-[10px] text-muted-foreground">Use a negative amount for a discount (e.g. <span className="font-mono">-100</span>).</p>
+                {fees.length > 0 && (
+                  <p className="mb-2 text-[10px] text-muted-foreground">Negative for a discount (e.g. <span className="font-mono">-100</span>).</p>
+                )}
                 {fees.map((f, i) => (
                   <div key={f.id ?? `f-${i}`} className="mt-1 flex items-end gap-2">
                     <TextField
@@ -1600,53 +1608,22 @@ function OrderDrawer({
                 <TotalRow label="Delivery">{money(o.currency, shippingTotal)}</TotalRow>
                 {feesTotal !== 0 && <TotalRow label="Fees / discounts">{money(o.currency, feesTotal)}</TotalRow>}
                 <div className="flex items-center justify-between pt-1 text-base font-semibold">
-                  <span>Preview total</span>
+                  <span>Total</span>
                   <span className="tabular-nums">{money(o.currency, grandTotal)}</span>
                 </div>
-                <p className="pt-1 text-[10px] text-muted-foreground">
-                  WooCommerce will recalculate the authoritative total after save (current: {money(o.currency, o.total)}).
-                </p>
               </div>
+
+              {/* Consignment ID (if linked to Steadfast) */}
+              {initialOps?.steadfast_consignment_id ? (
+                <div className="mt-3 flex items-center justify-between rounded-md border border-input px-3 py-2 text-[12px]">
+                  <span className="text-muted-foreground">Consignment ID</span>
+                  <span className="font-mono font-medium">{initialOps.steadfast_consignment_id}</span>
+                </div>
+              ) : null}
             </Section>
 
-            {/* Customer note merged into Customer & delivery */}
-
-
-            {/* Operations (dashboard-owned) */}
-            <Section title="Operations" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
-              <SteadfastPanel
-                wcOrderId={id}
-                initialOps={initialOps}
-                onSynced={(patch) => {
-                  if (patch.courier) setCourier(patch.courier);
-                  if (patch.tracking) setTracking(patch.tracking);
-                  qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
-                }}
-              />
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <TextField label="Courier" value={courier} onChange={setCourier} />
-                <TextField label="Tracking #" value={tracking} onChange={setTracking} />
-                <TextField label="Pickup slot" value={pickup} onChange={setPickup} full />
-              </div>
-              <label className="mt-2 block">
-                <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">Internal notes</span>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Staff only — not shown to the customer"
-                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
-                />
-              </label>
-              <button
-                onClick={() => saveOps.mutate()}
-                disabled={saveOps.isPending}
-                className="mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted disabled:opacity-50"
-              >
-                {saveOps.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Save operations
-              </button>
-            </Section>
+            {/* Order notes — WooCommerce private notes */}
+            <OrderNotesSection orderId={id} />
 
             {/* Timeline */}
             <Section title="Timeline" icon={<Clock className="h-3.5 w-3.5" />}>
@@ -1655,7 +1632,6 @@ function OrderDrawer({
                 {o.date_paid && <li><span className="text-muted-foreground">Paid:</span> {new Date(o.date_paid).toLocaleString()}</li>}
                 {o.date_completed && <li><span className="text-muted-foreground">Completed:</span> {new Date(o.date_completed).toLocaleString()}</li>}
                 <li><span className="text-muted-foreground">Last modified:</span> {new Date(o.date_modified).toLocaleString()}</li>
-                
               </ul>
             </Section>
           </div>
@@ -1714,6 +1690,99 @@ function TotalRow({ label, children }: { label: string; children: ReactNode }) {
       <span>{label}</span>
       <span className="tabular-nums text-foreground">{children}</span>
     </div>
+  );
+}
+
+/** Order notes — reads/writes WooCommerce private (and customer) notes. */
+function OrderNotesSection({ orderId }: { orderId: number }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listOrderNotes);
+  const addFn = useServerFn(addOrderNote);
+  const [text, setText] = useState("");
+  const [asCustomer, setAsCustomer] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["admin", "order-notes", orderId],
+    queryFn: () => listFn({ data: { id: orderId } }),
+    staleTime: 60_000,
+  });
+
+  const add = useMutation({
+    mutationFn: () =>
+      addFn({ data: { id: orderId, note: text.trim(), customer_note: asCustomer } }),
+    onSuccess: () => {
+      setText("");
+      toast.success("Note added");
+      qc.invalidateQueries({ queryKey: ["admin", "order-notes", orderId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const notes = (q.data?.notes ?? []) as WooOrderNote[];
+
+  return (
+    <Section title="Order notes" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
+      <div className="space-y-2">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder="Add a private note (stored on WooCommerce)…"
+          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
+        />
+        <div className="flex items-center justify-between">
+          <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={asCustomer}
+              onChange={(e) => setAsCustomer(e.target.checked)}
+              className="h-3 w-3"
+            />
+            Notify customer
+          </label>
+          <button
+            type="button"
+            onClick={() => text.trim() && add.mutate()}
+            disabled={add.isPending || !text.trim()}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+          >
+            {add.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Add note
+          </button>
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          {q.isLoading && (
+            <p className="text-[11px] text-muted-foreground">Loading notes…</p>
+          )}
+          {!q.isLoading && notes.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No notes yet.</p>
+          )}
+          {notes.map((n) => (
+            <div
+              key={n.id}
+              className={`rounded-md border px-2.5 py-1.5 text-[12px] ${
+                n.customer_note
+                  ? "border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20"
+                  : "border-input bg-muted/30"
+              }`}
+            >
+              <div className="mb-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>
+                  {n.author || "System"}
+                  {n.customer_note ? " · to customer" : " · private"}
+                </span>
+                <span>{new Date(n.date_created).toLocaleString()}</span>
+              </div>
+              <div
+                className="whitespace-pre-wrap text-foreground"
+                dangerouslySetInnerHTML={{ __html: n.note }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }
 
