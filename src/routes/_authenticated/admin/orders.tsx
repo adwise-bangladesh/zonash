@@ -1013,8 +1013,8 @@ function OrderRow({
           <div className="flex flex-col items-start gap-1">
             <button
               type="button"
-              onClick={() => setReportOpen(true)}
-              title="View full courier history"
+              onClick={onOpenCustomer}
+              title="View courier history & Zonash orders"
               className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 hover:brightness-95 ${ratioCls}`}
             >
               {ratio}% success
