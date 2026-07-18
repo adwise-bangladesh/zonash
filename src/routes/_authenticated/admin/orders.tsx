@@ -2013,34 +2013,67 @@ function ShippingLinesEditor({
 
 
 
-function CustomerOrdersDrawer({
+function CustomerInsightDrawer({
   email,
+  phone,
+  name,
   onClose,
   onOpenOrder,
 }: {
   email: string;
+  phone?: string;
+  name?: string;
   onClose: () => void;
   onOpenOrder: (id: number) => void;
 }) {
-  const fn = useServerFn(listCustomerOrders);
-  const q = useQuery({
+  const listFn = useServerFn(listCustomerOrders);
+  const verifyFn = useServerFn(verifyCustomerPhone);
+  const [tab, setTab] = useState<"overview" | "courier" | "orders">("overview");
+
+  const ordersQ = useQuery({
     queryKey: ["admin", "customer-orders", email],
-    queryFn: () => fn({ data: { email } }),
-    staleTime: 30_000,
+    queryFn: () => listFn({ data: { email } }),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
-  const orders = q.data?.orders ?? [];
-  const customerName = orders[0]
-    ? `${orders[0].billing?.first_name ?? ""} ${orders[0].billing?.last_name ?? ""}`.trim()
-    : "";
-  const phone = orders[0]?.billing?.phone;
+  const hoorinQ = useQuery({
+    queryKey: ["admin", "hoorin-report", phone ?? ""],
+    queryFn: () => verifyFn({ data: { phone: phone! } }),
+    enabled: !!phone,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const orders = ordersQ.data?.orders ?? [];
+  const displayName =
+    name ||
+    (orders[0]
+      ? `${orders[0].billing?.first_name ?? ""} ${orders[0].billing?.last_name ?? ""}`.trim()
+      : "");
+  const displayPhone = phone || orders[0]?.billing?.phone;
+  const currency = orders[0]?.currency ?? "";
   const totalSpent = orders
     .filter((o) => o.status === "completed")
     .reduce((s, o) => s + Number(o.total || 0), 0);
-  const currency = orders[0]?.currency ?? "";
   const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
     acc[o.status] = (acc[o.status] ?? 0) + 1;
     return acc;
   }, {});
+
+  const report = hoorinQ.data;
+  const overall = report?.overall;
+  const ratio = overall ? Number(overall.success_ratio ?? 0) : null;
+  const ratioCls =
+    ratio === null
+      ? "bg-muted text-muted-foreground"
+      : ratio >= 80
+        ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20"
+        : ratio >= 50
+          ? "bg-amber-500/10 text-amber-700 ring-amber-500/20"
+          : "bg-rose-500/10 text-rose-700 ring-rose-500/20";
+  const totalDeliveries = overall
+    ? Number(overall.total_parcel ?? overall.total ?? 0)
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -2049,100 +2082,337 @@ function CustomerOrdersDrawer({
         onClick={onClose}
         className="flex-1 bg-foreground/40 backdrop-blur-sm"
       />
-      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <aside className="flex h-full w-full max-w-3xl flex-col border-l border-border bg-card">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-gradient-to-br from-muted/50 to-transparent px-5 py-4">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase text-muted-foreground">
-              Customer history
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Customer insight
             </div>
-            <div className="truncate text-[16px] font-semibold">
-              {customerName || email}
+            <div className="mt-0.5 truncate text-[18px] font-semibold">
+              {displayName || email}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {email}
-              {phone && ` · ${phone}`}
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              {displayPhone && <span className="tabular-nums">{displayPhone}</span>}
+              <span className="truncate">{email}</span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {q.isLoading ? (
-          <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            No orders found for this customer.
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3 text-center">
-              <Stat label="Total orders" value={orders.length.toString()} />
-              <Stat
-                label="Completed"
-                value={(statusCounts.completed ?? 0).toString()}
-              />
-              <Stat label="Spent" value={money(currency, totalSpent)} />
-            </div>
-            <div className="flex flex-wrap gap-1 border-b border-border px-4 py-2">
-              {Object.entries(statusCounts).map(([s, c]) => (
-                <span
-                  key={s}
-                  className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground"
-                >
-                  {s.replace(/-/g, " ")} · {c}
-                </span>
-              ))}
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {orders.map((o) => {
-                const shipping = Number(o.shipping_total || 0);
-                const items = Number(o.total || 0) - shipping;
-                return (
-                  <button
-                    key={o.id}
-                    onClick={() => onOpenOrder(o.id)}
-                    className="flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left hover:bg-muted/40"
-                  >
-                    <div className="w-20 shrink-0 text-[11px] text-muted-foreground tabular-nums">
-                      {new Date(o.date_created).toLocaleDateString()}
+        {/* KPI grid */}
+        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+          <InsightKpi
+            label="Zonash orders"
+            value={ordersQ.isLoading ? "…" : orders.length.toString()}
+            sub={
+              statusCounts.completed
+                ? `${statusCounts.completed} completed`
+                : undefined
+            }
+          />
+          <InsightKpi
+            label="Total spent"
+            value={ordersQ.isLoading ? "…" : money(currency, totalSpent)}
+          />
+          <InsightKpi
+            label="Courier success"
+            value={
+              !phone
+                ? "—"
+                : hoorinQ.isLoading
+                  ? "…"
+                  : ratio !== null
+                    ? `${ratio}%`
+                    : "—"
+            }
+            valueClass={ratioCls}
+            sub={overall ? `${totalDeliveries} parcels` : undefined}
+          />
+          <InsightKpi
+            label="Deliveries"
+            value={
+              !phone
+                ? "—"
+                : hoorinQ.isLoading
+                  ? "…"
+                  : totalDeliveries.toString()
+            }
+            sub={
+              overall
+                ? `${overall.total_delivered ?? 0} ok · ${overall.total_cancelled ?? 0} cancel`
+                : undefined
+            }
+          />
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 border-b border-border px-3 pt-2">
+          {(
+            [
+              { id: "overview", label: "Overview" },
+              { id: "courier", label: "Courier history" },
+              { id: "orders", label: `Orders (${orders.length})` },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`relative rounded-t-md px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                tab === t.id
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              {tab === t.id && (
+                <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-foreground" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+          {tab === "overview" && (
+            <div className="space-y-4 p-4">
+              <div>
+                <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Zonash status breakdown
+                </div>
+                {ordersQ.isLoading ? (
+                  <div className="text-[11px] text-muted-foreground">Loading…</div>
+                ) : Object.keys(statusCounts).length === 0 ? (
+                  <div className="text-[11px] italic text-muted-foreground">
+                    No orders yet.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(statusCounts).map(([s, c]) => (
+                      <span
+                        key={s}
+                        className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-foreground"
+                      >
+                        {s.replace(/-/g, " ")} · {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {phone && (
+                <div>
+                  <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Courier snapshot
+                  </div>
+                  {hoorinQ.isLoading ? (
+                    <div className="text-[11px] text-muted-foreground">
+                      Checking Hoorin…
                     </div>
-                    <div className="min-w-0 flex-1">
+                  ) : hoorinQ.error ? (
+                    <div className="text-[11px] text-rose-700">
+                      {(hoorinQ.error as Error).message}
+                    </div>
+                  ) : report ? (
+                    <div className="rounded-lg border border-border bg-background p-3 text-[11px]">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">#{o.number}</span>
-                        <StatusBadge status={o.status} />
+                        <span
+                          className={`rounded-full px-2 py-[2px] text-[10px] font-semibold ring-1 ${ratioCls}`}
+                        >
+                          {ratio}% success
+                        </span>
+                        <span className="text-muted-foreground">
+                          across {totalDeliveries} parcels
+                        </span>
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {(o.line_items ?? [])
-                          .map((li) => li.sku || li.name)
-                          .filter(Boolean)
-                          .slice(0, 3)
-                          .join(", ")}
-                        {(o.line_items?.length ?? 0) > 3 &&
-                          ` +${o.line_items.length - 3}`}
-                      </div>
+                      <button
+                        onClick={() => setTab("courier")}
+                        className="mt-2 text-[11px] font-medium text-foreground underline underline-offset-2"
+                      >
+                        View full courier report →
+                      </button>
                     </div>
-                    <div className="shrink-0 text-right text-[12px] leading-tight">
-                      <div className="text-muted-foreground tabular-nums">
-                        {money(o.currency, items)} + {money(o.currency, shipping)}
-                      </div>
-                      <div className="text-sm font-semibold tabular-nums">
-                        = {money(o.currency, o.total)}
-                      </div>
+                  ) : (
+                    <div className="text-[11px] italic text-muted-foreground">
+                      No courier history.
                     </div>
-                  </button>
-                );
-              })}
+                  )}
+                </div>
+              )}
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Recent orders
+                  </div>
+                  {orders.length > 3 && (
+                    <button
+                      onClick={() => setTab("orders")}
+                      className="text-[11px] font-medium text-foreground underline underline-offset-2"
+                    >
+                      View all →
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {orders.slice(0, 3).map((o) => (
+                    <OrderMiniRow
+                      key={o.id}
+                      o={o}
+                      onClick={() => onOpenOrder(o.id)}
+                    />
+                  ))}
+                  {orders.length === 0 && !ordersQ.isLoading && (
+                    <div className="text-[11px] italic text-muted-foreground">
+                      No orders yet.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </>
-        )}
+          )}
+
+          {tab === "courier" && (
+            <div className="p-4">
+              {!phone ? (
+                <div className="text-[12px] italic text-muted-foreground">
+                  No phone number available for courier lookup.
+                </div>
+              ) : hoorinQ.isLoading ? (
+                <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading courier report…
+                </div>
+              ) : hoorinQ.error ? (
+                <div className="text-[12px] text-rose-700">
+                  {(hoorinQ.error as Error).message}
+                </div>
+              ) : report ? (
+                <HoorinReportView report={report} />
+              ) : (
+                <div className="text-[12px] italic text-muted-foreground">
+                  No courier history.
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "orders" && (
+            <div>
+              {ordersQ.isLoading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="py-10 text-center text-[12px] italic text-muted-foreground">
+                  No orders found.
+                </div>
+              ) : (
+                orders.map((o) => (
+                  <OrderMiniRow
+                    key={o.id}
+                    o={o}
+                    onClick={() => onOpenOrder(o.id)}
+                    expanded
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </aside>
     </div>
+  );
+}
+
+function InsightKpi({
+  label,
+  value,
+  sub,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 bg-card px-4 py-3">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={`text-[16px] font-semibold tabular-nums ${
+          valueClass && !/^\d/.test(value) ? "" : ""
+        }`}
+      >
+        {valueClass ? (
+          <span
+            className={`inline-block rounded-md px-1.5 py-[1px] text-[13px] ring-1 ${valueClass}`}
+          >
+            {value}
+          </span>
+        ) : (
+          value
+        )}
+      </div>
+      {sub && (
+        <div className="text-[10px] tabular-nums text-muted-foreground">
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrderMiniRow({
+  o,
+  onClick,
+  expanded,
+}: {
+  o: import("@/lib/woo.server").WooOrder;
+  onClick: () => void;
+  expanded?: boolean;
+}) {
+  const shipping = Number(o.shipping_total || 0);
+  const items = Number(o.total || 0) - shipping;
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-start gap-3 border-b border-border/60 px-4 text-left hover:bg-muted/40 ${
+        expanded ? "py-3" : "rounded-md border py-2"
+      }`}
+    >
+      <div className="w-20 shrink-0 text-[11px] text-muted-foreground tabular-nums">
+        {new Date(o.date_created).toLocaleDateString()}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-medium">#{o.number}</span>
+          <StatusBadge status={o.status} />
+        </div>
+        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {(o.line_items ?? [])
+            .map((li) => li.sku || li.name)
+            .filter(Boolean)
+            .slice(0, 3)
+            .join(", ")}
+          {(o.line_items?.length ?? 0) > 3 && ` +${o.line_items.length - 3}`}
+        </div>
+      </div>
+      <div className="shrink-0 text-right text-[11px] leading-tight">
+        <div className="text-muted-foreground tabular-nums">
+          {money(o.currency, items)} + {money(o.currency, shipping)}
+        </div>
+        <div className="text-[13px] font-semibold tabular-nums">
+          = {money(o.currency, o.total)}
+        </div>
+      </div>
+    </button>
   );
 }
 
