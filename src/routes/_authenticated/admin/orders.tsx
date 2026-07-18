@@ -2429,43 +2429,65 @@ function OrderInsightRow({
     });
 
   return (
-    <div className="group rounded-lg border border-border bg-background p-2.5 transition-colors hover:border-foreground/20">
-      <div className="flex items-start gap-3">
-        <button
-          onClick={onOpen}
-          className="min-w-0 flex-1 text-left"
-          aria-label={`Open order ${o.number}`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-semibold">#{o.number}</span>
-            <StatusBadge status={o.status} />
-            <span className="text-[10px] text-muted-foreground tabular-nums">
-              {new Date(o.date_created).toLocaleDateString()}
-            </span>
-          </div>
-          {skus.length > 0 && (
-            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {skus.slice(0, 3).join(", ")}
-              {skus.length > 3 && ` +${skus.length - 3}`}
-            </div>
-          )}
-        </button>
-        <div className="shrink-0 text-right text-[11px] leading-tight">
-          <div className="text-muted-foreground tabular-nums">
-            {money(o.currency, items)} + {money(o.currency, shipping)}
-          </div>
-          <div className="text-[13px] font-semibold tabular-nums">
-            {money(o.currency, o.total)}
-          </div>
+    <li
+      className="grid cursor-pointer grid-cols-[110px_minmax(0,1fr)_92px_100px_auto] items-center gap-2 px-4 py-2 text-[12px] transition-colors hover:bg-muted/40"
+      onClick={onOpen}
+    >
+      {/* Date / # */}
+      <div className="min-w-0">
+        <div className="truncate text-[10px] text-muted-foreground tabular-nums">
+          {new Date(o.date_created).toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "2-digit",
+          })}
+        </div>
+        <div className="truncate text-[12px] font-semibold tabular-nums">
+          #{o.number}
         </div>
       </div>
-      {/* Status quick actions */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {quick.map((q) => (
+
+      {/* Items / SKUs */}
+      <div className="min-w-0">
+        {skus.length > 0 ? (
+          <div
+            className="truncate text-[11px] text-foreground/80"
+            title={skus.join(", ")}
+          >
+            {skus.slice(0, 2).join(", ")}
+            {skus.length > 2 && (
+              <span className="text-muted-foreground"> +{skus.length - 2}</span>
+            )}
+          </div>
+        ) : (
+          <div className="text-[11px] italic text-muted-foreground">—</div>
+        )}
+        <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+          {money(o.currency, items)} + {money(o.currency, shipping)}
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="min-w-0">
+        <StatusBadge status={o.status} />
+      </div>
+
+      {/* Total */}
+      <div className="text-right text-[13px] font-semibold tabular-nums">
+        {money(o.currency, o.total)}
+      </div>
+
+      {/* Actions */}
+      <div
+        className="flex items-center justify-end gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {quick.slice(0, 2).map((q) => (
           <button
             key={q.slug}
             onClick={() => onUpdateStatus(q.slug)}
             className={`inline-flex h-6 items-center rounded-md px-2 text-[10px] font-medium transition-colors ${q.cls}`}
+            title={q.label}
           >
             {q.label}
           </button>
@@ -2475,7 +2497,7 @@ function OrderInsightRow({
           onChange={(e) => {
             if (e.target.value !== o.status) onUpdateStatus(e.target.value);
           }}
-          className="ml-auto h-6 rounded-md border border-input bg-background px-1.5 text-[10px]"
+          className="h-6 rounded-md border border-input bg-background px-1.5 text-[10px]"
           aria-label="Change status"
         >
           {!statuses.some((s) => s.slug === o.status) && (
@@ -2487,16 +2509,11 @@ function OrderInsightRow({
             </option>
           ))}
         </select>
-        <button
-          onClick={onOpen}
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-input bg-background px-2 text-[10px] font-medium hover:bg-muted"
-        >
-          Open
-        </button>
       </div>
-    </div>
+    </li>
   );
 }
+
 
 
 function InsightKpi({
