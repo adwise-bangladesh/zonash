@@ -1,5 +1,6 @@
 /**
- * POS — manual order entry for phone/chat/instore orders.
+ * POS — manual order entry.
+ * Premium single-viewport app-like layout (no page title, no outer scroll).
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -18,6 +19,7 @@ import {
   Store,
   MoreHorizontal,
   Check,
+  Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -75,10 +77,9 @@ function PosPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-
   const productsQ = useQuery({
     queryKey: ["pos", "products", debounced],
-    queryFn: () => listFn({ data: { search: debounced || undefined, perPage: 8 } }),
+    queryFn: () => listFn({ data: { search: debounced || undefined, perPage: 12 } }),
     enabled: debounced.length >= 2,
     staleTime: 60_000,
   });
@@ -121,20 +122,26 @@ function PosPage() {
     });
   };
 
-  const updateQty = (i: number, q: number) => {
-    setCart((prev) => prev.map((l, idx) => (idx === i ? { ...l, quantity: Math.max(1, q) } : l)));
-  };
-  const updatePrice = (i: number, p: number) => {
-    setCart((prev) => prev.map((l, idx) => (idx === i ? { ...l, price: Math.max(0, p) } : l)));
-  };
-  const removeLine = (i: number) => setCart((prev) => prev.filter((_, idx) => idx !== i));
+  const updateQty = (i: number, q: number) =>
+    setCart((prev) =>
+      prev.map((l, idx) => (idx === i ? { ...l, quantity: Math.max(1, q) } : l)),
+    );
+  const updatePrice = (i: number, p: number) =>
+    setCart((prev) =>
+      prev.map((l, idx) => (idx === i ? { ...l, price: Math.max(0, p) } : l)),
+    );
+  const removeLine = (i: number) =>
+    setCart((prev) => prev.filter((_, idx) => idx !== i));
 
   const subtotal = cart.reduce((s, l) => s + l.price * l.quantity, 0);
   const shippingAmount = insideDhaka ? 80 : 130;
   const grand = Math.max(0, subtotal + shippingAmount - discount);
 
   const canSubmit =
-    cart.length > 0 && name.trim().length > 0 && phone.trim().length >= 5 && address.trim().length > 0;
+    cart.length > 0 &&
+    name.trim().length > 0 &&
+    phone.trim().length >= 5 &&
+    address.trim().length > 0;
 
   const submit = useMutation({
     mutationFn: async (status: "on-hold" | "processing") =>
@@ -174,268 +181,324 @@ function PosPage() {
   const ChannelIcon = CHANNEL_META[channel]?.icon ?? Phone;
 
   return (
-    <AdminShell
-      title="Point of sale"
-      subtitle="Take orders by call, chat, or in-store — Cash on Delivery."
-    >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
-        {/* LEFT — products + cart */}
-        <div className="space-y-4">
-          <section className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search products by name or SKU…"
-                  className="h-10 w-full rounded-md border border-border bg-background pl-8 pr-3 text-[13px] outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-                />
-                {productsQ.isFetching && (
-                  <Loader2 className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
+    <AdminShell bare>
+      <div className="grid h-full grid-cols-1 gap-3 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_360px] md:p-4">
+        {/* COLUMN 1 — Product catalog */}
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+                placeholder="Search products by name or SKU…"
+                className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-8 text-[13px] outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              />
+              {productsQ.isFetching && (
+                <Loader2 className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
             </div>
-            {debounced.length >= 2 ? (
-              <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            {debounced.length < 2 ? (
+              <div className="grid h-full place-items-center px-6 text-center">
+                <div>
+                  <div
+                    className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl"
+                    style={{
+                      background:
+                        "color-mix(in oklab, var(--primary) 10%, transparent)",
+                      color: "var(--primary)",
+                    }}
+                  >
+                    <Search className="h-6 w-6" />
+                  </div>
+                  <div className="text-[13px] font-semibold text-foreground">
+                    Find products
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-muted-foreground">
+                    Type 2+ letters to search by name or SKU.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ul className="grid grid-cols-2 gap-2 xl:grid-cols-3">
                 {(productsQ.data?.products ?? []).map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 px-3 py-2">
-                    <img
-                      src={p.images?.[0]?.src ?? ""}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded-md bg-muted object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px] font-medium">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {p.sku ? `SKU ${p.sku} · ` : ""}
-                        ৳ {Number(p.price || 0).toFixed(0)}
-                      </div>
-                    </div>
+                  <li key={p.id}>
                     <button
                       type="button"
                       onClick={() => addToCart(p)}
-                      className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-2.5 text-[11.5px] font-semibold text-primary-foreground hover:brightness-110"
+                      className="group flex w-full items-center gap-2 rounded-lg border border-border bg-background p-2 text-left transition hover:border-primary/30 hover:shadow-sm"
                     >
-                      <Plus className="h-3 w-3" /> Add
+                      <img
+                        src={p.images?.[0]?.src ?? ""}
+                        alt=""
+                        className="h-11 w-11 shrink-0 rounded-md bg-muted object-cover"
+                      />
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <div className="line-clamp-2 text-[11.5px] font-medium">
+                          {p.name}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground">
+                          {p.sku && <span className="truncate">{p.sku}</span>}
+                          <span className="ml-auto font-semibold text-foreground">
+                            ৳{Number(p.price || 0).toFixed(0)}
+                          </span>
+                        </div>
+                      </div>
                     </button>
                   </li>
                 ))}
-                {(productsQ.data?.products ?? []).length === 0 && !productsQ.isFetching && (
-                  <li className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-                    No products.
-                  </li>
-                )}
+                {(productsQ.data?.products ?? []).length === 0 &&
+                  !productsQ.isFetching && (
+                    <li className="col-span-full px-3 py-8 text-center text-[12px] text-muted-foreground">
+                      No products.
+                    </li>
+                  )}
               </ul>
-            ) : (
-              <div className="rounded-md border border-dashed border-border px-3 py-6 text-center text-[12px] text-muted-foreground">
-                Type 2+ letters to search products.
-              </div>
             )}
-          </section>
+          </div>
+        </section>
 
-          <section className="rounded-xl border border-border bg-card">
-            <div className="border-b border-border px-4 py-3 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Cart ({cart.length})
+        {/* COLUMN 2 — Cart */}
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[12.5px] font-semibold text-foreground">
+                Cart
+              </span>
+              <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-muted px-1.5 text-[10.5px] font-bold text-foreground/70">
+                {cart.length}
+              </span>
             </div>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+              style={{
+                background: "color-mix(in oklab, var(--primary) 10%, transparent)",
+                color: "var(--primary)",
+              }}
+            >
+              <ChannelIcon className="h-3 w-3" />
+              {CHANNEL_META[channel]?.label ?? channel}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {cart.length === 0 ? (
-              <div className="px-4 py-8 text-center text-[12.5px] text-muted-foreground">
-                No items yet.
+              <div className="grid h-full place-items-center px-6 text-center">
+                <div className="text-[12px] text-muted-foreground">
+                  Tap a product to add it here.
+                </div>
               </div>
             ) : (
               <ul className="divide-y divide-border">
                 {cart.map((l, i) => (
-                  <li key={`${l.product_id}-${i}`} className="flex items-center gap-3 px-4 py-3">
+                  <li
+                    key={`${l.product_id}-${i}`}
+                    className="flex items-center gap-2.5 px-3 py-2.5"
+                  >
                     <img
                       src={l.image ?? ""}
                       alt=""
                       className="h-10 w-10 shrink-0 rounded-md bg-muted object-cover"
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px] font-medium">{l.name}</div>
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="truncate text-[12.5px] font-medium">
+                        {l.name}
+                      </div>
                       {l.sku && (
-                        <div className="text-[10.5px] text-muted-foreground">SKU {l.sku}</div>
+                        <div className="text-[10.5px] text-muted-foreground">
+                          {l.sku}
+                        </div>
                       )}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <div className="inline-flex items-center rounded-md border border-border">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(i, l.quantity - 1)}
+                            className="grid h-6 w-6 place-items-center text-muted-foreground hover:bg-muted"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="w-6 text-center text-[11.5px] font-semibold tabular-nums">
+                            {l.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQty(i, l.quantity + 1)}
+                            className="grid h-6 w-6 place-items-center text-muted-foreground hover:bg-muted"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          value={l.price}
+                          onChange={(e) => updatePrice(i, Number(e.target.value))}
+                          className="h-6 w-16 rounded-md border border-border bg-background px-1.5 text-right text-[11px] outline-none"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="number"
-                      min={1}
-                      value={l.quantity}
-                      onChange={(e) => updateQty(i, Number(e.target.value))}
-                      className="h-8 w-14 rounded-md border border-border bg-background px-2 text-center text-[12px]"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      value={l.price}
-                      onChange={(e) => updatePrice(i, Number(e.target.value))}
-                      className="h-8 w-20 rounded-md border border-border bg-background px-2 text-right text-[12px]"
-                    />
-                    <div className="w-20 text-right text-[12.5px] font-semibold">
-                      ৳ {(l.price * l.quantity).toFixed(0)}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-[12.5px] font-semibold tabular-nums">
+                        ৳ {(l.price * l.quantity).toFixed(0)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeLine(i)}
+                        className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeLine(i)}
-                      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-rose-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
                   </li>
                 ))}
               </ul>
             )}
-          </section>
-        </div>
+          </div>
 
-        {/* RIGHT — customer + totals */}
-        <div className="space-y-4">
-          <section className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Channel
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                <ChannelIcon className="h-3 w-3" />
-                {CHANNEL_META[channel]?.label ?? channel}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(CHANNEL_META).map(([k, m]) => (
+          {/* Channel selector strip */}
+          <div className="flex items-center gap-1 overflow-x-auto border-t border-border px-2 py-2">
+            {Object.entries(CHANNEL_META).map(([k, m]) => {
+              const active = channel === k;
+              const Icon = m.icon;
+              return (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setChannel(k)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                    channel === k
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition ${
+                    active
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:bg-muted/70"
                   }`}
                 >
+                  <Icon className="h-3 w-3" />
                   {m.label}
                 </button>
-              ))}
-            </div>
-          </section>
+              );
+            })}
+          </div>
+        </section>
 
-          <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {/* COLUMN 3 — Customer + totals */}
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
               Customer
             </div>
-            <PosField label="Name">
+            <div className="space-y-2">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="posinput"
-                placeholder="Customer name"
+                placeholder="Name *"
               />
-            </PosField>
-            <PosField label="Mobile">
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="posinput"
-                placeholder="01XXXXXXXXX"
+                placeholder="Mobile * (01XXXXXXXXX)"
+                inputMode="tel"
               />
-            </PosField>
-            <PosField label="Email (optional)">
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="posinput"
-                placeholder="name@example.com"
+                placeholder="Email (optional)"
+                inputMode="email"
               />
-            </PosField>
-            <PosField label="Address">
               <textarea
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 rows={2}
                 className="posinput"
-                placeholder="House, road, area"
+                placeholder="Address *"
               />
-            </PosField>
-            <PosField label="Thana">
-              <input
-                value={thana}
-                onChange={(e) => setThana(e.target.value)}
-                className="posinput"
-                placeholder="Thana / area"
-              />
-            </PosField>
-            <PosField label="Notes">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={thana}
+                  onChange={(e) => setThana(e.target.value)}
+                  className="posinput"
+                  placeholder="Thana"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  value={discount}
+                  onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
+                  className="posinput text-right"
+                  placeholder="Discount ৳"
+                />
+              </div>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 className="posinput"
-                placeholder="Internal or customer note"
+                placeholder="Notes"
               />
-            </PosField>
-          </section>
+            </div>
 
-          <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mt-3 mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
               Delivery
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setInsideDhaka(true)}
-                className={`rounded-md border px-3 py-2 text-[12px] font-medium ${
+                className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
                   insideDhaka
                     ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা সিটির ভিতরে · ৳80
+                ঢাকা ভিতরে · ৳80
               </button>
               <button
                 type="button"
                 onClick={() => setInsideDhaka(false)}
-                className={`rounded-md border px-3 py-2 text-[12px] font-medium ${
+                className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
                   !insideDhaka
                     ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground"
+                    : "border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                ঢাকা সিটির বাহিরে · ৳130
+                ঢাকা বাহিরে · ৳130
               </button>
             </div>
-            <PosField label="Discount (৳)">
-              <input
-                type="number"
-                min={0}
-                value={discount}
-                onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
-                className="posinput"
-              />
-            </PosField>
-          </section>
+          </div>
 
-          <section className="space-y-2 rounded-xl border border-border bg-card p-4">
-            <Row label="Subtotal" value={`৳ ${subtotal.toFixed(0)}`} />
-            <Row label="Delivery" value={`৳ ${shippingAmount.toFixed(0)}`} />
-            {discount > 0 && <Row label="Discount" value={`- ৳ ${discount.toFixed(0)}`} />}
-            <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[14px] font-semibold">
-              <span>Total (COD)</span>
-              <span>৳ {grand.toFixed(0)}</span>
+          {/* Totals + actions (sticky footer of column) */}
+          <div className="shrink-0 border-t border-border bg-muted/30 p-3">
+            <div className="space-y-1">
+              <Row label="Subtotal" value={`৳ ${subtotal.toFixed(0)}`} />
+              <Row label="Delivery" value={`৳ ${shippingAmount.toFixed(0)}`} />
+              {discount > 0 && (
+                <Row label="Discount" value={`- ৳ ${discount.toFixed(0)}`} />
+              )}
+              <div className="mt-1.5 flex items-center justify-between border-t border-border pt-2 text-[14px] font-bold">
+                <span>Total (COD)</span>
+                <span className="tabular-nums">৳ {grand.toFixed(0)}</span>
+              </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-2.5 grid grid-cols-[1fr_1.4fr] gap-2">
               <button
                 type="button"
                 disabled={!canSubmit || submit.isPending}
                 onClick={() => submit.mutate("on-hold")}
-                className="h-10 rounded-md border border-border bg-background text-[12.5px] font-semibold hover:bg-muted disabled:opacity-50"
+                className="h-10 rounded-md border border-border bg-background text-[12px] font-semibold hover:bg-muted disabled:opacity-50"
               >
-                Save as draft
+                Draft
               </button>
               <button
                 type="button"
                 disabled={!canSubmit || submit.isPending}
                 onClick={() => submit.mutate("processing")}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary text-[12.5px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary text-[12.5px] font-semibold text-primary-foreground shadow-sm hover:brightness-110 disabled:opacity-50"
               >
                 {submit.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -445,13 +508,13 @@ function PosPage() {
                 Confirm order
               </button>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
 
       <style>{`
         .posinput {
-          height: 36px;
+          height: 34px;
           width: 100%;
           border-radius: 6px;
           border: 1px solid var(--border);
@@ -470,22 +533,11 @@ function PosPage() {
   );
 }
 
-function PosField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between text-[12.5px]">
+    <div className="flex items-center justify-between text-[12px]">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className="font-medium tabular-nums">{value}</span>
     </div>
   );
 }

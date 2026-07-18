@@ -68,11 +68,14 @@ export function AdminShell({
   subtitle,
   action,
   children,
+  bare = false,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
+  /** When true, no title/subtitle bar and main uses hidden overflow (app-like). */
+  bare?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -277,28 +280,31 @@ export function AdminShell({
         </header>
 
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
-            {(title || subtitle || action) && (
-              <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 md:mb-6 md:gap-4">
-                <div className="min-w-0">
-                  {title && (
-                    <h1 className="truncate text-[18px] font-semibold tracking-tight md:text-[22px]">
-                      {title}
-                    </h1>
-                  )}
-                  {subtitle && (
-                    <p className="mt-0.5 text-[12px] text-muted-foreground md:text-[13px]">
-                      {subtitle}
-                    </p>
-                  )}
+        <main className={`flex-1 ${bare ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {bare ? (
+            children
+          ) : (
+            <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
+              {(title || subtitle || action) && (
+                <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 md:mb-6 md:gap-4">
+                  <div className="min-w-0">
+                    {title && (
+                      <h1 className="truncate text-[18px] font-semibold tracking-tight md:text-[22px]">
+                        {title}
+                      </h1>
+                    )}
+                    {subtitle && (
+                      <p className="mt-0.5 text-[12px] text-muted-foreground md:text-[13px]">
+                        {subtitle}
+                      </p>
+                    )}
+                  </div>
+                  {action}
                 </div>
-                {action}
-              </div>
-            )}
-
-            {children}
-          </div>
+              )}
+              {children}
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -310,17 +316,25 @@ export function AdminShell({
 function Clock() {
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
+    const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  const fmt = useMemo(
+  const dateFmt = useMemo(
     () =>
       new Intl.DateTimeFormat("en-GB", {
         weekday: "short",
         day: "2-digit",
         month: "short",
-        hour: "numeric",
+        timeZone: "Asia/Dhaka",
+      }),
+    [],
+  );
+  const timeFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-GB", {
+        hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
         hour12: true,
         timeZone: "Asia/Dhaka",
       }),
@@ -328,11 +342,13 @@ function Clock() {
   );
   return (
     <div
-      className="hidden items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
+      className="hidden items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11.5px] font-medium text-foreground/80 md:flex"
       title="Asia/Dhaka"
     >
       <ClockIcon className="h-3 w-3 text-primary" />
-      <span className="tabular-nums">{fmt.format(now)}</span>
+      <span className="tabular-nums">{dateFmt.format(now)}</span>
+      <span className="text-border">·</span>
+      <span className="tabular-nums text-foreground">{timeFmt.format(now)}</span>
     </div>
   );
 }
@@ -365,17 +381,23 @@ function FullscreenToggle() {
 }
 
 function IssuesBell({ count, onClick }: { count: number; onClick: () => void }) {
+  const has = count > 0;
   return (
     <button
       type="button"
       onClick={onClick}
-      title={count > 0 ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
-      className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      title={has ? `${count} open issue${count === 1 ? "" : "s"}` : "No open issues"}
+      className={`relative inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-semibold transition ${
+        has
+          ? "border-primary/25 bg-primary/8 text-primary hover:bg-primary/12"
+          : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
     >
-      <Bell className="h-4 w-4" />
-      {count > 0 && (
+      <Bell className="h-3.5 w-3.5" />
+      <span className="hidden md:inline">Issues</span>
+      {has && (
         <span
-          className="absolute -right-0.5 -top-0.5 inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
+          className="inline-grid min-w-[18px] h-[18px] place-items-center rounded-full px-1 text-[9.5px] font-bold text-white shadow-sm"
           style={{
             background: "var(--primary)",
             animation: "badge-shake 1.8s ease-in-out infinite",

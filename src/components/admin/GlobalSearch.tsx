@@ -156,17 +156,34 @@ export function GlobalSearch() {
               `${o.billing?.first_name ?? ""} ${o.billing?.last_name ?? ""}`.trim() ||
               o.billing?.email ||
               "Guest";
-            const activeCls =
-              i === active ? "bg-muted" : "hover:bg-muted/60";
+            const activeCls = i === active ? "bg-muted" : "hover:bg-muted/60";
+            const itemsCount = (o.line_items ?? []).reduce(
+              (s: number, li: { quantity?: number }) => s + (li.quantity ?? 0),
+              0,
+            );
+            const firstItem = o.line_items?.[0]?.name ?? "";
+            const addrParts = [
+              o.billing?.address_1,
+              o.billing?.city,
+              o.billing?.state,
+            ].filter(Boolean);
+            const address = addrParts.join(", ");
+            const created = o.date_created
+              ? new Date(o.date_created).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "2-digit",
+                })
+              : "";
             return (
               <button
                 type="button"
                 key={o.id}
                 onClick={() => pickIdx(i)}
                 onMouseEnter={() => setActive(i)}
-                className={`flex w-full items-center gap-3 border-b border-border/50 px-3 py-2 text-left last:border-0 ${activeCls}`}
+                className={`flex w-full items-start gap-3 border-b border-border/50 px-3 py-2.5 text-left last:border-0 ${activeCls}`}
               >
-                <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-tight">
                   <div className="flex items-center gap-2">
                     <span className="text-[12.5px] font-semibold text-foreground">
                       #{o.number}
@@ -176,15 +193,32 @@ export function GlobalSearch() {
                     >
                       {o.status}
                     </span>
-                    <span className="ml-auto text-[11px] font-semibold text-foreground/80">
-                      {o.currency} {Number(o.total || 0).toFixed(0)}
+                    {created && (
+                      <span className="text-[10.5px] text-muted-foreground">
+                        {created}
+                      </span>
+                    )}
+                    <span className="ml-auto text-[11.5px] font-semibold text-foreground/80 tabular-nums">
+                      ৳ {Number(o.total || 0).toFixed(0)}
                     </span>
                   </div>
-                  <div className="truncate text-[11.5px] text-muted-foreground">
+                  <div className="truncate text-[11.5px] font-medium text-foreground">
                     {name}
-                    {o.billing?.phone ? ` · ${o.billing.phone}` : ""}
-                    {o.billing?.email ? ` · ${o.billing.email}` : ""}
+                    {o.billing?.phone ? (
+                      <span className="text-muted-foreground"> · {o.billing.phone}</span>
+                    ) : null}
                   </div>
+                  {address && (
+                    <div className="truncate text-[10.5px] text-muted-foreground">
+                      {address}
+                    </div>
+                  )}
+                  {(itemsCount > 0 || firstItem) && (
+                    <div className="truncate text-[10.5px] text-muted-foreground">
+                      {itemsCount} item{itemsCount === 1 ? "" : "s"}
+                      {firstItem ? ` · ${firstItem}` : ""}
+                    </div>
+                  )}
                 </div>
               </button>
             );
