@@ -192,14 +192,16 @@ function AdminOrders() {
     queryFn: () => opsFn({ data: { ids: visibleIds } }),
     enabled: visibleIds.length > 0,
     placeholderData: keepPreviousData,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const statsQ = useQuery({
     queryKey: ["admin", "customer-stats", visibleEmails],
     queryFn: () => statsFn({ data: { emails: visibleEmails } }),
     enabled: visibleEmails.length > 0,
     placeholderData: keepPreviousData,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const opsMap = opsQ.data ?? {};
   const statsMap = statsQ.data ?? {};
