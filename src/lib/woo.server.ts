@@ -100,31 +100,47 @@ export type WooOrder = {
   status: string;
   currency: string;
   total: string;
+  subtotal?: string;
+  shipping_total: string;
+  discount_total?: string;
+  total_tax?: string;
   date_created: string;
   date_modified: string;
   payment_method: string;
   payment_method_title: string;
+  customer_note?: string;
   billing: {
     first_name: string;
     last_name: string;
     email: string;
     phone: string;
     address_1: string;
+    address_2?: string;
     city: string;
+    state?: string;
+    postcode?: string;
     country: string;
   };
   shipping: {
     first_name: string;
     last_name: string;
     address_1: string;
+    address_2?: string;
     city: string;
+    state?: string;
+    postcode?: string;
     country: string;
   };
+  shipping_lines?: { id: number; method_title: string; method_id: string; total: string }[];
   line_items: {
     id: number;
     name: string;
+    sku?: string;
     product_id: number;
+    variation_id?: number;
     quantity: number;
+    subtotal?: string;
     total: string;
   }[];
 };
+

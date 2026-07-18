@@ -199,6 +199,29 @@ export const listWooOrders = createServerFn({ method: "GET" })
     }
   });
 
+export const getOrderStatusCounts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertStaff(context as never);
+    try {
+      const totals = await (await import("./woo.server")).wooFetch<
+        { slug: string; name: string; total: number }[]
+      >({ path: "/reports/orders/totals", timeoutMs: 10000 });
+      const counts: Record<string, number> = {};
+      let all = 0;
+      for (const t of totals) {
+        counts[t.slug] = t.total;
+        all += t.total;
+      }
+      counts.any = all;
+      return { counts, error: null as string | null };
+    } catch (e) {
+      console.error("getOrderStatusCounts failed", e);
+      return { counts: {} as Record<string, number>, error: "Could not load order counts." };
+    }
+  });
+
+
 const updateStatusSchema = z.object({
   id: z.number().int().positive(),
   status: z.enum([
