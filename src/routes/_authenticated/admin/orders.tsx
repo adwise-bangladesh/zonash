@@ -946,22 +946,7 @@ function OrderRow({
 
       {/* Customer: name, phone, address (clamped w/ tooltip) */}
       <div className="min-w-0 leading-snug">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-medium">{custName}</span>
-          {totalOrders >= 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenCustomer();
-              }}
-              title="View all orders from this customer"
-              className="shrink-0 rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
-            >
-              {totalOrders}
-            </button>
-          )}
-        </div>
+        <div className="truncate text-[13px] font-medium">{custName}</div>
         <div className="truncate text-[11px] text-muted-foreground tabular-nums">
           {phone || o.billing?.email || "—"}
         </div>
@@ -978,6 +963,7 @@ function OrderRow({
           </div>
         )}
       </div>
+
 
       {/* Items — 2 SKUs then "+N more" with tooltip */}
       <div className="min-w-0 space-y-0.5 text-[12px]">
