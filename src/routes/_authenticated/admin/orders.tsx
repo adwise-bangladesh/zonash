@@ -383,11 +383,13 @@ function OrderDrawer({
   id,
   onClose,
   detailFn,
+  statuses,
   onUpdate,
 }: {
   id: number;
   onClose: () => void;
   detailFn: (a: { data: { id: number } }) => Promise<any>;
+  statuses: { slug: string; name: string; count: number }[];
   onUpdate: (status: string) => void;
 }) {
   const q = useQuery({
