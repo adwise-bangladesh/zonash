@@ -38,7 +38,7 @@ import {
   type OrderOps,
   type CustomerRating,
 } from "@/lib/ops.functions";
-import { sendOrderToSteadfast, refreshSteadfastStatus } from "@/lib/steadfast.functions";
+import { sendOrderToSteadfast, refreshSteadfastStatus, bulkSendOrdersToSteadfast } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { HoorinReportView } from "@/routes/_authenticated/admin/settings";
 import type { HoorinReport } from "@/lib/hoorin.server";
@@ -201,6 +201,7 @@ function AdminOrders() {
 
   // Bulk actions ------------------------------------------------------------
   const sendSfFn = useServerFn(sendOrderToSteadfast);
+  const bulkSendSfFn = useServerFn(bulkSendOrdersToSteadfast);
 
 
   const selectedOrders = useMemo(
@@ -271,15 +272,46 @@ function AdminOrders() {
     );
   };
 
-  const bulkSendSteadfast = () => {
+  const bulkSendSteadfast = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`Send ${selected.size} order(s) to Steadfast?`)) return;
-    void runBulk(
-      "Send to Steadfast",
-      Array.from(selected),
-      3,
-      (id) => sendSfFn({ data: { wc_order_id: id } }),
-    );
+    const ids = Array.from(selected);
+    if (!confirm(`Send ${ids.length} order(s) to Steadfast?`)) return;
+    const CHUNK = 500;
+    const batches: number[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) batches.push(ids.slice(i, i + CHUNK));
+
+    setBulkBusy({ label: "Send to Steadfast", done: 0, total: ids.length });
+    let success = 0;
+    let failed = 0;
+    const errorMsgs: string[] = [];
+    let done = 0;
+    for (const batch of batches) {
+      try {
+        const r = await bulkSendSfFn({ data: { wc_order_ids: batch } });
+        success += r.success;
+        failed += r.failed;
+        for (const s of r.skipped) errorMsgs.push(`#${s.invoice}: ${s.reason}`);
+        for (const f of r.results.filter((x) => x.status !== "success")) {
+          errorMsgs.push(`#${f.invoice}: ${f.status}`);
+        }
+      } catch (e) {
+        failed += batch.length;
+        errorMsgs.push(e instanceof Error ? e.message : "Batch failed");
+      }
+      done += batch.length;
+      setBulkBusy({ label: "Send to Steadfast", done, total: ids.length });
+    }
+    setBulkBusy(null);
+    if (failed === 0) toast.success(`Sent ${success} order(s) to Steadfast`);
+    else {
+      toast.error(
+        `Steadfast: ${success} sent · ${failed} failed${
+          errorMsgs.length ? ` — ${errorMsgs.slice(0, 3).join("; ")}${errorMsgs.length > 3 ? "…" : ""}` : ""
+        }`,
+      );
+    }
+    invalidate();
+    setSelected(new Set());
   };
 
   const bulkPrintLabels = () => {

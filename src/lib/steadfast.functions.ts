@@ -137,6 +137,113 @@ export const sendOrderToSteadfast = createServerFn({ method: "POST" })
   });
 
 // -----------------------------------------------------------------------------
+// Bulk send orders to Steadfast (single API call, up to 500 per batch)
+// -----------------------------------------------------------------------------
+
+const bulkSendSchema = z.object({
+  wc_order_ids: z.array(z.number().int().positive()).min(1).max(500),
+});
+
+export const bulkSendOrdersToSteadfast = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => bulkSendSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as unknown as Ctx;
+    const { wooFetch } = await import("./woo.server");
+    const { sfCreateBulk } = await import("./steadfast.server");
+
+    type WooOrder = {
+      id: number;
+      number: string;
+      total: string;
+      customer_note?: string;
+      billing?: Record<string, string>;
+      shipping?: Record<string, string>;
+    };
+
+    // Fetch orders from Woo in parallel (bounded)
+    const orders: WooOrder[] = [];
+    const errors: { wc_order_id: number; error: string }[] = [];
+    const q = [...data.wc_order_ids];
+    async function worker() {
+      while (q.length) {
+        const id = q.shift()!;
+        try {
+          const o = await wooFetch<WooOrder>({ path: `/orders/${id}` });
+          orders.push(o);
+        } catch (e) {
+          errors.push({ wc_order_id: id, error: e instanceof Error ? e.message : "fetch failed" });
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(8, data.wc_order_ids.length) }, worker));
+
+    // Build bulk payload, skipping invalid rows
+    const skipped: { wc_order_id: number; invoice: string; reason: string }[] = [];
+    const invoiceToOrderId = new Map<string, number>();
+    const items = [] as Array<Parameters<typeof sfCreateBulk>[0][number]>;
+    for (const o of orders) {
+      const { name, phone, addr } = pickAddress(o);
+      const invoice = String(o.number || o.id);
+      if (!phone || phone.length < 10) {
+        skipped.push({ wc_order_id: o.id, invoice, reason: "Invalid phone" });
+        continue;
+      }
+      if (!addr) {
+        skipped.push({ wc_order_id: o.id, invoice, reason: "Missing address" });
+        continue;
+      }
+      invoiceToOrderId.set(invoice, o.id);
+      items.push({
+        invoice,
+        recipient_name: name.slice(0, 100),
+        recipient_phone: phone.slice(-11),
+        recipient_address: addr,
+        cod_amount: Math.max(0, Math.round(Number(o.total || 0))),
+        note: (o.customer_note ?? "").slice(0, 250) || undefined,
+      });
+    }
+
+    const results = items.length > 0 ? await sfCreateBulk(items) : [];
+
+    // Persist successes to order_ops
+    const nowIso = new Date().toISOString();
+    const upserts = results
+      .filter((r) => r.status === "success" && r.consignment_id && r.tracking_code)
+      .map((r) => ({
+        wc_order_id: invoiceToOrderId.get(r.invoice)!,
+        updated_by: userId,
+        courier: "Steadfast",
+        tracking_number: r.tracking_code!,
+        steadfast_consignment_id: r.consignment_id!,
+        steadfast_tracking_code: r.tracking_code!,
+        steadfast_status: r.status,
+        steadfast_synced_at: nowIso,
+      }))
+      .filter((u) => Number.isFinite(u.wc_order_id));
+
+    if (upserts.length > 0) {
+      const { error } = await supabase
+        .from("order_ops")
+        .upsert(upserts as never, { onConflict: "wc_order_id" });
+      if (error) throw new Error(error.message);
+    }
+
+    const success = results.filter((r) => r.status === "success").length;
+    const failed = results.filter((r) => r.status !== "success");
+
+    return {
+      total: data.wc_order_ids.length,
+      sent: items.length,
+      success,
+      failed: failed.length + skipped.length + errors.length,
+      results,
+      skipped,
+      fetch_errors: errors,
+    };
+  });
+
+
 // Refresh delivery status for a single order
 // -----------------------------------------------------------------------------
 
