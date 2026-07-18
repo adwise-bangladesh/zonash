@@ -926,36 +926,14 @@ function OrderDrawer({
 
             {/* Totals — shipping charge + fees/discount */}
             <Section title="Totals & discounts" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
-              {/* Shipping charge */}
+              {/* Shipping charge — pick from available WooCommerce shipping methods */}
               <div className="mb-3">
                 <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Delivery charge</div>
-                {shipLines.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShipLines([{ method_title: "Delivery", total: "0" }])}
-                    className="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[11px] hover:bg-muted"
-                  >
-                    <Plus className="h-3 w-3" /> Add delivery charge
-                  </button>
-                )}
-                {shipLines.map((s, i) => (
-                  <div key={s.id ?? `s-${i}`} className="mt-1 flex items-end gap-2">
-                    <TextField
-                      label="Method"
-                      value={s.method_title}
-                      onChange={(v) => setShipLines((a) => a.map((x, j) => (j === i ? { ...x, method_title: v } : x)))}
-                    />
-                    <label className="text-[10px] text-muted-foreground">
-                      Amount
-                      <input
-                        type="number" min="0" step="0.01"
-                        value={s.total}
-                        onChange={(e) => setShipLines((a) => a.map((x, j) => (j === i ? { ...x, total: e.target.value } : x)))}
-                        className="mt-0.5 block h-8 w-28 rounded-md border border-input bg-background px-2 text-[12px]"
-                      />
-                    </label>
-                  </div>
-                ))}
+                <ShippingLinesEditor
+                  currency={o.currency}
+                  shipLines={shipLines}
+                  onChange={setShipLines}
+                />
               </div>
 
               {/* Fees / discounts */}
