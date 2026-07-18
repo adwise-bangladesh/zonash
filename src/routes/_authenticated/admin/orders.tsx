@@ -685,8 +685,10 @@ function AdminOrders() {
                   itemsTotal={itemsTotal}
                   shipping={shipping}
                   onInvalidate={invalidate}
+                  pendingStatus={pendingStatus[o.id]}
                 />
               );
+
             })}
           </div>
         )}
