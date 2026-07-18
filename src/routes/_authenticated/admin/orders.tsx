@@ -514,9 +514,9 @@ function AdminOrders() {
       )}
 
 
-      <div className="rounded-xl border border-input bg-card">
+      <div className="rounded-xl border border-input bg-card overflow-hidden">
         {/* Header row — visible on lg+, compact on smaller screens */}
-        <div className="hidden lg:flex items-center gap-3 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="hidden lg:grid items-center gap-2 border-b border-input bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_130px_120px]">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -524,10 +524,13 @@ function AdminOrders() {
             aria-label="Select all on this page"
             className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-foreground"
           />
-          <div className="w-[80px]">Date</div>
-          <div className="flex-1 min-w-0">Order · Customer · Items · Address</div>
-          <div className="w-[110px] text-right">Total</div>
-          <div className="w-[280px] text-right">Actions</div>
+          <div>Date · Order</div>
+          <div>Customer</div>
+          <div>Items</div>
+          <div>Verification</div>
+          <div className="text-right">Total</div>
+          <div>Status</div>
+          <div className="text-right">Ship</div>
         </div>
 
         {q.isLoading &&
