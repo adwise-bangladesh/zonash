@@ -704,7 +704,7 @@ function OrderDrawer({
           line_items: li,
           fee_lines: fees.map((f) => ({ id: f.id, name: f.name, total: f.total })),
           shipping_lines: shipLines.map((s) => ({
-            id: s.id, method_title: s.method_title, method_id: "flat_rate", total: s.total,
+            id: s.id, method_title: s.method_title, method_id: s.method_id || "flat_rate", total: s.total,
           })),
           customer_note: customerNote,
         },
