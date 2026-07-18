@@ -10,6 +10,9 @@ const listProductsSchema = z.object({
   perPage: z.number().int().min(1).max(50).default(12),
   search: z.string().max(200).optional(),
   category: z.string().max(200).optional(),
+  featured: z.boolean().optional(),
+  orderby: z.enum(["date", "price", "popularity", "rating", "title"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 export const listProducts = createServerFn({ method: "GET" })
@@ -23,9 +26,12 @@ export const listProducts = createServerFn({ method: "GET" })
           per_page: data.perPage,
           search: data.search,
           category: data.category,
+          featured: data.featured,
+          orderby: data.orderby,
+          order: data.order,
           status: "publish",
         },
-        timeoutMs: 6000,
+        timeoutMs: 8000,
       });
       return { products, error: null as string | null };
     } catch (e) {
@@ -37,11 +43,96 @@ export const listProducts = createServerFn({ method: "GET" })
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
   .handler(async ({ data }) => {
-    const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
-      path: "/products",
-      query: { slug: data.slug },
-    });
-    return products[0] ?? null;
+    try {
+      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
+        path: "/products",
+        query: { slug: data.slug },
+      });
+      return { product: products[0] ?? null, error: null as string | null };
+    } catch (e) {
+      console.error("getProductBySlug failed", e);
+      return { product: null, error: "Product is temporarily unavailable." };
+    }
+  });
+
+export type WooCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  count: number;
+  image: { src: string; alt: string } | null;
+};
+
+export const listCategories = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
+        path: "/products/categories",
+        query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc" },
+      });
+      return { categories: cats.filter((c) => c.slug !== "uncategorized"), error: null as string | null };
+    } catch (e) {
+      console.error("listCategories failed", e);
+      return { categories: [] as WooCategory[], error: "Categories are temporarily unavailable." };
+    }
+  });
+
+// -------------------- Checkout (public) --------------------
+
+const createOrderSchema = z.object({
+  items: z.array(z.object({
+    product_id: z.number().int().positive(),
+    quantity: z.number().int().positive().max(99),
+  })).min(1).max(50),
+  billing: z.object({
+    first_name: z.string().trim().min(1).max(60),
+    last_name: z.string().trim().min(1).max(60),
+    email: z.string().trim().email().max(200),
+    phone: z.string().trim().min(3).max(30),
+    address_1: z.string().trim().min(1).max(200),
+    address_2: z.string().trim().max(200).optional().default(""),
+    city: z.string().trim().min(1).max(80),
+    state: z.string().trim().max(80).optional().default(""),
+    postcode: z.string().trim().min(1).max(20),
+    country: z.string().trim().length(2),
+  }),
+  payment_method: z.enum(["cod", "bacs"]).default("cod"),
+  customer_note: z.string().max(500).optional(),
+});
+
+export const createOrder = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => createOrderSchema.parse(raw))
+  .handler(async ({ data }) => {
+    try {
+      const order = await (await import("./woo.server")).wooFetch<WooOrder>({
+        path: "/orders",
+        method: "POST",
+        body: {
+          payment_method: data.payment_method,
+          payment_method_title: data.payment_method === "cod" ? "Cash on Delivery" : "Direct Bank Transfer",
+          set_paid: false,
+          status: "pending",
+          billing: data.billing,
+          shipping: {
+            first_name: data.billing.first_name,
+            last_name: data.billing.last_name,
+            address_1: data.billing.address_1,
+            address_2: data.billing.address_2,
+            city: data.billing.city,
+            state: data.billing.state,
+            postcode: data.billing.postcode,
+            country: data.billing.country,
+          },
+          line_items: data.items,
+          customer_note: data.customer_note ?? "",
+        },
+        timeoutMs: 12000,
+      });
+      return { ok: true as const, id: order.id, number: order.number, total: order.total, currency: order.currency };
+    } catch (e) {
+      console.error("createOrder failed", e);
+      return { ok: false as const, error: "Could not place your order. Please try again." };
+    }
   });
 
 // -------------------- Orders (staff/admin only) --------------------
@@ -110,7 +201,6 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     };
     await assertStaff(ctx as never);
 
-    // Fetch previous status from cache for audit
     const before = await ctx.supabase
       .from("orders_cache")
       .select("wc_order_id, status")
@@ -123,7 +213,6 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       body: { status: data.status },
     });
 
-    // Optimistically update cache; webhook will reconcile.
     await ctx.supabase
       .from("orders_cache")
       .update({ status: updated.status, date_modified: updated.date_modified, synced_at: new Date().toISOString() })

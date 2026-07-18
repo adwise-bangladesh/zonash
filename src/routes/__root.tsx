@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { CartProvider } from "@/lib/cart";
 
 function NotFoundComponent() {
   return (
@@ -79,17 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Shopdesk — Fast Storefront & Order Ops" },
+      { title: "Zonash — Fine Jewelry, Timeless Design" },
       {
         name: "description",
         content:
-          "Industrial-grade storefront and custom order dashboard built on WooCommerce. Realtime order management, analytics and role-based staff access.",
+          "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections.",
       },
-      { property: "og:title", content: "Shopdesk — Fast Storefront & Order Ops" },
+      { property: "og:title", content: "Zonash — Fine Jewelry, Timeless Design" },
       {
         property: "og:description",
         content:
-          "Industrial-grade storefront and custom order dashboard built on WooCommerce. Realtime order management, analytics and role-based staff access.",
+          "Modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -101,7 +102,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&display=swap",
       },
     ],
   }),
@@ -140,8 +141,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster richColors position="top-right" />
+      <CartProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </CartProvider>
     </QueryClientProvider>
   );
 }
