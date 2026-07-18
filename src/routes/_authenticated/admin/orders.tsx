@@ -191,14 +191,29 @@ function AdminOrders() {
     qc.invalidateQueries({ queryKey: ["admin", "woo-order-statuses"] });
   };
 
+  // Track in-flight status changes per order id so rows can render
+  // an optimistic status + spinner instead of appearing "frozen".
+  const [pendingStatus, setPendingStatus] = useState<Record<number, string>>({});
+
   const updM = useMutation({
     mutationFn: (v: { id: number; status: string }) => updFn({ data: v }),
+    onMutate: (v) => {
+      setPendingStatus((m) => ({ ...m, [v.id]: v.status }));
+    },
     onSuccess: (_d, v) => {
       invalidate();
       toast.success(`Marked ${humanize(v.status)}`);
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: (_d, _e, v) => {
+      setPendingStatus((m) => {
+        const next = { ...m };
+        delete next[v.id];
+        return next;
+      });
+    },
   });
+
 
   const pageRevenue = useMemo(
     () => orders.reduce((s, o) => s + Number(o.total || 0), 0),
