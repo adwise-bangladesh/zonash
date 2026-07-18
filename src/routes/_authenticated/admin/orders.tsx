@@ -324,8 +324,8 @@ function AdminOrders() {
           <span>
             Page {page} · {orders.length} orders shown ·{" "}
             {status === "any"
-              ? `${counts.any ?? 0} total`
-              : `${counts[status] ?? 0} in ${status}`}
+              ? `${totalAll.toLocaleString()} total`
+              : `${countOf(status).toLocaleString()} in ${humanize(status)}`}
           </span>
           <div className="flex items-center gap-1">
             <button
