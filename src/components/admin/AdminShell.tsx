@@ -265,28 +265,17 @@ export function AdminShell({
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div className="relative min-w-0 flex-1 md:max-w-md">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search…"
-              className="h-9 w-full rounded-md border border-border bg-muted/40 pl-8 pr-3 text-[13px] outline-none transition placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
-            />
+
+          <GlobalSearch />
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <Clock />
+            <FullscreenToggle />
+            <IssuesBell count={issuesCount} onClick={() => navigate({ to: "/admin/returns" })} />
+            <NewOrderMenu />
           </div>
-          <button
-            type="button"
-            className="hidden h-9 w-9 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground md:grid"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
-          <Link
-            to="/admin/orders"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Plus className="h-3.5 w-3.5" />{" "}
-            <span className="hidden md:inline">New</span>
-          </Link>
         </header>
+
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
