@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_history: {
+        Row: {
+          data: Json
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          data?: Json
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           body: string
