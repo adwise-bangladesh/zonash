@@ -466,6 +466,19 @@ function AdminOrders() {
         />
       )}
 
+      {customerEmail !== null && (
+        <CustomerOrdersDrawer
+          email={customerEmail}
+          onClose={() => setCustomerEmail(null)}
+          onOpenOrder={(id) => {
+            setCustomerEmail(null);
+            setOpenId(id);
+          }}
+        />
+      )}
+
+
+
     </AdminShell>
   );
 }
