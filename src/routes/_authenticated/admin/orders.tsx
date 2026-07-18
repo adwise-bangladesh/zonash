@@ -751,6 +751,74 @@ function AdminOrders() {
   );
 }
 
+function Pagination({
+  page,
+  pageCount,
+  onChange,
+}: {
+  page: number;
+  pageCount: number;
+  onChange: (p: number) => void;
+}) {
+  const pages = useMemo(() => {
+    const out: (number | "…")[] = [];
+    const push = (v: number | "…") => out.push(v);
+    const add = (v: number) => {
+      if (v >= 1 && v <= pageCount) push(v);
+    };
+    if (pageCount <= 7) {
+      for (let i = 1; i <= pageCount; i++) add(i);
+    } else {
+      add(1);
+      if (page > 4) push("…");
+      const start = Math.max(2, page - 1);
+      const end = Math.min(pageCount - 1, page + 1);
+      for (let i = start; i <= end; i++) add(i);
+      if (page < pageCount - 3) push("…");
+      add(pageCount);
+    }
+    return out;
+  }, [page, pageCount]);
+
+  const btn =
+    "min-w-[28px] h-7 rounded-md border border-input bg-card px-2 text-[11px] hover:bg-muted disabled:opacity-30 tabular-nums";
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page === 1}
+        className={btn}
+      >
+        Prev
+      </button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`e-${i}`} className="px-1 text-muted-foreground">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={`${btn} ${p === page ? "bg-foreground text-background border-foreground" : ""}`}
+          >
+            {p}
+          </button>
+        ),
+      )}
+      <button
+        onClick={() => onChange(Math.min(pageCount, page + 1))}
+        disabled={page >= pageCount}
+        className={btn}
+      >
+        Next
+      </button>
+    </div>
+  );
+}
+
+
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: "bg-amber-500/10 text-amber-700",
