@@ -27,7 +27,6 @@ import {
   Lock,
   Mail,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from "lucide-react";
 
