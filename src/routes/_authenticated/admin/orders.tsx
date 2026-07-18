@@ -1023,7 +1023,10 @@ function OrderRow({
           <div className="flex flex-col items-start gap-1">
             <button
               type="button"
-              onClick={onOpenCustomer}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCustomer();
+              }}
               title="View courier history & Zonash orders"
               className={`inline-block rounded-full px-2 py-[2px] text-[10px] font-semibold tabular-nums ring-1 hover:brightness-95 ${ratioCls}`}
             >
@@ -1032,7 +1035,10 @@ function OrderRow({
             {totalOrders >= 1 && (
               <button
                 type="button"
-                onClick={onOpenCustomer}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCustomer();
+                }}
                 title="View all orders from this customer"
                 className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
               >
@@ -1046,7 +1052,10 @@ function OrderRow({
             {totalOrders >= 1 && (
               <button
                 type="button"
-                onClick={onOpenCustomer}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCustomer();
+                }}
                 title="View all orders from this customer"
                 className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
               >
@@ -1055,6 +1064,7 @@ function OrderRow({
             )}
           </div>
         )}
+
 
       </div>
 
