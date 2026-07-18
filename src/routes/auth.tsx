@@ -149,8 +149,9 @@ function AuthPage() {
           <div
             className="absolute inset-0"
             style={{
-              background:
-                "radial-gradient(1200px 600px at 0% 0%, hsl(var(--primary)/0.85), transparent 60%), radial-gradient(900px 500px at 100% 100%, hsl(var(--primary)/0.55), transparent 60%), linear-gradient(160deg, #06131a 0%, #0a1f2a 55%, #061218 100%)",
+              backgroundColor: "#06131a",
+              backgroundImage:
+                "radial-gradient(1200px 600px at 0% 0%, rgba(34,211,238,0.28), transparent 60%), radial-gradient(900px 500px at 100% 100%, rgba(14,165,233,0.22), transparent 60%), linear-gradient(160deg, #06131a 0%, #0a1f2a 55%, #061218 100%)",
             }}
             aria-hidden
           />
@@ -162,20 +163,23 @@ function AuthPage() {
               backgroundSize: "26px 26px",
               maskImage:
                 "radial-gradient(ellipse at center, black 40%, transparent 75%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at center, black 40%, transparent 75%)",
             }}
             aria-hidden
           />
           {/* Aurora blobs */}
           <div
             className="absolute -left-24 -top-24 h-96 w-96 rounded-full blur-3xl"
-            style={{ background: "hsl(var(--primary)/0.35)" }}
+            style={{ backgroundColor: "rgba(34,211,238,0.28)" }}
             aria-hidden
           />
           <div
             className="absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
-            style={{ background: "hsl(var(--primary)/0.25)" }}
+            style={{ backgroundColor: "rgba(14,165,233,0.22)" }}
             aria-hidden
           />
+
 
           <div className="relative z-10 flex h-full flex-col justify-between p-12 text-white">
             {/* Brand */}
