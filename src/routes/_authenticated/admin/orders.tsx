@@ -38,7 +38,7 @@ import {
   type OrderOps,
   type CustomerRating,
 } from "@/lib/ops.functions";
-import { sendOrderToSteadfast, refreshSteadfastStatus } from "@/lib/steadfast.functions";
+import { sendOrderToSteadfast, refreshSteadfastStatus, bulkSendOrdersToSteadfast } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { HoorinReportView } from "@/routes/_authenticated/admin/settings";
 import type { HoorinReport } from "@/lib/hoorin.server";
