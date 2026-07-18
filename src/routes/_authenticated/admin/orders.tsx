@@ -1046,7 +1046,7 @@ function OrderRow({
       {/* Actions — status + conditional courier control */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-col items-stretch justify-center gap-1 min-w-0 h-full"
+        className="flex flex-col items-stretch justify-center gap-1 min-w-0 self-stretch"
       >
         <select
           value={o.status}
