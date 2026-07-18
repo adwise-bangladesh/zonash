@@ -2,7 +2,7 @@
  * Admin shell — premium branded sidebar (burgundy) + slim topbar + airy main.
  */
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Menu,
   X as CloseIcon,
