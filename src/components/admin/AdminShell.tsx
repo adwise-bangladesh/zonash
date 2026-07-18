@@ -280,28 +280,31 @@ export function AdminShell({
         </header>
 
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
-            {(title || subtitle || action) && (
-              <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 md:mb-6 md:gap-4">
-                <div className="min-w-0">
-                  {title && (
-                    <h1 className="truncate text-[18px] font-semibold tracking-tight md:text-[22px]">
-                      {title}
-                    </h1>
-                  )}
-                  {subtitle && (
-                    <p className="mt-0.5 text-[12px] text-muted-foreground md:text-[13px]">
-                      {subtitle}
-                    </p>
-                  )}
+        <main className={`flex-1 ${bare ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {bare ? (
+            children
+          ) : (
+            <div className="mx-auto w-full max-w-[1280px] px-3 py-4 md:px-8 md:py-8">
+              {(title || subtitle || action) && (
+                <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 md:mb-6 md:gap-4">
+                  <div className="min-w-0">
+                    {title && (
+                      <h1 className="truncate text-[18px] font-semibold tracking-tight md:text-[22px]">
+                        {title}
+                      </h1>
+                    )}
+                    {subtitle && (
+                      <p className="mt-0.5 text-[12px] text-muted-foreground md:text-[13px]">
+                        {subtitle}
+                      </p>
+                    )}
+                  </div>
+                  {action}
                 </div>
-                {action}
-              </div>
-            )}
-
-            {children}
-          </div>
+              )}
+              {children}
+            </div>
+          )}
         </main>
       </div>
     </div>
