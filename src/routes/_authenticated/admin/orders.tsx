@@ -1092,7 +1092,7 @@ function TotalRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Inline "add product" — searches Woo products and appends a new line item. */
+/** Inline "add product" — searches Woo products; expands variable products into their variations. */
 function AddItemInline({
   currency, onAdd,
 }: {
@@ -1101,12 +1101,29 @@ function AddItemInline({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const searchFn = useServerFn(listProducts);
+  const varFn = useServerFn(listProductVariations);
+
+  // Debounce query so keystrokes don't hammer the API and lose focus.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
   const results = useQuery({
-    queryKey: ["admin", "add-item-search", query],
-    queryFn: () => searchFn({ data: { search: query, perPage: 8 } }),
-    enabled: open && query.trim().length >= 2,
+    queryKey: ["admin", "add-item-search", debounced],
+    queryFn: () => searchFn({ data: { search: debounced, perPage: 12 } }),
+    enabled: open && debounced.length >= 2,
     staleTime: 30_000,
+  });
+
+  const variations = useQuery({
+    queryKey: ["admin", "add-item-variations", expandedId],
+    queryFn: () => varFn({ data: { productId: expandedId! } }),
+    enabled: !!expandedId,
+    staleTime: 60_000,
   });
 
   if (!open) {
@@ -1120,6 +1137,9 @@ function AddItemInline({
       </button>
     );
   }
+
+  const products = results.data?.products ?? [];
+
   return (
     <div className="rounded-md border border-input p-2">
       <div className="mb-1 flex items-center gap-2">
@@ -1133,39 +1153,259 @@ function AddItemInline({
         />
         <button
           type="button"
-          onClick={() => { setOpen(false); setQuery(""); }}
+          onClick={() => { setOpen(false); setQuery(""); setExpandedId(null); }}
           className="rounded-md border border-input p-1.5 hover:bg-muted"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-      {results.isLoading && query.trim().length >= 2 && (
+
+      {results.isLoading && debounced.length >= 2 && (
         <div className="flex items-center gap-1 py-1 text-[11px] text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> Searching…
         </div>
       )}
-      {(results.data?.products ?? []).map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          onClick={() => {
-            onAdd({
-              product_id: p.id,
-              name: p.name,
-              quantity: 1,
-              unit_price: Number(p.price || p.regular_price || 0),
-            });
-            setOpen(false); setQuery("");
-          }}
-          className="flex w-full items-center gap-2 border-t border-input px-1 py-1.5 text-left text-[12px] first:border-t-0 hover:bg-muted"
-        >
-          <div className="min-w-0 flex-1 truncate">{p.name}</div>
-          <div className="tabular-nums text-muted-foreground">{money(currency, Number(p.price || 0))}</div>
-        </button>
-      ))}
+      {debounced.length >= 2 && !results.isLoading && products.length === 0 && (
+        <div className="py-2 text-center text-[11px] text-muted-foreground">No matches</div>
+      )}
+
+      <div className="max-h-80 overflow-y-auto">
+        {products.map((p) => {
+          const isVariable = p.type === "variable" || (p.variations?.length ?? 0) > 0;
+          const img = p.images?.[0]?.src;
+          const price = Number(p.price || p.regular_price || 0);
+          if (!isVariable) {
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onAdd({
+                    product_id: p.id,
+                    name: p.name,
+                    sku: p.sku,
+                    image: img,
+                    quantity: 1,
+                    unit_price: price,
+                  });
+                  setOpen(false); setQuery(""); setExpandedId(null);
+                }}
+                className="flex w-full items-center gap-2 border-t border-input px-1 py-1.5 text-left text-[12px] first:border-t-0 hover:bg-muted"
+              >
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+                  {img && <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                </div>
+                <div className="min-w-0 flex-1 truncate">
+                  <div className="truncate">{p.name}</div>
+                  {p.sku && <div className="truncate font-mono text-[10px] text-muted-foreground">{p.sku}</div>}
+                </div>
+                <div className="tabular-nums text-muted-foreground">{money(currency, price)}</div>
+              </button>
+            );
+          }
+          // Variable product — expand into variations.
+          const expanded = expandedId === p.id;
+          return (
+            <div key={p.id} className="border-t border-input first:border-t-0">
+              <button
+                type="button"
+                onClick={() => setExpandedId(expanded ? null : p.id)}
+                className="flex w-full items-center gap-2 px-1 py-1.5 text-left text-[12px] hover:bg-muted"
+              >
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+                  {img && <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                </div>
+                <div className="min-w-0 flex-1 truncate">
+                  <div className="truncate">{p.name}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {p.variations?.length ?? 0} variations · tap to choose
+                  </div>
+                </div>
+                {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              </button>
+              {expanded && (
+                <div className="ml-10 border-l border-input pl-2">
+                  {variations.isLoading && (
+                    <div className="flex items-center gap-1 py-1 text-[11px] text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading variations…
+                    </div>
+                  )}
+                  {(variations.data?.variations ?? []).map((v) => {
+                    const vImg = v.image?.src || img;
+                    const vPrice = Number(v.price || v.regular_price || 0);
+                    const label = v.attributes?.map((a) => a.option).filter(Boolean).join(" / ") || `#${v.id}`;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          onAdd({
+                            product_id: p.id,
+                            variation_id: v.id,
+                            name: `${p.name} — ${label}`,
+                            sku: v.sku,
+                            image: vImg,
+                            quantity: 1,
+                            unit_price: vPrice,
+                          });
+                          setOpen(false); setQuery(""); setExpandedId(null);
+                        }}
+                        className="flex w-full items-center gap-2 border-t border-input/70 px-1 py-1.5 text-left text-[12px] first:border-t-0 hover:bg-muted"
+                      >
+                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+                          {vImg && <img src={vImg} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                        </div>
+                        <div className="min-w-0 flex-1 truncate">
+                          <div className="truncate">{label}</div>
+                          {v.sku && <div className="truncate font-mono text-[10px] text-muted-foreground">{v.sku}</div>}
+                        </div>
+                        <div
+                          className={`text-[10px] ${v.stock_status === "instock" ? "text-emerald-700" : "text-rose-700"}`}
+                        >
+                          {v.stock_status === "instock" ? "In stock" : "Out"}
+                        </div>
+                        <div className="tabular-nums text-muted-foreground">{money(currency, vPrice)}</div>
+                      </button>
+                    );
+                  })}
+                  {!variations.isLoading && (variations.data?.variations ?? []).length === 0 && (
+                    <div className="py-1 text-[11px] text-muted-foreground">No variations available.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+/** Delivery charge editor — pick from live WooCommerce shipping methods. */
+function ShippingLinesEditor({
+  currency,
+  shipLines,
+  onChange,
+}: {
+  currency: string;
+  shipLines: ShippingLineDraft[];
+  onChange: (next: ShippingLineDraft[]) => void;
+}) {
+  const fn = useServerFn(listShippingMethods);
+  const q = useQuery({
+    queryKey: ["admin", "shipping-methods"],
+    queryFn: () => fn(),
+    staleTime: 5 * 60_000,
+  });
+  const methods = q.data?.methods ?? [];
+
+  const pickMethod = (idx: number, key: string) => {
+    const m = methods.find((x) => `${x.zone_id}:${x.instance_id}` === key);
+    if (!m) return;
+    onChange(
+      shipLines.map((s, j) =>
+        j === idx
+          ? {
+              ...s,
+              method_id: m.method_id,
+              method_title: `${m.method_title}${m.zone_name ? ` (${m.zone_name})` : ""}`,
+              instance_id: m.instance_id,
+              total: m.cost || s.total || "0",
+            }
+          : s,
+      ),
+    );
+  };
+
+  const addLine = () => {
+    const first = methods[0];
+    onChange([
+      ...shipLines,
+      first
+        ? {
+            method_id: first.method_id,
+            method_title: `${first.method_title}${first.zone_name ? ` (${first.zone_name})` : ""}`,
+            instance_id: first.instance_id,
+            total: first.cost || "0",
+          }
+        : { method_id: "flat_rate", method_title: "Delivery", total: "0" },
+    ]);
+  };
+
+  const removeLine = (idx: number) => onChange(shipLines.filter((_, j) => j !== idx));
+
+  return (
+    <div>
+      {shipLines.length === 0 && (
+        <button
+          type="button"
+          onClick={addLine}
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[11px] hover:bg-muted"
+        >
+          <Plus className="h-3 w-3" /> Add delivery charge
+        </button>
+      )}
+      {shipLines.map((s, i) => {
+        const currentKey = methods.find(
+          (m) => m.instance_id === s.instance_id,
+        );
+        return (
+          <div key={s.id ?? `s-${i}`} className="mt-1 flex flex-wrap items-end gap-2">
+            <label className="min-w-[180px] flex-1 text-[10px] text-muted-foreground">
+              Method
+              <select
+                value={currentKey ? `${currentKey.zone_id}:${currentKey.instance_id}` : ""}
+                onChange={(e) => pickMethod(i, e.target.value)}
+                className="mt-0.5 block h-8 w-full rounded-md border border-input bg-background px-2 text-[12px]"
+              >
+                {!currentKey && (
+                  <option value="">
+                    {s.method_title || "Choose a method"}
+                  </option>
+                )}
+                {q.isLoading && <option>Loading…</option>}
+                {methods.map((m) => (
+                  <option key={`${m.zone_id}:${m.instance_id}`} value={`${m.zone_id}:${m.instance_id}`}>
+                    {m.zone_name} — {m.method_title} ({money(currency, Number(m.cost || 0))})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-[10px] text-muted-foreground">
+              Amount
+              <input
+                type="number" min="0" step="0.01"
+                value={s.total}
+                onChange={(e) =>
+                  onChange(shipLines.map((x, j) => (j === i ? { ...x, total: e.target.value } : x)))
+                }
+                className="mt-0.5 block h-8 w-28 rounded-md border border-input bg-background px-2 text-[12px]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => removeLine(i)}
+              className="rounded-md border border-input p-1.5 text-destructive hover:bg-destructive/10"
+              title="Remove"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+      {shipLines.length > 0 && (
+        <button
+          type="button"
+          onClick={addLine}
+          className="mt-2 inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-input px-2 text-[11px] hover:bg-muted"
+        >
+          <Plus className="h-3 w-3" /> Add another
+        </button>
+      )}
+    </div>
+  );
+}
+
 
 
 function CustomerOrdersDrawer({
