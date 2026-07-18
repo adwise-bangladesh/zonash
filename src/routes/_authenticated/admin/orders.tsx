@@ -906,6 +906,7 @@ function OrderRow({
     "—";
 
   return (
+    <>
     <div
       role="button"
       tabIndex={0}
