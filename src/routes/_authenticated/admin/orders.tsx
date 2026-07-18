@@ -766,20 +766,36 @@ function OrderDrawer({
           <div className="flex-1 overflow-y-auto">
             {/* Workflow / status */}
             <Section title="Workflow" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
-              <div className="flex flex-wrap gap-1.5">
-                {statuses.map((s) => (
-                  <button
-                    key={s.slug}
-                    onClick={() => onUpdate(s.slug)}
-                    className={`inline-flex h-7 items-center rounded-md border px-2 text-[11px] font-medium capitalize ${
-                      o.status === s.slug
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-input bg-background hover:bg-muted"
-                    }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
+              <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap rounded-xl border border-input bg-card p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {(() => {
+                  const ORDER = ["pending", "on-hold", "confirmed", "processing", "completed", "cancelled", "refunded", "failed"];
+                  const rank = (slug: string) => {
+                    const i = ORDER.indexOf(slug);
+                    return i === -1 ? ORDER.length : i;
+                  };
+                  const sorted = [...statuses].sort((a, b) => {
+                    const ra = rank(a.slug);
+                    const rb = rank(b.slug);
+                    if (ra !== rb) return ra - rb;
+                    return a.name.localeCompare(b.name);
+                  });
+                  return sorted.map((s) => {
+                    const active = o.status === s.slug;
+                    return (
+                      <button
+                        key={s.slug}
+                        onClick={() => onUpdate(s.slug)}
+                        className={`inline-flex shrink-0 items-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
+                          active
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </Section>
 
