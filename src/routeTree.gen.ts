@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ProductsRouteImport } from './routes/products'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -17,6 +16,7 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -25,11 +25,6 @@ import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authe
 import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
 
-const ProductsRoute = ProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
   id: '/order-confirmed',
   path: '/order-confirmed',
@@ -64,10 +59,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ProductsRoute,
+  id: '/products/$slug',
+  path: '/products/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
@@ -110,9 +110,9 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/order-confirmed': typeof OrderConfirmedRoute
-  '/products': typeof ProductsRouteWithChildren
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/products/$slug': typeof ProductsSlugRoute
+  '/products/': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -126,8 +126,8 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/order-confirmed': typeof OrderConfirmedRoute
-  '/products': typeof ProductsRouteWithChildren
   '/products/$slug': typeof ProductsSlugRoute
+  '/products': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -143,9 +143,9 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/order-confirmed': typeof OrderConfirmedRoute
-  '/products': typeof ProductsRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/products/$slug': typeof ProductsSlugRoute
+  '/products/': typeof ProductsIndexRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -161,9 +161,9 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/order-confirmed'
-    | '/products'
     | '/admin'
     | '/products/$slug'
+    | '/products/'
     | '/account/orders'
     | '/admin/analytics'
     | '/admin/orders'
@@ -177,8 +177,8 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/order-confirmed'
-    | '/products'
     | '/products/$slug'
+    | '/products'
     | '/account/orders'
     | '/admin/analytics'
     | '/admin/orders'
@@ -193,9 +193,9 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/order-confirmed'
-    | '/products'
     | '/_authenticated/admin'
     | '/products/$slug'
+    | '/products/'
     | '/_authenticated/account/orders'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/orders'
@@ -211,19 +211,13 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   CheckoutRoute: typeof CheckoutRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
-  ProductsRoute: typeof ProductsRouteWithChildren
+  ProductsSlugRoute: typeof ProductsSlugRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/products': {
-      id: '/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof ProductsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/order-confirmed': {
       id: '/order-confirmed'
       path: '/order-confirmed'
@@ -273,12 +267,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/products/': {
+      id: '/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/$slug': {
       id: '/products/$slug'
-      path: '/$slug'
+      path: '/products/$slug'
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
-      parentRoute: typeof ProductsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -356,18 +357,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface ProductsRouteChildren {
-  ProductsSlugRoute: typeof ProductsSlugRoute
-}
-
-const ProductsRouteChildren: ProductsRouteChildren = {
-  ProductsSlugRoute: ProductsSlugRoute,
-}
-
-const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
-  ProductsRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -376,7 +365,8 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   CheckoutRoute: CheckoutRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
-  ProductsRoute: ProductsRouteWithChildren,
+  ProductsSlugRoute: ProductsSlugRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
 export const routeTree = rootRouteImport
