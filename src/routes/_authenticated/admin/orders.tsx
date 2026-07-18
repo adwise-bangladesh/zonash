@@ -1693,6 +1693,99 @@ function TotalRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** Order notes — reads/writes WooCommerce private (and customer) notes. */
+function OrderNotesSection({ orderId }: { orderId: number }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listOrderNotes);
+  const addFn = useServerFn(addOrderNote);
+  const [text, setText] = useState("");
+  const [asCustomer, setAsCustomer] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["admin", "order-notes", orderId],
+    queryFn: () => listFn({ data: { id: orderId } }),
+    staleTime: 60_000,
+  });
+
+  const add = useMutation({
+    mutationFn: () =>
+      addFn({ data: { id: orderId, note: text.trim(), customer_note: asCustomer } }),
+    onSuccess: () => {
+      setText("");
+      toast.success("Note added");
+      qc.invalidateQueries({ queryKey: ["admin", "order-notes", orderId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const notes = (q.data?.notes ?? []) as WooOrderNote[];
+
+  return (
+    <Section title="Order notes" icon={<Receipt className="h-3.5 w-3.5" />} defaultOpen>
+      <div className="space-y-2">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder="Add a private note (stored on WooCommerce)…"
+          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
+        />
+        <div className="flex items-center justify-between">
+          <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={asCustomer}
+              onChange={(e) => setAsCustomer(e.target.checked)}
+              className="h-3 w-3"
+            />
+            Notify customer
+          </label>
+          <button
+            type="button"
+            onClick={() => text.trim() && add.mutate()}
+            disabled={add.isPending || !text.trim()}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+          >
+            {add.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Add note
+          </button>
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          {q.isLoading && (
+            <p className="text-[11px] text-muted-foreground">Loading notes…</p>
+          )}
+          {!q.isLoading && notes.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No notes yet.</p>
+          )}
+          {notes.map((n) => (
+            <div
+              key={n.id}
+              className={`rounded-md border px-2.5 py-1.5 text-[12px] ${
+                n.customer_note
+                  ? "border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20"
+                  : "border-input bg-muted/30"
+              }`}
+            >
+              <div className="mb-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>
+                  {n.author || "System"}
+                  {n.customer_note ? " · to customer" : " · private"}
+                </span>
+                <span>{new Date(n.date_created).toLocaleString()}</span>
+              </div>
+              <div
+                className="whitespace-pre-wrap text-foreground"
+                dangerouslySetInnerHTML={{ __html: n.note }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 /** Inline "add product" — searches Woo products; expands variable products into their variations. */
 function AddItemInline({
   currency, onAdd,
