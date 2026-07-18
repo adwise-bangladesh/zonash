@@ -2335,25 +2335,33 @@ function CustomerInsightDrawer({
         )}
 
 
-        {/* Body — single scroll, no tabs */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {/* Body — single scroll */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Orders ({orders.length})
+            </div>
+          </div>
 
-
-
-
-          {/* Orders — full list with inline status controls */}
-          <div>
-            <SectionHeader>Orders ({orders.length})</SectionHeader>
-            {ordersQ.isLoading ? (
-              <div className="flex items-center gap-2 py-6 text-[12px] text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+          {ordersQ.isLoading ? (
+            <div className="flex items-center gap-2 px-4 py-6 text-[12px] text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading orders…
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="px-4 py-8 text-center text-[12px] italic text-muted-foreground">
+              No orders yet.
+            </div>
+          ) : (
+            <div className="border-t border-border">
+              {/* Header row */}
+              <div className="sticky top-0 z-10 grid grid-cols-[110px_minmax(0,1fr)_92px_100px_auto] items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div>Date / #</div>
+                <div>Items</div>
+                <div>Status</div>
+                <div className="text-right">Total</div>
+                <div className="text-right">Actions</div>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="py-6 text-center text-[12px] italic text-muted-foreground">
-                No orders yet.
-              </div>
-            ) : (
-              <div className="space-y-1.5">
+              <ul className="divide-y divide-border">
                 {orders.map((o) => (
                   <OrderInsightRow
                     key={o.id}
@@ -2363,10 +2371,11 @@ function CustomerInsightDrawer({
                     onUpdateStatus={(s) => onUpdateStatus(o.id, s)}
                   />
                 ))}
-              </div>
-            )}
-          </div>
+              </ul>
+            </div>
+          )}
         </div>
+
       </aside>
     </div>
   );
