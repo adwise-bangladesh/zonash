@@ -887,6 +887,7 @@ type OrderRowProps = {
   itemsTotal: number;
   shipping: number;
   onInvalidate: () => void;
+  pendingStatus?: string;
 };
 
 function OrderRow({
@@ -904,7 +905,9 @@ function OrderRow({
   itemsTotal,
   shipping,
   onInvalidate,
+  pendingStatus,
 }: OrderRowProps) {
+
   const verifyFn = useServerFn(verifyCustomerPhone);
   const sendFn = useServerFn(sendOrderToSteadfast);
   const [verify, setVerify] = useState<{
