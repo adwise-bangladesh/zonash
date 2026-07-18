@@ -320,10 +320,12 @@ export const addOrderNote = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertStaff(context as never);
+    const staffName = await getStaffName(context as never);
+    const stamped = `[${staffName}] ${data.note}`;
     const created = await (await import("./woo.server")).wooFetch<WooOrderNote>({
       path: `/orders/${data.id}/notes`,
       method: "POST",
-      body: { note: data.note, customer_note: data.customer_note },
+      body: { note: stamped, customer_note: data.customer_note },
       timeoutMs: 10000,
     });
     return created;
@@ -364,8 +366,9 @@ export const sendCustomerMessage = createServerFn({ method: "POST" })
     const sms = await sendSms({ phone: phone || "", message: data.message });
 
     // 3) Log to Woo as a customer-visible note (prefixed) so the trail is preserved.
+    const staffName = await getStaffName(context as never);
     const notePrefix = sms.ok ? "📱 SMS sent" : "⚠️ SMS FAILED";
-    const noteBody = `${notePrefix}${phone ? ` → ${phone}` : ""}\n\n${data.message}${
+    const noteBody = `[${staffName}] ${notePrefix}${phone ? ` → ${phone}` : ""}\n\n${data.message}${
       sms.ok ? "" : `\n\n(${sms.message})`
     }`;
     try {
