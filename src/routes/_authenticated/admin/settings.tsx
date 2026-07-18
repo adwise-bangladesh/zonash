@@ -558,7 +558,7 @@ function TemplatesPanel() {
         <div className="mb-1 font-semibold">How templates are used</div>
         <p className="text-muted-foreground">
           Private notes live only on the WooCommerce order. Customer SMS templates
-          are sent via BulkSMSBD to the order's billing phone — the message is also
+          are sent via BDBulkSMS to the order's billing phone — the message is also
           logged on the WooCommerce order as a customer-visible note.
         </p>
       </div>
