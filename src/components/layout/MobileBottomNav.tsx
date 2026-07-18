@@ -26,8 +26,8 @@ export function MobileBottomNav() {
   const { count } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Hide on admin surfaces — the admin shell has its own chrome.
-  if (pathname.startsWith("/admin")) return null;
+  // Hide on admin surfaces and the auth page — those have their own chrome.
+  if (pathname.startsWith("/admin") || pathname.startsWith("/auth")) return null;
 
 
 
