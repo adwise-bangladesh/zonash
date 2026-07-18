@@ -6,14 +6,16 @@
  * shows the connection state, current balance, and the webhook URL to paste
  * into the Steadfast dashboard.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { CheckCircle2, XCircle, RefreshCw, Copy, Truck, Loader2, ExternalLink, ShieldCheck, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { getSteadfastStatus } from "@/lib/steadfast.functions";
+import { getHoorinStatus, verifyCustomerPhone } from "@/lib/hoorin.functions";
+import type { HoorinReport } from "@/lib/hoorin.server";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   head: () => ({
@@ -153,8 +155,168 @@ function SettingsPage() {
             )}
           </div>
         </section>
+
+        <HoorinCard />
       </div>
     </AdminShell>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Hoorin OG-Connect — customer verification
+// -----------------------------------------------------------------------------
+
+function HoorinCard() {
+  const statusFn = useServerFn(getHoorinStatus);
+  const verifyFn = useServerFn(verifyCustomerPhone);
+  const q = useQuery({
+    queryKey: ["admin", "hoorin-status"],
+    queryFn: () => statusFn(),
+    staleTime: 60_000,
+  });
+
+  const [phone, setPhone] = useState("");
+  const [fresh, setFresh] = useState(false);
+  const [report, setReport] = useState<HoorinReport | null>(null);
+
+  const mut = useMutation({
+    mutationFn: async () => verifyFn({ data: { phone, fresh } }),
+    onSuccess: (r) => {
+      setReport(r);
+      if (!r?.success) toast.warning(r?.message || "No history found");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Lookup failed"),
+  });
+
+  const configured = q.data?.configured;
+  const ok = q.data?.ok;
+
+  return (
+    <section className="rounded-2xl border border-input bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-input px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground/5">
+            <ShieldCheck className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="text-[13px] font-semibold">Customer verification (Hoorin OG-Connect)</div>
+            <div className="text-[11px] text-muted-foreground">
+              plugin.hoorin.com · Live delivery history across Steadfast, RedX, Pathao, Carrybee
+            </div>
+          </div>
+        </div>
+        <ConnectionBadge loading={q.isLoading} configured={!!configured} error={!!configured && !ok} />
+      </div>
+
+      <div className="space-y-4 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard label="API key" value={configured ? "•••• saved" : "not set"} tone={configured ? "ok" : "warn"} />
+          <StatCard label="Domain" value="zonash.com" />
+          <StatCard label="Endpoint" value="v1/search" />
+        </div>
+
+        <div className="rounded-xl border border-input bg-muted/30 p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Test lookup
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="01XXXXXXXXX"
+              inputMode="tel"
+              className="h-9 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px]"
+            />
+            <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <input type="checkbox" checked={fresh} onChange={(e) => setFresh(e.target.checked)} />
+              Bypass cache
+            </label>
+            <button
+              onClick={() => mut.mutate()}
+              disabled={mut.isPending || !phone.trim() || !configured}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+            >
+              {mut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              Verify
+            </button>
+          </div>
+
+          {report && <HoorinReportView report={report} />}
+        </div>
+
+        <div className="rounded-xl border border-input bg-muted/30 p-3 text-[12px] leading-relaxed">
+          <div className="mb-1 font-semibold">Manage API key</div>
+          <p className="text-muted-foreground">
+            Hoorin credentials are stored encrypted as a backend secret (<code>HOORIN_API_KEY</code>).
+            To rotate it, ask in chat: <em>"update Hoorin API key"</em>.
+          </p>
+          <a
+            href="https://dash.hoorin.com/settings"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-foreground underline-offset-2 hover:underline"
+          >
+            Open Hoorin dashboard <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function HoorinReportView({ report }: { report: HoorinReport }) {
+  const o = report.overall;
+  const c = report.couriers ?? {};
+  const ratio = o?.success_ratio ?? 0;
+  const tone = ratio >= 90 ? "emerald" : ratio >= 70 ? "amber" : "red";
+  const toneBg =
+    tone === "emerald" ? "bg-emerald-100 text-emerald-900"
+    : tone === "amber" ? "bg-amber-100 text-amber-900"
+    : "bg-red-100 text-red-900";
+
+  if (!report.success || !o) {
+    return (
+      <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-[12px] text-amber-900">
+        {report.message || "No delivery history found for this number."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold ${toneBg}`}>
+          {ratio.toFixed(2)}% success
+        </span>
+        <span className="text-[11px] text-muted-foreground">
+          {o.delivered_parcels}/{o.total_parcels} delivered · {o.cancelled_parcels} cancelled
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {(["steadfast", "redx", "pathao", "carrybee"] as const).map((k) => {
+          const b = c[k];
+          if (!b || typeof b.total_parcels !== "number") {
+            return (
+              <div key={k} className="rounded-md border border-input bg-background p-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">{b?.message ?? "—"}</div>
+              </div>
+            );
+          }
+          return (
+            <div key={k} className="rounded-md border border-input bg-background p-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</div>
+              <div className="mt-0.5 text-[13px] font-semibold tabular-nums">
+                {b.delivered_parcels}/{b.total_parcels}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {(b.cancelled_parcels ?? 0)} cancelled
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
