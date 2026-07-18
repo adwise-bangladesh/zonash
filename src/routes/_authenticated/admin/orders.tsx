@@ -1214,6 +1214,90 @@ function toAddrForm(a: any, includeContact = false): AddressForm {
   };
 }
 
+function SkelBar({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-muted ${className}`} />;
+}
+
+function SkelSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-input">
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <SkelBar className="h-3.5 w-3.5 rounded" />
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </div>
+      </div>
+      <div className="space-y-2 px-4 pb-4">{children}</div>
+    </div>
+  );
+}
+
+function OrderDrawerSkeleton() {
+  return (
+    <div className="flex-1 overflow-hidden">
+      {/* Workflow row */}
+      <div className="border-b border-input p-3">
+        <div className="flex gap-1.5 overflow-hidden rounded-xl border border-input bg-card p-1.5">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <SkelBar key={i} className="h-7 w-20 shrink-0" />
+          ))}
+        </div>
+      </div>
+
+      <SkelSection title="Customer">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <SkelBar className="h-2.5 w-16" />
+            <SkelBar className="h-9 w-full" />
+          </div>
+          <div className="space-y-1.5">
+            <SkelBar className="h-2.5 w-16" />
+            <SkelBar className="h-9 w-full" />
+          </div>
+          <div className="col-span-2 space-y-1.5">
+            <SkelBar className="h-2.5 w-20" />
+            <SkelBar className="h-9 w-full" />
+          </div>
+          <div className="col-span-2 space-y-1.5">
+            <SkelBar className="h-2.5 w-16" />
+            <SkelBar className="h-16 w-full" />
+          </div>
+        </div>
+      </SkelSection>
+
+      <SkelSection title="Items">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-input bg-card p-2.5">
+            <SkelBar className="h-12 w-12 shrink-0 rounded-md" />
+            <div className="flex-1 space-y-1.5">
+              <SkelBar className="h-3 w-3/5" />
+              <SkelBar className="h-2.5 w-2/5" />
+            </div>
+            <SkelBar className="h-8 w-16 rounded-md" />
+            <SkelBar className="h-3.5 w-14" />
+          </div>
+        ))}
+      </SkelSection>
+
+      <SkelSection title="Totals">
+        <div className="space-y-2 rounded-lg border border-input bg-card p-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <SkelBar className="h-3 w-20" />
+              <SkelBar className="h-3 w-16" />
+            </div>
+          ))}
+        </div>
+      </SkelSection>
+
+      <SkelSection title="Notes">
+        <SkelBar className="h-20 w-full" />
+      </SkelSection>
+    </div>
+  );
+}
+
+
 function OrderDrawer({
   id, onClose, detailFn, statuses, onUpdate, initialOps, customerStat,
 }: {
