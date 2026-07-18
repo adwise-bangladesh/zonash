@@ -143,7 +143,11 @@ function AdminOrders() {
       }),
     // Keep the previous grid visible while a new tab/page loads — no blank flashes.
     placeholderData: keepPreviousData,
-    staleTime: 30_000,
+    // Cache for 2 minutes — webhooks push order updates in real-time, so
+    // background refetching would only add noise. Users can force-refresh via mutation.
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const orders = q.data?.orders ?? [];
