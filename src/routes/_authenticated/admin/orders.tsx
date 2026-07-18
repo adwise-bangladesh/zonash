@@ -1043,34 +1043,50 @@ function OrderRow({
         </div>
       </div>
 
-      {/* Actions — status select + send-to-courier */}
+      {/* Actions — status + conditional courier control */}
       <div
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col items-stretch gap-1 min-w-0"
       >
-        <button
-          onClick={doSend}
-          disabled={sending || hasCourier}
-          title={hasCourier ? "Already dispatched" : "Send to Courier"}
-          className={`inline-flex h-7 w-full items-center justify-center gap-1 rounded-md px-2 text-[11px] font-medium disabled:opacity-70 ${
-            hasCourier
-              ? "bg-emerald-500/10 text-emerald-700"
-              : "bg-foreground text-background hover:opacity-90"
-          }`}
+        <select
+          value={o.status}
+          onChange={(e) => onUpdateStatus(e.target.value)}
+          className={`w-full h-7 rounded-md border px-1.5 text-[11px] font-medium capitalize outline-none ${statusCls}`}
         >
-          {sending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Truck className="h-3 w-3" />
+          {!wooStatuses.some((s) => s.slug === o.status) && (
+            <option value={o.status}>{humanize(o.status)}</option>
           )}
-          {hasCourier ? "Sent" : "Send to Courier"}
-        </button>
-        {(tracking || ops?.tracking_number) && (
-          <div className="inline-flex items-center justify-center gap-1 rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-mono text-emerald-700">
-            {tracking || ops?.tracking_number}
-          </div>
-        )}
+          {wooStatuses.map((s) => (
+            <option key={s.slug} value={s.slug}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        {hasCourier ? (
+          <a
+            href={`https://steadfast.com.bd/t/${tracking || ops?.tracking_number}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Track on Steadfast"
+            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-700 hover:bg-emerald-500/20"
+          >
+            <Truck className="h-3 w-3" />
+            <span className="truncate font-mono">{tracking || ops?.tracking_number}</span>
+          </a>
+        ) : o.status === "confirmed" ? (
+          <button
+            onClick={doSend}
+            disabled={sending}
+            title="Send to Courier"
+            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-70"
+          >
+            {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Truck className="h-3 w-3" />}
+            Send to Courier
+          </button>
+        ) : null}
       </div>
+
 
     </div>
   );
