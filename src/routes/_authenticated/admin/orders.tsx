@@ -995,7 +995,10 @@ function OrderRow({
     cancelled: "bg-muted text-muted-foreground border-input",
     failed: "bg-rose-500/10 text-rose-700 border-rose-500/30",
   };
-  const statusCls = statusColors[o.status] ?? "bg-muted text-foreground border-input";
+  const isStatusUpdating = !!pendingStatus;
+  const effectiveStatus = pendingStatus ?? o.status;
+  const statusCls = statusColors[effectiveStatus] ?? "bg-muted text-foreground border-input";
+
 
   const lineItems = o.line_items ?? [];
   const shownSkus = lineItems.slice(0, 2);
