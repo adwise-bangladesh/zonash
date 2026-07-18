@@ -99,11 +99,11 @@ function ProductDetail() {
             <div className="mt-4 flex items-baseline gap-3">
               {product.sale_price && product.on_sale ? (
                 <>
-                  <span className="font-display text-2xl">${product.sale_price}</span>
-                  <span className="text-lg text-muted-foreground line-through">${product.regular_price}</span>
+                  <span className="font-display text-2xl">৳{product.sale_price}</span>
+                  <span className="text-lg text-muted-foreground line-through">৳{product.regular_price}</span>
                 </>
               ) : (
-                <span className="font-display text-2xl">${product.price || "—"}</span>
+                <span className="font-display text-2xl">৳{product.price || "—"}</span>
               )}
             </div>
 
