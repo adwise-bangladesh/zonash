@@ -92,25 +92,25 @@ function Products() {
           <div className="mb-6 rounded-md border border-warning/40 bg-warning/10 p-4 text-sm">{data.error}</div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {(data.products as WooProduct[]).map((p) => (
             <Link key={p.id} to="/products/$slug" params={{ slug: p.slug }} className="group block">
               <div className="relative aspect-square overflow-hidden bg-muted">
                 {p.images[0] ? (
-                  <img src={p.images[0].src} alt={p.images[0].alt || p.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <img src={p.images[0].src} alt={p.images[0].alt || p.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-muted-foreground/40"><Gem className="h-10 w-10" /></div>
                 )}
                 {p.on_sale && (
-                  <span className="absolute left-2 top-2 bg-gold px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold-foreground">Sale</span>
+                  <span className="absolute left-3 top-3 bg-foreground px-2 py-0.5 text-[10px] uppercase tracking-widest text-background">Sale</span>
                 )}
               </div>
-              <div className="mt-3">
-                <p className="line-clamp-1 text-sm font-medium">{p.name}</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="mt-3 space-y-1">
+                <p className="line-clamp-1 text-sm">{p.name}</p>
+                <p className="text-sm">
                   {p.sale_price && p.on_sale ? (
-                    <><span className="text-foreground">${p.sale_price}</span>{" "}<span className="line-through opacity-60">${p.regular_price}</span></>
-                  ) : p.price ? `$${p.price}` : "—"}
+                    <><span className="text-foreground">৳{p.sale_price}</span>{" "}<span className="text-muted-foreground line-through opacity-70">৳{p.regular_price}</span></>
+                  ) : p.price ? <span className="text-foreground">৳{p.price}</span> : "—"}
                 </p>
               </div>
             </Link>
