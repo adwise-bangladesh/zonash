@@ -91,7 +91,7 @@ export function AdminShell({
         }`}
         style={{
           background:
-            "linear-gradient(180deg, hsl(var(--primary)) 0%, color-mix(in oklab, hsl(var(--primary)) 82%, black) 100%)",
+            "linear-gradient(180deg, var(--primary) 0%, color-mix(in oklab, var(--primary) 78%, #000) 100%)",
         }}
       >
         {/* Brand */}
@@ -101,9 +101,10 @@ export function AdminShell({
             style={{
               background:
                 "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
-              color: "hsl(var(--primary))",
+              color: "var(--primary)",
             }}
           >
+
             Z
           </span>
           <div className="min-w-0 flex-1 leading-tight">
