@@ -166,6 +166,39 @@ export const getWooOrder = createServerFn({ method: "GET" })
     return (await import("./woo.server")).wooFetch<WooOrder>({ path: `/orders/${data.id}` });
   });
 
+const listWooOrdersSchema = z.object({
+  page: z.number().int().min(1).max(500).default(1),
+  perPage: z.number().int().min(1).max(100).default(25),
+  status: z.string().max(50).optional(),
+  search: z.string().max(200).optional(),
+});
+
+export const listWooOrders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => listWooOrdersSchema.parse(raw ?? {}))
+  .handler(async ({ data, context }) => {
+    await assertStaff(context as never);
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const orders = await wooFetch<WooOrder[]>({
+        path: "/orders",
+        query: {
+          page: data.page,
+          per_page: data.perPage,
+          status: data.status && data.status !== "any" ? data.status : "any",
+          search: data.search || undefined,
+          orderby: "date",
+          order: "desc",
+        },
+        timeoutMs: 12000,
+      });
+      return { orders, error: null as string | null };
+    } catch (e) {
+      console.error("listWooOrders failed", e);
+      return { orders: [] as WooOrder[], error: "Could not load orders from WooCommerce." };
+    }
+  });
+
 const updateStatusSchema = z.object({
   id: z.number().int().positive(),
   status: z.enum([
