@@ -86,6 +86,10 @@ export type Database = {
           created_at: string
           internal_notes: string | null
           pickup_slot: string | null
+          steadfast_consignment_id: number | null
+          steadfast_status: string | null
+          steadfast_synced_at: string | null
+          steadfast_tracking_code: string | null
           tracking_number: string | null
           updated_at: string
           updated_by: string | null
@@ -96,6 +100,10 @@ export type Database = {
           created_at?: string
           internal_notes?: string | null
           pickup_slot?: string | null
+          steadfast_consignment_id?: number | null
+          steadfast_status?: string | null
+          steadfast_synced_at?: string | null
+          steadfast_tracking_code?: string | null
           tracking_number?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -106,6 +114,10 @@ export type Database = {
           created_at?: string
           internal_notes?: string | null
           pickup_slot?: string | null
+          steadfast_consignment_id?: number | null
+          steadfast_status?: string | null
+          steadfast_synced_at?: string | null
+          steadfast_tracking_code?: string | null
           tracking_number?: string | null
           updated_at?: string
           updated_by?: string | null
