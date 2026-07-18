@@ -191,11 +191,14 @@ function PosPage() {
     address.trim().length > 0;
 
   const submit = useMutation({
-    mutationFn: async (status: "on-hold" | "processing") =>
+    mutationFn: async (status: "on-hold" | "pending") =>
       createFn({
         data: {
           channel: channel as never,
           status,
+          delivery_zone: insideDhaka ? "inside_dhaka" : "outside_dhaka",
+          subtotal,
+          grand_total: grand,
           customer: {
             name: name.trim(),
             phone: phone.trim(),
