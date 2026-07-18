@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
 import { listProducts } from "@/lib/woo.functions";
 import { createManualOrder } from "@/lib/pos.functions";
 import { getPoliceStations } from "@/lib/steadfast.functions";
