@@ -264,13 +264,33 @@ function AuthPage() {
                           </div>
                         </div>
                         <span
-                          className={
-                            "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider " +
-                            (r.tone === "emerald"
-                              ? "bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20"
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider ring-1"
+                          style={
+                            r.tone === "emerald"
+                              ? {
+                                  backgroundColor:
+                                    "color-mix(in oklab, #34d399 12%, transparent)",
+                                  color: "#6ee7b7",
+                                  borderColor: "transparent",
+                                  boxShadow:
+                                    "inset 0 0 0 1px color-mix(in oklab, #34d399 25%, transparent)",
+                                }
                               : r.tone === "cyan"
-                                ? "bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/20"
-                                : "bg-amber-400/10 text-amber-300 ring-1 ring-amber-400/20")
+                                ? {
+                                    backgroundColor:
+                                      "color-mix(in oklab, var(--primary) 18%, transparent)",
+                                    color:
+                                      "color-mix(in oklab, var(--primary-glow) 90%, white)",
+                                    boxShadow:
+                                      "inset 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent)",
+                                  }
+                                : {
+                                    backgroundColor:
+                                      "color-mix(in oklab, #fbbf24 12%, transparent)",
+                                    color: "#fcd34d",
+                                    boxShadow:
+                                      "inset 0 0 0 1px color-mix(in oklab, #fbbf24 25%, transparent)",
+                                  }
                           }
                         >
                           {r.tag}
