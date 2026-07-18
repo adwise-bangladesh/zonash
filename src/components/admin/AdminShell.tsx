@@ -67,10 +67,13 @@ const navGroups: NavGroup[] = [
   {
     label: "Settings",
     items: [
-      { title: "Security", url: "/admin/security", icon: Shield },
+      { title: "Users", url: "/admin/users", icon: Users },
+      { title: "My profile", url: "/admin/profile", icon: UserCircle },
       { title: "Store settings", url: "/admin/settings", icon: Settings },
     ],
   },
+
+
 
 ];
 
