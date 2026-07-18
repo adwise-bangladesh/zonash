@@ -201,6 +201,7 @@ function AdminOrders() {
 
   // Bulk actions ------------------------------------------------------------
   const sendSfFn = useServerFn(sendOrderToSteadfast);
+  const bulkSendSfFn = useServerFn(bulkSendOrdersToSteadfast);
 
 
   const selectedOrders = useMemo(
