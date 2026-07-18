@@ -455,7 +455,7 @@ function AdminOrders() {
               }}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
                 active
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
@@ -463,7 +463,7 @@ function AdminOrders() {
               <span
                 className={`rounded-full px-1.5 text-[10px] font-semibold tabular-nums ${
                   active
-                    ? "bg-background/20 text-background"
+                    ? "bg-white/20 text-primary-foreground"
                     : "bg-muted text-foreground"
                 }`}
               >
@@ -497,7 +497,7 @@ function AdminOrders() {
             </span>
           )}
           {selected.size > 0 && (
-            <span className="rounded-md bg-foreground/10 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-foreground">
+            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-primary">
               {selected.size} selected
             </span>
           )}
@@ -521,7 +521,7 @@ function AdminOrders() {
           <button
             onClick={bulkSendSteadfast}
             disabled={!!bulkBusy || selected.size === 0}
-            className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+            className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
           >
             <Truck className="h-3.5 w-3.5" /> Send to Courier
           </button>
@@ -557,7 +557,7 @@ function AdminOrders() {
             checked={allVisibleSelected}
             onChange={toggleAll}
             aria-label="Select all on this page"
-            className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-foreground"
+            className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary"
           />
           <div>Date · Order</div>
           <div>Customer</div>
@@ -743,7 +743,7 @@ function Pagination({
           <button
             key={p}
             onClick={() => onChange(p)}
-            className={`${btn} ${p === page ? "bg-foreground text-background border-foreground" : ""}`}
+            className={`${btn} ${p === page ? "bg-primary text-primary-foreground border-primary" : ""}`}
           >
             {p}
           </button>
@@ -963,7 +963,7 @@ function OrderRow({
         }
       }}
       className={`grid lg:grid-cols-[24px_140px_minmax(220px,1.5fr)_minmax(140px,1fr)_130px_120px_180px] grid-cols-1 items-start gap-2 border-b border-input px-3 py-2.5 last:border-b-0 cursor-pointer transition-colors ${
-        isSel ? "bg-foreground/[0.04]" : "hover:bg-muted/40"
+        isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"
       }`}
     >
       {/* Checkbox */}
@@ -973,7 +973,7 @@ function OrderRow({
           checked={isSel}
           onChange={onToggle}
           aria-label={`Select order ${o.number}`}
-          className="h-3.5 w-3.5 cursor-pointer accent-foreground"
+          className="h-3.5 w-3.5 cursor-pointer accent-primary"
         />
       </div>
 
@@ -1073,7 +1073,7 @@ function OrderRow({
                   onOpenCustomer();
                 }}
                 title="View all orders from this customer"
-                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                className="rounded-full bg-primary/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 {totalOrders} order{totalOrders === 1 ? "" : "s"}
               </button>
@@ -1090,7 +1090,7 @@ function OrderRow({
                   onOpenCustomer();
                 }}
                 title="View all orders from this customer"
-                className="rounded-full bg-foreground/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-foreground hover:bg-foreground hover:text-background"
+                className="rounded-full bg-primary/10 px-1.5 py-[1px] text-[10px] font-semibold tabular-nums text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 {totalOrders} order{totalOrders === 1 ? "" : "s"}
               </button>
@@ -1149,7 +1149,7 @@ function OrderRow({
             onClick={doSend}
             disabled={sending}
             title="Send to Courier"
-            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-70"
+            className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-md bg-primary px-2 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-70"
           >
             {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Truck className="h-3 w-3" />}
             Send to Courier
@@ -1378,7 +1378,7 @@ function OrderDrawer({
             <button
               onClick={() => saveOrder.mutate()}
               disabled={saveOrder.isPending || !o}
-              className="inline-flex h-8 items-center gap-1 rounded-md bg-foreground px-3 text-[12px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-[12px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
             >
               {saveOrder.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
               Save changes
@@ -1418,7 +1418,7 @@ function OrderDrawer({
                         onClick={() => onUpdate(s.slug)}
                         className={`inline-flex shrink-0 items-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition ${
                           active
-                            ? "bg-foreground text-background"
+                            ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         }`}
                       >
@@ -1865,7 +1865,7 @@ function OrderNotesSection({ orderId }: { orderId: number }) {
               type="button"
               onClick={submit}
               disabled={busy || !text.trim()}
-              className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-40"
+              className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
             >
               {busy ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -2339,7 +2339,7 @@ function CustomerInsightDrawer({
       >
         {/* Header — profile card */}
         <div className="flex items-start gap-3 border-b border-border bg-gradient-to-br from-muted/60 to-transparent px-5 py-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-foreground text-[13px] font-semibold text-background">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
             {initials}
           </div>
           <div className="min-w-0 flex-1">
@@ -2773,7 +2773,7 @@ function SteadfastPanel({
           <Truck className="h-3 w-3" /> Steadfast Courier
         </div>
         {sfStatus && (
-          <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium capitalize">
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-primary">
             {sfStatus.replace(/_/g, " ")}
           </span>
         )}
@@ -2798,7 +2798,7 @@ function SteadfastPanel({
         <button
           onClick={() => sendM.mutate()}
           disabled={sendM.isPending || !!cid}
-          className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2 text-[11px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-2 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           {sendM.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
           {cid ? "Already sent" : "Send to Steadfast"}
