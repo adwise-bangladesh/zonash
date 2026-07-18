@@ -212,7 +212,7 @@ function PosPage() {
           })),
           shipping_amount: shippingAmount,
           shipping_label: insideDhaka ? "ঢাকা সিটির ভিতরে" : "ঢাকা সিটির বাহিরে",
-          discount,
+          discount: effectiveDiscount,
         },
       }),
     onSuccess: (order) => {
