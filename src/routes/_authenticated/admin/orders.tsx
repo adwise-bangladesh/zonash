@@ -495,6 +495,9 @@ function CustomerBadge({ rating }: { rating: CustomerRating }) {
       {label}
     </span>
   );
+}
+
+
 
 
 function OrderDrawer({
