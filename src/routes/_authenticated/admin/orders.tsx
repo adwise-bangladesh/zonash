@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-query";
 import {
   Search, Loader2, Eye, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
-  User, MapPin, Package, Receipt, Clock, Plus, Trash2, Save, Tag,
+  User, Package, Receipt, Clock, Plus, Trash2, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -388,9 +388,6 @@ function AdminOrders() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <StatusBadge status={o.status} />
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {o.payment_method_title || o.payment_method || "—"}
-                    </span>
                   </div>
                   <div className="flex justify-end gap-1">
                     <select
@@ -782,9 +779,9 @@ function OrderDrawer({
               </div>
             </Section>
 
-            {/* Customer / Billing */}
+            {/* Customer & delivery — simplified */}
             <Section
-              title="Customer"
+              title="Customer & delivery"
               icon={<User className="h-3.5 w-3.5" />}
               defaultOpen
               rightSlot={<CustomerBadge rating={rating} />}
@@ -795,39 +792,60 @@ function OrderDrawer({
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2">
-                <TextField label="First name" value={billing.first_name} onChange={(v) => setBilling({ ...billing, first_name: v })} />
-                <TextField label="Last name" value={billing.last_name} onChange={(v) => setBilling({ ...billing, last_name: v })} />
-                <TextField label="Email" value={billing.email ?? ""} onChange={(v) => setBilling({ ...billing, email: v })} />
-                <TextField label="Phone" value={billing.phone ?? ""} onChange={(v) => setBilling({ ...billing, phone: v })} />
-                <TextField label="Address line 1" value={billing.address_1} onChange={(v) => setBilling({ ...billing, address_1: v })} full />
-                <TextField label="Address line 2" value={billing.address_2} onChange={(v) => setBilling({ ...billing, address_2: v })} full />
-                <TextField label="City" value={billing.city} onChange={(v) => setBilling({ ...billing, city: v })} />
-                <TextField label="State / Division" value={billing.state} onChange={(v) => setBilling({ ...billing, state: v })} />
-                <TextField label="Postcode" value={billing.postcode} onChange={(v) => setBilling({ ...billing, postcode: v })} />
-                <TextField label="Country (ISO2)" value={billing.country} onChange={(v) => setBilling({ ...billing, country: v.toUpperCase() })} />
+                <TextField
+                  label="Name"
+                  value={`${billing.first_name}${billing.last_name ? " " + billing.last_name : ""}`}
+                  onChange={(v) => {
+                    const parts = v.trim().split(/\s+/);
+                    const first = parts.length === 1 ? parts[0] : parts.slice(0, -1).join(" ");
+                    const last = parts.length === 1 ? "" : parts[parts.length - 1];
+                    setBilling({ ...billing, first_name: first, last_name: last });
+                    setShipping({ ...shipping, first_name: first, last_name: last });
+                  }}
+                  full
+                />
+                <TextField
+                  label="Phone"
+                  value={billing.phone ?? ""}
+                  onChange={(v) => {
+                    setBilling({ ...billing, phone: v });
+                    setShipping({ ...shipping, phone: v });
+                  }}
+                />
+                <TextField
+                  label="Email (optional)"
+                  value={billing.email ?? ""}
+                  onChange={(v) => setBilling({ ...billing, email: v })}
+                />
+                <TextField
+                  label="Address"
+                  value={billing.address_1}
+                  onChange={(v) => {
+                    setBilling({ ...billing, address_1: v });
+                    setShipping({ ...shipping, address_1: v });
+                  }}
+                  full
+                />
+                <TextField
+                  label="Thana"
+                  value={billing.city}
+                  onChange={(v) => {
+                    setBilling({ ...billing, city: v, state: v });
+                    setShipping({ ...shipping, city: v, state: v });
+                  }}
+                  full
+                />
               </div>
-              <button
-                type="button"
-                onClick={() => setShipping({ ...billing, email: undefined })}
-                className="mt-2 text-[11px] text-muted-foreground underline hover:text-foreground"
-              >
-                Copy to shipping address
-              </button>
-            </Section>
-
-            {/* Shipping address */}
-            <Section title="Shipping address" icon={<MapPin className="h-3.5 w-3.5" />} defaultOpen>
-              <div className="grid grid-cols-2 gap-2">
-                <TextField label="First name" value={shipping.first_name} onChange={(v) => setShipping({ ...shipping, first_name: v })} />
-                <TextField label="Last name" value={shipping.last_name} onChange={(v) => setShipping({ ...shipping, last_name: v })} />
-                <TextField label="Phone" value={shipping.phone ?? ""} onChange={(v) => setShipping({ ...shipping, phone: v })} full />
-                <TextField label="Address line 1" value={shipping.address_1} onChange={(v) => setShipping({ ...shipping, address_1: v })} full />
-                <TextField label="Address line 2" value={shipping.address_2} onChange={(v) => setShipping({ ...shipping, address_2: v })} full />
-                <TextField label="City" value={shipping.city} onChange={(v) => setShipping({ ...shipping, city: v })} />
-                <TextField label="State / Division" value={shipping.state} onChange={(v) => setShipping({ ...shipping, state: v })} />
-                <TextField label="Postcode" value={shipping.postcode} onChange={(v) => setShipping({ ...shipping, postcode: v })} />
-                <TextField label="Country (ISO2)" value={shipping.country} onChange={(v) => setShipping({ ...shipping, country: v.toUpperCase() })} />
-              </div>
+              <label className="mt-2 block">
+                <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-muted-foreground">Notes</span>
+                <textarea
+                  value={customerNote}
+                  onChange={(e) => setCustomerNote(e.target.value)}
+                  rows={2}
+                  placeholder="Delivery instructions or customer note"
+                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
+                />
+              </label>
             </Section>
 
             {/* Items — editable */}
@@ -988,16 +1006,8 @@ function OrderDrawer({
               </div>
             </Section>
 
-            {/* Customer note */}
-            <Section title="Customer note" icon={<Tag className="h-3.5 w-3.5" />}>
-              <textarea
-                value={customerNote}
-                onChange={(e) => setCustomerNote(e.target.value)}
-                rows={2}
-                placeholder="Visible to the customer"
-                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-[12px]"
-              />
-            </Section>
+            {/* Customer note merged into Customer & delivery */}
+
 
             {/* Operations (dashboard-owned) */}
             <Section title="Operations" icon={<Truck className="h-3.5 w-3.5" />} defaultOpen>
@@ -1033,7 +1043,7 @@ function OrderDrawer({
                 {o.date_paid && <li><span className="text-muted-foreground">Paid:</span> {new Date(o.date_paid).toLocaleString()}</li>}
                 {o.date_completed && <li><span className="text-muted-foreground">Completed:</span> {new Date(o.date_completed).toLocaleString()}</li>}
                 <li><span className="text-muted-foreground">Last modified:</span> {new Date(o.date_modified).toLocaleString()}</li>
-                <li><span className="text-muted-foreground">Payment:</span> {o.payment_method_title || o.payment_method || "—"}</li>
+                
               </ul>
             </Section>
           </div>

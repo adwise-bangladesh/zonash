@@ -21,31 +21,28 @@ export const Route = createFileRoute("/checkout")({
 });
 
 const schema = z.object({
-  first_name: z.string().trim().min(1, "Enter your first name").max(60),
-  last_name: z.string().trim().min(1, "Enter your last name").max(60),
-  email: z.string().trim().email("Invalid email").max(120),
+  name: z.string().trim().min(2, "Enter your full name").max(120),
   phone: z.string().trim().regex(/^(\+?88)?01[3-9]\d{8}$/, "Enter a valid Bangladeshi mobile number"),
-  address_1: z.string().trim().min(5, "Address is too short").max(200),
-  city: z.string().trim().min(1, "City is required").max(80),
-  postcode: z.string().trim().min(3, "Postcode is required").max(20),
+  email: z.string().trim().email("Invalid email").max(120).optional().or(z.literal("")),
+  address: z.string().trim().min(5, "Address is too short").max(300),
+  thana: z.string().trim().min(1, "Thana is required").max(80),
+  notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 type FormData = z.infer<typeof schema>;
-const EMPTY: FormData = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  address_1: "",
-  city: "Dhaka",
-  postcode: "",
-};
+const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: "", notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
 const COUPONS: Record<string, { label: string; type: "percent" | "flat"; value: number }> = {
   ZONASH10: { label: "10% off", type: "percent", value: 10 },
   SAVE50: { label: "৳50 off", type: "flat", value: 50 },
 };
+
+function splitName(full: string): { first: string; last: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -55,12 +52,10 @@ function CheckoutPage() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [payment, setPayment] = useState<"cod" | "bacs">("cod");
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
-  // Hydrate saved form on client only
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -82,7 +77,9 @@ function CheckoutPage() {
     });
   };
 
-  const shipping = items.length === 0 ? 0 : form.city.trim().toLowerCase() === "dhaka" ? 80 : 130;
+  // Simple shipping rule: flat 80 within Dhaka thanas, else 130.
+  const dhakaThanas = ["dhanmondi", "gulshan", "banani", "mirpur", "uttara", "mohammadpur", "tejgaon", "motijheel", "badda", "khilgaon", "rampura", "wari", "old dhaka", "shahbagh", "ramna"];
+  const shipping = items.length === 0 ? 0 : dhakaThanas.includes(form.thana.trim().toLowerCase()) ? 80 : 130;
   const discount = useMemo(() => (coupon ? Math.min(coupon.discount, subtotal) : 0), [coupon, subtotal]);
   const total = Math.max(0, subtotal - discount) + shipping;
 
@@ -90,20 +87,12 @@ function CheckoutPage() {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     const c = COUPONS[code];
-    if (!c) {
-      setCouponError("Invalid coupon code");
-      setCoupon(null);
-      return;
-    }
+    if (!c) { setCouponError("Invalid coupon code"); setCoupon(null); return; }
     const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
     setCoupon({ code, discount: value });
     setCouponError(null);
   };
-  const removeCoupon = () => {
-    setCoupon(null);
-    setCouponInput("");
-    setCouponError(null);
-  };
+  const removeCoupon = () => { setCoupon(null); setCouponInput(""); setCouponError(null); };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -117,23 +106,28 @@ function CheckoutPage() {
     }
     setSubmitting(true);
     try {
+      const { first, last } = splitName(parsed.data.name);
+      const notePieces = [
+        parsed.data.notes?.trim(),
+        coupon ? `Coupon: ${coupon.code}` : undefined,
+      ].filter(Boolean);
       const res = await createOrderFn({
         data: {
           items: items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
           billing: {
-            first_name: parsed.data.first_name,
-            last_name: parsed.data.last_name,
-            email: parsed.data.email,
+            first_name: first,
+            last_name: last,
+            email: parsed.data.email || "",
             phone: parsed.data.phone,
-            address_1: parsed.data.address_1,
+            address_1: parsed.data.address,
             address_2: "",
-            city: parsed.data.city,
-            state: "",
-            postcode: parsed.data.postcode,
+            city: parsed.data.thana,
+            state: parsed.data.thana,
+            postcode: "",
             country: "BD",
           },
-          payment_method: payment,
-          customer_note: coupon ? `Coupon: ${coupon.code}` : undefined,
+          payment_method: "cod",
+          customer_note: notePieces.length ? notePieces.join(" | ") : undefined,
         },
       });
       if (!res.ok) {
@@ -169,45 +163,26 @@ function CheckoutPage() {
       <CheckoutHeader title="Checkout" />
 
       <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
-        {/* Contact */}
-        <Section title="Contact">
-          <Grid2>
-            <Field label="First name" error={errors.first_name}>
-              <input value={form.first_name} onChange={(e) => update({ first_name: e.target.value })} className={inputCls(errors.first_name)} autoComplete="given-name" />
-            </Field>
-            <Field label="Last name" error={errors.last_name}>
-              <input value={form.last_name} onChange={(e) => update({ last_name: e.target.value })} className={inputCls(errors.last_name)} autoComplete="family-name" />
-            </Field>
-          </Grid2>
-          <Field label="Email" error={errors.email}>
-            <input type="email" value={form.email} onChange={(e) => update({ email: e.target.value })} className={inputCls(errors.email)} autoComplete="email" />
+        {/* Delivery details */}
+        <Section title="Delivery details">
+          <Field label="Name" error={errors.name}>
+            <input value={form.name} onChange={(e) => update({ name: e.target.value })} className={inputCls(errors.name)} autoComplete="name" />
           </Field>
           <Field label="Phone" error={errors.phone}>
             <input inputMode="tel" value={form.phone} onChange={(e) => update({ phone: e.target.value })} placeholder="01XXXXXXXXX" className={inputCls(errors.phone)} autoComplete="tel" />
           </Field>
-        </Section>
-
-        {/* Shipping */}
-        <Section title="Shipping address">
-          <Field label="Address" error={errors.address_1}>
-            <textarea rows={2} value={form.address_1} onChange={(e) => update({ address_1: e.target.value })} className={inputCls(errors.address_1) + " resize-none"} autoComplete="street-address" />
+          <Field label="Email (optional)" error={errors.email}>
+            <input type="email" value={form.email} onChange={(e) => update({ email: e.target.value })} className={inputCls(errors.email)} autoComplete="email" />
           </Field>
-          <Grid2>
-            <Field label="City" error={errors.city}>
-              <input value={form.city} onChange={(e) => update({ city: e.target.value })} className={inputCls(errors.city)} autoComplete="address-level2" />
-            </Field>
-            <Field label="Postcode" error={errors.postcode}>
-              <input value={form.postcode} onChange={(e) => update({ postcode: e.target.value })} className={inputCls(errors.postcode)} autoComplete="postal-code" />
-            </Field>
-          </Grid2>
-        </Section>
-
-        {/* Payment */}
-        <Section title="Payment method">
-          <div className="space-y-2">
-            <PayOption id="cod" active={payment === "cod"} onSelect={() => setPayment("cod")} label="Cash on Delivery" sub="Pay in cash when your order arrives" />
-            <PayOption id="bacs" active={payment === "bacs"} onSelect={() => setPayment("bacs")} label="Bank Transfer" sub="We'll email you our bank details" />
-          </div>
+          <Field label="Address" error={errors.address}>
+            <textarea rows={2} value={form.address} onChange={(e) => update({ address: e.target.value })} className={inputCls(errors.address) + " resize-none"} autoComplete="street-address" placeholder="House, road, area" />
+          </Field>
+          <Field label="Thana" error={errors.thana}>
+            <input value={form.thana} onChange={(e) => update({ thana: e.target.value })} className={inputCls(errors.thana)} placeholder="e.g. Dhanmondi" />
+          </Field>
+          <Field label="Notes (optional)" error={errors.notes}>
+            <textarea rows={2} value={form.notes} onChange={(e) => update({ notes: e.target.value })} className={inputCls(errors.notes) + " resize-none"} placeholder="Any delivery instruction" />
+          </Field>
         </Section>
 
         {/* Coupon */}
@@ -264,7 +239,7 @@ function CheckoutPage() {
             <dl className="space-y-2 px-4 pb-4 pt-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatBDT(subtotal)}</dd></div>
               {discount > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd>-{formatBDT(discount)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd>{shipping ? formatBDT(shipping) : "Free"}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Delivery</dt><dd>{shipping ? formatBDT(shipping) : "Free"}</dd></div>
               <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
                 <dt className="text-sm font-semibold">Total</dt>
                 <dd className="text-xl font-bold text-primary">{formatBDT(total)}</dd>
@@ -289,7 +264,6 @@ function CheckoutPage() {
           </div>
           <button
             type="submit"
-            form=""
             onClick={(e) => {
               const f = (e.currentTarget.closest("div")?.parentElement?.previousElementSibling as HTMLFormElement | null) ?? (document.querySelector("form") as HTMLFormElement | null);
               f?.requestSubmit();
@@ -313,9 +287,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </section>
   );
 }
-function Grid2({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-2.5">{children}</div>;
-}
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -327,23 +298,4 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 function inputCls(err?: string) {
   return `h-10 w-full rounded-[3px] border bg-background px-3 text-sm outline-none transition-colors ${err ? "border-destructive" : "border-border focus:border-primary"}`;
-}
-function PayOption({ id, label, sub, active, onSelect }: { id: string; label: string; sub: string; active: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={active}
-      className={`flex w-full items-center gap-3 rounded-[3px] border p-3 text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-background"}`}
-    >
-      <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${active ? "border-primary" : "border-muted-foreground"}`}>
-        {active && <span className="h-2 w-2 rounded-full bg-primary" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="block text-[11px] text-muted-foreground">{sub}</span>
-      </span>
-      <span className="text-[10px] font-semibold uppercase text-muted-foreground">{id.toUpperCase()}</span>
-    </button>
-  );
 }
