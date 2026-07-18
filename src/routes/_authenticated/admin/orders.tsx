@@ -1043,7 +1043,7 @@ function OrderDrawer({
                 {o.date_paid && <li><span className="text-muted-foreground">Paid:</span> {new Date(o.date_paid).toLocaleString()}</li>}
                 {o.date_completed && <li><span className="text-muted-foreground">Completed:</span> {new Date(o.date_completed).toLocaleString()}</li>}
                 <li><span className="text-muted-foreground">Last modified:</span> {new Date(o.date_modified).toLocaleString()}</li>
-                <li><span className="text-muted-foreground">Payment:</span> {o.payment_method_title || o.payment_method || "—"}</li>
+                
               </ul>
             </Section>
           </div>
