@@ -16,7 +16,7 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const products = await wooFetch<WooProduct[]>({
+      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
         path: "/products",
         query: {
           page: data.page,
@@ -37,7 +37,7 @@ export const listProducts = createServerFn({ method: "GET" })
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
   .handler(async ({ data }) => {
-    const products = await wooFetch<WooProduct[]>({
+    const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
       path: "/products",
       query: { slug: data.slug },
     });
@@ -72,7 +72,7 @@ export const getWooOrder = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ id: z.number().int().positive() }).parse(raw))
   .handler(async ({ data, context }) => {
     await assertStaff(context as never);
-    return wooFetch<WooOrder>({ path: `/orders/${data.id}` });
+    return (await import("./woo.server")).wooFetch<WooOrder>({ path: `/orders/${data.id}` });
   });
 
 const updateStatusSchema = z.object({
@@ -117,7 +117,7 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       .eq("wc_order_id", String(data.id))
       .maybeSingle?.();
 
-    const updated = await wooFetch<WooOrder>({
+    const updated = await (await import("./woo.server")).wooFetch<WooOrder>({
       path: `/orders/${data.id}`,
       method: "PUT",
       body: { status: data.status },
