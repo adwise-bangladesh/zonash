@@ -76,8 +76,8 @@ export const requestCustomerLoginOtp = createServerFn({ method: "POST" })
         max_attempts: 5,
         expires_at: expiresAt,
         last_sent_at: new Date().toISOString(),
-        send_count: (existing as { send_count?: number } | null)?.send_count
-          ? (existing as { send_count: number }).send_count + 1
+        send_count: existing
+          ? ((existing as { send_count: number }).send_count ?? 0) + 1
           : 1,
       } as never,
       { onConflict: "phone" },
@@ -175,7 +175,6 @@ type WooOrderLite = {
     city?: string;
   };
   shipping?: { city?: string };
-  meta_data?: { key: string; value: unknown }[];
 };
 
 async function fetchOrdersByPhone(phone: string): Promise<WooOrderLite[]> {
