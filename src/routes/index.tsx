@@ -54,9 +54,10 @@ function HomeSkeleton() {
             </div>
           ))}
         </div>
-        <div className="mx-3 mb-3 h-[124px] skeleton-shimmer rounded-2xl md:container-page" />
+        <div className="mx-[5px] mb-3 h-[124px] skeleton-shimmer rounded-2xl md:container-page" />
       </div>
-      <div className="grid grid-cols-2 gap-2 px-3 pt-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 px-[5px] pt-3 md:grid-cols-3 lg:grid-cols-4">
+
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
