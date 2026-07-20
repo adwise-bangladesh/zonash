@@ -55,7 +55,9 @@ function Confirmed() {
             Cash on Delivery — pay only on arrival
           </div>
 
-          <div className="mt-6 grid gap-2">
+          {id ? <OrderSummaryCard orderId={id} /> : null}
+
+          <div className="mt-5 grid gap-2">
             <Link
               to="/products"
               className="flex h-12 items-center justify-center rounded-2xl bg-primary text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)]"
@@ -74,7 +76,7 @@ function Confirmed() {
               waMessage={buildSupportMessage({
                 page: "Order confirmed",
                 orderNumber: number ?? "",
-                extra: "I need help with this confirmed order.",
+                extra: `Order #${number ?? ""} — I need help with this confirmed order.`,
               })}
             />
           </div>
