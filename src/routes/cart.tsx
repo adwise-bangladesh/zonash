@@ -19,8 +19,58 @@ export const Route = createFileRoute("/cart")({
   component: CartPage,
 });
 
+function CartSkeleton() {
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[112px]" aria-busy="true" aria-live="polite">
+      <CheckoutHeader title="My Bag" />
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
+        <span className="sr-only">Loading your bag…</span>
+        <ul className="space-y-2.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5">
+              <div className="h-16 w-16 shrink-0 animate-pulse rounded-[3px] bg-muted" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="h-3 w-4/5 animate-pulse rounded-[2px] bg-muted" />
+                <div className="h-3 w-3/5 animate-pulse rounded-[2px] bg-muted" />
+                <div className="mt-auto flex items-center justify-between pt-1.5">
+                  <div className="h-4 w-16 animate-pulse rounded-[2px] bg-muted" />
+                  <div className="h-7 w-24 animate-pulse rounded-[3px] bg-muted" />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 h-14 animate-pulse rounded-[3px] border border-border bg-background" />
+      </div>
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-muted text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            <Lock className="h-4 w-4" aria-hidden="true" />
+            Loading…
+          </button>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+            No online payment · Pay when you receive
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CartPage() {
   const { items, subtotal, setQty, remove, hydrated } = useCart();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const regularTotal = items.reduce(
     (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
@@ -28,17 +78,7 @@ function CartPage() {
   );
   const savings = Math.max(0, regularTotal - subtotal);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  if (!hydrated) {
-    return (
-      <div className="flex min-h-[100dvh] flex-col bg-muted/30">
-        <CheckoutHeader title="My Bag" />
-      </div>
-    );
-  }
+  if (!hydrated) return <CartSkeleton />;
 
   if (items.length === 0) {
     return (
