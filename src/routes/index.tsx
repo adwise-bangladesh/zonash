@@ -34,7 +34,6 @@ export const Route = createFileRoute("/")({
   },
   component: Home,
   pendingComponent: HomeSkeleton,
-  pendingMs: 0,
 });
 
 function HomeSkeleton() {
