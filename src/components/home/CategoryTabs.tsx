@@ -18,21 +18,21 @@ export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
           <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
         </Link>
         <Link
-          to="/products"
-          search={{ orderby: "date" } as never}
+          to="/c/$slug"
+          params={{ slug: "new-arrivals" }}
           className="inline-flex shrink-0 items-center gap-1 text-emerald-600"
         >
           <Zap className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
           New Arrivals
         </Link>
-        <Link to="/products" search={{ featured: true } as never} className="shrink-0 text-emerald-700">
+        <Link to="/c/$slug" params={{ slug: "bestsellers" }} className="shrink-0 text-emerald-700">
           Bestsellers
         </Link>
         {categories.slice(0, 8).map((c) => (
           <Link
             key={c.slug}
-            to="/products"
-            search={{ category: c.slug }}
+            to="/c/$slug"
+            params={{ slug: c.slug }}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >
             {c.name}
