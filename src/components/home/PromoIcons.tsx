@@ -41,11 +41,7 @@ export function PromoIcons() {
               <span
                 className={`grid h-14 w-14 place-items-center rounded-2xl ring-1 transition-all group-hover:-translate-y-0.5 group-hover:shadow-sm md:h-16 md:w-16 ${tint}`}
               >
-                <Icon
-                  className={`h-6 w-6 md:h-7 md:w-7 ${label === "Flash Deals" ? "flame-flicker fill-current" : ""}`}
-                  strokeWidth={1.75}
-                  aria-hidden="true"
-                />
+                <Icon className="h-6 w-6 md:h-7 md:w-7" strokeWidth={1.75} aria-hidden="true" />
               </span>
               <span className="text-[11px] font-medium text-foreground md:text-[13px]">{label}</span>
             </Link>

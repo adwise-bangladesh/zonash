@@ -239,58 +239,6 @@
   50%      { transform: translateY(-4px); }
 }
 
-@keyframes megaAurora {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-.mega-aurora {
-  background: linear-gradient(
-    120deg,
-    #6a0a0b 0%,
-    #a30d0f 22%,
-    #d4a24a 42%,
-    #a30d0f 62%,
-    #6a0a0b 82%,
-    #d4a24a 100%
-  );
-  background-size: 260% 260%;
-  animation: megaAurora 6s ease-in-out infinite;
-}
-
-@keyframes megaShine {
-  0%   { transform: translateX(-140%) skewX(-18deg); }
-  60%  { transform: translateX(160%) skewX(-18deg); }
-  100% { transform: translateX(160%) skewX(-18deg); }
-}
-.mega-shine::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 70%
-  );
-  pointer-events: none;
-  animation: megaShine 3.4s ease-in-out infinite;
-}
-
-@keyframes megaSpark {
-  0%, 100% { opacity: 0.25; transform: translateY(0) scale(1); }
-  50%      { opacity: 0.9;  transform: translateY(-2px) scale(1.15); }
-}
-.mega-spark { animation: megaSpark 2.2s ease-in-out infinite; }
-
-@keyframes flameFlicker {
-  0%, 100% { transform: translateY(0) scale(1) rotate(-2deg); filter: drop-shadow(0 0 3px rgba(244,114,32,0.55)); }
-  25%      { transform: translateY(-1px) scale(1.06) rotate(2deg); filter: drop-shadow(0 0 6px rgba(244,114,32,0.85)); }
-  50%      { transform: translateY(0) scale(0.98) rotate(-1deg); filter: drop-shadow(0 0 4px rgba(244,114,32,0.7)); }
-  75%      { transform: translateY(-1px) scale(1.04) rotate(1deg); filter: drop-shadow(0 0 7px rgba(244,114,32,0.9)); }
-}
-.flame-flicker { animation: flameFlicker 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
-
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
@@ -321,10 +269,6 @@
   .skeleton-shimmer { animation: none; }
   .skeleton-row-fade { animation: none; }
   [class*="flowIconFloat"] { animation: none; }
-  .mega-aurora { animation: none; }
-  .mega-shine::after { animation: none; display: none; }
-  .mega-spark { animation: none; }
-  .flame-flicker { animation: none; }
 }
 
 
