@@ -776,12 +776,11 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         .join(", ")}`;
     }
 
-    // Persist decision meta on Woo. Status change is deferred:
-    //   - review    → apply on-hold now (with fallback).
-    //   - confirmed → KEEP order as `pending` until the customer chooses
-    //                 whether they want a confirmation call. That final step
-    //                 happens in `finalizeOrderChoice` below.
-    const wantedStatus = decision === "confirmed" ? "pending" : "on-hold";
+    // Persist decision meta on Woo. Duplicates / low-rating orders stay in
+    // `pending` (flagged via _zonash_decision meta for admin review) instead
+    // of being moved to `on-hold`. Confirmed orders also remain `pending`
+    // until the customer picks a call preference in `finalizeOrderChoice`.
+    const wantedStatus = "pending";
     let appliedStatus = wantedStatus;
     try {
       await wooFetch({
@@ -803,8 +802,9 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
       });
     } catch (e) {
       console.error(`Woo PUT ${wantedStatus} failed — falling back`, e);
-      appliedStatus = decision === "confirmed" ? "pending" : "on-hold";
+      appliedStatus = "pending";
     }
+
 
     // Private note audit trail.
     try {
