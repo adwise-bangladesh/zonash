@@ -64,12 +64,12 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Mobile expandable search */}
+      {/* Mobile expandable search — premium sheet */}
       {mobileOpen && (
-        <div className="border-t border-border bg-background md:hidden">
-          <form onSubmit={submit} role="search" className="container-page py-2.5">
-            <div className="relative flex items-center rounded-xl border border-primary/40 bg-background p-1 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
-              <Search className="ml-3 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="animate-in slide-in-from-top-1 fade-in duration-200 border-t border-border/70 bg-gradient-to-b from-background to-surface-muted/40 md:hidden">
+          <form onSubmit={submit} role="search" className="container-page py-3">
+            <div className="group relative flex items-center gap-2 rounded-full border border-primary/25 bg-background pl-4 pr-1.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(58,2,3,0.18)] focus-within:border-primary focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-10px_rgba(58,2,3,0.28)] transition-all">
+              <Search className="h-4 w-4 shrink-0 text-primary/70" />
               <input
                 ref={mobileInputRef}
                 type="search"
@@ -77,51 +77,54 @@ export function SiteHeader() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search rings, necklaces, 22k gold…"
                 aria-label="Search products"
-                className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[14px] outline-none placeholder:text-muted-foreground/70"
+                className="min-w-0 flex-1 bg-transparent px-1 py-1 text-[14px] outline-none placeholder:text-muted-foreground/60"
               />
               <button
                 type="submit"
-                className="inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3.5 text-[12px] font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110"
+                className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-5 text-[12px] font-semibold uppercase tracking-[0.08em] text-primary-foreground shadow-sm hover:brightness-110 active:scale-[0.98] transition"
               >
                 Search
               </button>
             </div>
-            <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {QUICK.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => goTerm(t)}
-                  className="shrink-0 rounded-full border border-border bg-surface-muted/60 px-3 py-1 text-[12px] font-medium text-foreground/80 hover:border-primary hover:bg-primary/[0.04] hover:text-primary"
-                >
-                  {t}
-                </button>
-              ))}
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">Popular</span>
+              <div className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {QUICK.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => goTerm(t)}
+                    className="shrink-0 rounded-full border border-border/80 bg-background/80 px-3 py-1 text-[12px] font-medium text-foreground/80 hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary transition-colors"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
           </form>
         </div>
       )}
 
 
-      {/* Desktop */}
-      <div className="container-page hidden h-14 items-center gap-4 md:flex">
+      {/* Desktop — premium pill search */}
+      <div className="container-page hidden h-16 items-center gap-5 md:flex">
         <Link to="/" aria-label="Home" className="shrink-0">
           <Logo />
         </Link>
-        <form onSubmit={submit} className="flex flex-1 items-center" role="search">
-          <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <form onSubmit={submit} className="flex max-w-2xl flex-1 items-center" role="search">
+          <div className="group relative flex w-full items-center gap-2 rounded-full border border-border bg-surface-muted/60 pl-4 pr-1.5 py-1.5 transition-all focus-within:border-primary focus-within:bg-background focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(58,2,3,0.28)]">
+            <Search className="h-4 w-4 shrink-0 text-primary/70" />
             <input
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search for jewelry, collections and more"
               aria-label="Search products"
-              className="h-9 w-full rounded-[3px] border border-border bg-surface-muted pl-9 pr-24 text-[13px] outline-none focus:border-primary focus:bg-background"
+              className="min-w-0 flex-1 bg-transparent px-1 text-[13.5px] outline-none placeholder:text-muted-foreground/60"
             />
             <button
               type="submit"
-              className="absolute right-1 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-[3px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-5 text-[12px] font-semibold uppercase tracking-[0.08em] text-primary-foreground shadow-sm hover:brightness-110 active:scale-[0.98] transition"
             >
               Search
             </button>
@@ -131,15 +134,15 @@ export function SiteHeader() {
           <Link
             to="/products"
             preload="intent"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-[3px] text-foreground hover:bg-secondary"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
             aria-label="Wishlist"
           >
-            <Heart className="h-4 w-4" />
+            <Heart className="h-4.5 w-4.5" />
           </Link>
           <Link
             to="/auth"
             preload="intent"
-            className="inline-flex h-9 items-center gap-1.5 rounded-[3px] px-2.5 text-[13px] font-medium text-foreground hover:bg-secondary"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
           >
             <User className="h-4 w-4" />
             <span>Account</span>
@@ -147,13 +150,13 @@ export function SiteHeader() {
           <Link
             to="/cart"
             preload="intent"
-            className="relative inline-flex h-9 items-center gap-1.5 rounded-[3px] bg-secondary px-2.5 text-[13px] font-medium text-foreground hover:bg-accent"
+            className="relative ml-1 inline-flex h-10 items-center gap-1.5 rounded-full bg-primary/[0.06] px-3.5 text-[13px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
             aria-label="Cart"
           >
             <ShoppingBag className="h-4 w-4" />
             <span>Cart</span>
             {cartCount > 0 && (
-              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-[3px] bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              <span className="absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
                 {cartCount}
               </span>
             )}
