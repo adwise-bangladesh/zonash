@@ -232,7 +232,7 @@ function CheckoutPage() {
               type="tel"
               inputMode="tel"
               value={form.phone}
-              onChange={(e) => update({ phone: e.target.value })}
+              onChange={(e) => update({ phone: normalizeBdPhone(e.target.value) })}
               placeholder="01XXXXXXXXX"
               className={inputCls(errors.phone)}
               autoComplete="tel-national"
