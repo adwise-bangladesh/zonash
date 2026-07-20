@@ -375,7 +375,7 @@ function CheckoutPage() {
             <dl className="space-y-2 px-4 pb-4 pt-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatBDT(subtotal)}</dd></div>
               {discount > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd>-{formatBDT(discount)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-muted-foreground">Delivery</dt><dd>{shipping ? formatBDT(shipping) : "Free"}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Delivery Charge</dt><dd>{shipping ? formatBDT(shipping) : "Free"}</dd></div>
               <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
                 <dt className="text-sm font-semibold">Total</dt>
                 <dd className="text-xl font-bold text-primary">{formatBDT(total)}</dd>
