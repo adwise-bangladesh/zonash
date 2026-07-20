@@ -388,3 +388,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 function inputCls(err?: string) {
   return `h-10 w-full rounded-[3px] border bg-background px-3 text-sm outline-none transition-colors ${err ? "border-destructive" : "border-border focus:border-primary"}`;
 }
+function textareaCls(err?: string) {
+  // Slightly taller than inputs, same horizontal padding, vertical padding matched so the caret sits identically.
+  return `block w-full resize-none rounded-[3px] border bg-background px-3 py-2.5 text-sm leading-5 outline-none transition-colors min-h-[56px] ${err ? "border-destructive" : "border-border focus:border-primary"}`;
+}
