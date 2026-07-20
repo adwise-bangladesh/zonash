@@ -369,6 +369,16 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
 
+    // Log successful submit for future velocity checks (fire-and-forget).
+    void recordOrderSubmit({
+      ip: server.ip ?? "",
+      fingerprint: clientFingerprint,
+      phone,
+      meta: { order_id: created.id, score: assessment.score, signals: assessment.signals },
+    });
+
+
+
     // 2) Persist OTP in Supabase.
     const code = generateOtp();
     const codeHash = await sha256Hex(`${code}:${phone}`);
