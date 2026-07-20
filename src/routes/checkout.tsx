@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { submitPendingOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
 import { getPublicPoliceStations } from "@/lib/steadfast.functions";
+import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
+import { useCustomerSession } from "@/lib/customer-session";
 import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
 import { toast } from "sonner";
 
@@ -108,6 +110,28 @@ function CheckoutPage() {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
   }, [form]);
+
+  // Autofill from the customer's most recent order if signed in.
+  const { phone: sessionPhone } = useCustomerSession();
+  const lastOrderFn = useServerFn(getLastOrderByPhone);
+  const lastOrderQ = useQuery({
+    queryKey: ["checkout", "last-order", sessionPhone],
+    enabled: !!sessionPhone,
+    queryFn: () => lastOrderFn({ data: { phone: sessionPhone! } }),
+    staleTime: 10 * 60_000,
+  });
+  useEffect(() => {
+    const b = lastOrderQ.data?.billing;
+    if (!b) return;
+    setForm((f) => ({
+      name: f.name || b.name || "",
+      phone: f.phone || b.phone || sessionPhone || "",
+      email: f.email || b.email || "",
+      address: f.address || b.address || "",
+      thana: f.thana || b.thana || "",
+      notes: f.notes || "",
+    }));
+  }, [lastOrderQ.data, sessionPhone]);
 
   const update = (patch: Partial<FormData>) => {
     setForm((f) => ({ ...f, ...patch }));
