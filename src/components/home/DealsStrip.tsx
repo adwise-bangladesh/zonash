@@ -47,9 +47,9 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                   to="/products/$slug"
                   params={{ slug: p.slug }}
                   preload="intent"
-                  className="flex w-[84px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[96px]"
+                  className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
                 >
-                  <div className="relative h-[84px] w-[84px] shrink-0 overflow-hidden bg-surface-muted md:h-[96px] md:w-[96px]">
+                  <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
                     {p.images[0] ? (
                       <img
                         src={p.images[0].src}
@@ -59,12 +59,12 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                       />
                     ) : (
                       <div className="absolute inset-0 grid place-items-center text-muted-foreground/40">
-                        <Gem className="h-5 w-5" />
+                        <Gem className="h-4 w-4" />
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-1 items-center justify-center bg-white px-1 py-2">
-                    <p className="text-center text-[14px] font-extrabold leading-none text-primary">
+                  <div className="flex flex-1 items-center justify-center bg-white px-1 py-1.5">
+                    <p className="text-center text-[11px] font-extrabold leading-none text-primary md:text-[13px]">
                       {formatBDT(price)}
                     </p>
                   </div>

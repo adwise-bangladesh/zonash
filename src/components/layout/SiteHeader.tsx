@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, Heart, X, Clock } from "lucide-react";
+import { Search, ShoppingBag, User, X, Clock } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
 
@@ -68,13 +68,6 @@ export function SiteHeader() {
           >
             {open ? <X className="h-[18px] w-[18px]" /> : <Search className="h-[18px] w-[18px]" />}
           </button>
-          <Link
-            to="/products"
-            aria-label="Wishlist"
-            className="grid h-9 w-9 place-items-center rounded-full text-foreground/80 transition-colors hover:bg-primary/[0.06] hover:text-primary md:h-10 md:w-10"
-          >
-            <Heart className="h-[18px] w-[18px]" />
-          </Link>
           <Link
             to="/auth"
             aria-label="Account"

@@ -46,10 +46,10 @@ function BigCard({ p }: { p: WooProduct }) {
             {soldish > 0 && <span>{soldish}+ sold</span>}
           </p>
         )}
-        <div className="mt-0.5 flex items-baseline gap-2">
-          <span className="text-lg font-extrabold leading-none text-primary">{formatBDT(price)}</span>
+        <div className="mt-0.5 flex items-baseline gap-1.5">
+          <span className="text-[13px] font-extrabold leading-none text-primary md:text-[15px]">{formatBDT(price)}</span>
           {p.on_sale && p.regular_price && (
-            <span className="text-[11px] text-muted-foreground line-through">
+            <span className="text-[10px] text-muted-foreground line-through">
               {formatBDT(p.regular_price)}
             </span>
           )}
