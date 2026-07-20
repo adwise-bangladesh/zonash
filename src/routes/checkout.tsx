@@ -159,19 +159,25 @@ function CheckoutPage() {
   );
   const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
   const shipping = items.length === 0 ? 0 : insideDhaka ? 80 : 130;
-  const discount = useMemo(() => (coupon ? Math.min(coupon.discount, subtotal) : 0), [coupon, subtotal]);
-  const total = Math.max(0, subtotal - discount) + shipping;
+
+  const coupon = useMemo(() => {
+    if (!couponCode) return null;
+    const c = COUPONS[couponCode];
+    if (!c) return null;
+    const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
+    return { code: couponCode, discount: Math.min(value, subtotal) };
+  }, [couponCode, subtotal]);
+  const discount = coupon?.discount ?? 0;
+  const total = useMemo(() => Math.max(0, subtotal - discount) + shipping, [subtotal, discount, shipping]);
 
   const applyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
-    const c = COUPONS[code];
-    if (!c) { setCouponError("Invalid coupon code"); setCoupon(null); return; }
-    const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
-    setCoupon({ code, discount: value });
+    if (!COUPONS[code]) { setCouponError("Invalid coupon code"); setCouponCode(null); return; }
+    setCouponCode(code);
     setCouponError(null);
   };
-  const removeCoupon = () => { setCoupon(null); setCouponInput(""); setCouponError(null); };
+  const removeCoupon = () => { setCouponCode(null); setCouponInput(""); setCouponError(null); };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
