@@ -108,7 +108,10 @@ function CheckoutPage() {
     window.scrollTo(0, 0);
   }, []);
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
+    const t = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
+    }, 250);
+    return () => clearTimeout(t);
   }, [form]);
 
   // Autofill from the customer's most recent order if signed in.
