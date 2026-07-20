@@ -220,10 +220,9 @@ function VerifyOtpPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-md pb-[env(safe-area-inset-bottom)]">
-          <SupportFooter label="Didn't get the code?" />
+          <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
+            <SupportFooter label="Didn't get the code?" />
+          </div>
         </div>
       </main>
     </div>
