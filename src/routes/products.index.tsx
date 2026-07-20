@@ -11,6 +11,8 @@ import type { WooProduct } from "@/lib/woo.server";
 const searchSchema = z.object({
   category: z.string().optional(),
   q: z.string().optional(),
+  featured: z.boolean().optional(),
+  orderby: z.enum(["date", "price", "popularity", "rating", "title"]).optional(),
 });
 
 const productsQuery = (page: number, search: string, category: string | undefined) =>
