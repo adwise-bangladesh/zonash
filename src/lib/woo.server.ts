@@ -42,12 +42,13 @@ const EDGE_CACHE_ORIGIN = "https://woo-cache.internal";
 
 function getEdgeCache(): Cache | null {
   try {
-    const c = (globalThis as unknown as { caches?: CacheStorage }).caches;
+    const c = (globalThis as unknown as { caches?: { default?: Cache } }).caches;
     return c?.default ?? null;
   } catch {
     return null;
   }
 }
+
 
 function cacheGet(key: string): unknown | undefined {
   const e = getCache.get(key);
