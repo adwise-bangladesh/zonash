@@ -47,8 +47,6 @@ function OrderReviewPage() {
       <CheckoutHeader title="Order under review" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-amber-400/15 blur-3xl" />
-
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <FlowIcon variant="warn" />
 

@@ -7,7 +7,7 @@ import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   order: z.coerce.number().int().positive(),
-  number: z.string().optional(),
+  number: z.coerce.string().optional(),
 });
 
 export const Route = createFileRoute("/order-pending")({
@@ -28,8 +28,6 @@ function OrderPendingPage() {
       <CheckoutHeader title="Order pending" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <FlowIcon variant="static" icon={PhoneCall} />
 

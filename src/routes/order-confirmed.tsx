@@ -8,7 +8,7 @@ import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
-  number: z.string().optional(),
+  number: z.coerce.string().optional(),
   total: z.string().optional(),
 });
 
@@ -30,14 +30,6 @@ function Confirmed() {
       <CheckoutHeader title="Order confirmed" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-6 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-
-        {/* floating sparkles */}
-        <span aria-hidden className="pointer-events-none absolute left-8 top-24 h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
-        <span aria-hidden className="pointer-events-none absolute right-10 top-32 h-1 w-1 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
-        <span aria-hidden className="pointer-events-none absolute left-14 top-48 h-1 w-1 rounded-full bg-primary/40 animate-pulse [animation-delay:900ms]" />
-        <span aria-hidden className="pointer-events-none absolute right-16 top-56 h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:400ms]" />
-
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <FlowIcon variant="check" />
 

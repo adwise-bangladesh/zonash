@@ -1,13 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 
 /**
- * Unified icon frame used across the storefront verification flow
- * (OTP, callback choice, pending, confirmed, review). All five pages
- * share the exact same container so the flow feels like one app.
- *
- * - `variant="static"` renders a plain lucide icon (OTP / callback / pending)
- * - `variant="check"`  renders the animated success checkmark (thank-you page)
- * - `variant="warn"`   renders the animated warning glyph (review page)
+ * Unified simple animated brand icon used across the order verification flow.
+ * No frames, fills, glows, or background shapes — only the icon itself.
  */
 type Props =
   | { variant: "static"; icon: LucideIcon }
@@ -16,26 +11,19 @@ type Props =
 
 export function FlowIcon(props: Props) {
   return (
-    <div className="relative mx-auto mb-6 h-24 w-24">
-      {/* soft outer aura */}
-      <span
-        aria-hidden
-        className="absolute -inset-3 rounded-[36px] bg-primary/10 blur-2xl"
-      />
-      <div className="relative grid h-24 w-24 place-items-center rounded-[28px] bg-gradient-to-br from-primary via-primary to-primary/75 text-primary-foreground shadow-[0_18px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-primary/20 animate-in zoom-in-50 duration-500">
-        {props.variant === "static" && (
-          <props.icon className="h-11 w-11" strokeWidth={1.7} aria-hidden />
-        )}
-        {props.variant === "check" && <CheckAnim />}
-        {props.variant === "warn" && <WarnAnim />}
-      </div>
+    <div className="relative mx-auto mb-6 grid h-24 w-24 place-items-center text-primary animate-in zoom-in-95 fade-in duration-500">
+      {props.variant === "static" && (
+        <props.icon className="h-16 w-16 animate-[flowIconFloat_2.4s_ease-in-out_infinite]" strokeWidth={1.55} aria-hidden />
+      )}
+      {props.variant === "check" && <CheckAnim />}
+      {props.variant === "warn" && <WarnAnim />}
     </div>
   );
 }
 
 function CheckAnim() {
   return (
-    <svg viewBox="0 0 48 48" className="h-12 w-12" aria-hidden>
+    <svg viewBox="0 0 48 48" className="h-20 w-20" aria-hidden>
       <circle
         cx="24"
         cy="24"
@@ -69,7 +57,7 @@ function CheckAnim() {
 
 function WarnAnim() {
   return (
-    <svg viewBox="0 0 48 48" className="h-12 w-12" aria-hidden>
+    <svg viewBox="0 0 48 48" className="h-20 w-20" aria-hidden>
       <path
         d="M24 8 L42 39 L6 39 Z"
         fill="none"
