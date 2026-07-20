@@ -445,8 +445,12 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         .join(", ")}`;
     }
 
-    // Update Woo. Try "confirmed" first; if it fails, fall back to processing.
-    const wantedStatus = decision === "confirmed" ? "confirmed" : "on-hold";
+    // Persist decision meta on Woo. Status change is deferred:
+    //   - review    → apply on-hold now (with fallback).
+    //   - confirmed → KEEP order as `pending` until the customer chooses
+    //                 whether they want a confirmation call. That final step
+    //                 happens in `finalizeOrderChoice` below.
+    const wantedStatus = decision === "confirmed" ? "pending" : "on-hold";
     let appliedStatus = wantedStatus;
     try {
       await wooFetch({
@@ -461,36 +465,14 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
             { key: "_zonash_decision_reason", value: decisionReason },
             { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
             { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
+            { key: "_zonash_awaiting_call_choice", value: decision === "confirmed" ? "1" : "0" },
           ],
         },
         timeoutMs: 12_000,
       });
     } catch (e) {
       console.error(`Woo PUT ${wantedStatus} failed — falling back`, e);
-      // Fallback: "confirmed" may not be a registered status in Woo. Use
-      // processing (for confirmed) or on-hold (already valid) as safe defaults.
-      appliedStatus = decision === "confirmed" ? "processing" : "on-hold";
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}`,
-          method: "PUT",
-          body: {
-            status: appliedStatus,
-            meta_data: [
-              { key: "_zonash_otp_state", value: "verified" },
-              { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
-              { key: "_zonash_decision", value: decision },
-              { key: "_zonash_decision_reason", value: decisionReason },
-              { key: "_zonash_status_fallback", value: `${wantedStatus}->${appliedStatus}` },
-              { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
-              { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
-            ],
-          },
-          timeoutMs: 12_000,
-        });
-      } catch (e2) {
-        console.error("Woo status fallback also failed", e2);
-      }
+      appliedStatus = decision === "confirmed" ? "pending" : "on-hold";
     }
 
     // Private note audit trail.
