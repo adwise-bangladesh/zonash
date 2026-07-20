@@ -32,7 +32,15 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  if (hydrated && items.length === 0) {
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-muted/30">
+        <CheckoutHeader title="My Bag" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
         <CheckoutHeader title="My Bag" />
