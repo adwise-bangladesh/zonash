@@ -9,6 +9,7 @@ export function ThanaCombobox({
   value,
   onChange,
   options,
+  grouped,
   loading,
   recent = [],
   className = "",
@@ -17,6 +18,7 @@ export function ThanaCombobox({
   value: string;
   onChange: (v: string) => void;
   options: string[];
+  grouped?: Record<string, string[]>;
   loading: boolean;
   recent?: string[];
   className?: string;
@@ -35,21 +37,30 @@ export function ThanaCombobox({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const filtered = useMemo(() => {
+  const hasGroups = !!grouped && Object.keys(grouped).length > 0;
+
+  const filteredFlat = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const src = options ?? [];
-    if (!needle) return src.slice(0, 100);
-    return src.filter((s) => s.toLowerCase().includes(needle)).slice(0, 100);
+    if (!needle) return src.slice(0, 200);
+    return src.filter((s) => s.toLowerCase().includes(needle)).slice(0, 200);
   }, [q, options]);
 
-  // Show current value in the list even if the fetched options haven't loaded yet.
-  const showValueMissing = value && !options.includes(value);
+  const filteredGroups = useMemo(() => {
+    if (!hasGroups) return [] as Array<[string, string[]]>;
+    const needle = q.trim().toLowerCase();
+    const entries = Object.entries(grouped!).sort(([a], [b]) => a.localeCompare(b));
+    if (!needle) return entries;
+    return entries
+      .map(([d, list]) => [d, list.filter((s) => s.toLowerCase().includes(needle))] as [string, string[]])
+      .filter(([, list]) => list.length > 0);
+  }, [q, grouped, hasGroups]);
 
-  const placeholder = loading
-    ? "Loading thanas…"
-    : options.length > 0
-      ? `Select thana — ${options.length} stations`
-      : "Thana";
+  // Show current value in the list even if the fetched options haven't loaded yet.
+  const showValueMissing = value && !(options ?? []).includes(value);
+
+  const placeholder = loading ? "Loading thanas…" : "Select thana";
+
 
   const btnCls =
     buttonClassName ??
