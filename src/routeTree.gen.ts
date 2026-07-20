@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
+import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CartRouteImport } from './routes/cart'
@@ -40,6 +41,11 @@ const SupportRoute = SupportRouteImport.update({
 const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
   id: '/order-confirmed',
   path: '/order-confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LuxuryRoute = LuxuryRouteImport.update({
+  id: '/luxury',
+  path: '/luxury',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutRoute = CheckoutRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
+  '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
+  '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
+  '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/checkout'
+    | '/luxury'
     | '/order-confirmed'
     | '/support'
     | '/admin'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/checkout'
+    | '/luxury'
     | '/order-confirmed'
     | '/support'
     | '/products/$slug'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/checkout'
+    | '/luxury'
     | '/order-confirmed'
     | '/support'
     | '/_authenticated/admin'
@@ -298,6 +310,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   CategoriesRoute: typeof CategoriesRoute
   CheckoutRoute: typeof CheckoutRoute
+  LuxuryRoute: typeof LuxuryRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
   SupportRoute: typeof SupportRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/order-confirmed'
       fullPath: '/order-confirmed'
       preLoaderRoute: typeof OrderConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/luxury': {
+      id: '/luxury'
+      path: '/luxury'
+      fullPath: '/luxury'
+      preLoaderRoute: typeof LuxuryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout': {
@@ -513,6 +533,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   CategoriesRoute: CategoriesRoute,
   CheckoutRoute: CheckoutRoute,
+  LuxuryRoute: LuxuryRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
   SupportRoute: SupportRoute,
   ProductsSlugRoute: ProductsSlugRoute,
