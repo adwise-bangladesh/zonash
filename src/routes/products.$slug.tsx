@@ -271,11 +271,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const matchedVariation: WooVariation | null = useMemo(() => {
     if (!isVariable || variations.length === 0) return null;
-    return (
-      variations.find((v) =>
-        v.attributes.every((a) => (selected[a.name] ?? "") === a.option),
-      ) ?? null
-    );
+    return variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ?? null;
   }, [isVariable, variations, selected]);
 
   // Which options are valid given the currently-selected other attributes.
@@ -486,7 +482,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     )}
                   </div>
                 ))}
-
               </div>
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
@@ -745,7 +740,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <InfiniteFeed />
         </div>
       </div>
-
 
       {/* Mobile sticky action bar */}
       <div
