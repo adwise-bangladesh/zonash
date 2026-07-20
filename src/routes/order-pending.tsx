@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { PhoneCall, Clock } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   order: z.coerce.number().int().positive(),
@@ -30,27 +31,7 @@ function OrderPendingPage() {
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          {/* Animated call illustration */}
-          <div className="relative mx-auto mb-6 h-28 w-28">
-            <svg viewBox="0 0 112 112" className="h-28 w-28">
-              <defs>
-                <linearGradient id="pendGrad" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
-                </linearGradient>
-              </defs>
-              <circle cx="56" cy="56" r="52" fill="url(#pendGrad)">
-                <animate attributeName="r" values="46;54;46" dur="2.4s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="56" cy="56" r="40" fill="hsl(var(--primary) / 0.18)">
-                <animate attributeName="r" values="36;42;36" dur="2.4s" repeatCount="indefinite" begin="0.4s" />
-              </circle>
-              <circle cx="56" cy="56" r="30" fill="hsl(var(--primary) / 0.25)" />
-            </svg>
-            <span className="absolute inset-0 grid place-items-center">
-              <PhoneCall className="h-10 w-10 text-primary animate-[wiggle_1.2s_ease-in-out_infinite]" />
-            </span>
-          </div>
+          <FlowIcon variant="static" icon={PhoneCall} />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Call verification required</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -77,17 +58,12 @@ function OrderPendingPage() {
             Continue shopping
           </Link>
           <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter label="Need to speak to us now?" />
+            <SupportFooter
+              label="Need to speak to us now?"
+              waMessage={buildSupportMessage({
+                page: "Order pending",
+                orderNumber: number ?? order,
+                extra: "I'd like to confirm my order sooner.",
+              })}
+            />
           </div>
-        </div>
-      </main>
-
-      <style>{`
-        @keyframes wiggle {
-          0%,100% { transform: rotate(-8deg); }
-          50% { transform: rotate(8deg); }
-        }
-      `}</style>
-    </div>
-  );
-}

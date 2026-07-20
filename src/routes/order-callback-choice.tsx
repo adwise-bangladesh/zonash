@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Phone, PhoneOff, Loader2, BadgeCheck } from "lucide-react";
+import { Phone, PhoneOff, Loader2, ShieldCheck } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
@@ -60,11 +61,7 @@ function CallbackChoicePage() {
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <div className="relative mx-auto mb-5 grid h-24 w-24 place-items-center">
-            <span className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
-            <span className="absolute inset-3 rounded-full bg-primary/15" />
-            <BadgeCheck className="relative h-12 w-12 text-primary drop-shadow animate-in zoom-in-50 duration-500" />
-          </div>
+          <FlowIcon variant="static" icon={ShieldCheck} />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Verification complete</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -120,7 +117,13 @@ function CallbackChoicePage() {
             Cash on Delivery · Pay only when the parcel arrives.
           </p>
           <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter />
+            <SupportFooter
+              waMessage={buildSupportMessage({
+                page: "Callback choice",
+                orderNumber: number ?? order,
+                extra: "I'm deciding between a call-back and confirming now.",
+              })}
+            />
           </div>
         </div>
       </main>
