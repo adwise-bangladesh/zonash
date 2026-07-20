@@ -45,7 +45,7 @@ function CallbackChoicePage() {
         return;
       }
       if (res.decision === "confirmed") {
-        navigate({ to: "/order-confirmed", search: { number: number ?? String(order), total: "" } as never });
+        navigate({ to: "/order-confirmed", search: { id: order, number: number ?? String(order), total: "" } as never });
       } else {
         navigate({ to: "/order-pending", search: { order, number: number ?? String(order) } as never });
       }
