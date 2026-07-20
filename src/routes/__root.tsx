@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { GpsGate } from "@/components/GpsGate";
 
 function NotFoundComponent() {
   return (
@@ -147,6 +148,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
+        <GpsGate />
         <Outlet />
         <MobileBottomNav />
         <Toaster richColors position="top-right" />
