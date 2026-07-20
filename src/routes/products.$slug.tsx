@@ -345,11 +345,6 @@ function ProductPage() {
                   </div>
                 ))}
               </div>
-              {discount > 0 && (
-                <span className="absolute left-3 top-14 rounded-[3px] bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-lg md:top-3">
-                  -{discount}%
-                </span>
-              )}
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
                   {gallery.map((_: string, i: number) => (
