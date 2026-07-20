@@ -58,7 +58,9 @@ export function ProductCard({ p }: { p: WooProduct }) {
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground sm:text-xs">
             <Star className="h-3 w-3 fill-warning text-warning" aria-hidden="true" />
             <span className="font-medium text-foreground">{rating.toFixed(1)}</span>
-            {p.rating_count > 0 && <span className="text-muted-foreground/70">({p.rating_count})</span>}
+            {p.rating_count > 0 && (
+              <span className="text-muted-foreground/70">({p.rating_count})</span>
+            )}
           </div>
         )}
       </div>
