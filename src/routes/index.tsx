@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { listProducts, listCategories } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { HomeSearchBar } from "@/components/home/HomeSearchBar";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
+import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -55,6 +55,8 @@ function Home() {
         <BigProductGrid products={featured} title="Featured for you" />
         <BigProductGrid products={trending} title="Trending now" />
 
+        <InfiniteFeed />
+
         <TrustRow />
 
         {feat.error && (
@@ -63,7 +65,6 @@ function Home() {
           </div>
         )}
       </main>
-      <SiteFooter />
     </div>
   );
 }
