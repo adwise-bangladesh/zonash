@@ -34,6 +34,7 @@ export function PromoIcons() {
             <Link
               key={label}
               to={to}
+              params={promoParams[label] as never}
               search={search as never}
               className="group flex flex-col items-center gap-2"
             >
