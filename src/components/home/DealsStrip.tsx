@@ -6,7 +6,7 @@ import type { WooProduct } from "@/lib/woo.server";
 export function DealsStrip({ products }: { products: WooProduct[] }) {
   if (!products.length) return null;
   return (
-    <section aria-label="Mega Deals" className="bg-background pb-3">
+    <section aria-label="Mega Deals" className="pb-3">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:container-page md:p-3">
         <div className="flex items-stretch gap-2.5">
           {/* Left banner */}
