@@ -105,7 +105,19 @@ function CartPage() {
                     </button>
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-1.5">
-                    <span className="text-sm font-bold text-primary">{formatBDT(lineTotal)}</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
+                      {hasOld ? (
+                        <>
+                          <span className="text-[11px] text-muted-foreground line-through tabular-nums">
+                            {formatBDT(lineOld)}
+                          </span>
+                          <span className="rounded-[2px] bg-destructive/10 px-1 py-[1px] text-[9px] font-bold text-destructive">
+                            -{pct}%
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
                     <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
                       <button
                         type="button"
@@ -154,6 +166,12 @@ function CartPage() {
               <dt className="text-muted-foreground">Subtotal</dt>
               <dd className="font-medium tabular-nums">{formatBDT(subtotal)}</dd>
             </div>
+            {savings > 0 ? (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">You save</dt>
+                <dd className="font-semibold tabular-nums text-destructive">−{formatBDT(savings)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Delivery Charge</dt>
               <dd className="text-[12px] font-medium text-muted-foreground">Calculated at checkout</dd>
@@ -164,6 +182,12 @@ function CartPage() {
             </div>
           </dl>
         </details>
+
+        {savings > 0 ? (
+          <p className="mt-2 text-center text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+            🎉 You&apos;re saving {formatBDT(savings)} on this order
+          </p>
+        ) : null}
 
         <div className="h-4" />
       </div>
