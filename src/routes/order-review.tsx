@@ -101,10 +101,9 @@ function OrderReviewPage() {
           >
             Back to home
           </Link>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-md pb-[env(safe-area-inset-bottom)]">
-          <SupportFooter label="Talk to our team" />
+          <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
+            <SupportFooter label="Talk to our team" />
+          </div>
         </div>
       </main>
     </div>
