@@ -82,6 +82,7 @@ function splitName(full: string): { first: string; last: string } {
 
 function CheckoutPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { items, subtotal, clear, hydrated, setQty, remove } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
 
