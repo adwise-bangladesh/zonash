@@ -48,17 +48,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     items,
     count: items.reduce((s, i) => s + i.quantity, 0),
     subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
+    hydrated,
     add: (item, qty = 1) => setItems((cur) => {
       const found = cur.find((i) => i.productId === item.productId);
-      if (found) return cur.map((i) => i.productId === item.productId ? { ...i, quantity: i.quantity + qty } : i);
-      return [...cur, { ...item, quantity: qty }];
+      if (found) return cur.map((i) => i.productId === item.productId
+        ? { ...i, quantity: clampQty(i.quantity + qty) }
+        : i);
+      return [...cur, { ...item, quantity: clampQty(qty || 1) }];
     }),
     remove: (id) => setItems((cur) => cur.filter((i) => i.productId !== id)),
-    setQty: (id, qty) => setItems((cur) => qty <= 0
-      ? cur.filter((i) => i.productId !== id)
-      : cur.map((i) => i.productId === id ? { ...i, quantity: qty } : i)),
+    setQty: (id, qty) => setItems((cur) => {
+      const next = clampQty(qty);
+      return next <= 0
+        ? cur.filter((i) => i.productId !== id)
+        : cur.map((i) => i.productId === id ? { ...i, quantity: next } : i);
+    }),
     clear: () => setItems([]),
-  }), [items]);
+  }), [items, hydrated]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
