@@ -451,22 +451,34 @@ function ProductPage() {
               <h1 className="mt-2 text-[15px] font-semibold leading-snug md:text-xl">{p.name}</h1>
             </div>
 
-            {/* Highlights — premium collapsible card (closed by default) */}
+            {/* Highlights — show 2 lines, expand with chevron */}
             {highlights.length > 0 && (
               <div className="p-3 md:px-0 md:pt-4">
-                <details className="group relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
+                <div className="relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
                   <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3">
+                  <div className="flex items-center justify-between gap-2 px-3 pt-3">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
                         Product highlights
                       </span>
                     </span>
-                    <ChevronDown className="h-4 w-4 text-primary transition-transform group-open:rotate-180" />
-                  </summary>
-                  <ul className="grid gap-1.5 px-3 pb-3">
-                    {highlights.map((line, i) => (
+                    {highlights.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setHighlightsOpen((v) => !v)}
+                        aria-label={highlightsOpen ? "Show less" : "Show more"}
+                        aria-expanded={highlightsOpen}
+                        className="grid h-6 w-6 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                  <ul className="grid gap-1.5 px-3 pb-3 pt-2">
+                    {(highlightsOpen ? highlights : highlights.slice(0, 2)).map((line, i) => (
                       <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
                         <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
                           <Check className="h-2.5 w-2.5" strokeWidth={3} />
@@ -475,7 +487,7 @@ function ProductPage() {
                       </li>
                     ))}
                   </ul>
-                </details>
+                </div>
               </div>
             )}
 
