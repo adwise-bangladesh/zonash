@@ -119,6 +119,21 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         ? [{ name: "Discount", total: (-Math.abs(data.discount)).toFixed(2) }]
         : [];
 
+    // WooCommerce rejects empty-string emails with rest_invalid_email.
+    // Only include the email key when the customer actually provided one.
+    const billingPayload: Record<string, unknown> = {
+      first_name: data.billing.first_name,
+      last_name: data.billing.last_name,
+      phone,
+      address_1: data.billing.address_1,
+      address_2: data.billing.address_2,
+      city: data.billing.city,
+      country: data.billing.country,
+    };
+    if (data.billing.email && data.billing.email.trim()) {
+      billingPayload.email = data.billing.email.trim();
+    }
+
     let created: { id: number; number: string; total: string; currency: string };
     try {
       const { wooFetch } = await import("./woo.server");
@@ -130,7 +145,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           payment_method: "cod",
           payment_method_title: "Cash on Delivery",
           set_paid: false,
-          billing: { ...data.billing, phone },
+          billing: billingPayload,
           shipping: {
             first_name: data.billing.first_name,
             last_name: data.billing.last_name,
