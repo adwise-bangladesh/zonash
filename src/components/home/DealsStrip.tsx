@@ -34,23 +34,35 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
         <div className="flex items-stretch gap-2">
           {/* Left banner — matches product card size */}
-          <div className="relative flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary to-[#5a0405] text-white shadow-sm md:w-[84px]">
-            <div
+          <div className="relative w-[58px] shrink-0 overflow-hidden rounded-lg shadow-sm ring-1 ring-white/20 md:w-[84px]">
+            <div aria-hidden="true" className="mega-aurora absolute inset-0" />
+            <div aria-hidden="true" className="mega-shine absolute inset-0 overflow-hidden" />
+            <span
               aria-hidden="true"
-              className="pointer-events-none absolute -right-3 -top-3 h-10 w-10 rounded-full bg-amber-300/25 blur-xl"
+              className="mega-spark absolute left-1.5 top-1.5 h-1 w-1 rounded-full bg-white/80"
+            />
+            <span
+              aria-hidden="true"
+              className="mega-spark absolute right-2 top-3 h-[3px] w-[3px] rounded-full bg-amber-200"
+              style={{ animationDelay: "0.6s" }}
+            />
+            <span
+              aria-hidden="true"
+              className="mega-spark absolute bottom-3 left-3 h-[2px] w-[2px] rounded-full bg-white"
+              style={{ animationDelay: "1.1s" }}
             />
             <Link
               to="/products"
               search={{ orderby: "popularity" }}
-              className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5"
+              className="relative flex h-full min-h-[104px] flex-col items-center justify-center gap-1 px-1 py-2 md:min-h-[140px]"
             >
-              <Flame className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
-              <p className="text-center font-display text-[11px] font-extrabold leading-[1.05] text-white md:text-[13px]">
+              <Flame className="flame-flicker h-4 w-4 text-amber-200 md:h-5 md:w-5" />
+              <p className="text-center font-display text-[11px] font-black uppercase tracking-[0.14em] leading-[1.05] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] md:text-[13px]">
                 Mega
                 <br />
                 Sale
               </p>
-              <p className="rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
+              <p className="rounded-sm bg-black/25 px-1.5 py-[2px] font-mono text-[9px] font-bold tabular-nums leading-none text-white ring-1 ring-white/20 backdrop-blur-[2px] md:text-[10px]">
                 {timer}
               </p>
             </Link>
