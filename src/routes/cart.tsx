@@ -258,7 +258,7 @@ function CartPage() {
           >
             <span className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]" />
             <Lock className="h-4 w-4" aria-hidden="true" />
-            Checkout · {formatBDT(subtotal)}
+            Checkout · {formatBDT(grandTotal)}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
