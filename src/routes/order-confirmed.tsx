@@ -98,10 +98,9 @@ function Confirmed() {
               Back to home
             </Link>
           </div>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-md pb-[env(safe-area-inset-bottom)]">
-          <SupportFooter />
+          <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
+            <SupportFooter />
+          </div>
         </div>
       </main>
     </div>
