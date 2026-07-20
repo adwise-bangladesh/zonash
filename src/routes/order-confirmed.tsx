@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { PackageCheck } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   id: z.number().optional(),
