@@ -14,11 +14,15 @@ type CartContextValue = {
   items: CartItem[];
   count: number;
   subtotal: number;
+  hydrated: boolean;
   add: (item: Omit<CartItem, "quantity">, qty?: number) => void;
   remove: (productId: number) => void;
   setQty: (productId: number, qty: number) => void;
   clear: () => void;
 };
+
+const MAX_QTY = 99;
+const clampQty = (n: number) => Math.max(0, Math.min(MAX_QTY, Math.floor(n) || 0));
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "zonash.cart.v1";
