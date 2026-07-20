@@ -97,7 +97,7 @@ export type WooProduct = {
   variations?: number[];
   attributes?: { id: number; name: string; slug?: string; option?: string; options?: string[]; variation?: boolean; visible?: boolean }[];
   default_attributes?: { id: number; name: string; option: string }[];
-  meta_data?: { id?: number; key: string; value: unknown }[];
+  meta_data?: { id?: number; key: string; value: string | number | boolean | null }[];
   average_rating: string;
   rating_count: number;
 };
