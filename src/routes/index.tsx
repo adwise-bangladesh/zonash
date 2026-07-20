@@ -46,7 +46,7 @@ function Home() {
       <AppHeader />
       <main>
         <div className="bg-background">
-          <HomeSearchBar />
+          
           <CategoryTabs categories={categories} />
           <PromoIcons />
           <DealsStrip products={trending.length ? trending : featured} />
