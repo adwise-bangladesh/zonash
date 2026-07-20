@@ -215,17 +215,80 @@ async function computeServerShipping(thana: string): Promise<{ amount: number; l
   }
 }
 
-function resolveCouponDiscount(code: string | undefined, subtotal: number): {
-  code: string | null;
-  discount: number;
-} {
+/**
+ * Resolve a coupon against caps. Returns discount=0 (and reason) when the
+ * global `max_uses` or per-phone `max_per_phone` cap is already reached.
+ * Counting is done against `coupon_usage`, which we insert into after every
+ * successful order — so this reflects actual redemptions, not just Woo state.
+ */
+async function resolveCouponDiscount(
+  code: string | undefined,
+  subtotal: number,
+  phone: string,
+): Promise<{ code: string | null; discount: number; reason?: string }> {
   if (!code) return { code: null, discount: 0 };
   const key = code.trim().toUpperCase();
   const c = SERVER_COUPONS[key];
-  if (!c || subtotal <= 0) return { code: null, discount: 0 };
+  if (!c || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (c.max_uses != null) {
+      const { count } = await supabaseAdmin
+        .from("coupon_usage" as never)
+        .select("id", { head: true, count: "exact" })
+        .eq("coupon_code", key);
+      if ((count ?? 0) >= c.max_uses) {
+        return { code: null, discount: 0, reason: "max_uses_reached" };
+      }
+    }
+    if (c.max_per_phone != null && phone) {
+      const { count } = await supabaseAdmin
+        .from("coupon_usage" as never)
+        .select("id", { head: true, count: "exact" })
+        .eq("coupon_code", key)
+        .eq("phone", phone);
+      if ((count ?? 0) >= c.max_per_phone) {
+        return { code: null, discount: 0, reason: "max_per_phone_reached" };
+      }
+    }
+  } catch (e) {
+    // Fail-closed on caps: if we can't verify, don't grant the discount.
+    console.error("resolveCouponDiscount cap check failed:", (e as Error).message);
+    return { code: null, discount: 0, reason: "cap_check_failed" };
+  }
+
   const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
   return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
 }
+
+/**
+ * Count how many OTP SMS have been sent to this phone in the last 24h,
+ * by summing `send_count` across all `order_otps` rows whose most recent
+ * send falls in the window. Fail-open (0) on DB errors so infra issues
+ * don't block real customers.
+ */
+async function smsSendsLast24h(phone: string): Promise<number> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("order_otps" as never)
+      .select("send_count")
+      .eq("phone", phone)
+      .gte("last_sent_at", since);
+    if (error) return 0;
+    return ((data ?? []) as { send_count: number }[]).reduce(
+      (s, r) => s + (r.send_count || 0),
+      0,
+    );
+  } catch {
+    return 0;
+  }
+}
+
+
 
 
 // ---------- submitPendingOrder ----------
