@@ -355,10 +355,12 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // resolve the discount against our own coupon table. Any tampered
     // `data.discount` or unknown `data.coupon_code` is discarded here.
     const serverSubtotal = await computeServerSubtotal(data.items);
-    const { code: validCoupon, discount: validDiscount } = resolveCouponDiscount(
+    const { code: validCoupon, discount: validDiscount } = await resolveCouponDiscount(
       data.coupon_code,
       serverSubtotal,
+      phone,
     );
+
     const serverShipping = await computeServerShipping(data.billing.city);
     const serverGrandTotal = Math.max(0, serverSubtotal - validDiscount) + serverShipping.amount;
 
