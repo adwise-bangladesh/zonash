@@ -38,125 +38,122 @@ export const getSteadfastStatus = createServerFn({ method: "GET" })
   });
 
 // -----------------------------------------------------------------------------
-// Police stations (thana list) — cached at the client via React Query.
+// Police stations (thana list) — shared extractor + module-level memo so the
+// count is deterministic across every caller (checkout, POS, order drawer).
 // -----------------------------------------------------------------------------
+
+type PoliceCache = { items: string[]; dhakaCity: string[]; grouped: Record<string, string[]> };
+// Module-scope memo — Workers reuse the module across warm invocations, so the
+// list stays stable for a session. TTL prevents infinite staleness.
+let _policeCache: { at: number; value: PoliceCache } | null = null;
+const POLICE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+function nameOf(p: unknown): string {
+  if (typeof p === "string") return p.trim();
+  if (p && typeof p === "object") {
+    const o = p as Record<string, unknown>;
+    const v = o.name ?? o.police_station ?? o.policestation ?? o.thana;
+    return typeof v === "string" ? v.trim() : "";
+  }
+  return "";
+}
+
+async function loadPoliceStations(): Promise<PoliceCache> {
+  const now = Date.now();
+  if (_policeCache && now - _policeCache.at < POLICE_TTL_MS) return _policeCache.value;
+
+  const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
+  if (!steadfastConfigured()) {
+    return { items: [], dhakaCity: [], grouped: {} };
+  }
+  const res = await sfGetPoliceStations();
+  const raw: unknown =
+    (res as { data?: unknown }).data ??
+    (res as { police_stations?: unknown }).police_stations ??
+    res;
+
+  const items = new Set<string>();
+  const dhakaCity = new Set<string>();
+  const grouped: Record<string, Set<string>> = {};
+
+  const addPair = (district: string, station: string) => {
+    const s = station.trim();
+    const d = district.trim() || "Other";
+    if (!s) return;
+    items.add(s);
+    (grouped[d] ??= new Set()).add(s);
+    if (d === "Dhaka City") dhakaCity.add(s);
+  };
+
+  if (Array.isArray(raw)) {
+    for (const row of raw as Array<Record<string, unknown>>) {
+      const district =
+        typeof row?.name === "string" ? row.name : row?.id === 1 ? "Dhaka City" : "";
+      const list = (row?.policestations ?? row?.police_stations) as unknown;
+      if (Array.isArray(list)) {
+        for (const p of list) {
+          const n = nameOf(p);
+          if (n) addPair(district, n);
+        }
+      }
+    }
+  }
+
+  // Fallback: unstructured shape — walk everything.
+  if (items.size === 0) {
+    const walk = (node: unknown, districtHint = "") => {
+      if (!node) return;
+      if (Array.isArray(node)) {
+        for (const it of node) {
+          const n = nameOf(it);
+          if (n && typeof it !== "string") addPair(districtHint, n);
+          else if (typeof it === "string") addPair(districtHint, it);
+          else walk(it, districtHint);
+        }
+        return;
+      }
+      if (typeof node === "object") {
+        for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+          if (Array.isArray(v)) walk(v, districtHint || k);
+          else if (typeof v === "string" && /station|thana|name/i.test(k)) addPair(districtHint, v);
+          else walk(v, districtHint);
+        }
+      }
+    };
+    walk(raw);
+  }
+
+  const value: PoliceCache = {
+    items: Array.from(items).sort((a, b) => a.localeCompare(b)),
+    dhakaCity: Array.from(dhakaCity).sort((a, b) => a.localeCompare(b)),
+    grouped: Object.fromEntries(
+      Object.entries(grouped).map(([k, v]) => [k, Array.from(v).sort((a, b) => a.localeCompare(b))]),
+    ),
+  };
+
+  // Only memoize on a real response; empty results shouldn't lock us out.
+  if (value.items.length > 0) _policeCache = { at: now, value };
+  return value;
+}
 
 export const getPoliceStations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<{ items: string[]; grouped: Record<string, string[]> }> => {
-    const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
-    if (!steadfastConfigured()) return { items: [], grouped: {} };
     try {
-      const res = await sfGetPoliceStations();
-      // Response shape is flexible; try common variants.
-      const raw: unknown =
-        (res as { data?: unknown }).data ??
-        (res as { police_stations?: unknown }).police_stations ??
-        res;
-
-      const items = new Set<string>();
-      const grouped: Record<string, Set<string>> = {};
-
-      function addPair(city: string | undefined, station: string | undefined) {
-        const s = (station || "").toString().trim();
-        if (!s) return;
-        items.add(s);
-        const c = (city || "").toString().trim() || "Other";
-        (grouped[c] ??= new Set()).add(s);
-      }
-
-      const walk = (node: unknown, cityHint?: string) => {
-        if (!node) return;
-        if (Array.isArray(node)) {
-          for (const it of node) {
-            if (typeof it === "string") addPair(cityHint, it);
-            else walk(it, cityHint);
-          }
-          return;
-        }
-        if (typeof node === "object") {
-          for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-            if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
-              for (const s of v as string[]) addPair(k, s);
-            } else if (typeof v === "string" && /station|thana|name/i.test(k)) {
-              addPair(cityHint, v);
-            } else {
-              walk(v, cityHint || (typeof k === "string" ? k : undefined));
-            }
-          }
-        }
-      };
-      walk(raw);
-
-      const outGrouped: Record<string, string[]> = {};
-      for (const [k, v] of Object.entries(grouped)) outGrouped[k] = Array.from(v).sort();
-      return { items: Array.from(items).sort(), grouped: outGrouped };
+      const { items, grouped } = await loadPoliceStations();
+      return { items, grouped };
     } catch (e) {
       console.error("getPoliceStations failed", e);
       return { items: [], grouped: {} };
     }
   });
 
-// Public (no-auth) variant for the storefront checkout — thana list is not sensitive.
+// Public (no-auth) variant for storefront checkout.
 export const getPublicPoliceStations = createServerFn({ method: "GET" })
   .handler(async (): Promise<{ items: string[]; dhakaCity: string[] }> => {
-    const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
-    if (!steadfastConfigured()) return { items: [], dhakaCity: [] };
     try {
-      const res = await sfGetPoliceStations();
-      const raw: unknown =
-        (res as { data?: unknown }).data ??
-        (res as { police_stations?: unknown }).police_stations ??
-        res;
-
-      const items = new Set<string>();
-      const dhakaCity = new Set<string>();
-
-      const nameOf = (p: unknown): string => {
-        if (typeof p === "string") return p.trim();
-        if (p && typeof p === "object") {
-          const o = p as Record<string, unknown>;
-          const v = o.name ?? o.police_station ?? o.policestation ?? o.thana;
-          return typeof v === "string" ? v.trim() : "";
-        }
-        return "";
-      };
-      const addTo = (set: Set<string>, list: unknown) => {
-        if (!Array.isArray(list)) return;
-        for (const p of list) {
-          const n = nameOf(p);
-          if (n) set.add(n);
-        }
-      };
-
-      // Preferred: structured districts array with { id, name, policestations: [...] }
-      if (Array.isArray(raw)) {
-        for (const row of raw as Array<Record<string, unknown>>) {
-          const ps = (row?.policestations ?? row?.police_stations) as unknown;
-          addTo(items, ps);
-          if (row?.id === 1 || row?.name === "Dhaka City") addTo(dhakaCity, ps);
-        }
-      }
-
-      // Fallback walk if the shape was different.
-      if (items.size === 0) {
-        const walk = (node: unknown) => {
-          if (!node) return;
-          if (Array.isArray(node)) { for (const it of node) walk(it); return; }
-          if (typeof node === "object") {
-            for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-              if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
-                for (const s of v as string[]) { const t = s.trim(); if (t) items.add(t); }
-              } else if (typeof v === "string" && /station|thana|name/i.test(k)) {
-                const t = v.trim(); if (t) items.add(t);
-              } else walk(v);
-            }
-          }
-        };
-        walk(raw);
-      }
-
-      return { items: Array.from(items).sort(), dhakaCity: Array.from(dhakaCity).sort() };
+      const { items, dhakaCity } = await loadPoliceStations();
+      return { items, dhakaCity };
     } catch (e) {
       console.error("getPublicPoliceStations failed", e);
       return { items: [], dhakaCity: [] };
