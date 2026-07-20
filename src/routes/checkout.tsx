@@ -188,14 +188,47 @@ function CheckoutPage() {
             <input type="email" value={form.email} onChange={(e) => update({ email: e.target.value })} className={inputCls(errors.email)} autoComplete="email" />
           </Field>
           <Field label="Address" error={errors.address}>
-            <textarea rows={2} value={form.address} onChange={(e) => update({ address: e.target.value })} className={inputCls(errors.address) + " resize-none"} autoComplete="street-address" placeholder="House, road, area" />
+            <textarea
+              rows={2}
+              value={form.address}
+              onChange={(e) => update({ address: e.target.value })}
+              className={textareaCls(errors.address)}
+              autoComplete="street-address"
+              placeholder="House, road, area"
+            />
           </Field>
           <Field label="Thana" error={errors.thana}>
-            <input value={form.thana} onChange={(e) => update({ thana: e.target.value })} className={inputCls(errors.thana)} placeholder="e.g. Dhanmondi" />
+            <ThanaCombobox
+              value={form.thana}
+              onChange={(v) => update({ thana: v })}
+              options={policeQ.data?.items ?? []}
+              loading={policeQ.isLoading}
+              buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
+            />
           </Field>
-          <Field label="Notes (optional)" error={errors.notes}>
-            <textarea rows={2} value={form.notes} onChange={(e) => update({ notes: e.target.value })} className={inputCls(errors.notes) + " resize-none"} placeholder="Any delivery instruction" />
-          </Field>
+
+          {/* Notes — collapsible, closed by default */}
+          <details
+            open={notesOpen}
+            onToggle={(e) => setNotesOpen((e.target as HTMLDetailsElement).open)}
+            className="rounded-[3px] border border-dashed border-border [&[open]>summary>svg]:rotate-180"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[12px] font-medium text-muted-foreground">
+              <span>Add delivery notes (optional)</span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform" />
+            </summary>
+            <div className="border-t border-dashed border-border px-3 pb-3 pt-2">
+              <textarea
+                rows={2}
+                value={form.notes}
+                onChange={(e) => update({ notes: e.target.value })}
+                className={textareaCls(errors.notes)}
+                placeholder="Any delivery instruction"
+              />
+              {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
+            </div>
+          </details>
+
         </Section>
 
         {/* Coupon */}
