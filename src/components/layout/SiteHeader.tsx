@@ -1,21 +1,37 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, Heart } from "lucide-react";
+import { Search, ShoppingBag, User, Heart, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
 
+const QUICK = ["Rings", "Earrings", "Necklaces", "Bridal", "Under 2000 Tk"];
+
 export function SiteHeader() {
   const [q, setQ] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/";
+  const mobileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (mobileOpen) mobileInputRef.current?.focus();
+  }, [mobileOpen]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
+    setMobileOpen(false);
     navigate({ to: "/products", search: term ? { q: term } : {} });
   };
+
+  const goTerm = (term: string) => {
+    const t = term.trim();
+    setMobileOpen(false);
+    navigate({ to: "/products", search: t ? { q: t } : {} });
+  };
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
