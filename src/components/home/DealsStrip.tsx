@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Gem, Flame } from "lucide-react";
+import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -44,13 +44,13 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
               search={{ orderby: "popularity" }}
               className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5"
             >
-              <Flame className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
-              <p className="text-center font-display text-[11px] font-extrabold leading-[1.05] text-white md:text-[13px]">
+              <p className="text-center font-display font-black uppercase leading-[0.95] tracking-tight text-white text-[13px] md:text-[16px]">
                 Mega
-                <br />
+              </p>
+              <p className="text-center font-display font-semibold italic leading-none tracking-wide text-white/85 text-[9px] md:text-[11px]">
                 Sale
               </p>
-              <p className="rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
+              <p className="mt-0.5 rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
                 {timer}
               </p>
             </Link>
