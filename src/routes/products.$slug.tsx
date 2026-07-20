@@ -361,6 +361,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
         name: p.name + variantSuffix,
         slug: p.slug,
         price: priceNum,
+        regularPrice: showOld ? oldPrice : undefined,
         image: activeImage || gallery[0],
       },
       qty,
