@@ -1,19 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, Heart, X, Camera, Clock } from "lucide-react";
+import { Search, ShoppingBag, User, Heart, X, Clock } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
 
-const POPULAR = [
-  "Engagement Rings",
-  "Gold Bangles",
-  "Earrings",
-  "Bridal Sets",
-  "Necklaces",
-  "Under 2000 Tk",
-  "Gift Items",
-];
-
+const POPULAR = ["Rings", "Earrings", "Necklaces", "Bridal", "Bangles", "Under 2000 Tk"];
 const RECENT_KEY = "zonash.recent-searches";
 
 function loadRecent(): string[] {
@@ -52,22 +43,9 @@ export function SiteHeader() {
     }
   }, [open]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const go = (term: string) => {
     const t = term.trim();
     if (t) saveRecent(t);
-    setRecent(loadRecent());
     setOpen(false);
     setQ("");
     navigate({ to: "/products", search: t ? { q: t } : {} });
@@ -83,11 +61,12 @@ export function SiteHeader() {
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            aria-label="Search"
-            onClick={() => setOpen(true)}
+            aria-label={open ? "Close search" : "Search"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
             className="grid h-9 w-9 place-items-center rounded-full text-foreground/80 transition-colors hover:bg-primary/[0.06] hover:text-primary md:h-10 md:w-10"
           >
-            <Search className="h-[18px] w-[18px]" />
+            {open ? <X className="h-[18px] w-[18px]" /> : <Search className="h-[18px] w-[18px]" />}
           </button>
           <Link
             to="/products"
@@ -118,109 +97,73 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* Search overlay — identical section design to home page */}
+      {/* Inline expandable search — compact */}
       {open && (
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            aria-label="Close search"
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-ink/30 backdrop-blur-sm animate-in fade-in duration-150"
-          />
-          <div className="relative mx-auto w-full max-w-2xl px-4 pt-4 animate-in slide-in-from-top-4 fade-in duration-200">
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-[0_20px_60px_-20px_rgba(15,15,15,0.35)]">
-              <form
-                role="search"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  go(q);
-                }}
-              >
-                <div className="relative flex items-center rounded-2xl border border-border bg-background p-1.5 transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
-                  <div className="pl-3 text-muted-foreground">
-                    <Search className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <input
-                    ref={inputRef}
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    type="search"
-                    aria-label="Search products"
-                    placeholder="Search for rings, necklaces, 22k gold…"
-                    className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-muted-foreground/70"
-                  />
-                  <div className="flex shrink-0 items-center gap-1 pr-1">
-                    <button
-                      type="button"
-                      aria-label="Visual search"
-                      className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
-                    >
-                      <Camera className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      aria-label="Close"
-                      className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary md:hidden"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-[12px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:brightness-110 active:scale-[0.98]"
-                    >
-                      Search
-                    </button>
-                  </div>
-                </div>
+        <div className="border-t border-border/70 bg-background animate-in slide-in-from-top-2 fade-in duration-150">
+          <div className="container-page py-2.5">
+            <form
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                go(q);
+              }}
+            >
+              <div className="relative flex items-center rounded-full border border-border bg-surface-muted/60 pl-3.5 pr-1 transition-all focus-within:border-primary focus-within:bg-background focus-within:ring-1 focus-within:ring-primary/20">
+                <Search className="h-4 w-4 shrink-0 text-primary/70" />
+                <input
+                  ref={inputRef}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  type="search"
+                  aria-label="Search products"
+                  placeholder="Search rings, necklaces, 22k gold…"
+                  className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[13.5px] outline-none placeholder:text-muted-foreground/60"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex h-8 shrink-0 items-center rounded-full bg-primary px-4 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary-foreground transition hover:brightness-110 active:scale-[0.98]"
+                >
+                  Search
+                </button>
+              </div>
 
-                <div className="mt-4 flex items-center justify-between px-1">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-primary">
-                    Popular Collections
-                  </span>
-                  <Link
-                    to="/categories"
-                    onClick={() => setOpen(false)}
-                    className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    View All
-                  </Link>
-                </div>
-
-                <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {POPULAR.map((label) => (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                  Popular
+                </span>
+                <div className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {POPULAR.map((t) => (
                     <button
-                      key={label}
+                      key={t}
                       type="button"
-                      onClick={() => go(label)}
-                      className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface-muted/60 px-4 py-2 text-[13px] font-medium text-foreground/80 transition-all hover:border-primary hover:bg-primary/[0.04] hover:text-primary"
+                      onClick={() => go(t)}
+                      className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary/30 transition-colors group-hover:bg-primary" />
-                      {label}
+                      {t}
                     </button>
                   ))}
                 </div>
+              </div>
 
-                {recent.length > 0 && (
-                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
-                      Recent
-                    </span>
-                    {recent.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => go(r)}
-                        className="text-[12px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </form>
-            </div>
+              {recent.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                    <Clock className="h-3 w-3" />
+                    Recent
+                  </span>
+                  {recent.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => go(r)}
+                      className="text-[11.5px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </form>
           </div>
         </div>
       )}
