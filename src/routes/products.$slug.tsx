@@ -557,9 +557,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </div>
                 <span
                   className={`shrink-0 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                    inStock
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
+                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                   }`}
                 >
                   {inStock ? "In stock" : "Sold out"}
@@ -596,7 +594,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   </div>
                   <ul className="grid gap-1.5 px-3 pb-3 pt-2">
                     {(highlightsOpen ? highlights : highlights.slice(0, 2)).map((line, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-[13px] leading-snug text-foreground"
+                      >
                         <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
                           <Check className="h-2.5 w-2.5" strokeWidth={3} />
                         </span>
@@ -621,7 +622,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
                           {attr.name}
                         </span>
                         {current && (
-                          <span className="text-[12px] font-semibold text-foreground">{current}</span>
+                          <span className="text-[12px] font-semibold text-foreground">
+                            {current}
+                          </span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -632,9 +635,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                             <button
                               key={opt}
                               type="button"
-                              onClick={() =>
-                                setSelected((prev) => ({ ...prev, [attr.name]: opt }))
-                              }
+                              onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
                               disabled={!enabled && !active}
                               className={`relative min-w-[3rem] rounded-[4px] border px-3 py-1.5 text-[12px] font-semibold transition-all ${
                                 active
@@ -654,8 +655,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 })}
               </div>
             )}
-
-
             {/* Delivery + guarantees */}
             <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center md:border-none md:px-0 md:pt-4">
               <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
