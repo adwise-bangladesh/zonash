@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Gem, Zap } from "lucide-react";
+import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
