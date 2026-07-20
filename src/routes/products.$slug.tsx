@@ -586,7 +586,13 @@ function ProductPage() {
             />
           </details>
         )}
+
+        {/* Related products — infinite feed, no header */}
+        <div className="mt-4 pb-24 md:mt-8 md:pb-8">
+          <InfiniteFeed />
+        </div>
       </div>
+
 
       {/* Mobile sticky action bar */}
       <div
