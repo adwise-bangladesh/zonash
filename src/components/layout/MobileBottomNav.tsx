@@ -32,9 +32,12 @@ export function MobileBottomNav() {
     pathname.startsWith("/cart") ||
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/verify-otp") ||
-    pathname.startsWith("/order-") ||
+    pathname.startsWith("/order-confirmed") ||
+    pathname.startsWith("/order-pending") ||
+    pathname.startsWith("/order-review") ||
     /^\/products\/[^/]+$/.test(pathname);
   if (hidden) return null;
+
 
   return (
     <>

@@ -3,10 +3,10 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Phone, PhoneOff, Loader2, ShieldCheck } from "lucide-react";
+import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
-import { FlowIcon } from "@/components/checkout/FlowIcon";
+
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
@@ -58,10 +58,8 @@ function CallbackChoicePage() {
       <CheckoutHeader title="Almost done" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <FlowIcon variant="static" icon={ShieldCheck} />
+          <ShieldCheckAnim />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Verification complete</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -70,6 +68,7 @@ function CallbackChoicePage() {
             <br />
             Do you want us to call and confirm first?
           </p>
+
 
           <div className="mt-7 grid gap-2.5">
             <button
@@ -130,3 +129,41 @@ function CallbackChoicePage() {
     </div>
   );
 }
+
+/**
+ * Brand-color animated shield-check icon. No background, no card — just the
+ * glyph drawing itself in. Matches the minimalist flow style.
+ */
+function ShieldCheckAnim() {
+  return (
+    <div className="mx-auto mb-6 h-24 w-24 text-primary">
+      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+        <path
+          d="M32 6 L54 14 V32 C54 44 44 54 32 58 C20 54 10 44 10 32 V14 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="180"
+          strokeDashoffset="180"
+        >
+          <animate attributeName="stroke-dashoffset" from="180" to="0" dur="0.8s" fill="freeze" />
+        </path>
+        <path
+          d="M20 32 L29 41 L45 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="50"
+          strokeDashoffset="50"
+        >
+          <animate attributeName="stroke-dashoffset" from="50" to="0" dur="0.45s" begin="0.6s" fill="freeze" />
+        </path>
+      </svg>
+    </div>
+  );
+}
+
