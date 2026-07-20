@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
@@ -9,16 +10,25 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
   const rating = parseFloat(p.average_rating as unknown as string);
   const soldish = p.rating_count ?? 0;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const seedProductCache = () => {
+    queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
+  };
   return (
     <Link
       to="/products/$slug"
       params={{ slug: p.slug }}
       preload="intent"
+      onPointerDown={(e) => {
+        if (e.button === 0) seedProductCache();
+      }}
+      onFocus={seedProductCache}
       onClick={(e) => {
         // Allow modifier / middle clicks and non-primary buttons through.
         if (e.defaultPrevented) return;
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
         e.preventDefault();
+        seedProductCache();
         const img = e.currentTarget.querySelector("img") as HTMLImageElement | null;
         navigateWithTransition(
           () => navigate({ to: "/products/$slug", params: { slug: p.slug } }),

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Star, Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
@@ -6,11 +7,19 @@ import type { WooProduct } from "@/lib/woo.server";
 export function ProductCard({ p }: { p: WooProduct }) {
   const price = p.sale_price && p.on_sale ? p.sale_price : p.price;
   const rating = parseFloat(p.average_rating as unknown as string);
+  const queryClient = useQueryClient();
+  const seedProductCache = () => {
+    queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
+  };
   return (
     <Link
       to="/products/$slug"
       params={{ slug: p.slug }}
       preload="intent"
+      onPointerDown={(e) => {
+        if (e.button === 0) seedProductCache();
+      }}
+      onFocus={seedProductCache}
       className="group flex flex-col overflow-hidden bg-background transition-transform active:scale-[0.99]"
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">

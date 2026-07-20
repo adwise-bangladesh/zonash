@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
@@ -28,12 +28,17 @@ const productQuery = (slug: string) =>
   queryOptions({
     queryKey: ["product", slug],
     queryFn: () => getProductBySlug({ data: { slug } }),
+    staleTime: 2 * 60 * 1000,
   });
 
 export const Route = createFileRoute("/products/$slug")({
   loader: async ({ context, params }) => {
-    const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
-    if (!res.product) throw notFound();
+    if (typeof document === "undefined") {
+      const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
+      if (!res.product) throw notFound();
+    } else {
+      void context.queryClient.prefetchQuery(productQuery(params.slug));
+    }
     return { id: params.slug };
   },
   head: ({ match }) => {
@@ -86,7 +91,7 @@ function ProductPageSkeleton() {
       <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
         <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
           <div>
-            <div className="aspect-square w-full bg-muted" />
+            <div className="aspect-square w-full bg-muted" style={{ viewTransitionName: "product-hero" }} />
             <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1 md:hidden">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-[3px] bg-muted" />
@@ -184,8 +189,25 @@ function sanitizeHtml(html: string): string {
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const { data } = useSuspenseQuery(productQuery(slug));
-  const p = data.product!;
+  const { data, isPending } = useQuery(productQuery(slug));
+  if (isPending) return <ProductPageSkeleton />;
+  if (!data?.product) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-background">
+        <EmptyState
+          icon={PackageX}
+          title="Product not found"
+          description={data?.error || "This piece may have been removed or the link is incorrect."}
+          primary={{ label: "Back to home", to: "/" }}
+          secondary={{ label: "Browse categories", to: "/categories" }}
+        />
+      </div>
+    );
+  }
+  return <ProductDetail p={data.product} />;
+}
+
+function ProductDetail({ p }: { p: WooProduct }) {
   const gallery = p.images.map((i) => i.src);
   const { add, count: cartCount } = useCart();
   const navigate = useNavigate();
