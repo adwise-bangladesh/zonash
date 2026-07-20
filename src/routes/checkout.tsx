@@ -93,7 +93,7 @@ function CheckoutPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [couponOpen, setCouponOpen] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(true);
 
   const policeFn = useServerFn(getPublicPoliceStations);
   const policeQ = useQuery({
