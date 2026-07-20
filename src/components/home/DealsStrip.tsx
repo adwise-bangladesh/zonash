@@ -54,10 +54,6 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                 {timer}
               </p>
             </Link>
-              <p className="rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
-                {timer}
-              </p>
-            </Link>
           </div>
 
           {/* Horizontal product scroll */}
