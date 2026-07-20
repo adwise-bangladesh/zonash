@@ -176,6 +176,63 @@ export type Database = {
         }
         Relationships: []
       }
+      order_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          decision: string | null
+          decision_reason: string | null
+          expires_at: string
+          ip_address: string | null
+          last_sent_at: string
+          max_attempts: number
+          phone: string
+          phone_hash: string
+          send_count: number
+          tracking: Json | null
+          updated_at: string
+          verified_at: string | null
+          wc_order_id: number
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          expires_at: string
+          ip_address?: string | null
+          last_sent_at?: string
+          max_attempts?: number
+          phone: string
+          phone_hash: string
+          send_count?: number
+          tracking?: Json | null
+          updated_at?: string
+          verified_at?: string | null
+          wc_order_id: number
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          expires_at?: string
+          ip_address?: string | null
+          last_sent_at?: string
+          max_attempts?: number
+          phone?: string
+          phone_hash?: string
+          send_count?: number
+          tracking?: Json | null
+          updated_at?: string
+          verified_at?: string | null
+          wc_order_id?: number
+        }
+        Relationships: []
+      }
       orders_cache: {
         Row: {
           billing_city: string | null
