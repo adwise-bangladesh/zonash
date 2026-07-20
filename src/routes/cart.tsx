@@ -101,7 +101,7 @@ function CartPage() {
                   <dd className="font-medium">{formatBDT(subtotal)}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Shipping</dt>
+                  <dt className="text-muted-foreground">Delivery Charge</dt>
                   <dd className="text-[12px] font-medium text-muted-foreground">Calculated at checkout</dd>
                 </div>
                 <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
