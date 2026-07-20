@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
@@ -72,13 +72,20 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const regularTotal = items.reduce(
-    (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
-    0,
-  );
-  const savings = Math.max(0, regularTotal - subtotal);
+  const { savings, grandTotal } = useMemo(() => {
+    const regular = items.reduce(
+      (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
+      0,
+    );
+    return {
+      savings: Math.max(0, regular - subtotal),
+      grandTotal: subtotal,
+    };
+  }, [items, subtotal]);
 
   if (!hydrated) return <CartSkeleton />;
+
+
 
   if (items.length === 0) {
     return (
@@ -226,7 +233,7 @@ function CartPage() {
             </div>
             <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
               <dt className="text-sm font-semibold">Total</dt>
-              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(subtotal)}</dd>
+              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(grandTotal)}</dd>
             </div>
           </dl>
         </details>
@@ -251,7 +258,7 @@ function CartPage() {
           >
             <span className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]" />
             <Lock className="h-4 w-4" aria-hidden="true" />
-            Checkout · {formatBDT(subtotal)}
+            Checkout · {formatBDT(grandTotal)}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
