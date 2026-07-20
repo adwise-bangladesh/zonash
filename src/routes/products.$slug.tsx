@@ -58,6 +58,8 @@ export const Route = createFileRoute("/products/$slug")({
     };
   },
   component: ProductPage,
+  pendingComponent: ProductPageSkeleton,
+  pendingMs: 0,
   notFoundComponent: () => (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <EmptyState
@@ -70,6 +72,76 @@ export const Route = createFileRoute("/products/$slug")({
     </div>
   ),
 });
+
+function ProductPageSkeleton() {
+  return (
+    <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28 md:pb-8">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-2 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+        <div className="flex-1" />
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+      </header>
+
+      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
+          <div>
+            <div className="aspect-square w-full bg-muted" />
+            <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1 md:hidden">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-square rounded-[3px] bg-muted" />
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-background md:rounded-[3px] md:border md:border-border md:p-5">
+            <div className="border-b border-border p-3 md:border-none md:p-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <div className="h-8 w-24 rounded bg-muted md:h-9 md:w-28" />
+                  <div className="h-4 w-16 rounded bg-muted" />
+                  <div className="h-4 w-10 rounded bg-muted" />
+                </div>
+                <div className="h-5 w-16 rounded-[3px] bg-muted" />
+              </div>
+              <div className="mt-2 h-5 w-3/4 rounded bg-muted" />
+              <div className="mt-1.5 h-5 w-1/2 rounded bg-muted" />
+            </div>
+
+            <div className="p-3 md:px-0 md:pt-4">
+              <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-3">
+                <div className="mb-2 h-3 w-32 rounded bg-primary/20" />
+                <div className="mb-1.5 h-4 w-full rounded bg-muted" />
+                <div className="h-4 w-4/5 rounded bg-muted" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 md:border-none md:px-0 md:pt-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5">
+                  <div className="h-4 w-4 rounded-full bg-muted" />
+                  <div className="h-3 w-16 rounded bg-muted" />
+                  <div className="h-2.5 w-10 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="h-10 w-24 rounded-[3px] bg-muted" />
+          <div className="h-10 flex-1 rounded-[3px] bg-muted" />
+          <div className="h-10 flex-1 rounded-[3px] bg-muted" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Extract clean bullet lines from short_description HTML (strips tags, splits on <li>/newlines). */
 function parseHighlights(html: string): string[] {
