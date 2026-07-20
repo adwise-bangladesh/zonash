@@ -303,6 +303,7 @@ function CheckoutPage() {
               value={form.name}
               onChange={(e) => update({ name: e.target.value })}
               className={inputCls(errors.name)}
+              aria-invalid={!!errors.name || undefined}
               autoComplete="name"
               placeholder="e.g. Rahim Uddin"
             />
@@ -317,7 +318,9 @@ function CheckoutPage() {
               onChange={(e) => update({ phone: normalizeBdPhone(e.target.value) })}
               placeholder="01XXXXXXXXX"
               className={inputCls(errors.phone)}
+              aria-invalid={!!errors.phone || undefined}
               autoComplete="tel-national"
+              maxLength={11}
             />
           </Field>
           <Field label="Full address" error={errors.address}>
@@ -328,8 +331,10 @@ function CheckoutPage() {
               value={form.address}
               onChange={(e) => update({ address: e.target.value })}
               className={textareaCls(errors.address)}
+              aria-invalid={!!errors.address || undefined}
               autoComplete="street-address"
               placeholder="House / holding no, road, area, post office, district"
+              maxLength={300}
             />
           </Field>
           <Field label="Thana / Upazila" error={errors.thana}>
@@ -349,6 +354,7 @@ function CheckoutPage() {
               value={form.email}
               onChange={(e) => update({ email: e.target.value })}
               className={inputCls(errors.email)}
+              aria-invalid={!!errors.email || undefined}
               autoComplete="email"
               placeholder="name@example.com"
             />
