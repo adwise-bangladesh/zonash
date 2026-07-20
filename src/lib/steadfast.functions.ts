@@ -38,15 +38,14 @@ export const getSteadfastStatus = createServerFn({ method: "GET" })
   });
 
 // -----------------------------------------------------------------------------
-// Police stations (thana list) — shared extractor + module-level memo so the
-// count is deterministic across every caller (checkout, POS, order drawer).
+// Police stations (thana list) — persisted in `public.police_stations`.
+// The list never changes, so we read from Postgres. On the very first request
+// (empty table) we seed from the Steadfast API once and store forever.
 // -----------------------------------------------------------------------------
 
 type PoliceCache = { items: string[]; dhakaCity: string[]; grouped: Record<string, string[]> };
-// Module-scope memo — Workers reuse the module across warm invocations, so the
-// list stays stable for a session. TTL prevents infinite staleness.
-let _policeCache: { at: number; value: PoliceCache } | null = null;
-const POLICE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+// Tiny per-worker memo so a single request doesn't re-read the same rows.
+let _policeMemo: PoliceCache | null = null;
 
 function nameOf(p: unknown): string {
   if (typeof p === "string") return p.trim();
@@ -58,69 +57,76 @@ function nameOf(p: unknown): string {
   return "";
 }
 
-async function loadPoliceStations(): Promise<PoliceCache> {
-  const now = Date.now();
-  if (_policeCache && now - _policeCache.at < POLICE_TTL_MS) return _policeCache.value;
+type PSRow = { district_id: number; district_name: string; name: string; is_dhaka_city: boolean };
 
+async function seedPoliceStationsFromApi(): Promise<PSRow[]> {
   const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
-  if (!steadfastConfigured()) {
-    return { items: [], dhakaCity: [], grouped: {} };
-  }
+  if (!steadfastConfigured()) return [];
   const res = await sfGetPoliceStations();
   const raw: unknown =
     (res as { data?: unknown }).data ??
     (res as { police_stations?: unknown }).police_stations ??
     res;
 
-  const items = new Set<string>();
-  const dhakaCity = new Set<string>();
-  const grouped: Record<string, Set<string>> = {};
-
-  const addPair = (district: string, station: string) => {
-    const s = station.trim();
-    const d = district.trim() || "Other";
-    if (!s) return;
-    items.add(s);
-    (grouped[d] ??= new Set()).add(s);
-    if (d === "Dhaka City") dhakaCity.add(s);
+  const rows: PSRow[] = [];
+  const seen = new Set<string>();
+  const push = (district_id: number, district_name: string, name: string) => {
+    const n = name.trim();
+    const d = district_name.trim() || "Other";
+    if (!n) return;
+    const key = `${district_id}::${n.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ district_id, district_name: d, name: n, is_dhaka_city: district_id === 1 });
   };
 
   if (Array.isArray(raw)) {
     for (const row of raw as Array<Record<string, unknown>>) {
-      const district =
-        typeof row?.name === "string" ? row.name : row?.id === 1 ? "Dhaka City" : "";
+      const did = typeof row?.id === "number" ? row.id : 0;
+      const dname = typeof row?.name === "string" ? row.name : did === 1 ? "Dhaka City" : "";
       const list = (row?.policestations ?? row?.police_stations) as unknown;
       if (Array.isArray(list)) {
         for (const p of list) {
           const n = nameOf(p);
-          if (n) addPair(district, n);
+          if (n) push(did, dname, n);
         }
       }
     }
   }
 
-  // Fallback: unstructured shape — walk everything.
-  if (items.size === 0) {
-    const walk = (node: unknown, districtHint = "") => {
-      if (!node) return;
-      if (Array.isArray(node)) {
-        for (const it of node) {
-          const n = nameOf(it);
-          if (n && typeof it !== "string") addPair(districtHint, n);
-          else if (typeof it === "string") addPair(districtHint, it);
-          else walk(it, districtHint);
-        }
-        return;
-      }
-      if (typeof node === "object") {
-        for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-          if (Array.isArray(v)) walk(v, districtHint || k);
-          else if (typeof v === "string" && /station|thana|name/i.test(k)) addPair(districtHint, v);
-          else walk(v, districtHint);
-        }
-      }
-    };
-    walk(raw);
+  if (rows.length === 0) return [];
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // ignoreDuplicates so concurrent seeds don't fail
+  const { error } = await supabaseAdmin
+    .from("police_stations" as never)
+    .upsert(rows as never, { onConflict: "district_id,name", ignoreDuplicates: true });
+  if (error) console.error("police_stations seed error", error.message);
+  return rows;
+}
+
+async function loadPoliceStations(): Promise<PoliceCache> {
+  if (_policeMemo) return _policeMemo;
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  let { data, error } = await supabaseAdmin
+    .from("police_stations" as never)
+    .select("district_id, district_name, name, is_dhaka_city")
+    .order("name");
+  if (error) console.error("police_stations read error", error.message);
+
+  let rows = (data as PSRow[] | null) ?? [];
+  if (rows.length === 0) {
+    rows = await seedPoliceStationsFromApi();
+  }
+
+  const items = new Set<string>();
+  const dhakaCity = new Set<string>();
+  const grouped: Record<string, Set<string>> = {};
+  for (const r of rows) {
+    items.add(r.name);
+    (grouped[r.district_name] ??= new Set()).add(r.name);
+    if (r.is_dhaka_city) dhakaCity.add(r.name);
   }
 
   const value: PoliceCache = {
@@ -130,9 +136,7 @@ async function loadPoliceStations(): Promise<PoliceCache> {
       Object.entries(grouped).map(([k, v]) => [k, Array.from(v).sort((a, b) => a.localeCompare(b))]),
     ),
   };
-
-  // Only memoize on a real response; empty results shouldn't lock us out.
-  if (value.items.length > 0) _policeCache = { at: now, value };
+  if (value.items.length > 0) _policeMemo = value;
   return value;
 }
 
@@ -159,6 +163,7 @@ export const getPublicPoliceStations = createServerFn({ method: "GET" })
       return { items: [], dhakaCity: [] };
     }
   });
+
 
 
 
