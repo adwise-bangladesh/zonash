@@ -292,7 +292,7 @@ function CheckoutPage() {
               value={form.notes}
               onChange={(e) => update({ notes: e.target.value })}
               className={textareaCls(errors.notes)}
-              placeholder="যেমন: কল করে আসবেন, গেটের সামনে রেখে যাবেন না"
+              placeholder="e.g. Please call before delivery"
             />
             {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
           </div>
