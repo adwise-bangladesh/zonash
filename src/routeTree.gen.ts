@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as OrderReviewRouteImport } from './routes/order-review'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
 import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -34,9 +36,19 @@ import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authen
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
 import { Route as ApiPublicWebhooksSteadfastRouteImport } from './routes/api/public/webhooks/steadfast'
 
+const VerifyOtpRoute = VerifyOtpRouteImport.update({
+  id: '/verify-otp',
+  path: '/verify-otp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderReviewRoute = OrderReviewRouteImport.update({
+  id: '/order-review',
+  path: '/order-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
@@ -169,7 +181,9 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
+  '/verify-otp': typeof VerifyOtpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -194,7 +208,9 @@ export interface FileRoutesByTo {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
+  '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/products': typeof ProductsIndexRoute
@@ -220,7 +236,9 @@ export interface FileRoutesById {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
+  '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -247,7 +265,9 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-confirmed'
+    | '/order-review'
     | '/support'
+    | '/verify-otp'
     | '/admin'
     | '/c/$slug'
     | '/products/$slug'
@@ -272,7 +292,9 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-confirmed'
+    | '/order-review'
     | '/support'
+    | '/verify-otp'
     | '/c/$slug'
     | '/products/$slug'
     | '/products'
@@ -297,7 +319,9 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-confirmed'
+    | '/order-review'
     | '/support'
+    | '/verify-otp'
     | '/_authenticated/admin'
     | '/c/$slug'
     | '/products/$slug'
@@ -324,7 +348,9 @@ export interface RootRouteChildren {
   CheckoutRoute: typeof CheckoutRoute
   LuxuryRoute: typeof LuxuryRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
+  OrderReviewRoute: typeof OrderReviewRoute
   SupportRoute: typeof SupportRoute
+  VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
@@ -334,11 +360,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-otp': {
+      id: '/verify-otp'
+      path: '/verify-otp'
+      fullPath: '/verify-otp'
+      preLoaderRoute: typeof VerifyOtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/support': {
       id: '/support'
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-review': {
+      id: '/order-review'
+      path: '/order-review'
+      fullPath: '/order-review'
+      preLoaderRoute: typeof OrderReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-confirmed': {
@@ -555,7 +595,9 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutRoute: CheckoutRoute,
   LuxuryRoute: LuxuryRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
+  OrderReviewRoute: OrderReviewRoute,
   SupportRoute: SupportRoute,
+  VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
