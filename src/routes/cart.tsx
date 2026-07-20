@@ -20,7 +20,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { items, subtotal, setQty, remove } = useCart();
+  const { items, subtotal, setQty, remove, hydrated } = useCart();
 
   const regularTotal = items.reduce(
     (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
@@ -32,7 +32,7 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  if (items.length === 0) {
+  if (hydrated && items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
         <CheckoutHeader title="My Bag" />
