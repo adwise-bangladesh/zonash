@@ -381,6 +381,7 @@ function CheckoutPage() {
               onChange={(e) => update({ notes: e.target.value })}
               className={textareaCls(errors.notes)}
               placeholder="e.g. Please call before delivery"
+              maxLength={500}
             />
             {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
           </div>
