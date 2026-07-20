@@ -342,6 +342,7 @@ function CheckoutPage() {
               value={form.thana}
               onChange={(v) => update({ thana: v })}
               options={policeQ.data?.items ?? []}
+              grouped={policeQ.data?.grouped}
               loading={policeQ.isLoading}
               buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
             />

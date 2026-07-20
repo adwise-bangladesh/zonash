@@ -510,6 +510,7 @@ function PosPage() {
                 value={thana}
                 onChange={setThana}
                 options={policeItems}
+                grouped={policeQ.data?.grouped}
                 loading={policeQ.isFetching}
                 recent={historyThanas}
               />

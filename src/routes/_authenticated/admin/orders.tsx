@@ -1691,6 +1691,7 @@ function OrderDrawer({
                       setShipping({ ...shipping, city: v, state: v });
                     }}
                     options={policeItems}
+                    grouped={policeQ.data?.grouped}
                     loading={policeQ.isLoading}
                     recent={recentThanas}
                   />

@@ -154,15 +154,21 @@ export const getPoliceStations = createServerFn({ method: "GET" })
 
 // Public (no-auth) variant for storefront checkout.
 export const getPublicPoliceStations = createServerFn({ method: "GET" })
-  .handler(async (): Promise<{ items: string[]; dhakaCity: string[] }> => {
-    try {
-      const { items, dhakaCity } = await loadPoliceStations();
-      return { items, dhakaCity };
-    } catch (e) {
-      console.error("getPublicPoliceStations failed", e);
-      return { items: [], dhakaCity: [] };
-    }
-  });
+  .handler(
+    async (): Promise<{
+      items: string[];
+      dhakaCity: string[];
+      grouped: Record<string, string[]>;
+    }> => {
+      try {
+        const { items, dhakaCity, grouped } = await loadPoliceStations();
+        return { items, dhakaCity, grouped };
+      } catch (e) {
+        console.error("getPublicPoliceStations failed", e);
+        return { items: [], dhakaCity: [], grouped: {} };
+      }
+    },
+  );
 
 
 
