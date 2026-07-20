@@ -122,7 +122,7 @@ function CartPage() {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          </div>
+
 
             <Link
               to="/checkout"
