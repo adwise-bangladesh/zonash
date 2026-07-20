@@ -163,9 +163,9 @@ function Home() {
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
+      <CategoryTabs categories={categories} />
       <main className="animate-fade-in">
         <div className="bg-background">
-          <CategoryTabs categories={categories} />
           <PromoIcons />
           <DealsStrip products={dealsProducts} />
         </div>
@@ -188,3 +188,4 @@ function Home() {
     </div>
   );
 }
+

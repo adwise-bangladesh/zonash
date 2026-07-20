@@ -93,6 +93,23 @@ function parseHighlights(html: string): string[] {
   return out;
 }
 
+/**
+ * Small allow-strip sanitizer for WooCommerce product descriptions rendered
+ * via dangerouslySetInnerHTML. Removes script/style blocks, inline event
+ * handlers, and javascript:/data: URLs. Descriptions come from a trusted
+ * WordPress admin, but a compromised admin account should not be able to
+ * inject executable code into shoppers' browsers.
+ */
+function sanitizeHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[^>]*\/?>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript):[^"']*\2/gi, '$1="#"');
+}
+
+
 function ProductPage() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(productQuery(slug));
@@ -182,7 +199,8 @@ function ProductPage() {
   const activeImage = matchedVariation?.image?.src;
 
   const highlights = useMemo(() => parseHighlights(p.short_description ?? ""), [p.short_description]);
-  const longDesc = useMemo(() => (p.description ?? "").trim(), [p.description]);
+  const longDesc = useMemo(() => sanitizeHtml((p.description ?? "").trim()), [p.description]);
+
 
   // ---------- UI state ----------
   const [qty, setQty] = useState(1);
@@ -335,8 +353,14 @@ function ProductPage() {
                       <img
                         src={src}
                         alt={p.name}
+                        width={800}
+                        height={800}
                         className="h-full w-full object-cover"
                         loading={i === 0 ? "eager" : "lazy"}
+                        decoding={i === 0 ? "sync" : "async"}
+                        fetchPriority={i === 0 ? "high" : "auto"}
+                        sizes="(min-width: 768px) 640px, 100vw"
+                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
                       />
                     ) : (
                       <div className="grid h-full w-full place-items-center bg-muted">
@@ -345,6 +369,7 @@ function ProductPage() {
                     )}
                   </div>
                 ))}
+
               </div>
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
