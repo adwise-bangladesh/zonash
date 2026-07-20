@@ -21,6 +21,39 @@ export class WooError extends Error {
   }
 }
 
+// Short-TTL in-isolate cache + single-flight coalescing for GETs.
+// - Coalescing: N concurrent identical GETs share one upstream fetch.
+// - TTL cache: repeats within TTL return instantly with no origin call.
+// Absorbs bursts (e.g. 500 concurrent home visits) so WooCommerce sees ~1
+// request per unique GET per TTL window per isolate instead of N.
+type CacheEntry = { at: number; value: unknown };
+const GET_TTL_MS = 30_000;
+const MAX_CACHE_ENTRIES = 500;
+const getCache = new Map<string, CacheEntry>();
+const inflight = new Map<string, Promise<unknown>>();
+
+function cacheGet(key: string): unknown | undefined {
+  const e = getCache.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.at > GET_TTL_MS) {
+    getCache.delete(key);
+    return undefined;
+  }
+  return e.value;
+}
+function cacheSet(key: string, value: unknown) {
+  if (getCache.size >= MAX_CACHE_ENTRIES) {
+    // Drop oldest ~10% to keep memory bounded.
+    const drop = Math.ceil(MAX_CACHE_ENTRIES * 0.1);
+    let i = 0;
+    for (const k of getCache.keys()) {
+      if (i++ >= drop) break;
+      getCache.delete(k);
+    }
+  }
+  getCache.set(key, { at: Date.now(), value });
+}
+
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   const lovableKey = process.env.LOVABLE_API_KEY;
   const wooKey = process.env.WOOCOMMERCE_API_KEY;
@@ -35,45 +68,68 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
       url.searchParams.set(k, String(v));
     }
   }
+  const method = req.method ?? "GET";
+  const cacheable = method === "GET";
+  const cacheKey = cacheable ? url.toString() : "";
 
-  const attempt = async (): Promise<Response> => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), req.timeoutMs ?? 8000);
+  if (cacheable) {
+    const hit = cacheGet(cacheKey);
+    if (hit !== undefined) return hit as T;
+    const pending = inflight.get(cacheKey);
+    if (pending) return pending as Promise<T>;
+  }
+
+  const run = async (): Promise<T> => {
+    const attempt = async (): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), req.timeoutMs ?? 8000);
+      try {
+        return await fetch(url.toString(), {
+          method,
+          headers: {
+            Authorization: `Bearer ${lovableKey}`,
+            "X-Connection-Api-Key": wooKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: req.body ? JSON.stringify(req.body) : undefined,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    // Retry once on 429/5xx with backoff.
+    let res = await attempt();
+    if (!res.ok && (res.status === 429 || res.status >= 500)) {
+      await new Promise((r) => setTimeout(r, 400));
+      res = await attempt();
+    }
+
+    const text = await res.text();
+    if (!res.ok) {
+      console.error(`WooCommerce request failed [${res.status}]: ${text.slice(0, 500)}`);
+      throw new WooError(res.status, text);
+    }
     try {
-      return await fetch(url.toString(), {
-        method: req.method ?? "GET",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": wooKey,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: req.body ? JSON.stringify(req.body) : undefined,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timer);
+      const parsed = text ? (JSON.parse(text) as T) : (undefined as T);
+      if (cacheable) cacheSet(cacheKey, parsed);
+      return parsed;
+    } catch {
+      throw new WooError(res.status, `Non-JSON response: ${text.slice(0, 300)}`);
     }
   };
 
-  // Retry once on 429/5xx with backoff.
-  let res = await attempt();
-  if (!res.ok && (res.status === 429 || res.status >= 500)) {
-    await new Promise((r) => setTimeout(r, 400));
-    res = await attempt();
-  }
+  if (!cacheable) return run();
 
-  const text = await res.text();
-  if (!res.ok) {
-    console.error(`WooCommerce request failed [${res.status}]: ${text.slice(0, 500)}`);
-    throw new WooError(res.status, text);
-  }
-  try {
-    return text ? (JSON.parse(text) as T) : (undefined as T);
-  } catch {
-    throw new WooError(res.status, `Non-JSON response: ${text.slice(0, 300)}`);
-  }
+  const p = run().finally(() => {
+    inflight.delete(cacheKey);
+  });
+  inflight.set(cacheKey, p);
+  return p;
 }
+
 
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
