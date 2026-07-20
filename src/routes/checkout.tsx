@@ -171,6 +171,16 @@ function CheckoutPage() {
     return { code: couponCode, discount: Math.min(value, subtotal) };
   }, [couponCode, subtotal]);
   const discount = coupon?.discount ?? 0;
+  const regularTotal = useMemo(
+    () =>
+      items.reduce(
+        (s, i) =>
+          s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
+        0,
+      ),
+    [items],
+  );
+  const savings = Math.max(0, regularTotal - subtotal);
   const total = useMemo(() => Math.max(0, subtotal - discount) + shipping, [subtotal, discount, shipping]);
 
   const applyCoupon = () => {
@@ -451,26 +461,46 @@ function CheckoutPage() {
           </summary>
           <div className="border-t border-dashed border-border">
             <ul className="divide-y divide-border/60 px-4">
-              {items.map((i) => (
-                <li key={i.productId} className="flex gap-2.5 py-3">
-                  <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[3px] bg-muted">
-                    {i.image && <img src={i.image} alt="" className="h-full w-full object-cover" />}
-                  </span>
-                  <div className="min-w-0 flex-1 text-[12px]">
-                    <Link to="/products/$slug" params={{ slug: i.slug }} className="line-clamp-2 font-medium">{i.name}</Link>
-                    <div className="mt-0.5 text-muted-foreground">Qty {i.quantity}</div>
-                  </div>
-                  <div className="text-[13px] font-bold text-primary">{formatBDT(i.price * i.quantity)}</div>
-                </li>
-              ))}
+              {items.map((i) => {
+                const lineTotal = i.price * i.quantity;
+                const hasOld = !!i.regularPrice && i.regularPrice > i.price;
+                const lineOld = hasOld ? i.regularPrice! * i.quantity : 0;
+                return (
+                  <li key={i.productId} className="flex gap-2.5 py-3">
+                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[3px] bg-muted">
+                      {i.image && <img src={i.image} alt="" className="h-full w-full object-cover" />}
+                    </span>
+                    <div className="min-w-0 flex-1 text-[12px]">
+                      <Link to="/products/$slug" params={{ slug: i.slug }} className="line-clamp-2 font-medium">{i.name}</Link>
+                      {i.sku && (
+                        <div className="mt-0.5 text-[10.5px] text-muted-foreground">
+                          SKU: <span className="font-mono">{i.sku}</span>
+                        </div>
+                      )}
+                      <div className="mt-0.5 text-muted-foreground">Qty {i.quantity}</div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <div className="text-[13px] font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</div>
+                      {hasOld && (
+                        <div className="text-[10.5px] text-muted-foreground line-through tabular-nums">
+                          {formatBDT(lineOld)}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
             <dl className="space-y-2 px-4 pb-4 pt-3 text-sm">
-              <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatBDT(subtotal)}</dd></div>
-              {discount > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd>-{formatBDT(discount)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-muted-foreground">Delivery Charge</dt><dd>{shipping ? formatBDT(shipping) : "Free"}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="tabular-nums">{formatBDT(subtotal)}</dd></div>
+              {savings > 0 && (
+                <div className="flex justify-between text-destructive"><dt>You save</dt><dd className="tabular-nums">−{formatBDT(savings)}</dd></div>
+              )}
+              {discount > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd className="tabular-nums">-{formatBDT(discount)}</dd></div>}
+              <div className="flex justify-between"><dt className="text-muted-foreground">Delivery Charge</dt><dd className="tabular-nums">{shipping ? formatBDT(shipping) : "Free"}</dd></div>
               <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
                 <dt className="text-sm font-semibold">Total</dt>
-                <dd className="text-xl font-bold text-primary">{formatBDT(total)}</dd>
+                <dd className="text-xl font-bold text-primary tabular-nums">{formatBDT(total)}</dd>
               </div>
             </dl>
           </div>

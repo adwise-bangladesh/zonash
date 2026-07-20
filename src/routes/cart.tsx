@@ -159,6 +159,11 @@ function CartPage() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  {item.sku && (
+                    <div className="mt-0.5 text-[10.5px] text-muted-foreground">
+                      SKU: <span className="font-mono">{item.sku}</span>
+                    </div>
+                  )}
                   <div className="mt-auto flex items-center justify-between pt-1.5">
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>

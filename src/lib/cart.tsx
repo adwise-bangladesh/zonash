@@ -4,6 +4,7 @@ export type CartItem = {
   productId: number;
   name: string;
   slug: string;
+  sku?: string;
   price: number;
   regularPrice?: number;
   image?: string;
