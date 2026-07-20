@@ -67,3 +67,8 @@ function OrderPendingPage() {
               })}
             />
           </div>
+        </div>
+      </main>
+    </div>
+  );
+}

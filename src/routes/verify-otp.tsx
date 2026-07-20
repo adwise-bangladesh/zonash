@@ -230,6 +230,8 @@ function VerifyOtpPage() {
               })}
             />
           </div>
+        </div>
+      </main>
     </div>
   );
 }
