@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
+import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
