@@ -6,9 +6,10 @@ export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
   return (
     <nav
       aria-label="Category tabs"
-      className="sticky top-12 z-30 border-b border-border bg-surface-muted/40 px-[5px] backdrop-blur md:top-14"
+      className="sticky top-12 z-30 border-b border-border bg-background/95 backdrop-blur md:top-14"
     >
-      <div className="scroll-snap-x flex gap-4 overflow-x-auto rounded-[3px] bg-background px-3 py-2 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-4">
+      <div className="scroll-snap-x flex gap-4 overflow-x-auto py-2 pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <span aria-hidden="true" className="w-[18px] shrink-0 md:w-6" />
         <Link
           to="/"
           className="relative shrink-0 snap-start text-primary"
