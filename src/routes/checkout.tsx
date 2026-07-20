@@ -254,27 +254,47 @@ function CheckoutPage() {
       </form>
 
       <div
-        className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-background/95 px-3 py-2.5 backdrop-blur"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto flex w-full max-w-md items-center gap-3">
-          <div className="flex-1">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</div>
-            <div className="text-lg font-extrabold text-primary">{formatBDT(total)}</div>
+        <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
+          <div className="mb-1.5 flex items-center justify-between text-[11px]">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <ShieldCheck className="h-3 w-3 text-success" /> Cash on delivery · Secure
+            </span>
+            <span className="font-semibold text-foreground">
+              Total <span className="ml-1 text-base font-extrabold text-primary">{formatBDT(total)}</span>
+            </span>
           </div>
           <button
             type="submit"
             onClick={(e) => {
-              const f = (e.currentTarget.closest("div")?.parentElement?.previousElementSibling as HTMLFormElement | null) ?? (document.querySelector("form") as HTMLFormElement | null);
+              const f = (e.currentTarget.closest("div")?.parentElement?.parentElement?.previousElementSibling as HTMLFormElement | null) ?? (document.querySelector("form") as HTMLFormElement | null);
               f?.requestSubmit();
             }}
             disabled={submitting}
-            className="h-11 flex-[2] rounded-[3px] bg-primary text-sm font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] active:scale-[0.99] disabled:opacity-60"
+            className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99] disabled:opacity-60"
           >
-            {submitting ? "Placing order…" : "Place order"}
+            <span className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]" />
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Placing your order…
+              </>
+            ) : (
+              <>
+                <Lock className="h-4 w-4" />
+                Confirm order · {formatBDT(total)}
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
           </button>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+            No online payment · Pay when you receive
+          </p>
         </div>
       </div>
+
     </div>
   );
 }
