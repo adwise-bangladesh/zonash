@@ -467,17 +467,35 @@ function CheckoutPage() {
                 const lineTotal = i.price * i.quantity;
                 const hasOld = !!i.regularPrice && i.regularPrice > i.price;
                 const lineOld = hasOld ? i.regularPrice! * i.quantity : 0;
+                const pct = hasOld ? Math.round(((lineOld - lineTotal) / lineOld) * 100) : 0;
                 return (
                   <li key={i.productId} className="flex gap-2.5 py-3">
-                    <span className="h-14 w-14 shrink-0 overflow-hidden rounded-[3px] bg-muted">
-                      {i.image && <img src={i.image} alt="" className="h-full w-full object-cover" />}
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col text-[12px]">
-                      <div className="flex items-start gap-1.5">
+                    <Link
+                      to="/products/$slug"
+                      params={{ slug: i.slug }}
+                      className="h-16 w-16 shrink-0 overflow-hidden rounded-[3px] bg-muted"
+                      aria-label={i.name}
+                    >
+                      {i.image ? (
+                        <img
+                          src={i.image}
+                          alt=""
+                          width={64}
+                          height={64}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className="block h-full w-full bg-muted" />
+                      )}
+                    </Link>
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex items-start gap-2">
                         <Link
                           to="/products/$slug"
                           params={{ slug: i.slug }}
-                          className="line-clamp-2 flex-1 font-medium"
+                          className="line-clamp-2 flex-1 text-[13px] font-medium text-foreground"
                         >
                           {i.name}
                         </Link>
@@ -485,26 +503,29 @@ function CheckoutPage() {
                           type="button"
                           aria-label={`Remove ${i.name}`}
                           onClick={() => remove(i.productId)}
-                          className="-mr-1 -mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       {i.sku && (
-                        <div className="mt-0.5 text-[10.5px] text-muted-foreground">
+                        <div className="text-[10.5px] leading-tight text-muted-foreground">
                           SKU: <span className="font-mono">{i.sku}</span>
                         </div>
                       )}
-                      <div className="mt-auto flex items-center justify-between pt-1.5">
-                        <div className="flex flex-col">
-                          <span className="text-[13px] font-bold text-primary tabular-nums">
-                            {formatBDT(lineTotal)}
-                          </span>
-                          {hasOld && (
-                            <span className="text-[10.5px] text-muted-foreground line-through tabular-nums">
-                              {formatBDT(lineOld)}
-                            </span>
-                          )}
+                      <div className="mt-auto flex items-center justify-between pt-0.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
+                          {hasOld ? (
+                            <>
+                              <span className="text-[11px] text-muted-foreground line-through tabular-nums">
+                                {formatBDT(lineOld)}
+                              </span>
+                              <span className="rounded-[2px] bg-destructive/10 px-1 py-[1px] text-[9px] font-bold text-destructive">
+                                -{pct}%
+                              </span>
+                            </>
+                          ) : null}
                         </div>
                         <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
                           <button
