@@ -142,10 +142,23 @@ async function deriveIdempotencyKey(
 
 // Server-side coupon table (source of truth). Keep in sync with UI copy in
 // src/routes/checkout.tsx; if it drifts, this authoritative version wins.
-const SERVER_COUPONS: Record<string, { type: "percent" | "flat"; value: number }> = {
-  ZONASH10: { type: "percent", value: 10 },
-  SAVE50: { type: "flat", value: 50 },
+// `max_uses` = global cap; `max_per_phone` = per-customer cap. Omit either
+// (or set to null) to skip that limit.
+type CouponRule = {
+  type: "percent" | "flat";
+  value: number;
+  max_uses?: number | null;
+  max_per_phone?: number | null;
 };
+const SERVER_COUPONS: Record<string, CouponRule> = {
+  ZONASH10: { type: "percent", value: 10, max_uses: 1000, max_per_phone: 3 },
+  SAVE50:   { type: "flat",    value: 50, max_uses: 500,  max_per_phone: 1 },
+};
+
+// SMS cost cap per phone per rolling 24h. Prevents runaway BDBulkSMS bills
+// from a customer (or bot) that keeps re-triggering OTP sends.
+const SMS_MAX_PER_PHONE_24H = 10;
+
 
 // Shipping rule (source of truth): 80 BDT inside Dhaka City, 130 BDT elsewhere.
 const SHIP_INSIDE_DHAKA = 80;
