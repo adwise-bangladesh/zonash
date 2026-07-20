@@ -26,8 +26,16 @@ export function MobileBottomNav() {
   const { count } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Hide on admin surfaces and the auth page — those have their own chrome.
-  if (pathname.startsWith("/admin") || pathname.startsWith("/auth")) return null;
+  // Hide on admin, auth, and any page with its own sticky action bar
+  // (single product, cart, checkout, order confirmation).
+  const hidden =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/cart") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/order-confirmed") ||
+    /^\/products\/[^/]+$/.test(pathname);
+  if (hidden) return null;
 
 
 
