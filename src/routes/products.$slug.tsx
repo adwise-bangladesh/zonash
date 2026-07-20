@@ -58,6 +58,8 @@ export const Route = createFileRoute("/products/$slug")({
     };
   },
   component: ProductPage,
+  pendingComponent: ProductPageSkeleton,
+  pendingMs: 0,
   notFoundComponent: () => (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <EmptyState
@@ -70,6 +72,76 @@ export const Route = createFileRoute("/products/$slug")({
     </div>
   ),
 });
+
+function ProductPageSkeleton() {
+  return (
+    <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28 md:pb-8">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-2 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+        <div className="flex-1" />
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+        <div className="h-9 w-9 rounded-full bg-black/25" />
+      </header>
+
+      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
+          <div>
+            <div className="aspect-square w-full bg-muted" />
+            <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1 md:hidden">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-square rounded-[3px] bg-muted" />
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-background md:rounded-[3px] md:border md:border-border md:p-5">
+            <div className="border-b border-border p-3 md:border-none md:p-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <div className="h-8 w-24 rounded bg-muted md:h-9 md:w-28" />
+                  <div className="h-4 w-16 rounded bg-muted" />
+                  <div className="h-4 w-10 rounded bg-muted" />
+                </div>
+                <div className="h-5 w-16 rounded-[3px] bg-muted" />
+              </div>
+              <div className="mt-2 h-5 w-3/4 rounded bg-muted" />
+              <div className="mt-1.5 h-5 w-1/2 rounded bg-muted" />
+            </div>
+
+            <div className="p-3 md:px-0 md:pt-4">
+              <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-3">
+                <div className="mb-2 h-3 w-32 rounded bg-primary/20" />
+                <div className="mb-1.5 h-4 w-full rounded bg-muted" />
+                <div className="h-4 w-4/5 rounded bg-muted" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 md:border-none md:px-0 md:pt-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5">
+                  <div className="h-4 w-4 rounded-full bg-muted" />
+                  <div className="h-3 w-16 rounded bg-muted" />
+                  <div className="h-2.5 w-10 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="h-10 w-24 rounded-[3px] bg-muted" />
+          <div className="h-10 flex-1 rounded-[3px] bg-muted" />
+          <div className="h-10 flex-1 rounded-[3px] bg-muted" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Extract clean bullet lines from short_description HTML (strips tags, splits on <li>/newlines). */
 function parseHighlights(html: string): string[] {
@@ -234,6 +306,7 @@ function ProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImage]);
   const [descOpen, setDescOpen] = useState(false);
+  const [highlightsOpen, setHighlightsOpen] = useState(false);
 
   const addLine = () => {
     const variantSuffix = matchedVariation
@@ -451,22 +524,34 @@ function ProductPage() {
               <h1 className="mt-2 text-[15px] font-semibold leading-snug md:text-xl">{p.name}</h1>
             </div>
 
-            {/* Highlights — premium collapsible card (closed by default) */}
+            {/* Highlights — show 2 lines, expand with chevron */}
             {highlights.length > 0 && (
               <div className="p-3 md:px-0 md:pt-4">
-                <details className="group relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
+                <div className="relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
                   <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3">
+                  <div className="flex items-center justify-between gap-2 px-3 pt-3">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
                         Product highlights
                       </span>
                     </span>
-                    <ChevronDown className="h-4 w-4 text-primary transition-transform group-open:rotate-180" />
-                  </summary>
-                  <ul className="grid gap-1.5 px-3 pb-3">
-                    {highlights.map((line, i) => (
+                    {highlights.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setHighlightsOpen((v) => !v)}
+                        aria-label={highlightsOpen ? "Show less" : "Show more"}
+                        aria-expanded={highlightsOpen}
+                        className="grid h-6 w-6 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                  <ul className="grid gap-1.5 px-3 pb-3 pt-2">
+                    {(highlightsOpen ? highlights : highlights.slice(0, 2)).map((line, i) => (
                       <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
                         <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
                           <Check className="h-2.5 w-2.5" strokeWidth={3} />
@@ -475,7 +560,7 @@ function ProductPage() {
                       </li>
                     ))}
                   </ul>
-                </details>
+                </div>
               </div>
             )}
 
