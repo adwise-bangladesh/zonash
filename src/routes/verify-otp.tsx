@@ -85,10 +85,9 @@ function VerifyOtpPage() {
         return;
       }
       if (res.decision === "confirmed") {
-        toast.success("Order confirmed");
         navigate({
-          to: "/order-confirmed",
-          search: { number: number ?? String(order), total: "" } as never,
+          to: "/order-callback-choice",
+          search: { order, number: number ?? String(order) } as never,
         });
       } else {
         navigate({

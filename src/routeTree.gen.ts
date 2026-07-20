@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as OrderReviewRouteImport } from './routes/order-review'
+import { Route as OrderPendingRouteImport } from './routes/order-pending'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
+import { Route as OrderCallbackChoiceRouteImport } from './routes/order-callback-choice'
 import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -51,9 +53,19 @@ const OrderReviewRoute = OrderReviewRouteImport.update({
   path: '/order-review',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrderPendingRoute = OrderPendingRouteImport.update({
+  id: '/order-pending',
+  path: '/order-pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
   id: '/order-confirmed',
   path: '/order-confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderCallbackChoiceRoute = OrderCallbackChoiceRouteImport.update({
+  id: '/order-callback-choice',
+  path: '/order-callback-choice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LuxuryRoute = LuxuryRouteImport.update({
@@ -180,7 +192,9 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -207,7 +221,9 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -235,7 +251,9 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
+  '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -264,7 +282,9 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-callback-choice'
     | '/order-confirmed'
+    | '/order-pending'
     | '/order-review'
     | '/support'
     | '/verify-otp'
@@ -291,7 +311,9 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-callback-choice'
     | '/order-confirmed'
+    | '/order-pending'
     | '/order-review'
     | '/support'
     | '/verify-otp'
@@ -318,7 +340,9 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-callback-choice'
     | '/order-confirmed'
+    | '/order-pending'
     | '/order-review'
     | '/support'
     | '/verify-otp'
@@ -347,7 +371,9 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   CheckoutRoute: typeof CheckoutRoute
   LuxuryRoute: typeof LuxuryRoute
+  OrderCallbackChoiceRoute: typeof OrderCallbackChoiceRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
+  OrderPendingRoute: typeof OrderPendingRoute
   OrderReviewRoute: typeof OrderReviewRoute
   SupportRoute: typeof SupportRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
@@ -381,11 +407,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order-pending': {
+      id: '/order-pending'
+      path: '/order-pending'
+      fullPath: '/order-pending'
+      preLoaderRoute: typeof OrderPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order-confirmed': {
       id: '/order-confirmed'
       path: '/order-confirmed'
       fullPath: '/order-confirmed'
       preLoaderRoute: typeof OrderConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-callback-choice': {
+      id: '/order-callback-choice'
+      path: '/order-callback-choice'
+      fullPath: '/order-callback-choice'
+      preLoaderRoute: typeof OrderCallbackChoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/luxury': {
@@ -594,7 +634,9 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   CheckoutRoute: CheckoutRoute,
   LuxuryRoute: LuxuryRoute,
+  OrderCallbackChoiceRoute: OrderCallbackChoiceRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
+  OrderPendingRoute: OrderPendingRoute,
   OrderReviewRoute: OrderReviewRoute,
   SupportRoute: SupportRoute,
   VerifyOtpRoute: VerifyOtpRoute,
