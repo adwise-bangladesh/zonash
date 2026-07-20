@@ -45,7 +45,7 @@ export const Route = createFileRoute("/products/")({
     featured: search.featured,
     orderby: search.orderby,
   }),
-  head: ({ loaderData: _ld, params: _p, match: _m }) => ({
+  head: () => ({
     meta: [
       { title: "Shop — Zonash Fine Jewelry" },
       { name: "description", content: "Browse Zonash's full collection of fine jewelry." },
