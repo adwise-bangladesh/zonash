@@ -23,13 +23,41 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
+const BN_DIGITS: Record<string, string> = { "০":"0","১":"1","২":"2","৩":"3","৪":"4","৫":"5","৬":"6","৭":"7","৮":"8","৯":"9" };
+function normalizeBdPhone(input: string): string {
+  let s = (input || "").replace(/[০-৯]/g, (d) => BN_DIGITS[d] ?? d);
+  s = s.replace(/\D/g, "");
+  if (/^8801[3-9]\d{8}$/.test(s)) s = "0" + s.slice(3);
+  return s;
+}
+const isValidBdPhone = (s: string) => /^01[3-9]\d{8}$/.test(s);
+const isValidName = (s: string) => {
+  const t = s.trim();
+  return t.length >= 2 && /\p{L}/u.test(t) && !/(.)\1{4,}/u.test(t) &&
+    new Set(t.toLowerCase().split("")).size > 1;
+};
+const isValidAddress = (s: string) => {
+  const t = s.trim();
+  return t.length >= 5 && /^[\p{L}\p{N}#,\.\-\/()\s]+$/u.test(t) &&
+    /\p{L}/u.test(t) && !/(.)\1{8,}/u.test(t);
+};
+
+const ERR = {
+  name: "Please enter a valid full name.",
+  phone: "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX).",
+  email: "Please enter a valid email address.",
+  address: "Please enter a valid delivery address.",
+  thana: "Please select your thana / upazila.",
+  notes: "Delivery notes are too long.",
+} as const;
+
 const schema = z.object({
-  name: z.string().trim().min(2, "Enter your full name").max(120),
-  phone: z.string().trim().regex(/^(\+?88)?01[3-9]\d{8}$/, "Enter a valid Bangladeshi mobile number"),
-  email: z.string().trim().email("Invalid email").max(120).optional().or(z.literal("")),
-  address: z.string().trim().min(5, "Address is too short").max(300),
-  thana: z.string().trim().min(1, "Thana is required").max(80),
-  notes: z.string().trim().max(500).optional().or(z.literal("")),
+  name: z.string().max(120).refine(isValidName, ERR.name),
+  phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), ERR.phone),
+  email: z.string().trim().max(120).email(ERR.email).optional().or(z.literal("")),
+  address: z.string().max(300).refine(isValidAddress, ERR.address),
+  thana: z.string().trim().min(1, ERR.thana).max(80),
+  notes: z.string().trim().max(500, ERR.notes).optional().or(z.literal("")),
 });
 
 type FormData = z.infer<typeof schema>;
