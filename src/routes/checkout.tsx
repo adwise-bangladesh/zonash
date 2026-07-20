@@ -80,14 +80,14 @@ function splitName(full: string): { first: string; last: string } {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, hydrated } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
 
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [couponOpen, setCouponOpen] = useState(false);
