@@ -72,13 +72,17 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const regularTotal = items.reduce(
-    (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
-    0,
-  );
-  const savings = Math.max(0, regularTotal - subtotal);
-
-  if (!hydrated) return <CartSkeleton />;
+  const { regularTotal, savings, grandTotal } = useMemo(() => {
+    const regular = items.reduce(
+      (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
+      0,
+    );
+    return {
+      regularTotal: regular,
+      savings: Math.max(0, regular - subtotal),
+      grandTotal: subtotal,
+    };
+  }, [items, subtotal]);
 
   if (items.length === 0) {
     return (
