@@ -352,7 +352,11 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_server_shipping", value: serverShipping.amount.toFixed(2) },
             { key: "_zonash_server_total", value: serverGrandTotal.toFixed(2) },
             { key: "_zonash_inside_dhaka", value: serverShipping.insideDhaka ? "1" : "0" },
+            { key: "_zonash_risk_score", value: String(assessment.score) },
+            { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
+            { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
           ],
+
 
         },
         timeoutMs: 15000,
