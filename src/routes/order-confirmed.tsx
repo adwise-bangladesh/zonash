@@ -8,7 +8,7 @@ import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
-  number: z.string().optional(),
+  number: z.coerce.string().optional(),
   total: z.string().optional(),
 });
 
