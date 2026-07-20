@@ -1,39 +1,58 @@
 import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Gem, Flame } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
+const WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function useResetCountdown() {
+  const [remaining, setRemaining] = useState(() => {
+    const now = Date.now();
+    return WINDOW_MS - (now % WINDOW_MS);
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      setRemaining(WINDOW_MS - (now % WINDOW_MS));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const totalSec = Math.max(0, Math.floor(remaining / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
 export function DealsStrip({ products }: { products: WooProduct[] }) {
+  const timer = useResetCountdown();
   if (!products.length) return null;
   return (
     <section aria-label="Mega Deals" className="pb-3">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
-        <div className="flex items-stretch gap-2.5">
-          {/* Left banner */}
-          <div className="relative flex w-[92px] shrink-0 flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-primary via-primary to-[#5a0405] p-2.5 text-primary-foreground shadow-sm md:w-[108px]">
+        <div className="flex items-stretch gap-2">
+          {/* Left banner — matches product card size */}
+          <div className="relative flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary to-[#5a0405] text-white shadow-sm md:w-[84px]">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-amber-300/30 blur-xl"
+              className="pointer-events-none absolute -right-3 -top-3 h-10 w-10 rounded-full bg-amber-300/25 blur-xl"
             />
-            <div className="relative">
-              <div className="inline-flex items-center gap-0.5 rounded-full bg-amber-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-                <Flame className="h-2.5 w-2.5" /> 50% OFF
-              </div>
-              <p className="mt-1.5 font-display text-[16px] font-extrabold leading-[1]">
+            <Link
+              to="/products"
+              search={{ orderby: "popularity" }}
+              className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5"
+            >
+              <Flame className="h-3.5 w-3.5 text-white md:h-4 md:w-4" />
+              <p className="text-center font-display text-[11px] font-extrabold leading-[1.05] text-white md:text-[13px]">
                 Mega
                 <br />
                 Sale
               </p>
-              <p className="mt-1 text-[9px] font-medium leading-tight text-white/80">
-                Limited time
+              <p className="rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
+                {timer}
               </p>
-            </div>
-            <Link
-              to="/products"
-              search={{ orderby: "popularity" }}
-              className="relative mt-1.5 inline-block text-[10px] font-bold text-amber-300 underline underline-offset-2"
-            >
-              Shop all →
             </Link>
           </div>
 
