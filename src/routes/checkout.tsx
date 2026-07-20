@@ -109,7 +109,9 @@ function CheckoutPage() {
       if (raw) setForm({ ...EMPTY, ...JSON.parse(raw) });
     } catch { /* ignore */ }
     window.scrollTo(0, 0);
-  }, []);
+    // Warm the next screen so navigation after submit is instant.
+    router.preloadRoute({ to: "/verify-otp" }).catch(() => {});
+  }, [router]);
   useEffect(() => {
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
