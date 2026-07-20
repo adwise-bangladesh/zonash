@@ -100,6 +100,33 @@ export const listCategories = createServerFn({ method: "GET" })
     }
   });
 
+// Fetch a single category by slug plus its immediate child categories.
+export const getCategoryWithSubs = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) =>
+    z.object({ slug: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/) }).parse(raw),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const parents = await wooFetch<(WooCategory & { parent?: number })[]>({
+        path: "/products/categories",
+        query: { slug: data.slug, per_page: 1 },
+        timeoutMs: 8000,
+      });
+      const parent = parents[0] ?? null;
+      if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
+      const subs = await wooFetch<WooCategory[]>({
+        path: "/products/categories",
+        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc" },
+        timeoutMs: 8000,
+      }).catch(() => [] as WooCategory[]);
+      return { parent, subs, error: null as string | null };
+    } catch (e) {
+      console.error("getCategoryWithSubs failed", e);
+      return { parent: null, subs: [] as WooCategory[], error: "Category is temporarily unavailable." };
+    }
+  });
+
 // -------------------- Checkout (public) --------------------
 
 const createOrderSchema = z.object({
