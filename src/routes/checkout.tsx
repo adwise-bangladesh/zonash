@@ -159,7 +159,7 @@ function CheckoutPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-24">
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[132px]">
       <CheckoutHeader title="Checkout" />
 
       <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
