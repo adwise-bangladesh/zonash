@@ -294,7 +294,7 @@ function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !submitting) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
         <CheckoutHeader title="Checkout" />
