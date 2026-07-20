@@ -3,10 +3,11 @@ import { z } from "zod";
 import { PackageCheck } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
-  id: z.number().optional(),
+  id: z.coerce.number().int().positive().optional(),
   number: z.string().optional(),
   total: z.string().optional(),
 });
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/order-confirmed")({
 });
 
 function Confirmed() {
-  const { number } = Route.useSearch();
+  const { id, number } = Route.useSearch();
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-background via-muted/40 to-background">
       <CheckoutHeader title="Order confirmed" />

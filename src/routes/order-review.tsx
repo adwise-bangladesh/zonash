@@ -65,8 +65,10 @@ function OrderReviewPage() {
             </div>
           )}
 
+          <OrderSummaryCard orderId={order} />
+
           {dups.length > 0 && (
-            <div className="mt-4 max-h-[30vh] overflow-y-auto rounded-2xl border border-dashed border-border p-3">
+            <div className="mt-3 max-h-[22vh] overflow-y-auto rounded-2xl border border-dashed border-border p-3">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Active orders on this number
               </div>
@@ -103,7 +105,7 @@ function OrderReviewPage() {
               waMessage={buildSupportMessage({
                 page: "Order under review",
                 orderNumber: order,
-                extra: reason || "My order is under review.",
+                extra: `Order #${order} is under review${reason ? ` — ${reason}` : ""}.`,
               })}
             />
           </div>
