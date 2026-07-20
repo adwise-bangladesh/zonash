@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
-import { BigProductGrid } from "@/components/home/BigProductGrid";
+
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import type { WooProduct } from "@/lib/woo.server";
