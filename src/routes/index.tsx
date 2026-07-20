@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { listProducts, listCategories } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { HomeSearchBar } from "@/components/home/HomeSearchBar";
+
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
@@ -46,7 +46,7 @@ function Home() {
       <AppHeader />
       <main>
         <div className="bg-background">
-          <HomeSearchBar />
+          
           <CategoryTabs categories={categories} />
           <PromoIcons />
           <DealsStrip products={trending.length ? trending : featured} />
