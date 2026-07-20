@@ -108,7 +108,10 @@ function CheckoutPage() {
     window.scrollTo(0, 0);
   }, []);
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
+    const t = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
+    }, 250);
+    return () => clearTimeout(t);
   }, [form]);
 
   // Autofill from the customer's most recent order if signed in.
@@ -181,7 +184,7 @@ function CheckoutPage() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (submitting || items.length === 0) return;
     const normalizedPhone = normalizeBdPhone(form.phone);
     const candidate = { ...form, phone: normalizedPhone };
     const parsed = schema.safeParse(candidate);
@@ -193,10 +196,11 @@ function CheckoutPage() {
       toast.error("Please review your details", {
         description: firstKey ? ERR[firstKey] : "Some fields are invalid.",
       });
+      // Focus first invalid field for accessibility.
+      const el = firstKey ? document.getElementById(`checkout-${String(firstKey)}`) : null;
+      el?.focus?.();
       return;
     }
-    // persist normalized phone back to state
-    if (normalizedPhone !== form.phone) setForm((f) => ({ ...f, phone: normalizedPhone }));
     setSubmitting(true);
     try {
       const { first, last } = splitName(parsed.data.name);
@@ -225,7 +229,7 @@ function CheckoutPage() {
             country: "BD",
           },
           shipping_amount: shipping,
-          shipping_label: shipping === 80 ? "Inside Dhaka" : "Outside Dhaka",
+          shipping_label: insideDhaka ? "Inside Dhaka" : "Outside Dhaka",
           discount,
           coupon_code: coupon?.code,
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
@@ -299,6 +303,7 @@ function CheckoutPage() {
               value={form.name}
               onChange={(e) => update({ name: e.target.value })}
               className={inputCls(errors.name)}
+              aria-invalid={!!errors.name || undefined}
               autoComplete="name"
               placeholder="e.g. Rahim Uddin"
             />
@@ -313,7 +318,9 @@ function CheckoutPage() {
               onChange={(e) => update({ phone: normalizeBdPhone(e.target.value) })}
               placeholder="01XXXXXXXXX"
               className={inputCls(errors.phone)}
+              aria-invalid={!!errors.phone || undefined}
               autoComplete="tel-national"
+              maxLength={11}
             />
           </Field>
           <Field label="Full address" error={errors.address}>
@@ -324,8 +331,10 @@ function CheckoutPage() {
               value={form.address}
               onChange={(e) => update({ address: e.target.value })}
               className={textareaCls(errors.address)}
+              aria-invalid={!!errors.address || undefined}
               autoComplete="street-address"
               placeholder="House / holding no, road, area, post office, district"
+              maxLength={300}
             />
           </Field>
           <Field label="Thana / Upazila" error={errors.thana}>
@@ -345,6 +354,7 @@ function CheckoutPage() {
               value={form.email}
               onChange={(e) => update({ email: e.target.value })}
               className={inputCls(errors.email)}
+              aria-invalid={!!errors.email || undefined}
               autoComplete="email"
               placeholder="name@example.com"
             />
@@ -371,6 +381,7 @@ function CheckoutPage() {
               onChange={(e) => update({ notes: e.target.value })}
               className={textareaCls(errors.notes)}
               placeholder="e.g. Please call before delivery"
+              maxLength={500}
             />
             {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
           </div>
@@ -405,9 +416,11 @@ function CheckoutPage() {
                   <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <input
                     value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
+                    onChange={(e) => { setCouponInput(e.target.value); if (couponError) setCouponError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
                     placeholder="e.g. ZONASH10"
-                    className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
+                    autoCapitalize="characters"
+                    className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm uppercase outline-none focus:border-primary"
                   />
                 </div>
                 <button type="button" onClick={applyCoupon} className="h-10 rounded-[3px] border border-primary px-3 text-sm font-semibold text-primary">
