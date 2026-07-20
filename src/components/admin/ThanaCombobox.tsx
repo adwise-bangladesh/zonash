@@ -144,12 +144,46 @@ export function ThanaCombobox({
                 </button>
               </li>
             )}
-            {filtered.length === 0 && !showValueMissing ? (
+            {hasGroups ? (
+              filteredGroups.length === 0 && !showValueMissing ? (
+                <li className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                  {loading ? "Loading…" : "No matches"}
+                </li>
+              ) : (
+                filteredGroups.map(([district, list]) => (
+                  <li key={district}>
+                    <div className="sticky top-0 z-10 bg-muted/60 px-3 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {district}
+                    </div>
+                    <ul>
+                      {list.map((t) => (
+                        <li key={`${district}::${t}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChange(t);
+                              setOpen(false);
+                              setQ("");
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] hover:bg-muted ${
+                              t === value ? "bg-primary/5 text-primary" : ""
+                            }`}
+                          >
+                            <span>{t}</span>
+                            {t === value && <Check className="h-3 w-3" />}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))
+              )
+            ) : filteredFlat.length === 0 && !showValueMissing ? (
               <li className="px-3 py-4 text-center text-[11px] text-muted-foreground">
                 {loading ? "Loading…" : "No matches"}
               </li>
             ) : (
-              filtered.map((t) => (
+              filteredFlat.map((t) => (
                 <li key={t}>
                   <button
                     type="button"
