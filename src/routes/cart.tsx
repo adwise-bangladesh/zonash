@@ -233,7 +233,7 @@ function CartPage() {
             </div>
             <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
               <dt className="text-sm font-semibold">Total</dt>
-              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(subtotal)}</dd>
+              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(grandTotal)}</dd>
             </div>
           </dl>
         </details>
