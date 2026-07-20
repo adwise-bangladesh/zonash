@@ -335,8 +335,14 @@ function ProductPage() {
                       <img
                         src={src}
                         alt={p.name}
+                        width={800}
+                        height={800}
                         className="h-full w-full object-cover"
                         loading={i === 0 ? "eager" : "lazy"}
+                        decoding={i === 0 ? "sync" : "async"}
+                        fetchPriority={i === 0 ? "high" : "auto"}
+                        sizes="(min-width: 768px) 640px, 100vw"
+                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
                       />
                     ) : (
                       <div className="grid h-full w-full place-items-center bg-muted">
@@ -345,6 +351,7 @@ function ProductPage() {
                     )}
                   </div>
                 ))}
+
               </div>
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">

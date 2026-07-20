@@ -1,17 +1,30 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
+import { navigateWithTransition } from "@/lib/view-transition";
 
 function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
   const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
   const rating = parseFloat(p.average_rating as unknown as string);
   const soldish = p.rating_count ?? 0;
+  const navigate = useNavigate();
   return (
     <Link
       to="/products/$slug"
       params={{ slug: p.slug }}
       preload="intent"
+      onClick={(e) => {
+        // Allow modifier / middle clicks and non-primary buttons through.
+        if (e.defaultPrevented) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        const img = e.currentTarget.querySelector("img") as HTMLImageElement | null;
+        navigateWithTransition(
+          () => navigate({ to: "/products/$slug", params: { slug: p.slug } }),
+          { sourceEl: img },
+        );
+      }}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md"
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
