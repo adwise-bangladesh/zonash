@@ -64,10 +64,3 @@ export function useCart() {
   return ctx;
 }
 
-export function formatMoney(n: number, currency = "USD") {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
-  } catch {
-    return `$${n.toFixed(2)}`;
-  }
-}
