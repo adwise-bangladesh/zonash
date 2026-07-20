@@ -119,9 +119,13 @@ function CheckoutPage() {
     });
   };
 
-  // Simple shipping rule: flat 80 within Dhaka thanas, else 130.
-  const dhakaThanas = ["dhanmondi", "gulshan", "banani", "mirpur", "uttara", "mohammadpur", "tejgaon", "motijheel", "badda", "khilgaon", "rampura", "wari", "old dhaka", "shahbagh", "ramna"];
-  const shipping = items.length === 0 ? 0 : dhakaThanas.includes(form.thana.trim().toLowerCase()) ? 80 : 130;
+  // Shipping rule: 80 BDT inside Dhaka City (Steadfast district id=1), 130 BDT elsewhere.
+  const dhakaCitySet = useMemo(
+    () => new Set((policeQ.data?.dhakaCity ?? []).map((s) => s.trim().toLowerCase())),
+    [policeQ.data?.dhakaCity],
+  );
+  const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
+  const shipping = items.length === 0 ? 0 : insideDhaka ? 80 : 130;
   const discount = useMemo(() => (coupon ? Math.min(coupon.discount, subtotal) : 0), [coupon, subtotal]);
   const total = Math.max(0, subtotal - discount) + shipping;
 
