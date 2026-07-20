@@ -34,7 +34,7 @@ export function InfiniteFeed() {
 
   return (
     <>
-      <BigProductGrid products={products} title="Just for you" />
+      <BigProductGrid products={products} />
       <div ref={sentinel} className="flex items-center justify-center py-6 text-muted-foreground">
         {(isLoading || isFetchingNextPage) && (
           <span className="inline-flex items-center gap-2 text-sm">
