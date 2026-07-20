@@ -54,28 +54,16 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CollectionPage() {
   const { slug } = Route.useParams();
+  if (slug === "demo") return <DemoCollection />;
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
-
-  const title = parent?.name ??
-    slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
       <main>
-        <div className="bg-background pt-3">
-          <div className="container-page mb-3 flex items-baseline justify-between">
-            <div className="flex items-center gap-2">
-              <span className="h-4 w-1 rounded-full bg-primary" />
-              <h1 className="font-display text-lg font-bold text-ink md:text-xl">{title}</h1>
-              {parent?.count ? (
-                <span className="text-[11px] text-muted-foreground">{parent.count} items</span>
-              ) : null}
-            </div>
-          </div>
-
+        <div className="bg-background pt-2">
           {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
         </div>
 
