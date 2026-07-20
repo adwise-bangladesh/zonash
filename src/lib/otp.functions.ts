@@ -199,6 +199,9 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       data.coupon_code,
       serverSubtotal,
     );
+    const serverShipping = await computeServerShipping(data.billing.city);
+    const serverGrandTotal = Math.max(0, serverSubtotal - validDiscount) + serverShipping.amount;
+
 
     // 1) Create the WooCommerce order in `pending` state.
     const feeLines =
