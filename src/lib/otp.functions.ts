@@ -221,7 +221,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       const { sendSms } = await import("./sms.server");
       const res = await sendSms({
         phone,
-        message: `Zonash: Your order #${created.number} verification code is ${code}. Valid 5 minutes. Do not share.`,
+        message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
       });
       smsOk = res.ok;
       if (!smsOk) console.error("OTP SMS failed", res.message);
@@ -287,7 +287,7 @@ export const resendOrderOtp = createServerFn({ method: "POST" })
       const { sendSms } = await import("./sms.server");
       const res = await sendSms({
         phone: r.phone,
-        message: `Zonash: Your order #${data.order_id} verification code is ${code}. Valid 5 minutes.`,
+        message: `<#> Zonash: ${code} is your order #${data.order_id} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
       });
       smsOk = res.ok;
     } catch (e) {
