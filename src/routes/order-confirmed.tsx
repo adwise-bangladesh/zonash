@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { PackageCheck } from "lucide-react";
-import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { FlowIcon } from "@/components/checkout/FlowIcon";
@@ -26,11 +26,11 @@ export const Route = createFileRoute("/order-confirmed")({
 function Confirmed() {
   const { id, number } = Route.useSearch();
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-background via-muted/40 to-background">
-      <CheckoutHeader title="Order confirmed" />
+    <div className="min-h-dvh bg-gradient-to-b from-background via-muted/40 to-background">
+      <SiteHeader />
 
-      <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
+      <main className="mx-auto w-full max-w-md px-5 pb-10 pt-4">
+        <div>
           <FlowIcon variant="check" />
 
           <h1 className="text-center font-display text-4xl leading-tight animate-in fade-in slide-in-from-bottom-2 duration-500">
