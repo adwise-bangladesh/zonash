@@ -158,23 +158,53 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
 
 // -------------------- Public: list orders for a phone --------------------
 
+type WooLineItem = {
+  id?: number;
+  name: string;
+  quantity: number;
+  sku?: string;
+  price?: number | string;
+  subtotal?: string;
+  total?: string;
+  image?: { src?: string };
+  meta_data?: { key?: string; display_key?: string; display_value?: string }[];
+};
+
 type WooOrderLite = {
   id: number;
   number: string;
   status: string;
   date_created: string;
+  date_modified?: string | null;
+  date_paid?: string | null;
+  date_completed?: string | null;
   total: string;
+  shipping_total?: string;
+  discount_total?: string;
   currency: string;
-  line_items?: { name: string; quantity: number; image?: { src?: string } }[];
+  payment_method?: string;
+  payment_method_title?: string;
+  customer_note?: string;
+  line_items?: WooLineItem[];
+  shipping_lines?: { method_title?: string; total?: string }[];
   billing?: {
     first_name?: string;
     last_name?: string;
     email?: string;
     phone?: string;
     address_1?: string;
+    address_2?: string;
     city?: string;
+    state?: string;
   };
-  shipping?: { city?: string };
+  shipping?: {
+    first_name?: string;
+    last_name?: string;
+    address_1?: string;
+    address_2?: string;
+    city?: string;
+    state?: string;
+  };
 };
 
 async function fetchOrdersByPhone(
