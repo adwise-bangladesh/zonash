@@ -22,7 +22,7 @@ export const Route = createFileRoute("/cart")({
 function CartSkeleton() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[112px]" aria-busy="true" aria-live="polite">
-      <CheckoutHeader title="My Bag" />
+      <CheckoutHeader title="My Cart" />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
         <span className="sr-only">Loading your bag…</span>
         <ul className="space-y-2.5">
@@ -90,7 +90,7 @@ function CartPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
-        <CheckoutHeader title="My Bag" />
+        <CheckoutHeader title="My Cart" />
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
           <EmptyState
             icon={ShoppingBag}
@@ -106,7 +106,7 @@ function CartPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[112px]">
-      <CheckoutHeader title="My Bag" count={items.length} />
+      <CheckoutHeader title="My Cart" count={items.length} />
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
         <ul className="space-y-2.5">
