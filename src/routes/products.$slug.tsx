@@ -76,7 +76,7 @@ export const Route = createFileRoute("/products/$slug")({
 function ProductPageSkeleton() {
   return (
     <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28 md:pb-8">
-      <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-2 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-1 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
         <div className="h-9 w-9 rounded-full bg-black/25" />
         <div className="flex-1" />
         <div className="h-9 w-9 rounded-full bg-black/25" />
@@ -355,7 +355,7 @@ function ProductPage() {
     <div className="min-h-[100dvh] bg-muted/30 pb-28 md:pb-8">
       {/* Floating transparent header — becomes solid on scroll */}
       <header
-        className={`fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-2 px-3 transition-all md:h-14 md:px-6 ${
+        className={`fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-1 px-3 transition-all md:h-14 md:px-6 ${
           scrolled
             ? "border-b border-border bg-background/95 backdrop-blur"
             : "bg-gradient-to-b from-black/40 to-transparent"
