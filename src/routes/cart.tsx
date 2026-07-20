@@ -84,6 +84,10 @@ function CartPage() {
     };
   }, [items, subtotal]);
 
+  if (!hydrated) return <CartSkeleton />;
+
+
+
   if (items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
