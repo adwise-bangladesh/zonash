@@ -49,25 +49,28 @@ export function SiteHeader() {
         <Link to="/" aria-label="Home" className="shrink-0">
           <Logo />
         </Link>
-        <form onSubmit={submit} className="flex flex-1 items-center" role="search">
-          <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search for jewelry, collections and more"
-              aria-label="Search products"
-              className="h-9 w-full rounded-[3px] border border-border bg-surface-muted pl-9 pr-24 text-[13px] outline-none focus:border-primary focus:bg-background"
-            />
-            <button
-              type="submit"
-              className="absolute right-1 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-[3px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Search
-            </button>
-          </div>
-        </form>
+        {!isHome && (
+          <form onSubmit={submit} className="flex flex-1 items-center" role="search">
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search for jewelry, collections and more"
+                aria-label="Search products"
+                className="h-9 w-full rounded-[3px] border border-border bg-surface-muted pl-9 pr-24 text-[13px] outline-none focus:border-primary focus:bg-background"
+              />
+              <button
+                type="submit"
+                className="absolute right-1 top-1/2 inline-flex h-7 -translate-y-1/2 items-center rounded-[3px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        )}
+        {isHome && <div className="flex-1" />}
         <nav className="flex items-center gap-1" aria-label="Account">
           <Link
             to="/products"
