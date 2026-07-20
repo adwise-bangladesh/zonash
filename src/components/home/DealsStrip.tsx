@@ -58,7 +58,7 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
 
           {/* Horizontal product scroll */}
           <div className="scroll-snap-x -mr-2.5 flex min-w-0 flex-1 gap-2 overflow-x-auto pr-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mr-3 md:pr-3">
-            {products.slice(0, 12).map((p) => {
+            {products.slice(0, 12).map((p, idx) => {
               const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
               return (
                 <Link
@@ -73,7 +73,12 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                       <img
                         src={p.images[0].src}
                         alt={p.images[0].alt || p.name}
-                        loading="lazy"
+                        width={168}
+                        height={168}
+                        loading={idx < 4 ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={idx === 0 ? "high" : "auto"}
+                        sizes="(min-width: 768px) 84px, 58px"
                         className="absolute inset-0 h-full w-full object-cover"
                       />
                     ) : (
@@ -82,6 +87,7 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                       </div>
                     )}
                   </div>
+
                   <div className="flex flex-1 items-center justify-center bg-white px-1 py-1.5">
                     <p className="text-center text-[11px] font-extrabold leading-none text-primary md:text-[13px]">
                       {formatBDT(price)}
