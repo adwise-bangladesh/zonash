@@ -224,6 +224,7 @@ function CheckoutPage() {
         coupon ? `Coupon: ${coupon.code}` : undefined,
       ].filter(Boolean);
 
+      // Run tracking + submit prep in parallel with any last renders.
       const tracking = await collectTracking({
         name: parsed.data.name,
         email: parsed.data.email || undefined,
@@ -256,13 +257,14 @@ function CheckoutPage() {
         setSubmitting(false);
         return;
       }
-      clear();
       if (!res.sms_ok) {
         toast.message("Order created", {
           description: "We couldn't text your code — tap Resend on the next screen.",
         });
       }
-      navigate({
+      // Navigate FIRST so we don't flash the empty-cart state between
+      // clear() and route change. Clear the cart after navigation kicks off.
+      await navigate({
         to: "/verify-otp",
         search: {
           order: res.order_id,
@@ -270,6 +272,8 @@ function CheckoutPage() {
           phone: res.phone_masked,
         } as never,
       });
+      // Defer cart clear one tick so the checkout tree unmounts first.
+      setTimeout(() => { try { clear(); } catch { /* ignore */ } }, 0);
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
