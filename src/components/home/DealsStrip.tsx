@@ -47,7 +47,7 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                   to="/products/$slug"
                   params={{ slug: p.slug }}
                   preload="intent"
-                  className="flex w-[84px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-surface-muted/40 ring-1 ring-border/50 transition-shadow hover:shadow-md md:w-[96px]"
+                  className="flex w-[84px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[96px]"
                 >
                   <div className="relative h-[84px] w-[84px] shrink-0 overflow-hidden bg-surface-muted md:h-[96px] md:w-[96px]">
                     {p.images[0] ? (
