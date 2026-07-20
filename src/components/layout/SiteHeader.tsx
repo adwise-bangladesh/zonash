@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search, ShoppingBag, User, Heart } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
@@ -8,6 +8,8 @@ export function SiteHeader() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isHome = pathname === "/";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
