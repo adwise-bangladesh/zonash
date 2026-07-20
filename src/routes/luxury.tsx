@@ -1,19 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { Crown, Sparkles, Gem, ShieldCheck } from "lucide-react";
+import { Gem, Heart } from "lucide-react";
 import { listProducts, listCategories } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { BigProductGrid } from "@/components/home/BigProductGrid";
+import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
 const luxuryQuery = queryOptions({
   queryKey: ["luxury", "featured"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 24, featured: true, orderby: "price", order: "desc" } }),
+  queryFn: () =>
+    listProducts({
+      data: { page: 1, perPage: 24, featured: true, orderby: "price", order: "desc" },
+    }),
 });
 
 const luxuryTopQuery = queryOptions({
   queryKey: ["luxury", "top"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 8, orderby: "price", order: "desc" } }),
+  queryFn: () =>
+    listProducts({ data: { page: 1, perPage: 12, orderby: "price", order: "desc" } }),
 });
 
 const catsQuery = queryOptions({
@@ -25,9 +29,17 @@ export const Route = createFileRoute("/luxury")({
   head: () => ({
     meta: [
       { title: "The Luxury Edit — Zonash Fine Jewelry" },
-      { name: "description", content: "Zonash's most exceptional pieces — rare stones, heritage craftsmanship, and limited editions." },
+      {
+        name: "description",
+        content:
+          "Zonash's most exceptional pieces — heritage stones, hand-finished settings, and limited editions.",
+      },
       { property: "og:title", content: "The Luxury Edit — Zonash" },
-      { property: "og:description", content: "Discover our most exceptional jewelry: rare, hand-crafted, and unforgettable." },
+      {
+        property: "og:description",
+        content:
+          "Discover our most exceptional jewelry: rare, hand-crafted, and unforgettable.",
+      },
     ],
   }),
   loader: ({ context }) => {
@@ -44,131 +56,166 @@ function LuxuryPage() {
   const { data: catData } = useSuspenseQuery(catsQuery);
   const products = (feat.products.length ? feat.products : top.products) as WooProduct[];
   const hero = products[0];
+  const grid = products.slice(1);
+  const cats = catData.categories.slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-[#faf7f2]">
+    <div className="min-h-screen bg-[#fffcf9]">
       <AppHeader />
-      <main>
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-[#1a0304] via-[#2a0405] to-[#3a0203] text-white">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 20% 20%, rgba(212,175,55,0.35), transparent 40%), radial-gradient(circle at 80% 60%, rgba(212,175,55,0.2), transparent 45%)",
-            }}
-          />
-          <div className="container-page relative grid gap-8 py-14 md:grid-cols-2 md:py-20">
-            <div className="flex flex-col justify-center">
-              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/40 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200 backdrop-blur">
-                <Crown className="h-3.5 w-3.5" /> The Luxury Edit
-              </span>
-              <h1 className="mt-5 font-display text-4xl leading-[1.05] tracking-tight md:text-6xl">
-                Rare pieces,
-                <br />
-                <span className="bg-gradient-to-r from-amber-200 via-amber-300 to-amber-100 bg-clip-text text-transparent">
-                  quietly extraordinary.
-                </span>
-              </h1>
-              <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/70">
-                A curated house selection — heritage stones, hand-finished settings, and limited
-                editions for occasions that deserve a legend.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <a
-                  href="#collection"
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-[#3a0203] transition hover:brightness-105"
-                >
-                  Explore the collection
-                </a>
-                <Link
-                  to="/support"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-3 text-sm font-medium text-white/90 hover:bg-white/10"
-                >
-                  Private consultation
-                </Link>
-              </div>
-              <div className="mt-8 grid max-w-md grid-cols-3 gap-4 text-[11px] uppercase tracking-widest text-white/60">
-                <div className="flex items-center gap-1.5"><Gem className="h-3.5 w-3.5 text-amber-300" /> Certified</div>
-                <div className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-amber-300" /> Lifetime care</div>
-                <div className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-amber-300" /> Bespoke</div>
-              </div>
-            </div>
+      <main
+        className="px-4 py-12 md:px-8 lg:px-12"
+        style={{ fontFamily: "'Montserrat', ui-sans-serif, system-ui, sans-serif" }}
+      >
+        {/* Brand Header */}
+        <header className="mx-auto mb-16 max-w-7xl text-center">
+          <h1 className="mb-2 font-display text-5xl font-light uppercase tracking-tight text-[#3a0203] md:text-7xl">
+            Zonash
+          </h1>
+          <div className="flex items-center justify-center gap-4">
+            <span className="h-px w-12 bg-[#c5a059]" />
+            <span className="text-xs font-medium uppercase tracking-[0.3em] text-[#c5a059]">
+              Fine Jewelry
+            </span>
+            <span className="h-px w-12 bg-[#c5a059]" />
+          </div>
+        </header>
 
-            {hero && (
-              <Link
-                to="/products/$slug"
-                params={{ slug: hero.slug }}
-                preload="intent"
-                className="group relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-2xl ring-1 ring-amber-200/30 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.6)]"
+        {/* Hero */}
+        <section className="relative mx-auto mb-24 max-w-7xl overflow-hidden rounded-sm bg-[#3a0203]">
+          <div className="grid items-center md:grid-cols-2">
+            <div className="z-10 p-12 text-white lg:p-20">
+              <span className="mb-4 block text-sm uppercase tracking-widest text-[#c5a059]">
+                L'Atelier de Luxe
+              </span>
+              <h2 className="mb-8 font-display text-4xl font-light leading-tight lg:text-6xl">
+                Crafting <span className="italic text-[#c5a059]">Radiance</span> in Every Detail
+              </h2>
+              <p className="mb-10 max-w-md font-light leading-relaxed text-white/70">
+                Experience the pinnacle of Bangladeshi craftsmanship. Each piece is a testament to
+                our heritage, dipped in gold and legacy.
+              </p>
+              <a
+                href="#collection"
+                className="inline-block border border-[#c5a059] px-10 py-4 text-xs uppercase tracking-widest text-[#c5a059] transition-all duration-500 hover:bg-[#c5a059] hover:text-white"
               >
-                {hero.images[0] ? (
+                Explore Collection
+              </a>
+            </div>
+            <div className="relative min-h-[400px] md:h-full md:min-h-[520px]">
+              {hero?.images[0] ? (
+                <Link
+                  to="/products/$slug"
+                  params={{ slug: hero.slug }}
+                  preload="intent"
+                  className="block h-full w-full"
+                >
                   <img
                     src={hero.images[0].src}
                     alt={hero.images[0].alt || hero.name}
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    className="h-full w-full object-cover"
                   />
-                ) : (
-                  <div className="grid h-full w-full place-items-center bg-black/30"><Gem className="h-16 w-16 text-amber-200/50" /></div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-5">
-                  <p className="text-[11px] uppercase tracking-widest text-amber-200/90">Signature piece</p>
-                  <p className="mt-1 line-clamp-2 font-display text-lg text-white">{hero.name}</p>
+                </Link>
+              ) : (
+                <div className="grid h-full w-full place-items-center bg-black/30">
+                  <Gem className="h-16 w-16 text-[#c5a059]/50" />
                 </div>
-              </Link>
-            )}
+              )}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#3a0203] via-transparent to-transparent" />
+            </div>
           </div>
         </section>
 
-        {/* Category rail */}
-        {catData.categories.length > 0 && (
-          <section className="border-b border-black/5 bg-white">
-            <div className="container-page py-6">
-              <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="font-display text-xl text-ink">Curated by house</h2>
-                <Link to="/products" className="text-xs uppercase tracking-widest text-primary hover:underline">
-                  View all
+        {/* Category Rail */}
+        {cats.length > 0 && (
+          <section className="mx-auto mb-24 max-w-7xl">
+            <div className="mb-8 flex items-end justify-between px-2">
+              <div>
+                <h3 className="font-display text-3xl text-[#3a0203]">Curated by House</h3>
+                <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
+                  Select your aesthetic
+                </p>
+              </div>
+              <div className="mx-8 mb-4 h-px flex-grow bg-[#c5a059]/30" />
+            </div>
+
+            <div className="flex gap-6 overflow-x-auto px-2 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {cats.map((c) => (
+                <Link
+                  key={c.id}
+                  to="/products"
+                  search={{ category: c.slug }}
+                  className="group flex-shrink-0 cursor-pointer"
+                >
+                  <div className="h-52 w-40 overflow-hidden border border-[#c5a059]/20 transition-all duration-500 group-hover:border-[#c5a059]">
+                    {c.image?.src ? (
+                      <img
+                        src={c.image.src}
+                        alt={c.image.alt || c.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-[#fdfaf6] text-[#c5a059]/40">
+                        <Gem className="h-10 w-10" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-4 text-center text-[10px] font-semibold uppercase tracking-widest text-[#3a0203]">
+                    {c.name}
+                  </p>
                 </Link>
-              </div>
-              <div className="scroll-snap-x flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {catData.categories.slice(0, 10).map((c) => (
-                  <Link
-                    key={c.id}
-                    to="/products"
-                    search={{ category: c.slug }}
-                    className="group shrink-0 snap-start"
-                  >
-                    <div className="relative h-32 w-40 overflow-hidden rounded-xl bg-[#f2ece2] ring-1 ring-black/5 md:h-36 md:w-52">
-                      {c.image?.src ? (
-                        <img
-                          src={c.image.src}
-                          alt={c.image.alt || c.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-primary/30"><Gem className="h-10 w-10" /></div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      <p className="absolute inset-x-3 bottom-2 font-display text-sm text-white">{c.name}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              ))}
             </div>
           </section>
         )}
 
-        {/* Collection */}
-        <section id="collection" className="py-8">
-          <div className="container-page mb-4 flex items-baseline gap-2">
-            <Crown className="h-4 w-4 text-amber-500" />
-            <h2 className="font-display text-2xl text-ink">The Luxury Edit</h2>
+        {/* Product Grid */}
+        <section id="collection" className="mx-auto mb-12 max-w-7xl">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-3">
+            {grid.map((p) => {
+              const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
+              return (
+                <Link
+                  key={p.id}
+                  to="/products/$slug"
+                  params={{ slug: p.slug }}
+                  preload="intent"
+                  className="group cursor-pointer"
+                >
+                  <div className="relative mb-6 aspect-[4/5] overflow-hidden border border-transparent bg-[#fdfaf6] transition-colors group-hover:border-[#c5a059]/30">
+                    {p.images[0] ? (
+                      <img
+                        src={p.images[0].src}
+                        alt={p.images[0].alt || p.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-[#c5a059]/40">
+                        <Gem className="h-12 w-12" />
+                      </div>
+                    )}
+                    <div className="absolute right-4 top-4 text-[#c5a059] opacity-0 transition-opacity group-hover:opacity-100">
+                      <Heart className="h-6 w-6" strokeWidth={1} />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <h4 className="font-display text-xl text-[#3a0203] transition-colors group-hover:text-[#c5a059]">
+                      {p.name}
+                    </h4>
+                    <p className="mt-2 text-sm font-medium text-[#c5a059]">{formatBDT(price)}</p>
+                    <div className="mt-4 flex items-center justify-center">
+                      <span className="border-b border-transparent pb-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-all group-hover:border-[#3a0203] group-hover:text-[#3a0203]">
+                        Request Bespoke Appointment
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-          <BigProductGrid products={products} />
           {!products.length && (
-            <p className="container-page py-16 text-center text-sm text-muted-foreground">
+            <p className="py-16 text-center text-sm text-muted-foreground">
               Our luxury edit is being curated. Please check back shortly.
             </p>
           )}
