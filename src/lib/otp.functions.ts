@@ -142,10 +142,23 @@ async function deriveIdempotencyKey(
 
 // Server-side coupon table (source of truth). Keep in sync with UI copy in
 // src/routes/checkout.tsx; if it drifts, this authoritative version wins.
-const SERVER_COUPONS: Record<string, { type: "percent" | "flat"; value: number }> = {
-  ZONASH10: { type: "percent", value: 10 },
-  SAVE50: { type: "flat", value: 50 },
+// `max_uses` = global cap; `max_per_phone` = per-customer cap. Omit either
+// (or set to null) to skip that limit.
+type CouponRule = {
+  type: "percent" | "flat";
+  value: number;
+  max_uses?: number | null;
+  max_per_phone?: number | null;
 };
+const SERVER_COUPONS: Record<string, CouponRule> = {
+  ZONASH10: { type: "percent", value: 10, max_uses: 1000, max_per_phone: 3 },
+  SAVE50:   { type: "flat",    value: 50, max_uses: 500,  max_per_phone: 1 },
+};
+
+// SMS cost cap per phone per rolling 24h. Prevents runaway BDBulkSMS bills
+// from a customer (or bot) that keeps re-triggering OTP sends.
+const SMS_MAX_PER_PHONE_24H = 10;
+
 
 // Shipping rule (source of truth): 80 BDT inside Dhaka City, 130 BDT elsewhere.
 const SHIP_INSIDE_DHAKA = 80;
@@ -202,17 +215,80 @@ async function computeServerShipping(thana: string): Promise<{ amount: number; l
   }
 }
 
-function resolveCouponDiscount(code: string | undefined, subtotal: number): {
-  code: string | null;
-  discount: number;
-} {
+/**
+ * Resolve a coupon against caps. Returns discount=0 (and reason) when the
+ * global `max_uses` or per-phone `max_per_phone` cap is already reached.
+ * Counting is done against `coupon_usage`, which we insert into after every
+ * successful order — so this reflects actual redemptions, not just Woo state.
+ */
+async function resolveCouponDiscount(
+  code: string | undefined,
+  subtotal: number,
+  phone: string,
+): Promise<{ code: string | null; discount: number; reason?: string }> {
   if (!code) return { code: null, discount: 0 };
   const key = code.trim().toUpperCase();
   const c = SERVER_COUPONS[key];
-  if (!c || subtotal <= 0) return { code: null, discount: 0 };
+  if (!c || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (c.max_uses != null) {
+      const { count } = await supabaseAdmin
+        .from("coupon_usage" as never)
+        .select("id", { head: true, count: "exact" })
+        .eq("coupon_code", key);
+      if ((count ?? 0) >= c.max_uses) {
+        return { code: null, discount: 0, reason: "max_uses_reached" };
+      }
+    }
+    if (c.max_per_phone != null && phone) {
+      const { count } = await supabaseAdmin
+        .from("coupon_usage" as never)
+        .select("id", { head: true, count: "exact" })
+        .eq("coupon_code", key)
+        .eq("phone", phone);
+      if ((count ?? 0) >= c.max_per_phone) {
+        return { code: null, discount: 0, reason: "max_per_phone_reached" };
+      }
+    }
+  } catch (e) {
+    // Fail-closed on caps: if we can't verify, don't grant the discount.
+    console.error("resolveCouponDiscount cap check failed:", (e as Error).message);
+    return { code: null, discount: 0, reason: "cap_check_failed" };
+  }
+
   const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
   return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
 }
+
+/**
+ * Count how many OTP SMS have been sent to this phone in the last 24h,
+ * by summing `send_count` across all `order_otps` rows whose most recent
+ * send falls in the window. Fail-open (0) on DB errors so infra issues
+ * don't block real customers.
+ */
+async function smsSendsLast24h(phone: string): Promise<number> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("order_otps" as never)
+      .select("send_count")
+      .eq("phone", phone)
+      .gte("last_sent_at", since);
+    if (error) return 0;
+    return ((data ?? []) as { send_count: number }[]).reduce(
+      (s, r) => s + (r.send_count || 0),
+      0,
+    );
+  } catch {
+    return 0;
+  }
+}
+
+
 
 
 // ---------- submitPendingOrder ----------
@@ -279,10 +355,12 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // resolve the discount against our own coupon table. Any tampered
     // `data.discount` or unknown `data.coupon_code` is discarded here.
     const serverSubtotal = await computeServerSubtotal(data.items);
-    const { code: validCoupon, discount: validDiscount } = resolveCouponDiscount(
+    const { code: validCoupon, discount: validDiscount } = await resolveCouponDiscount(
       data.coupon_code,
       serverSubtotal,
+      phone,
     );
+
     const serverShipping = await computeServerShipping(data.billing.city);
     const serverGrandTotal = Math.max(0, serverSubtotal - validDiscount) + serverShipping.amount;
 
@@ -410,18 +488,43 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     }
 
     // 3) Send SMS (fail-open — don't block customer, they can resend).
+    //    Enforce a per-phone 24h SMS cap first to protect BDBulkSMS spend.
     let smsOk = false;
-    try {
-      const { sendSms } = await import("./sms.server");
-      const res = await sendSms({
-        phone,
-        message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
-      });
-      smsOk = res.ok;
-      if (!smsOk) console.error("OTP SMS failed", res.message);
-    } catch (e) {
-      console.error("OTP SMS threw", e);
+    const smsSentSoFar = await smsSendsLast24h(phone);
+    if (smsSentSoFar >= SMS_MAX_PER_PHONE_24H) {
+      console.warn(`OTP SMS capped for ${phone}: ${smsSentSoFar}/${SMS_MAX_PER_PHONE_24H} in 24h`);
+    } else {
+      try {
+        const { sendSms } = await import("./sms.server");
+        const res = await sendSms({
+          phone,
+          message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
+        });
+        smsOk = res.ok;
+        if (!smsOk) console.error("OTP SMS failed", res.message);
+      } catch (e) {
+        console.error("OTP SMS threw", e);
+      }
     }
+
+    // 4) Record coupon redemption (best-effort) — enforces max_uses /
+    //    max_per_phone on subsequent attempts. Unique (coupon_code, wc_order_id)
+    //    makes this idempotent under retry.
+    if (validCoupon && validDiscount > 0) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin.from("coupon_usage" as never).insert({
+          coupon_code: validCoupon,
+          phone,
+          wc_order_id: created.id,
+          discount: validDiscount,
+        } as never);
+      } catch (e) {
+        console.error("coupon_usage insert failed:", (e as Error).message);
+      }
+    }
+
+
 
     return {
       ok: true,
@@ -474,6 +577,11 @@ export const resendOrderOtp = createServerFn({ method: "POST" })
     if (r.send_count >= 5) {
       return { ok: false as const, error: "Too many code requests. Please contact support." };
     }
+    // Per-phone 24h SMS cost cap.
+    if ((await smsSendsLast24h(r.phone)) >= SMS_MAX_PER_PHONE_24H) {
+      return { ok: false as const, error: "Daily code limit reached. Please try again tomorrow." };
+    }
+
 
     const code = generateOtp();
     const codeHash = await sha256Hex(`${code}:${r.phone}`);
