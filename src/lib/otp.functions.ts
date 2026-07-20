@@ -219,11 +219,30 @@ function resolveCouponDiscount(code: string | undefined, subtotal: number): {
 
 export const submitPendingOrder = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => submitSchema.parse(raw))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<SubmitResult> => {
     const phone = normalizePhone(data.billing.phone);
     if (!/^01[3-9]\d{8}$/.test(phone)) {
-      return { ok: false as const, error: "Invalid Bangladeshi mobile number." };
+      return { ok: false, error: "Invalid Bangladeshi mobile number." };
     }
+
+    // Idempotency: dedupe concurrent/near-duplicate submissions within a
+    // short TTL so a double-click, network retry, or fast re-POST returns
+    // the same order instead of creating a second Woo order.
+    idempSweep();
+    const fingerprint =
+      (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
+    const idempKey = await deriveIdempotencyKey(
+      data.idempotency_key,
+      phone,
+      data.items,
+      fingerprint,
+    );
+    const existing = idempStore.get(idempKey);
+    if (existing && existing.expiresAt > Date.now()) {
+      return existing.promise;
+    }
+
+    const run = async (): Promise<SubmitResult> => {
 
     const server = await readClientContext();
     const trackingBundle = {
