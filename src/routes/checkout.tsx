@@ -201,6 +201,7 @@ function CheckoutPage() {
       el?.focus?.();
       return;
     }
+    setSubmitting(true);
     try {
       const { first, last } = splitName(parsed.data.name);
       const notePieces = [
