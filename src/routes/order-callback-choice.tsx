@@ -62,7 +62,7 @@ function CallbackChoicePage() {
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <ShieldCheckAnim />
+          <FlowIcon variant="static" icon={ShieldCheck} />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Verification complete</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -72,8 +72,9 @@ function CallbackChoicePage() {
             Do you want us to call and confirm first?
           </p>
 
+          <OrderSummaryCard orderId={order} />
 
-          <div className="mt-7 grid gap-2.5">
+          <div className="mt-5 grid gap-2.5">
             <button
               onClick={() => choose(true)}
               disabled={!!busy}
