@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
+import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -9,15 +9,17 @@ import {
   Share2,
   Shield,
   ShoppingBag,
-  Star,
   Truck,
   Undo2,
   Gem,
   PackageX,
+  Check,
+  Sparkles,
 } from "lucide-react";
-import { getProductBySlug } from "@/lib/woo.functions";
+import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
+import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
-import { formatBDT, formatCount } from "@/lib/format";
+import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 
@@ -35,7 +37,7 @@ export const Route = createFileRoute("/products/$slug")({
   },
   head: ({ match }) => {
     const detail = match.context?.queryClient.getQueryData(productQuery(match.params.slug).queryKey) as
-      | { product: { name: string; short_description?: string; images: { src: string }[]; price: string } | null }
+      | { product: WooProduct | null }
       | undefined;
     const p = detail?.product;
     if (!p) return { meta: [{ title: "Product — Zonash" }] };
@@ -68,6 +70,28 @@ export const Route = createFileRoute("/products/$slug")({
   ),
 });
 
+/** Extract clean bullet lines from short_description HTML (strips tags, splits on <li>/newlines). */
+function parseHighlights(html: string): string[] {
+  if (!html) return [];
+  // Prefer explicit <li>…</li> items when present
+  const liMatches = Array.from(html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)).map((m) => m[1]);
+  const source = liMatches.length ? liMatches : html.split(/<br\s*\/?>|<\/p>|\n/i);
+  const cleaned = source
+    .map((s) => s.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim())
+    .filter((s) => s.length > 0 && s.length < 140);
+  // Deduplicate while preserving order
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of cleaned) {
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(line);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
 function ProductPage() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(productQuery(slug));
@@ -76,18 +100,101 @@ function ProductPage() {
   const { add, count: cartCount } = useCart();
   const navigate = useNavigate();
 
-  const priceNum = parseFloat(p.sale_price && p.on_sale ? p.sale_price : p.price) || 0;
-  const oldPrice = p.on_sale && p.regular_price ? parseFloat(p.regular_price) : 0;
-  const discount = oldPrice > priceNum ? Math.round(((oldPrice - priceNum) / oldPrice) * 100) : 0;
-  const rating = parseFloat(p.average_rating) || 0;
-  const reviews = p.rating_count ?? 0;
-  const inStock = p.stock_status === "instock";
+  const isVariable = p.type === "variable" && (p.variations?.length ?? 0) > 0;
 
-  const shortDesc = useMemo(() => (p.short_description ?? "").replace(/<[^>]+>/g, "").trim(), [p.short_description]);
+  // ---------- Variations ----------
+  const variationsQuery = useQuery({
+    queryKey: ["product-variations", p.id],
+    queryFn: () => getProductVariations({ data: { productId: p.id } }),
+    enabled: isVariable,
+    staleTime: 5 * 60 * 1000,
+  });
+  const variations: WooVariation[] = variationsQuery.data?.variations ?? [];
 
+  // Attribute options come from product.attributes (variation: true).
+  const variationAttrs = useMemo(
+    () => (p.attributes ?? []).filter((a) => a.variation && (a.options?.length ?? 0) > 0),
+    [p.attributes],
+  );
+
+  // Selected option per attribute name. Seed from default_attributes.
+  const [selected, setSelected] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const d of p.default_attributes ?? []) init[d.name] = d.option;
+    return init;
+  });
+
+  // Once variations load, if any attribute isn't preset, auto-pick the first
+  // in-stock variation's option so pricing/CTA is coherent.
+  useEffect(() => {
+    if (!isVariable || variations.length === 0) return;
+    const first = variations.find((v) => v.stock_status === "instock") ?? variations[0];
+    setSelected((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const a of first.attributes) {
+        if (!next[a.name]) {
+          next[a.name] = a.option;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [isVariable, variations]);
+
+  const matchedVariation: WooVariation | null = useMemo(() => {
+    if (!isVariable || variations.length === 0) return null;
+    return (
+      variations.find((v) =>
+        v.attributes.every((a) => (selected[a.name] ?? "") === a.option),
+      ) ?? null
+    );
+  }, [isVariable, variations, selected]);
+
+  // Which options are valid given the currently-selected other attributes.
+  function isOptionAvailable(attrName: string, option: string): boolean {
+    if (!isVariable || variations.length === 0) return true;
+    return variations.some((v) => {
+      let matches = true;
+      for (const a of v.attributes) {
+        if (a.name === attrName) {
+          if (a.option !== option) matches = false;
+        } else if (selected[a.name] && selected[a.name] !== a.option) {
+          matches = false;
+        }
+      }
+      return matches && v.stock_status === "instock";
+    });
+  }
+
+  // ---------- Pricing / stock (variation-aware) ----------
+  const activePriceStr = matchedVariation?.price || (p.sale_price && p.on_sale ? p.sale_price : p.price);
+  const activeRegularStr = matchedVariation?.regular_price || p.regular_price;
+  const activeSaleStr = matchedVariation?.sale_price || p.sale_price;
+  const priceNum = parseFloat(activePriceStr) || 0;
+  const oldPrice =
+    (matchedVariation ? parseFloat(activeRegularStr) || 0 : p.on_sale ? parseFloat(activeRegularStr) || 0 : 0);
+  const showOld = oldPrice > priceNum;
+  const discount = showOld ? Math.round(((oldPrice - priceNum) / oldPrice) * 100) : 0;
+  const stockStatus = matchedVariation?.stock_status ?? p.stock_status;
+  const inStock = stockStatus === "instock";
+  const activeImage = matchedVariation?.image?.src;
+
+  const highlights = useMemo(() => parseHighlights(p.short_description ?? ""), [p.short_description]);
+  const longDesc = useMemo(() => (p.description ?? "").trim(), [p.description]);
+
+  // ---------- UI state ----------
   const [qty, setQty] = useState(1);
   const galleryRef = useRef<HTMLDivElement>(null);
   const [activeImg, setActiveImg] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const onGalleryScroll = () => {
     const el = galleryRef.current;
     if (!el) return;
@@ -100,16 +207,46 @@ function ProductPage() {
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
     setActiveImg(i);
   };
+  // Auto-scroll gallery to the variation's image when it changes.
+  useEffect(() => {
+    if (!activeImage) return;
+    const idx = gallery.findIndex((s) => s === activeImage);
+    if (idx >= 0 && idx !== activeImg) scrollToImg(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeImage]);
   const [descOpen, setDescOpen] = useState(false);
 
   const addLine = () => {
-    add({ productId: p.id, name: p.name, slug: p.slug, price: priceNum, image: gallery[0] }, qty);
+    const variantSuffix = matchedVariation
+      ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
+      : "";
+    const productKey = matchedVariation ? p.id * 100000 + matchedVariation.id : p.id;
+    add(
+      {
+        productId: productKey,
+        name: p.name + variantSuffix,
+        slug: p.slug,
+        price: priceNum,
+        image: activeImage || gallery[0],
+      },
+      qty,
+    );
   };
+  const readyToBuy =
+    inStock && (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
   const handleAdd = () => {
+    if (!readyToBuy) {
+      toast.error("Please select all options");
+      return;
+    }
     addLine();
     toast.success("Added to cart");
   };
   const handleBuyNow = () => {
+    if (!readyToBuy) {
+      toast.error("Please select all options");
+      return;
+    }
     addLine();
     navigate({ to: "/checkout" });
   };
@@ -117,27 +254,60 @@ function ProductPage() {
     try {
       if (navigator.share) await navigator.share({ title: p.name, url: window.location.href });
       else await navigator.clipboard.writeText(window.location.href);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
-    <div className="min-h-[100dvh] bg-muted/30 pb-24">
-      {/* Sticky top bar */}
-      <header className="sticky top-0 z-30 flex h-11 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur md:h-14 md:px-6">
+    <div className="min-h-[100dvh] bg-muted/30 pb-28 md:pb-8">
+      {/* Floating transparent header — becomes solid on scroll */}
+      <header
+        className={`fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-2 px-3 transition-all md:h-14 md:px-6 ${
+          scrolled
+            ? "border-b border-border bg-background/95 backdrop-blur"
+            : "bg-gradient-to-b from-black/40 to-transparent"
+        }`}
+      >
         <button
           type="button"
-          onClick={() => (typeof window !== "undefined" && window.history.length > 1 ? window.history.back() : navigate({ to: "/" }))}
+          onClick={() =>
+            typeof window !== "undefined" && window.history.length > 1
+              ? window.history.back()
+              : navigate({ to: "/" })
+          }
           aria-label="Back"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted"
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
+            scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
+          }`}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold md:text-base">{p.name}</span>
+        <span
+          className={`min-w-0 flex-1 truncate text-sm font-semibold transition-opacity md:text-base ${
+            scrolled ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {p.name}
+        </span>
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" aria-label="Share" onClick={handleShare} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
+          <button
+            type="button"
+            aria-label="Share"
+            onClick={handleShare}
+            className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${
+              scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
+            }`}
+          >
             <Share2 className="h-5 w-5" />
           </button>
-          <Link to="/cart" aria-label="Cart" className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
+          <Link
+            to="/cart"
+            aria-label="Cart"
+            className={`relative grid h-9 w-9 place-items-center rounded-full transition-colors ${
+              scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
+            }`}
+          >
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 && (
               <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
@@ -148,7 +318,7 @@ function ProductPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:py-6">
+      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
         <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
           {/* Gallery */}
           <div>
@@ -158,36 +328,50 @@ function ProductPage() {
                 onScroll={onGalleryScroll}
                 className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {(gallery.length ? gallery : [""]).map((src, i) => (
+                {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
                   <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
                     {src ? (
-                      <img src={src} alt={p.name} className="h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+                      <img
+                        src={src}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                        loading={i === 0 ? "eager" : "lazy"}
+                      />
                     ) : (
-                      <div className="grid h-full w-full place-items-center bg-muted"><Gem className="h-16 w-16 text-muted-foreground/40" /></div>
+                      <div className="grid h-full w-full place-items-center bg-muted">
+                        <Gem className="h-16 w-16 text-muted-foreground/40" />
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
               {discount > 0 && (
-                <span className="absolute left-3 top-3 rounded-[3px] bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+                <span className="absolute left-3 top-14 rounded-[3px] bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-lg md:top-3">
                   -{discount}%
                 </span>
               )}
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-                  {gallery.map((_, i) => (
-                    <span key={i} className={`h-1.5 rounded-full transition-all ${i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"}`} />
+                  {gallery.map((_: string, i: number) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
+                      }`}
+                    />
                   ))}
                 </div>
               )}
             </div>
             {gallery.length > 1 && (
               <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1 md:hidden">
-                {gallery.slice(0, 6).map((src, i) => (
+                {gallery.slice(0, 6).map((src: string, i: number) => (
                   <button
                     key={i}
                     onClick={() => scrollToImg(i)}
-                    className={`aspect-square overflow-hidden rounded-[3px] ${i === activeImg ? "ring-2 ring-primary" : "opacity-70"}`}
+                    className={`aspect-square overflow-hidden rounded-[3px] ${
+                      i === activeImg ? "ring-2 ring-primary" : "opacity-70"
+                    }`}
                   >
                     <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
                   </button>
@@ -196,11 +380,13 @@ function ProductPage() {
             )}
             {gallery.length > 1 && (
               <div className="mt-3 hidden grid-cols-6 gap-2 md:grid">
-                {gallery.slice(0, 6).map((src, i) => (
+                {gallery.slice(0, 6).map((src: string, i: number) => (
                   <button
                     key={i}
                     onClick={() => scrollToImg(i)}
-                    className={`aspect-square overflow-hidden rounded-[3px] ${i === activeImg ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"}`}
+                    className={`aspect-square overflow-hidden rounded-[3px] ${
+                      i === activeImg ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
+                    }`}
                   >
                     <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
                   </button>
@@ -211,42 +397,120 @@ function ProductPage() {
 
           {/* Info */}
           <div className="bg-background md:rounded-[3px] md:border md:border-border md:p-5">
-            {/* Price block */}
+            {/* Price + stock badge */}
             <div className="border-b border-border p-3 md:border-none md:p-0">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-primary md:text-3xl">{formatBDT(priceNum)}</span>
-                {oldPrice > priceNum && (
-                  <span className="text-sm text-muted-foreground line-through">{formatBDT(oldPrice)}</span>
-                )}
-                {discount > 0 && (
-                  <span className="rounded-[3px] bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">-{discount}%</span>
-                )}
-              </div>
-              <h1 className="mt-2 text-[15px] font-semibold leading-snug md:text-xl">{p.name}</h1>
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                {reviews > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                    <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
-                    <span>({formatCount(reviews)})</span>
-                  </span>
-                )}
-                {reviews > 0 && <span>{formatCount(reviews)} sold</span>}
-                <span className={`ml-auto rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold uppercase ${inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-2xl font-extrabold text-primary md:text-3xl">
+                      {formatBDT(priceNum)}
+                    </span>
+                    {showOld && (
+                      <span className="text-sm text-muted-foreground line-through">
+                        {formatBDT(oldPrice)}
+                      </span>
+                    )}
+                    {discount > 0 && (
+                      <span className="rounded-[3px] bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
+                        -{discount}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                    inStock
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive"
+                  }`}
+                >
                   {inStock ? "In stock" : "Sold out"}
                 </span>
               </div>
+              <h1 className="mt-2 text-[15px] font-semibold leading-snug md:text-xl">{p.name}</h1>
             </div>
+
+            {/* Highlights — premium bordered card */}
+            {highlights.length > 0 && (
+              <div className="p-3 md:px-0 md:pt-4">
+                <div className="relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] p-3 shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
+                  <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                      Product highlights
+                    </span>
+                  </div>
+                  <ul className="grid gap-1.5">
+                    {highlights.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
+                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                          <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                        </span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Variation attribute selector */}
+            {isVariable && variationAttrs.length > 0 && (
+              <div className="space-y-3 border-t border-border p-3 md:border-none md:px-0 md:pt-4">
+                {variationAttrs.map((attr) => {
+                  const options = attr.options ?? [];
+                  const current = selected[attr.name];
+                  return (
+                    <div key={attr.id + attr.name}>
+                      <div className="mb-1.5 flex items-baseline justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                          {attr.name}
+                        </span>
+                        {current && (
+                          <span className="text-[12px] font-semibold text-foreground">{current}</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {options.map((opt) => {
+                          const active = current === opt;
+                          const enabled = isOptionAvailable(attr.name, opt);
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() =>
+                                setSelected((prev) => ({ ...prev, [attr.name]: opt }))
+                              }
+                              disabled={!enabled && !active}
+                              className={`relative min-w-[3rem] rounded-[4px] border px-3 py-1.5 text-[12px] font-semibold transition-all ${
+                                active
+                                  ? "border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary))_inset]"
+                                  : enabled
+                                    ? "border-border bg-background text-foreground hover:border-primary/60 hover:text-primary"
+                                    : "border-dashed border-border bg-muted/40 text-muted-foreground/60 line-through"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Categories chip row */}
             {p.categories && p.categories.length > 0 && (
-              <div className="border-b border-border p-3 md:border-none md:px-0 md:pt-4">
+              <div className="border-t border-border p-3 md:border-none md:px-0 md:pt-4">
                 <div className="flex flex-wrap gap-1.5">
-                  {p.categories.map((c) => (
+                  {p.categories.map((c: { id: number; name: string; slug: string }) => (
                     <Link
                       key={c.id}
-                      to="/categories"
-                      search={{ parent: c.slug } as never}
+                      to="/c/$slug"
+                      params={{ slug: c.slug }}
                       className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[11px] text-foreground hover:border-primary hover:text-primary"
                     >
                       {c.name}
@@ -257,7 +521,7 @@ function ProductPage() {
             )}
 
             {/* Delivery + guarantees */}
-            <div className="grid grid-cols-3 gap-2 border-b border-border p-3 text-center md:border-none md:px-0 md:pt-4">
+            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center md:border-none md:px-0 md:pt-4">
               <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
                 <Truck className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-foreground">Fast delivery</span>
@@ -275,21 +539,27 @@ function ProductPage() {
               </div>
             </div>
 
-            {/* Quantity + inline add for desktop */}
-            <div className="hidden items-center justify-between border-b border-border p-3 md:flex md:border-none md:px-0 md:pt-5">
+            {/* Desktop quantity + CTAs */}
+            <div className="hidden items-center justify-between border-t border-border p-3 md:flex md:border-none md:px-0 md:pt-5">
               <span className="text-sm font-semibold">Quantity</span>
               <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
-                <button aria-label="Decrease" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-9 w-9 place-items-center text-muted-foreground active:scale-95">
+                <button
+                  aria-label="Decrease"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="grid h-9 w-9 place-items-center text-muted-foreground active:scale-95"
+                >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
                 <span className="w-9 text-center text-sm font-semibold">{qty}</span>
-                <button aria-label="Increase" onClick={() => setQty((q) => Math.min(99, q + 1))} className="grid h-9 w-9 place-items-center text-primary active:scale-95">
+                <button
+                  aria-label="Increase"
+                  onClick={() => setQty((q) => Math.min(99, q + 1))}
+                  className="grid h-9 w-9 place-items-center text-primary active:scale-95"
+                >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
-
-            {/* Desktop CTAs */}
             <div className="mt-3 hidden gap-2 md:flex">
               <button
                 type="button"
@@ -311,39 +581,51 @@ function ProductPage() {
           </div>
         </div>
 
-        {/* Description */}
-        {(shortDesc || p.description) && (
+        {/* Full description */}
+        {longDesc && (
           <details
             open={descOpen}
             onToggle={(e) => setDescOpen((e.target as HTMLDetailsElement).open)}
             className="mt-3 rounded-[3px] border border-border bg-background md:mt-6"
           >
             <summary className="flex cursor-pointer list-none items-center justify-between p-3 md:p-4">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</span>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${descOpen ? "rotate-180" : ""}`} />
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Description
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  descOpen ? "rotate-180" : ""
+                }`}
+              />
             </summary>
-            <div className="border-t border-dashed border-border px-3 pb-4 pt-3 text-[13px] leading-relaxed text-foreground md:px-4">
-              {shortDesc && <p className="mb-3">{shortDesc}</p>}
-              {p.description && (
-                <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: p.description }} />
-              )}
-            </div>
+            <div
+              className="prose prose-sm max-w-none border-t border-dashed border-border px-3 pb-4 pt-3 text-[13px] leading-relaxed text-muted-foreground md:px-4"
+              dangerouslySetInnerHTML={{ __html: longDesc }}
+            />
           </details>
         )}
       </div>
 
       {/* Mobile sticky action bar */}
       <div
-        className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-background/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
-            <button aria-label="Decrease" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95">
+            <button
+              aria-label="Decrease"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95"
+            >
               <Minus className="h-3.5 w-3.5" />
             </button>
             <span className="w-8 text-center text-sm font-semibold">{qty}</span>
-            <button aria-label="Increase" onClick={() => setQty((q) => Math.min(99, q + 1))} className="grid h-10 w-9 place-items-center text-primary active:scale-95">
+            <button
+              aria-label="Increase"
+              onClick={() => setQty((q) => Math.min(99, q + 1))}
+              className="grid h-10 w-9 place-items-center text-primary active:scale-95"
+            >
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
