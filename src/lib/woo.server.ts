@@ -24,13 +24,30 @@ export class WooError extends Error {
 // Short-TTL in-isolate cache + single-flight coalescing for GETs.
 // - Coalescing: N concurrent identical GETs share one upstream fetch.
 // - TTL cache: repeats within TTL return instantly with no origin call.
+// - Cloudflare Cache API (Layer 2): shared across all isolates in a colo,
+//   surviving isolate recycles. Falls back gracefully when unavailable
+//   (local dev / non-Workers runtime).
 // Absorbs bursts (e.g. 500 concurrent home visits) so WooCommerce sees ~1
-// request per unique GET per TTL window per isolate instead of N.
+// request per unique GET per TTL window per colo instead of N.
 type CacheEntry = { at: number; value: unknown };
 const GET_TTL_MS = 30_000;
+const EDGE_TTL_SECONDS = 60; // Cloudflare Cache API TTL (edge-shared)
 const MAX_CACHE_ENTRIES = 500;
 const getCache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
+
+// Synthetic origin for Cache API keys. Must be a valid absolute URL; the
+// hostname is arbitrary and never resolved — Cache API only uses it as a key.
+const EDGE_CACHE_ORIGIN = "https://woo-cache.internal";
+
+function getEdgeCache(): Cache | null {
+  try {
+    const c = (globalThis as unknown as { caches?: CacheStorage }).caches;
+    return c?.default ?? null;
+  } catch {
+    return null;
+  }
+}
 
 function cacheGet(key: string): unknown | undefined {
   const e = getCache.get(key);
@@ -53,6 +70,7 @@ function cacheSet(key: string, value: unknown) {
   }
   getCache.set(key, { at: Date.now(), value });
 }
+
 
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   const lovableKey = process.env.LOVABLE_API_KEY;
