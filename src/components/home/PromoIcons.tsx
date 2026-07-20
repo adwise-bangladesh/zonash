@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Flame, Gift, Sparkles, Ticket, Crown } from "lucide-react";
+import { Flame, Gift, CreditCard, TrendingUp, Crown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type Promo = {
@@ -12,10 +12,10 @@ type Promo = {
 
 const promos: Promo[] = [
   { label: "Flash Deals", icon: Flame, tint: "bg-rose-50 text-rose-600 ring-rose-100", to: "/products", search: { orderby: "popularity" } },
-  { label: "Gift Cards", icon: Gift, tint: "bg-sky-50 text-sky-600 ring-sky-100", to: "/products" },
-  { label: "Rewards", icon: Ticket, tint: "bg-amber-50 text-amber-600 ring-amber-100", to: "/products" },
-  { label: "New In", icon: Sparkles, tint: "bg-emerald-50 text-emerald-600 ring-emerald-100", to: "/products", search: { orderby: "date" } },
-  { label: "Luxury", icon: Crown, tint: "bg-primary/10 text-primary ring-primary/15", to: "/products", search: { featured: true } },
+  { label: "Gift Boxes", icon: Gift, tint: "bg-sky-50 text-sky-600 ring-sky-100", to: "/products", search: { category: "gift-boxes" } },
+  { label: "Gift Cards", icon: CreditCard, tint: "bg-amber-50 text-amber-600 ring-amber-100", to: "/products", search: { category: "gift-cards" } },
+  { label: "Trending", icon: TrendingUp, tint: "bg-emerald-50 text-emerald-600 ring-emerald-100", to: "/products", search: { orderby: "popularity" } },
+  { label: "Luxury", icon: Crown, tint: "bg-primary/10 text-primary ring-primary/15", to: "/luxury" },
 ];
 
 export function PromoIcons() {
