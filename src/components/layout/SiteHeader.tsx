@@ -42,9 +42,15 @@ export function SiteHeader() {
         </Link>
         <div className="min-w-0 flex-1" />
         <div className="flex shrink-0 items-center gap-1">
-          <Link to="/products" aria-label="Search" className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted">
-            <Search className="h-5 w-5" />
-          </Link>
+          <button
+            type="button"
+            aria-label="Search"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </button>
           <Link
             to="/cart"
             aria-label="Cart"
