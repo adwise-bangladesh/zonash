@@ -78,6 +78,22 @@ export const getProductBySlug = createServerFn({ method: "GET" })
     }
   });
 
+export const getProductVariations = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) => z.object({ productId: z.number().int().positive() }).parse(raw))
+  .handler(async ({ data }) => {
+    try {
+      const variations = await (await import("./woo.server")).wooFetch<WooVariation[]>({
+        path: `/products/${data.productId}/variations`,
+        query: { per_page: 100 },
+        timeoutMs: 10000,
+      });
+      return { variations, error: null as string | null };
+    } catch (e) {
+      console.error("getProductVariations failed", e);
+      return { variations: [] as WooVariation[], error: "Variations unavailable." };
+    }
+  });
+
 export type WooCategory = {
   id: number;
   name: string;
