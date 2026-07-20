@@ -177,13 +177,18 @@ type WooOrderLite = {
   shipping?: { city?: string };
 };
 
-async function fetchOrdersByPhone(phone: string): Promise<WooOrderLite[]> {
+async function fetchOrdersByPhone(
+  phone: string,
+  page = 1,
+  perPage = 20,
+): Promise<WooOrderLite[]> {
   const { wooFetch } = await import("./woo.server");
   const orders = await wooFetch<WooOrderLite[]>({
     path: "/orders",
     query: {
       search: phone,
-      per_page: 40,
+      per_page: perPage,
+      page,
       status: "any",
       orderby: "date",
       order: "desc",
@@ -199,17 +204,36 @@ async function fetchOrdersByPhone(phone: string): Promise<WooOrderLite[]> {
 
 export const listOrdersByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
-    z.object({ phone: z.string().trim().min(6).max(20) }).parse(raw),
+    z
+      .object({
+        phone: z.string().trim().min(6).max(20),
+        page: z.number().int().min(1).max(50).optional(),
+        perPage: z.number().int().min(1).max(50).optional(),
+      })
+      .parse(raw),
   )
   .handler(async ({ data }) => {
     const phone = normalizePhone(data.phone);
-    if (!isBdMobile(phone)) return { orders: [] as WooOrderLite[], error: "Invalid phone." };
+    const page = data.page ?? 1;
+    const perPage = data.perPage ?? 20;
+    if (!isBdMobile(phone))
+      return { orders: [] as WooOrderLite[], page, hasMore: false, error: "Invalid phone." };
     try {
-      const orders = await fetchOrdersByPhone(phone);
-      return { orders, error: null as string | null };
+      const orders = await fetchOrdersByPhone(phone, page, perPage);
+      return {
+        orders,
+        page,
+        hasMore: orders.length >= perPage,
+        error: null as string | null,
+      };
     } catch (e) {
       console.error("listOrdersByPhone failed", e);
-      return { orders: [] as WooOrderLite[], error: "Could not load your orders." };
+      return {
+        orders: [] as WooOrderLite[],
+        page,
+        hasMore: false,
+        error: "Could not load your orders.",
+      };
     }
   });
 
