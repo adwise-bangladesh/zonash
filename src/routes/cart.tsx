@@ -72,13 +72,12 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const { regularTotal, savings, grandTotal } = useMemo(() => {
+  const { savings, grandTotal } = useMemo(() => {
     const regular = items.reduce(
       (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
       0,
     );
     return {
-      regularTotal: regular,
       savings: Math.max(0, regular - subtotal),
       grandTotal: subtotal,
     };
