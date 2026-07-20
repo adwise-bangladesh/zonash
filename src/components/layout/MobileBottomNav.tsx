@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, LayoutGrid, LifeBuoy, Receipt, ShoppingBag } from "lucide-react";
+import { Home, LayoutGrid, LifeBuoy, Package, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/cart";
 
 type NavItem = {
@@ -14,7 +14,7 @@ const items: NavItem[] = [
   { label: "Home", href: "/", icon: Home, exact: true },
   { label: "Categories", href: "/categories", icon: LayoutGrid },
   { label: "Support", href: "/support", icon: LifeBuoy },
-  { label: "Orders", href: "/orders", icon: Receipt },
+  { label: "Orders", href: "/orders", icon: Package },
   { label: "Cart", href: "/cart", icon: ShoppingBag, cart: true },
 ];
 
