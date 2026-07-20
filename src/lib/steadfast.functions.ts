@@ -97,6 +97,46 @@ export const getPoliceStations = createServerFn({ method: "GET" })
     }
   });
 
+// Public (no-auth) variant for the storefront checkout — thana list is not sensitive.
+export const getPublicPoliceStations = createServerFn({ method: "GET" })
+  .handler(async (): Promise<{ items: string[] }> => {
+    const { sfGetPoliceStations, steadfastConfigured } = await import("./steadfast.server");
+    if (!steadfastConfigured()) return { items: [] };
+    try {
+      const res = await sfGetPoliceStations();
+      const raw: unknown =
+        (res as { data?: unknown }).data ??
+        (res as { police_stations?: unknown }).police_stations ??
+        res;
+      const items = new Set<string>();
+      const walk = (node: unknown) => {
+        if (!node) return;
+        if (Array.isArray(node)) {
+          for (const it of node) {
+            if (typeof it === "string") { const s = it.trim(); if (s) items.add(s); }
+            else walk(it);
+          }
+          return;
+        }
+        if (typeof node === "object") {
+          for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+            if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
+              for (const s of v as string[]) { const t = s.trim(); if (t) items.add(t); }
+            } else if (typeof v === "string" && /station|thana|name/i.test(k)) {
+              const t = v.trim(); if (t) items.add(t);
+            } else walk(v);
+          }
+        }
+      };
+      walk(raw);
+      return { items: Array.from(items).sort() };
+    } catch (e) {
+      console.error("getPublicPoliceStations failed", e);
+      return { items: [] };
+    }
+  });
+
+
 
 // -----------------------------------------------------------------------------
 // Send an order to Steadfast
