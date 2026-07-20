@@ -271,7 +271,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const matchedVariation: WooVariation | null = useMemo(() => {
     if (!isVariable || variations.length === 0) return null;
-    return variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ?? null;
+    return (
+      variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ??
+      null
+    );
   }, [isVariable, variations, selected]);
 
   // Which options are valid given the currently-selected other attributes.
