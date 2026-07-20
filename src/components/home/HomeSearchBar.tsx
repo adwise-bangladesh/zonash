@@ -1,32 +1,53 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { Search, Camera, Sparkles, Mic } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { Search, Camera, Clock } from "lucide-react";
 
-const ROTATING = [
-  "Diamond rings",
-  "Gold necklaces",
-  "Pearl earrings",
-  "Bridal sets",
-  "Anklets under 2000 Tk",
+const POPULAR = [
+  "Engagement Rings",
+  "Gold Bangles",
+  "Earrings",
+  "Bridal Sets",
+  "Necklaces",
+  "Under 2000 Tk",
+  "Gift Items",
 ];
 
-const TRENDING = ["Rings", "Earrings", "Necklaces", "Bridal", "Under ৳1k"];
+const RECENT_KEY = "zonash.recent-searches";
+
+function loadRecent(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string").slice(0, 4) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(term: string) {
+  if (typeof window === "undefined") return;
+  const t = term.trim();
+  if (!t) return;
+  const cur = loadRecent().filter((x) => x.toLowerCase() !== t.toLowerCase());
+  cur.unshift(t);
+  window.localStorage.setItem(RECENT_KEY, JSON.stringify(cur.slice(0, 4)));
+}
 
 export function HomeSearchBar() {
   const [q, setQ] = useState("");
-  const [focused, setFocused] = useState(false);
-  const [idx, setIdx] = useState(0);
+  const [recent, setRecent] = useState<string[]>([]);
   const nav = useNavigate();
 
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % ROTATING.length), 2600);
-    return () => clearInterval(t);
+    setRecent(loadRecent());
   }, []);
-
-  const placeholder = useMemo(() => `Search “${ROTATING[idx]}”`, [idx]);
 
   const go = (term: string) => {
     const t = term.trim();
+    if (t) saveRecent(t);
+    setRecent(loadRecent());
     nav({ to: "/products", search: t ? { q: t } : {} });
   };
 
@@ -38,80 +59,84 @@ export function HomeSearchBar() {
           e.preventDefault();
           go(q);
         }}
-        className="relative"
+        className="mx-auto w-full max-w-2xl"
       >
-        {/* Animated gradient border */}
-        <div
-          className={`relative rounded-full p-[1.5px] transition-all duration-300 ${
-            focused
-              ? "bg-[conic-gradient(from_0deg,theme(colors.primary.DEFAULT),#c4a35a,theme(colors.primary.DEFAULT))] shadow-[0_10px_30px_-12px_rgba(58,2,3,0.45)]"
-              : "bg-gradient-to-r from-primary/70 via-primary/40 to-primary/70 shadow-[0_4px_14px_-8px_rgba(58,2,3,0.35)]"
-          }`}
-        >
-          <div className="flex h-12 w-full items-center rounded-full bg-background pl-4 pr-1.5">
-            <Sparkles
-              className={`h-4 w-4 shrink-0 transition-transform ${
-                focused ? "scale-110 text-primary" : "text-primary/80"
-              }`}
-              aria-hidden="true"
-            />
-            <div className="relative mx-2 min-w-0 flex-1">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setTimeout(() => setFocused(false), 120)}
-                type="search"
-                aria-label="Search products"
-                placeholder={placeholder}
-                className="peer w-full bg-transparent text-[14px] font-medium text-ink outline-none placeholder:text-muted-foreground/70"
-              />
-            </div>
-
-            <button
-              type="button"
-              aria-label="Voice search"
-              className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-primary/80 hover:bg-primary/10 sm:grid"
-            >
-              <Mic className="h-4 w-4" />
-            </button>
+        {/* Search input */}
+        <div className="relative flex items-center rounded-2xl border border-border bg-background p-1.5 shadow-[0_10px_30px_-18px_rgba(15,15,15,0.25)] transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+          <div className="pl-3 text-muted-foreground">
+            <Search className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            type="search"
+            aria-label="Search products"
+            placeholder="Search for rings, necklaces, 22k gold…"
+            className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none placeholder:text-muted-foreground/70"
+          />
+          <div className="flex shrink-0 items-center gap-1 pr-1">
             <button
               type="button"
               aria-label="Visual search"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-primary/80 hover:bg-primary/10"
+              className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
             >
-              <Camera className="h-4 w-4" />
+              <Camera className="h-5 w-5" />
             </button>
             <button
               type="submit"
-              aria-label="Search"
-              className="ml-1 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-[0.97]"
+              className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-[12px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:brightness-110 active:scale-[0.98]"
             >
-              <Search className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Search</span>
+              Search
             </button>
           </div>
         </div>
 
-        {/* Trending chips */}
-        <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Trending
+        {/* Popular collections */}
+        <div className="mt-4 flex items-center justify-between px-1">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-primary">
+            Popular Collections
           </span>
-          {TRENDING.map((t) => (
+          <Link
+            to="/categories"
+            className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            View All
+          </Link>
+        </div>
+
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {POPULAR.map((label) => (
             <button
-              key={t}
+              key={label}
               type="button"
-              onClick={() => {
-                setQ(t);
-                go(t);
-              }}
-              className="shrink-0 rounded-full border border-primary/15 bg-primary/[0.04] px-3 py-1 text-[12px] font-medium text-primary transition-colors hover:bg-primary/10"
+              onClick={() => go(label)}
+              className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface-muted/60 px-4 py-2 text-[13px] font-medium text-foreground/80 transition-all hover:border-primary hover:bg-primary/[0.04] hover:text-primary"
             >
-              {t}
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/30 transition-colors group-hover:bg-primary" />
+              {label}
             </button>
           ))}
         </div>
+
+        {/* Recent */}
+        {recent.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              Recent
+            </span>
+            {recent.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => go(r)}
+                className="text-[12px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
     </div>
   );
