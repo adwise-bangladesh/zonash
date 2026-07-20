@@ -229,7 +229,7 @@ function CheckoutPage() {
             country: "BD",
           },
           shipping_amount: shipping,
-          shipping_label: shipping === 80 ? "Inside Dhaka" : "Outside Dhaka",
+          shipping_label: insideDhaka ? "Inside Dhaka" : "Outside Dhaka",
           discount,
           coupon_code: coupon?.code,
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
