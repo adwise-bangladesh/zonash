@@ -16,6 +16,26 @@ type Ctx = {
 };
 
 const STORAGE_KEY = "zonash:customer-phone";
+const COOKIE_KEY = "zonash_customer_phone";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 10; // 10 years ("unlimited")
+const PHONE_RE = /^01[3-9]\d{8}$/;
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function writeCookie(name: string, value: string | null) {
+  if (typeof document === "undefined") return;
+  const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+  if (value === null) {
+    document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+  } else {
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  }
+}
+
 const CustomerSessionContext = createContext<Ctx>({
   phone: null,
   ready: false,
@@ -28,12 +48,24 @@ export function CustomerSessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    let found: string | null = null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw && /^01[3-9]\d{8}$/.test(raw)) setPhoneState(raw);
+      if (raw && PHONE_RE.test(raw)) found = raw;
     } catch {
       /* ignore */
     }
+    if (!found) {
+      const c = readCookie(COOKIE_KEY);
+      if (c && PHONE_RE.test(c)) {
+        found = c;
+        try { localStorage.setItem(STORAGE_KEY, c); } catch { /* ignore */ }
+      }
+    } else {
+      // Backfill cookie from localStorage so the session survives storage clears.
+      writeCookie(COOKIE_KEY, found);
+    }
+    if (found) setPhoneState(found);
     setReady(true);
   }, []);
 
@@ -45,6 +77,7 @@ export function CustomerSessionProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    writeCookie(COOKIE_KEY, p);
   }, []);
 
   const logout = useCallback(() => setPhone(null), [setPhone]);

@@ -8,6 +8,7 @@ import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 import { FlowIcon } from "@/components/checkout/FlowIcon";
+import { useCustomerSession } from "@/lib/customer-session";
 
 const searchSchema = z.object({
   order: z.coerce.number().int().positive(),
@@ -40,6 +41,7 @@ function VerifyOtpPage() {
   const hiddenRef = useRef<HTMLInputElement>(null);
   const verifyFn = useServerFn(verifyOrderOtp);
   const resendFn = useServerFn(resendOrderOtp);
+  const { setPhone } = useCustomerSession();
 
   const digits = useMemo(() => {
     const arr = code.split("");
@@ -86,6 +88,10 @@ function VerifyOtpPage() {
         setSubmitting(false);
         return;
       }
+      // Persist customer session (phone) for future visits — cookie + localStorage.
+      const verifiedPhone = phone && /^01[3-9]\d{8}$/.test(phone) ? phone : null;
+      if (verifiedPhone) setPhone(verifiedPhone);
+
       if (res.decision === "confirmed") {
         navigate({ to: "/order-callback-choice", search: { order, number: number ?? String(order) } as never });
       } else {
