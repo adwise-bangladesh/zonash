@@ -152,12 +152,14 @@ function HomeSkeleton() {
 }
 
 function Home() {
-  const { data: feat } = useSuspenseQuery(featuredQuery);
-  const { data: trend } = useSuspenseQuery(trendingQuery);
+  const { data: mega } = useSuspenseQuery(megaSaleQuery);
+  const { data: fallback } = useSuspenseQuery(fallbackQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
-  const featured = feat.products as WooProduct[];
-  const trending = trend.products as WooProduct[];
+  const megaSale = mega.products as WooProduct[];
+  const fallbackProducts = fallback.products as WooProduct[];
   const categories = catData.categories;
+  const dealsProducts = megaSale.length ? megaSale : fallbackProducts;
+  const errorMessage = mega.error ?? fallback.error;
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
@@ -166,24 +168,25 @@ function Home() {
         <div className="bg-background">
           <CategoryTabs categories={categories} />
           <PromoIcons />
-          <DealsStrip products={trending.length ? trending : featured} />
+          <DealsStrip products={dealsProducts} />
         </div>
 
         <InfiniteFeed />
 
         <TrustRow />
 
-        {feat.error && (
+        {errorMessage && (
           <div className="container-page py-6">
             <div
               role="alert"
               className="rounded-[3px] border border-warning/40 bg-warning/10 p-4 text-sm"
             >
-              {feat.error}
+              {errorMessage}
             </div>
           </div>
         )}
       </main>
     </div>
   );
+
 }
