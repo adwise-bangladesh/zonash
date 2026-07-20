@@ -272,3 +272,27 @@
 }
 
 
+
+/* View Transitions — smooth morph from product card to product page.
+ * A shared view-transition-name is set inline on the source (card image)
+ * and destination (product hero first image); the browser cross-fades and
+ * animates size/position between them. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(product-hero) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  ::view-transition-image-pair(product-hero) {
+    isolation: isolate;
+  }
+  ::view-transition-old(product-hero),
+  ::view-transition-new(product-hero) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 220ms;
+  }
+}
