@@ -500,23 +500,6 @@ function ProductPage() {
               </div>
             )}
 
-            {/* Categories chip row */}
-            {p.categories && p.categories.length > 0 && (
-              <div className="border-t border-border p-3 md:border-none md:px-0 md:pt-4">
-                <div className="flex flex-wrap gap-1.5">
-                  {p.categories.map((c: { id: number; name: string; slug: string }) => (
-                    <Link
-                      key={c.id}
-                      to="/c/$slug"
-                      params={{ slug: c.slug }}
-                      className="rounded-full border border-border bg-surface-muted px-2 py-0.5 text-[11px] text-foreground hover:border-primary hover:text-primary"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Delivery + guarantees */}
             <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center md:border-none md:px-0 md:pt-4">
