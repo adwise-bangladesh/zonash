@@ -510,3 +510,130 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
       duplicates,
     };
   });
+
+// ---------- finalizeOrderChoice ----------
+//
+// Final step of the storefront verification funnel. Called from the
+// "Do you need a confirmation call?" page after OTP verification succeeded
+// with decision=confirmed. If the customer wants a call we keep the order
+// pending (with a private note for the ops team). If they don't, we flip
+// to `confirmed` (fallback → `processing` when Woo doesn't know the custom
+// status).
+
+export const finalizeOrderChoice = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        order_id: z.number().int().positive(),
+        wants_call: z.boolean(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rowRaw } = await supabaseAdmin
+      .from("order_otps" as never)
+      .select("*")
+      .eq("wc_order_id", data.order_id)
+      .maybeSingle();
+    if (!rowRaw) return { ok: false as const, error: "Order not found." };
+    const row = rowRaw as {
+      verified_at: string | null;
+      decision: string | null;
+    };
+    if (!row.verified_at) {
+      return { ok: false as const, error: "This order has not been verified yet." };
+    }
+    if (row.decision && row.decision !== "confirmed") {
+      return { ok: false as const, error: "This order is under manual review." };
+    }
+
+    const { wooFetch } = await import("./woo.server");
+    const nowIso = new Date().toISOString();
+
+    if (data.wants_call) {
+      // Keep pending; annotate.
+      try {
+        await wooFetch({
+          path: `/orders/${data.order_id}`,
+          method: "PUT",
+          body: {
+            status: "pending",
+            meta_data: [
+              { key: "_zonash_awaiting_call_choice", value: "0" },
+              { key: "_zonash_call_requested", value: "1" },
+              { key: "_zonash_call_requested_at", value: nowIso },
+            ],
+          },
+          timeoutMs: 12_000,
+        });
+      } catch (e) {
+        console.error("finalizeOrderChoice(pending) failed", e);
+      }
+      try {
+        await wooFetch({
+          path: `/orders/${data.order_id}/notes`,
+          method: "POST",
+          body: {
+            note: "📞 Customer requested a confirmation call. Order kept as pending — please call to confirm before dispatch.",
+            customer_note: false,
+          },
+        });
+      } catch {
+        /* ignore */
+      }
+      return { ok: true as const, decision: "pending" as const };
+    }
+
+    // No call needed → confirm.
+    let applied: "confirmed" | "processing" = "confirmed";
+    try {
+      await wooFetch({
+        path: `/orders/${data.order_id}`,
+        method: "PUT",
+        body: {
+          status: "confirmed",
+          meta_data: [
+            { key: "_zonash_awaiting_call_choice", value: "0" },
+            { key: "_zonash_call_requested", value: "0" },
+            { key: "_zonash_confirmed_at", value: nowIso },
+          ],
+        },
+        timeoutMs: 12_000,
+      });
+    } catch (e) {
+      console.error("finalizeOrderChoice(confirmed) failed — falling back to processing", e);
+      applied = "processing";
+      try {
+        await wooFetch({
+          path: `/orders/${data.order_id}`,
+          method: "PUT",
+          body: {
+            status: "processing",
+            meta_data: [
+              { key: "_zonash_awaiting_call_choice", value: "0" },
+              { key: "_zonash_call_requested", value: "0" },
+              { key: "_zonash_confirmed_at", value: nowIso },
+              { key: "_zonash_status_fallback", value: "confirmed->processing" },
+            ],
+          },
+          timeoutMs: 12_000,
+        });
+      } catch (e2) {
+        console.error("finalizeOrderChoice fallback also failed", e2);
+      }
+    }
+    try {
+      await wooFetch({
+        path: `/orders/${data.order_id}/notes`,
+        method: "POST",
+        body: {
+          note: `✅ Customer confirmed via storefront — no call requested. Status → ${applied}.`,
+          customer_note: false,
+        },
+      });
+    } catch {
+      /* ignore */
+    }
+    return { ok: true as const, decision: "confirmed" as const, applied };
+  });
