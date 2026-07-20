@@ -469,25 +469,70 @@ function CheckoutPage() {
                 const lineOld = hasOld ? i.regularPrice! * i.quantity : 0;
                 return (
                   <li key={i.productId} className="flex gap-2.5 py-3">
-                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[3px] bg-muted">
+                    <span className="h-14 w-14 shrink-0 overflow-hidden rounded-[3px] bg-muted">
                       {i.image && <img src={i.image} alt="" className="h-full w-full object-cover" />}
                     </span>
-                    <div className="min-w-0 flex-1 text-[12px]">
-                      <Link to="/products/$slug" params={{ slug: i.slug }} className="line-clamp-2 font-medium">{i.name}</Link>
+                    <div className="flex min-w-0 flex-1 flex-col text-[12px]">
+                      <div className="flex items-start gap-1.5">
+                        <Link
+                          to="/products/$slug"
+                          params={{ slug: i.slug }}
+                          className="line-clamp-2 flex-1 font-medium"
+                        >
+                          {i.name}
+                        </Link>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${i.name}`}
+                          onClick={() => remove(i.productId)}
+                          className="-mr-1 -mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                       {i.sku && (
                         <div className="mt-0.5 text-[10.5px] text-muted-foreground">
                           SKU: <span className="font-mono">{i.sku}</span>
                         </div>
                       )}
-                      <div className="mt-0.5 text-muted-foreground">Qty {i.quantity}</div>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <div className="text-[13px] font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</div>
-                      {hasOld && (
-                        <div className="text-[10.5px] text-muted-foreground line-through tabular-nums">
-                          {formatBDT(lineOld)}
+                      <div className="mt-auto flex items-center justify-between pt-1.5">
+                        <div className="flex flex-col">
+                          <span className="text-[13px] font-bold text-primary tabular-nums">
+                            {formatBDT(lineTotal)}
+                          </span>
+                          {hasOld && (
+                            <span className="text-[10.5px] text-muted-foreground line-through tabular-nums">
+                              {formatBDT(lineOld)}
+                            </span>
+                          )}
                         </div>
-                      )}
+                        <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
+                          <button
+                            type="button"
+                            aria-label="Decrease quantity"
+                            onClick={() => setQty(i.productId, i.quantity - 1)}
+                            className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span
+                            aria-live="polite"
+                            aria-label={`Quantity ${i.quantity}`}
+                            className="w-7 text-center text-xs font-semibold tabular-nums"
+                          >
+                            {i.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Increase quantity"
+                            onClick={() => setQty(i.productId, Math.min(MAX_QTY, i.quantity + 1))}
+                            disabled={i.quantity >= MAX_QTY}
+                            className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </li>
                 );
