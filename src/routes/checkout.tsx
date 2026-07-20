@@ -138,13 +138,21 @@ function CheckoutPage() {
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (items.length === 0) return;
-    const parsed = schema.safeParse(form);
+    const normalizedPhone = normalizeBdPhone(form.phone);
+    const candidate = { ...form, phone: normalizedPhone };
+    const parsed = schema.safeParse(candidate);
     if (!parsed.success) {
       const errs: Record<string, string> = {};
       for (const issue of parsed.error.issues) errs[String(issue.path[0])] = issue.message;
       setErrors(errs);
+      const firstKey = parsed.error.issues[0]?.path[0] as keyof typeof ERR | undefined;
+      toast.error("Please review your details", {
+        description: firstKey ? ERR[firstKey] : "Some fields are invalid.",
+      });
       return;
     }
+    // persist normalized phone back to state
+    if (normalizedPhone !== form.phone) setForm((f) => ({ ...f, phone: normalizedPhone }));
     setSubmitting(true);
     try {
       const { first, last } = splitName(parsed.data.name);
