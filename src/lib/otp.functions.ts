@@ -96,7 +96,49 @@ const submitSchema = z.object({
   discount: z.number().min(0).max(1_000_000).default(0).optional(),
   customer_note: z.string().max(1000).optional().default(""),
   tracking: trackingSchema,
+  // Client-generated idempotency key. Stable across retries of the same
+  // logical submission; regenerated after a successful order. Server also
+  // derives a fallback key from phone+items+fingerprint if omitted.
+  idempotency_key: z.string().trim().min(8).max(128).optional(),
 });
+
+// ---------- idempotency (short-TTL, in-worker dedup) ----------
+
+type SubmitResult =
+  | { ok: true; order_id: number; order_number: string; total: string; phone_masked: string; sms_ok: boolean }
+  | { ok: false; error: string };
+
+const IDEMP_TTL_MS = 10 * 60_000; // 10 minutes
+const IDEMP_MAX = 5000;
+const idempStore = new Map<string, { expiresAt: number; promise: Promise<SubmitResult> }>();
+
+function idempSweep() {
+  const now = Date.now();
+  for (const [k, v] of idempStore) if (v.expiresAt <= now) idempStore.delete(k);
+  if (idempStore.size > IDEMP_MAX) {
+    // Drop oldest ~10% when overloaded.
+    const drop = Math.ceil(IDEMP_MAX * 0.1);
+    let i = 0;
+    for (const k of idempStore.keys()) {
+      idempStore.delete(k);
+      if (++i >= drop) break;
+    }
+  }
+}
+
+async function deriveIdempotencyKey(
+  provided: string | undefined,
+  phone: string,
+  items: { product_id: number; variation_id?: number; quantity: number }[],
+  fingerprint: string,
+): Promise<string> {
+  if (provided && provided.length >= 8) return `c:${provided}`;
+  const norm = items
+    .map((i) => `${i.product_id}:${i.variation_id ?? 0}:${i.quantity}`)
+    .sort()
+    .join("|");
+  return `d:${await sha256Hex(`${phone}::${norm}::${fingerprint}`)}`;
+}
 
 // Server-side coupon table (source of truth). Keep in sync with UI copy in
 // src/routes/checkout.tsx; if it drifts, this authoritative version wins.
@@ -177,11 +219,30 @@ function resolveCouponDiscount(code: string | undefined, subtotal: number): {
 
 export const submitPendingOrder = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => submitSchema.parse(raw))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<SubmitResult> => {
     const phone = normalizePhone(data.billing.phone);
     if (!/^01[3-9]\d{8}$/.test(phone)) {
-      return { ok: false as const, error: "Invalid Bangladeshi mobile number." };
+      return { ok: false, error: "Invalid Bangladeshi mobile number." };
     }
+
+    // Idempotency: dedupe concurrent/near-duplicate submissions within a
+    // short TTL so a double-click, network retry, or fast re-POST returns
+    // the same order instead of creating a second Woo order.
+    idempSweep();
+    const fingerprint =
+      (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
+    const idempKey = await deriveIdempotencyKey(
+      data.idempotency_key,
+      phone,
+      data.items,
+      fingerprint,
+    );
+    const existing = idempStore.get(idempKey);
+    if (existing && existing.expiresAt > Date.now()) {
+      return existing.promise;
+    }
+
+    const run = async (): Promise<SubmitResult> => {
 
     const server = await readClientContext();
     const trackingBundle = {
@@ -326,13 +387,27 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     }
 
     return {
-      ok: true as const,
+      ok: true,
       order_id: created.id,
       order_number: created.number,
       total: created.total,
       phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
       sms_ok: smsOk,
     };
+    };
+
+    const promise = run();
+    idempStore.set(idempKey, { promise, expiresAt: Date.now() + IDEMP_TTL_MS });
+    try {
+      const result = await promise;
+      // Only cache successful order creations. Failures (validation, Woo
+      // outage) should not block a genuine retry.
+      if (!result.ok) idempStore.delete(idempKey);
+      return result;
+    } catch (err) {
+      idempStore.delete(idempKey);
+      throw err;
+    }
   });
 
 // ---------- resendOrderOtp ----------

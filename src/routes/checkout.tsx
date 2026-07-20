@@ -89,6 +89,13 @@ function CheckoutPage() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  // Stable idempotency key for this checkout attempt. Reused across retries
+  // so a double-click or transient error never creates two Woo orders.
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -250,6 +257,7 @@ function CheckoutPage() {
           coupon_code: coupon?.code,
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
           tracking,
+          idempotency_key: idempotencyKey,
         },
       });
       if (!res.ok) {
@@ -274,6 +282,12 @@ function CheckoutPage() {
       });
       // Defer cart clear one tick so the checkout tree unmounts first.
       setTimeout(() => { try { clear(); } catch { /* ignore */ } }, 0);
+      // Rotate idempotency key for any future submission from this tab.
+      setIdempotencyKey(
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      );
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
