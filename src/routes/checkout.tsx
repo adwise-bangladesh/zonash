@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ArrowRight, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
@@ -80,14 +80,14 @@ function splitName(full: string): { first: string; last: string } {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, hydrated } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
 
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [couponOpen, setCouponOpen] = useState(false);
@@ -159,19 +159,25 @@ function CheckoutPage() {
   );
   const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
   const shipping = items.length === 0 ? 0 : insideDhaka ? 80 : 130;
-  const discount = useMemo(() => (coupon ? Math.min(coupon.discount, subtotal) : 0), [coupon, subtotal]);
-  const total = Math.max(0, subtotal - discount) + shipping;
+
+  const coupon = useMemo(() => {
+    if (!couponCode) return null;
+    const c = COUPONS[couponCode];
+    if (!c) return null;
+    const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
+    return { code: couponCode, discount: Math.min(value, subtotal) };
+  }, [couponCode, subtotal]);
+  const discount = coupon?.discount ?? 0;
+  const total = useMemo(() => Math.max(0, subtotal - discount) + shipping, [subtotal, discount, shipping]);
 
   const applyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
-    const c = COUPONS[code];
-    if (!c) { setCouponError("Invalid coupon code"); setCoupon(null); return; }
-    const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
-    setCoupon({ code, discount: value });
+    if (!COUPONS[code]) { setCouponError("Invalid coupon code"); setCouponCode(null); return; }
+    setCouponCode(code);
     setCouponError(null);
   };
-  const removeCoupon = () => { setCoupon(null); setCouponInput(""); setCouponError(null); };
+  const removeCoupon = () => { setCouponCode(null); setCouponInput(""); setCouponError(null); };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -252,6 +258,19 @@ function CheckoutPage() {
     }
   };
 
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-muted/30" aria-busy="true">
+        <CheckoutHeader title="Checkout" />
+        <div className="mx-auto w-full max-w-md flex-1 space-y-3 px-3 pt-3">
+          <div className="h-64 animate-pulse rounded-[3px] border border-border bg-background" />
+          <div className="h-14 animate-pulse rounded-[3px] border border-border bg-background" />
+          <div className="h-14 animate-pulse rounded-[3px] border border-border bg-background" />
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
@@ -270,7 +289,7 @@ function CheckoutPage() {
     <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[132px]">
       <CheckoutHeader title="Checkout" />
 
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3" autoComplete="on" name="checkout">
+      <form id="checkout-form" onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3" autoComplete="on" name="checkout">
         {/* Delivery details */}
         <Section title="Delivery details">
           <Field label="Full name" error={errors.name}>
@@ -456,10 +475,7 @@ function CheckoutPage() {
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
           <button
             type="submit"
-            onClick={(e) => {
-              const f = (e.currentTarget.closest("div")?.parentElement?.parentElement?.previousElementSibling as HTMLFormElement | null) ?? (document.querySelector("form") as HTMLFormElement | null);
-              f?.requestSubmit();
-            }}
+            form="checkout-form"
             disabled={submitting}
             className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99] disabled:opacity-60"
           >
