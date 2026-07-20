@@ -160,10 +160,19 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
 
+    // Server-side coupon validation: recompute subtotal from Woo prices and
+    // resolve the discount against our own coupon table. Any tampered
+    // `data.discount` or unknown `data.coupon_code` is discarded here.
+    const serverSubtotal = await computeServerSubtotal(data.items);
+    const { code: validCoupon, discount: validDiscount } = resolveCouponDiscount(
+      data.coupon_code,
+      serverSubtotal,
+    );
+
     // 1) Create the WooCommerce order in `pending` state.
     const feeLines =
-      data.discount > 0
-        ? [{ name: "Discount", total: (-Math.abs(data.discount)).toFixed(2) }]
+      validDiscount > 0
+        ? [{ name: "Discount", total: (-Math.abs(validDiscount)).toFixed(2) }]
         : [];
 
     // WooCommerce rejects empty-string emails with rest_invalid_email.
