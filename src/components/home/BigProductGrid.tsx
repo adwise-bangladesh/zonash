@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Gem, Zap } from "lucide-react";
+import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -30,17 +30,11 @@ function BigCard({ p }: { p: WooProduct }) {
       </div>
       <div className="flex flex-col gap-1.5 p-2.5">
         <div className="flex flex-wrap items-center gap-1">
-          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-            Zonash
-          </span>
-          {p.on_sale && (
-            <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-              Official
+          {p.stock_status !== "instock" && p.backorders_allowed && (
+            <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+              <Truck className="h-2.5 w-2.5" /> Slower delivery
             </span>
           )}
-          <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-            <Zap className="h-2.5 w-2.5 fill-white" /> Fast Ship
-          </span>
         </div>
         <p className="line-clamp-2 min-h-[2.4rem] text-[13px] font-medium leading-snug text-ink">
           {p.name}

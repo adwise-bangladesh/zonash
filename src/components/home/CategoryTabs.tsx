@@ -8,14 +8,14 @@ export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
       aria-label="Category tabs"
       className="sticky top-12 z-30 border-b border-border bg-background/95 backdrop-blur md:top-14"
     >
-      <div className="scroll-snap-x flex gap-5 overflow-x-auto px-4 py-2.5 text-[14px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:container-page">
+      <div className="scroll-snap-x flex gap-4 overflow-x-auto pl-8 pr-4 py-2 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:container-page md:pl-4">
         <Link
           to="/"
           className="relative shrink-0 snap-start text-primary"
           aria-current="page"
         >
           Recommended
-          <span className="absolute inset-x-1 -bottom-2.5 h-[3px] rounded-full bg-primary" />
+          <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
         </Link>
         <Link
           to="/products"
