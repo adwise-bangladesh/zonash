@@ -7,7 +7,7 @@ import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   order: z.coerce.number().int().positive(),
-  number: z.string().optional(),
+  number: z.coerce.string().optional(),
 });
 
 export const Route = createFileRoute("/order-pending")({
