@@ -87,10 +87,13 @@ const submitSchema = z.object({
     city: z.string().trim().min(1).max(80),
     country: z.string().trim().length(2).default("BD"),
   }),
-  shipping_amount: z.number().min(0).max(100_000).default(0),
-  shipping_label: z.string().max(120).default("Delivery"),
+  // Client-provided pricing is accepted for backwards compatibility but
+  // completely ignored — subtotal, shipping, and discount are recomputed
+  // on the server below. Kept in the schema only so old clients don't 400.
+  shipping_amount: z.number().min(0).max(100_000).default(0).optional(),
+  shipping_label: z.string().max(120).default("Delivery").optional(),
   coupon_code: z.string().trim().max(50).optional(),
-  discount: z.number().min(0).max(1_000_000).default(0),
+  discount: z.number().min(0).max(1_000_000).default(0).optional(),
   customer_note: z.string().max(1000).optional().default(""),
   tracking: trackingSchema,
 });
@@ -101,6 +104,10 @@ const SERVER_COUPONS: Record<string, { type: "percent" | "flat"; value: number }
   ZONASH10: { type: "percent", value: 10 },
   SAVE50: { type: "flat", value: 50 },
 };
+
+// Shipping rule (source of truth): 80 BDT inside Dhaka City, 130 BDT elsewhere.
+const SHIP_INSIDE_DHAKA = 80;
+const SHIP_OUTSIDE_DHAKA = 130;
 
 /** Fetch each product once, in parallel, and compute a trustworthy subtotal. */
 async function computeServerSubtotal(
@@ -130,6 +137,29 @@ async function computeServerSubtotal(
   return items.reduce((sum, i, idx) => sum + prices[idx] * i.quantity, 0);
 }
 
+/** Server-authoritative shipping: matches thana against `police_stations` and
+ *  returns 80 BDT inside Dhaka City, 130 BDT elsewhere. Falls back to the
+ *  higher rate when the thana is unknown so we never under-charge. */
+async function computeServerShipping(thana: string): Promise<{ amount: number; label: string; insideDhaka: boolean }> {
+  const t = (thana || "").trim();
+  if (!t) return { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("police_stations" as never)
+      .select("is_dhaka_city")
+      .ilike("name", t)
+      .limit(1)
+      .maybeSingle();
+    const inside = !!(data as { is_dhaka_city?: boolean } | null)?.is_dhaka_city;
+    return inside
+      ? { amount: SHIP_INSIDE_DHAKA, label: "Delivery (Inside Dhaka)", insideDhaka: true }
+      : { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
+  } catch {
+    return { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
+  }
+}
+
 function resolveCouponDiscount(code: string | undefined, subtotal: number): {
   code: string | null;
   discount: number;
@@ -141,6 +171,7 @@ function resolveCouponDiscount(code: string | undefined, subtotal: number): {
   const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
   return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
 }
+
 
 // ---------- submitPendingOrder ----------
 
