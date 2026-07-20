@@ -252,6 +252,29 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
 
+    // Rate limit + bot-signal assessment. Fail-open on DB errors.
+    const { assessOrderSubmit, recordOrderSubmit } = await import("./abuse.server");
+    const assessment = await assessOrderSubmit({
+      ip: server.ip ?? "",
+      fingerprint: clientFingerprint,
+      phone,
+    });
+    if (assessment.blocked) {
+      // Silent rate-limit: log the attempt so admins can see the pattern,
+      // return a generic error that gives no signal to a bot.
+      void recordOrderSubmit({
+        ip: server.ip ?? "",
+        fingerprint: clientFingerprint,
+        phone,
+        meta: { blocked: true, score: assessment.score, signals: assessment.signals },
+      });
+      return {
+        ok: false as const,
+        error: "We couldn't place your order right now. Please try again in a few minutes.",
+      };
+    }
+
+
     // Server-side coupon validation: recompute subtotal from Woo prices and
     // resolve the discount against our own coupon table. Any tampered
     // `data.discount` or unknown `data.coupon_code` is discarded here.
