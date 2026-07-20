@@ -95,6 +95,53 @@ const submitSchema = z.object({
   tracking: trackingSchema,
 });
 
+// Server-side coupon table (source of truth). Keep in sync with UI copy in
+// src/routes/checkout.tsx; if it drifts, this authoritative version wins.
+const SERVER_COUPONS: Record<string, { type: "percent" | "flat"; value: number }> = {
+  ZONASH10: { type: "percent", value: 10 },
+  SAVE50: { type: "flat", value: 50 },
+};
+
+/** Fetch each product once, in parallel, and compute a trustworthy subtotal. */
+async function computeServerSubtotal(
+  items: { product_id: number; variation_id?: number; quantity: number }[],
+): Promise<number> {
+  const { wooFetch } = await import("./woo.server");
+  const prices = await Promise.all(
+    items.map(async (i) => {
+      try {
+        if (i.variation_id) {
+          const v = await wooFetch<{ price: string }>({
+            path: `/products/${i.product_id}/variations/${i.variation_id}`,
+            timeoutMs: 8000,
+          });
+          return Number(v.price) || 0;
+        }
+        const p = await wooFetch<{ price: string }>({
+          path: `/products/${i.product_id}`,
+          timeoutMs: 8000,
+        });
+        return Number(p.price) || 0;
+      } catch {
+        return 0;
+      }
+    }),
+  );
+  return items.reduce((sum, i, idx) => sum + prices[idx] * i.quantity, 0);
+}
+
+function resolveCouponDiscount(code: string | undefined, subtotal: number): {
+  code: string | null;
+  discount: number;
+} {
+  if (!code) return { code: null, discount: 0 };
+  const key = code.trim().toUpperCase();
+  const c = SERVER_COUPONS[key];
+  if (!c || subtotal <= 0) return { code: null, discount: 0 };
+  const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
+  return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
+}
+
 // ---------- submitPendingOrder ----------
 
 export const submitPendingOrder = createServerFn({ method: "POST" })
@@ -113,10 +160,19 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
 
+    // Server-side coupon validation: recompute subtotal from Woo prices and
+    // resolve the discount against our own coupon table. Any tampered
+    // `data.discount` or unknown `data.coupon_code` is discarded here.
+    const serverSubtotal = await computeServerSubtotal(data.items);
+    const { code: validCoupon, discount: validDiscount } = resolveCouponDiscount(
+      data.coupon_code,
+      serverSubtotal,
+    );
+
     // 1) Create the WooCommerce order in `pending` state.
     const feeLines =
-      data.discount > 0
-        ? [{ name: "Discount", total: (-Math.abs(data.discount)).toFixed(2) }]
+      validDiscount > 0
+        ? [{ name: "Discount", total: (-Math.abs(validDiscount)).toFixed(2) }]
         : [];
 
     // WooCommerce rejects empty-string emails with rest_invalid_email.
@@ -172,7 +228,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_ua", value: server.user_agent ?? "" },
             { key: "_zonash_otp_state", value: "pending" },
             { key: "_zonash_channel", value: "storefront" },
-            { key: "_zonash_coupon", value: data.coupon_code ?? "" },
+            { key: "_zonash_coupon", value: validCoupon ?? "" },
+            { key: "_zonash_coupon_discount", value: String(validDiscount) },
           ],
         },
         timeoutMs: 15000,
