@@ -22,6 +22,12 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { items, subtotal, setQty, remove } = useCart();
 
+  const regularTotal = items.reduce(
+    (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
+    0,
+  );
+  const savings = Math.max(0, regularTotal - subtotal);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -51,6 +57,10 @@ function CartPage() {
         <ul className="space-y-2.5">
           {items.map((item) => {
             const lineTotal = item.price * item.quantity;
+            const hasOld = !!item.regularPrice && item.regularPrice > item.price;
+            const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
+            const lineSave = hasOld ? lineOld - lineTotal : 0;
+            const pct = hasOld ? Math.round((lineSave / lineOld) * 100) : 0;
             return (
               <li
                 key={item.productId}
