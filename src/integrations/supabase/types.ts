@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_events: {
+        Row: {
+          created_at: string
+          fingerprint: string | null
+          id: number
+          ip: string | null
+          kind: string
+          meta: Json
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          fingerprint?: string | null
+          id?: number
+          ip?: string | null
+          kind: string
+          meta?: Json
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string | null
+          id?: number
+          ip?: string | null
+          kind?: string
+          meta?: Json
+          phone?: string | null
+        }
+        Relationships: []
+      }
       customer_history: {
         Row: {
           data: Json
