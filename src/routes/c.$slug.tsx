@@ -202,11 +202,7 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   if (isLoading && products.length === 0) return <FeedSkeleton />;
 
   if (products.length === 0) {
-    return (
-      <div className="container-page py-10">
-        <EmptyState icon={LayoutGrid} title="Nothing here yet" description="Check back soon — restocking now." primary={{ label: "Browse all", to: "/products" }} />
-      </div>
-    );
+    return <CollectionEmpty />;
   }
 
   return (
