@@ -11,8 +11,6 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  void pathname;
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
