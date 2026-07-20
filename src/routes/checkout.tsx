@@ -2,12 +2,15 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { createOrder } from "@/lib/woo.functions";
+import { getPublicPoliceStations } from "@/lib/steadfast.functions";
+import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/checkout")({
