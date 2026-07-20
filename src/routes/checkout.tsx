@@ -58,6 +58,16 @@ function CheckoutPage() {
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  const policeFn = useServerFn(getPublicPoliceStations);
+  const policeQ = useQuery({
+    queryKey: ["checkout", "police-stations"],
+    queryFn: () => policeFn(),
+    staleTime: 24 * 60 * 60_000,
+  });
 
   useEffect(() => {
     try {
