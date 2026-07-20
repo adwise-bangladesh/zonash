@@ -258,6 +258,19 @@ function CheckoutPage() {
     }
   };
 
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-muted/30" aria-busy="true">
+        <CheckoutHeader title="Checkout" />
+        <div className="mx-auto w-full max-w-md flex-1 space-y-3 px-3 pt-3">
+          <div className="h-64 animate-pulse rounded-[3px] border border-border bg-background" />
+          <div className="h-14 animate-pulse rounded-[3px] border border-border bg-background" />
+          <div className="h-14 animate-pulse rounded-[3px] border border-border bg-background" />
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
@@ -276,7 +289,7 @@ function CheckoutPage() {
     <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[132px]">
       <CheckoutHeader title="Checkout" />
 
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3" autoComplete="on" name="checkout">
+      <form id="checkout-form" onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3" autoComplete="on" name="checkout">
         {/* Delivery details */}
         <Section title="Delivery details">
           <Field label="Full name" error={errors.name}>
