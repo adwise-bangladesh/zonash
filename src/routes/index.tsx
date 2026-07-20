@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { listProducts, listCategories } from "@/lib/woo.functions";
+import { listProducts, listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
@@ -9,14 +9,9 @@ import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import type { WooProduct } from "@/lib/woo.server";
 
-const featuredQuery = queryOptions({
-  queryKey: ["home", "featured"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 12 } }),
-  staleTime: 60_000,
-});
-const trendingQuery = queryOptions({
-  queryKey: ["home", "trending"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 16, orderby: "popularity" } }),
+const megaSaleQuery = queryOptions({
+  queryKey: ["home", "mega-sale"],
+  queryFn: () => listProductsByCategorySlug({ data: { slug: "mega-sale", perPage: 16 } }),
   staleTime: 60_000,
 });
 const catQuery = queryOptions({
@@ -24,6 +19,13 @@ const catQuery = queryOptions({
   queryFn: () => listCategories(),
   staleTime: 5 * 60_000,
 });
+// Fallback: featured/popular products in case the "mega-sale" category is empty.
+const fallbackQuery = queryOptions({
+  queryKey: ["home", "featured-fallback"],
+  queryFn: () => listProducts({ data: { page: 1, perPage: 16, orderby: "popularity" } }),
+  staleTime: 60_000,
+});
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
