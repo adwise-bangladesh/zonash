@@ -124,49 +124,13 @@ function CallbackChoicePage() {
               waMessage={buildSupportMessage({
                 page: "Callback choice",
                 orderNumber: number ?? order,
-                extra: "I'm deciding between a call-back and confirming now.",
+                phone: number,
+                extra: `Order #${number ?? order} — deciding between a call-back and confirming now.`,
               })}
             />
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-/**
- * Brand-color animated shield-check icon. No background, no card — just the
- * glyph drawing itself in. Matches the minimalist flow style.
- */
-function ShieldCheckAnim() {
-  return (
-    <div className="mx-auto mb-6 h-24 w-24 text-primary">
-      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
-        <path
-          d="M32 6 L54 14 V32 C54 44 44 54 32 58 C20 54 10 44 10 32 V14 Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray="180"
-          strokeDashoffset="180"
-        >
-          <animate attributeName="stroke-dashoffset" from="180" to="0" dur="0.8s" fill="freeze" />
-        </path>
-        <path
-          d="M20 32 L29 41 L45 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray="50"
-          strokeDashoffset="50"
-        >
-          <animate attributeName="stroke-dashoffset" from="50" to="0" dur="0.45s" begin="0.6s" fill="freeze" />
-        </path>
-      </svg>
     </div>
   );
 }
