@@ -90,6 +90,11 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   const method = req.method ?? "GET";
   const cacheable = method === "GET";
   const cacheKey = cacheable ? url.toString() : "";
+  const edgeCache = cacheable ? getEdgeCache() : null;
+  // Build a stable Request as the Cache API key (path + query, no auth headers).
+  const edgeReq = cacheable
+    ? new Request(`${EDGE_CACHE_ORIGIN}${url.pathname}${url.search}`, { method: "GET" })
+    : null;
 
   if (cacheable) {
     const hit = cacheGet(cacheKey);
@@ -99,6 +104,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   }
 
   const run = async (): Promise<T> => {
+    // Layer 2: try Cloudflare Cache API before hitting origin.
+    if (edgeCache && edgeReq) {
+      try {
+        const cached = await edgeCache.match(edgeReq);
+        if (cached && cached.ok) {
+          const text = await cached.text();
+          const parsed = text ? (JSON.parse(text) as T) : (undefined as T);
+          cacheSet(cacheKey, parsed);
+          return parsed;
+        }
+      } catch {
+        // Cache read failure is non-fatal; continue to origin.
+      }
+    }
+
     const attempt = async (): Promise<Response> => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), req.timeoutMs ?? 8000);
@@ -133,7 +153,25 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     }
     try {
       const parsed = text ? (JSON.parse(text) as T) : (undefined as T);
-      if (cacheable) cacheSet(cacheKey, parsed);
+      if (cacheable) {
+        cacheSet(cacheKey, parsed);
+        // Write-through to Cloudflare Cache API (colo-shared).
+        if (edgeCache && edgeReq) {
+          try {
+            const cacheRes = new Response(text, {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "Cache-Control": `public, max-age=${EDGE_TTL_SECONDS}`,
+              },
+            });
+            // Fire and forget — do not block the response.
+            void edgeCache.put(edgeReq, cacheRes);
+          } catch {
+            // Cache write failure is non-fatal.
+          }
+        }
+      }
       return parsed;
     } catch {
       throw new WooError(res.status, `Non-JSON response: ${text.slice(0, 300)}`);
@@ -148,6 +186,7 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   inflight.set(cacheKey, p);
   return p;
 }
+
 
 
 // ---------- Types (partial, only what we use) ----------
