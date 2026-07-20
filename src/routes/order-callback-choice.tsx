@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
+import { ShieldCheck } from "lucide-react";
 
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
