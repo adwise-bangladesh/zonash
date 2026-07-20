@@ -66,6 +66,45 @@ export function SiteHeader() {
         </div>
       </div>
 
+      {/* Mobile expandable search */}
+      {mobileOpen && (
+        <div className="border-t border-border bg-background md:hidden">
+          <form onSubmit={submit} role="search" className="container-page py-2.5">
+            <div className="relative flex items-center rounded-xl border border-primary/40 bg-background p-1 shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+              <Search className="ml-3 h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                ref={mobileInputRef}
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search rings, necklaces, 22k gold…"
+                aria-label="Search products"
+                className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[14px] outline-none placeholder:text-muted-foreground/70"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3.5 text-[12px] font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110"
+              >
+                Search
+              </button>
+            </div>
+            <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {QUICK.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => goTerm(t)}
+                  className="shrink-0 rounded-full border border-border bg-surface-muted/60 px-3 py-1 text-[12px] font-medium text-foreground/80 hover:border-primary hover:bg-primary/[0.04] hover:text-primary"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </form>
+        </div>
+      )}
+
+
       {/* Desktop */}
       <div className="container-page hidden h-14 items-center gap-4 md:flex">
         <Link to="/" aria-label="Home" className="shrink-0">
