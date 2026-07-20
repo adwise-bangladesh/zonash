@@ -387,13 +387,27 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     }
 
     return {
-      ok: true as const,
+      ok: true,
       order_id: created.id,
       order_number: created.number,
       total: created.total,
       phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
       sms_ok: smsOk,
     };
+    };
+
+    const promise = run();
+    idempStore.set(idempKey, { promise, expiresAt: Date.now() + IDEMP_TTL_MS });
+    try {
+      const result = await promise;
+      // Only cache successful order creations. Failures (validation, Woo
+      // outage) should not block a genuine retry.
+      if (!result.ok) idempStore.delete(idempKey);
+      return result;
+    } catch (err) {
+      idempStore.delete(idempKey);
+      throw err;
+    }
   });
 
 // ---------- resendOrderOtp ----------
