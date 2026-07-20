@@ -249,8 +249,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           shipping_lines: [
             {
               method_id: "flat_rate",
-              method_title: data.shipping_label,
-              total: data.shipping_amount.toFixed(2),
+              method_title: serverShipping.label,
+              total: serverShipping.amount.toFixed(2),
             },
           ],
           fee_lines: feeLines,
@@ -264,7 +264,12 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_channel", value: "storefront" },
             { key: "_zonash_coupon", value: validCoupon ?? "" },
             { key: "_zonash_coupon_discount", value: String(validDiscount) },
+            { key: "_zonash_server_subtotal", value: serverSubtotal.toFixed(2) },
+            { key: "_zonash_server_shipping", value: serverShipping.amount.toFixed(2) },
+            { key: "_zonash_server_total", value: serverGrandTotal.toFixed(2) },
+            { key: "_zonash_inside_dhaka", value: serverShipping.insideDhaka ? "1" : "0" },
           ],
+
         },
         timeoutMs: 15000,
       });
