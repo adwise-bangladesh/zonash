@@ -75,10 +75,18 @@ function Products() {
       <main className="mx-auto max-w-7xl px-4 py-10">
         <div className="mb-8">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            {activeCat ? "Collection" : "Shop"}
+            {urlQ ? "Search" : activeCat ? "Collection" : featured ? "Curated" : orderby === "date" ? "New" : "Shop"}
           </p>
           <h1 className="mt-1 font-display text-4xl">
-            {activeCat ? activeCat.name : "All jewelry"}
+            {urlQ
+              ? `Results for "${urlQ}"`
+              : activeCat
+                ? activeCat.name
+                : featured
+                  ? "Bestsellers"
+                  : orderby === "date"
+                    ? "New arrivals"
+                    : "All jewelry"}
           </h1>
         </div>
 
