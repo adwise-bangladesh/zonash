@@ -184,7 +184,7 @@ function CheckoutPage() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (submitting || items.length === 0) return;
     const normalizedPhone = normalizeBdPhone(form.phone);
     const candidate = { ...form, phone: normalizedPhone };
     const parsed = schema.safeParse(candidate);
@@ -196,11 +196,11 @@ function CheckoutPage() {
       toast.error("Please review your details", {
         description: firstKey ? ERR[firstKey] : "Some fields are invalid.",
       });
+      // Focus first invalid field for accessibility.
+      const el = firstKey ? document.getElementById(`checkout-${String(firstKey)}`) : null;
+      el?.focus?.();
       return;
     }
-    // persist normalized phone back to state
-    if (normalizedPhone !== form.phone) setForm((f) => ({ ...f, phone: normalizedPhone }));
-    setSubmitting(true);
     try {
       const { first, last } = splitName(parsed.data.name);
       const notePieces = [
