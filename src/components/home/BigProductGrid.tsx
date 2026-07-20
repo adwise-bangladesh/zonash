@@ -6,7 +6,7 @@ import type { WooProduct } from "@/lib/woo.server";
 function BigCard({ p }: { p: WooProduct }) {
   const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
   const rating = parseFloat(p.average_rating as unknown as string);
-  const soldish = p.total_sales ?? p.rating_count ?? 0;
+  const soldish = p.rating_count ?? 0;
   return (
     <Link
       to="/products/$slug"
