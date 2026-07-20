@@ -618,6 +618,18 @@ function CheckoutPage() {
         </div>
       </div>
 
+      {submitting && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+          aria-label="Placing your order"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-semibold text-foreground">Placing your order…</p>
+          <p className="text-[11px] text-muted-foreground">Do not close this page</p>
+        </div>
+      )}
     </div>
   );
 }
