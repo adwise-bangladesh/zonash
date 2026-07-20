@@ -577,6 +577,11 @@ export const resendOrderOtp = createServerFn({ method: "POST" })
     if (r.send_count >= 5) {
       return { ok: false as const, error: "Too many code requests. Please contact support." };
     }
+    // Per-phone 24h SMS cost cap.
+    if ((await smsSendsLast24h(r.phone)) >= SMS_MAX_PER_PHONE_24H) {
+      return { ok: false as const, error: "Daily code limit reached. Please try again tomorrow." };
+    }
+
 
     const code = generateOtp();
     const codeHash = await sha256Hex(`${code}:${r.phone}`);
