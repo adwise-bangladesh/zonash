@@ -454,14 +454,6 @@ function CheckoutPage() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          <div className="mb-1.5 flex items-center justify-between text-[11px]">
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <ShieldCheck className="h-3 w-3 text-success" /> Cash on delivery · Secure
-            </span>
-            <span className="font-semibold text-foreground">
-              Total <span className="ml-1 text-base font-extrabold text-primary">{formatBDT(total)}</span>
-            </span>
-          </div>
           <button
             type="submit"
             onClick={(e) => {
