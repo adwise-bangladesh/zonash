@@ -55,6 +55,8 @@ function Home() {
         <BigProductGrid products={featured} title="Featured for you" />
         <BigProductGrid products={trending} title="Trending now" />
 
+        <InfiniteFeed />
+
         <TrustRow />
 
         {feat.error && (
@@ -63,7 +65,6 @@ function Home() {
           </div>
         )}
       </main>
-      <SiteFooter />
     </div>
   );
 }
