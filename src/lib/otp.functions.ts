@@ -488,18 +488,43 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     }
 
     // 3) Send SMS (fail-open — don't block customer, they can resend).
+    //    Enforce a per-phone 24h SMS cap first to protect BDBulkSMS spend.
     let smsOk = false;
-    try {
-      const { sendSms } = await import("./sms.server");
-      const res = await sendSms({
-        phone,
-        message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
-      });
-      smsOk = res.ok;
-      if (!smsOk) console.error("OTP SMS failed", res.message);
-    } catch (e) {
-      console.error("OTP SMS threw", e);
+    const smsSentSoFar = await smsSendsLast24h(phone);
+    if (smsSentSoFar >= SMS_MAX_PER_PHONE_24H) {
+      console.warn(`OTP SMS capped for ${phone}: ${smsSentSoFar}/${SMS_MAX_PER_PHONE_24H} in 24h`);
+    } else {
+      try {
+        const { sendSms } = await import("./sms.server");
+        const res = await sendSms({
+          phone,
+          message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
+        });
+        smsOk = res.ok;
+        if (!smsOk) console.error("OTP SMS failed", res.message);
+      } catch (e) {
+        console.error("OTP SMS threw", e);
+      }
     }
+
+    // 4) Record coupon redemption (best-effort) — enforces max_uses /
+    //    max_per_phone on subsequent attempts. Unique (coupon_code, wc_order_id)
+    //    makes this idempotent under retry.
+    if (validCoupon && validDiscount > 0) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin.from("coupon_usage" as never).insert({
+          coupon_code: validCoupon,
+          phone,
+          wc_order_id: created.id,
+          discount: validDiscount,
+        } as never);
+      } catch (e) {
+        console.error("coupon_usage insert failed:", (e as Error).message);
+      }
+    }
+
+
 
     return {
       ok: true,
