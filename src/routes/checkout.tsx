@@ -282,6 +282,12 @@ function CheckoutPage() {
       });
       // Defer cart clear one tick so the checkout tree unmounts first.
       setTimeout(() => { try { clear(); } catch { /* ignore */ } }, 0);
+      // Rotate idempotency key for any future submission from this tab.
+      setIdempotencyKey(
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      );
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
