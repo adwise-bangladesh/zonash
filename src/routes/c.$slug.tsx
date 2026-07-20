@@ -59,7 +59,7 @@ function CollectionPage() {
   const subs = data.subs;
 
   const title = parent?.name ??
-    slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
   return (
     <div className="min-h-screen bg-surface-muted/40">

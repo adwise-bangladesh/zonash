@@ -20,6 +20,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
@@ -85,6 +86,11 @@ const ProductsIndexRoute = ProductsIndexRouteImport.update({
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/products/$slug',
   path: '/products/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CSlugRoute = CSlugRouteImport.update({
+  id: '/c/$slug',
+  path: '/c/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/luxury': typeof LuxuryRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
+  '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/products': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/support'
     | '/admin'
+    | '/c/$slug'
     | '/products/$slug'
     | '/products/'
     | '/account/orders'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/luxury'
     | '/order-confirmed'
     | '/support'
+    | '/c/$slug'
     | '/products/$slug'
     | '/products'
     | '/account/orders'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/support'
     | '/_authenticated/admin'
+    | '/c/$slug'
     | '/products/$slug'
     | '/products/'
     | '/_authenticated/account/orders'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   LuxuryRoute: typeof LuxuryRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
   SupportRoute: typeof SupportRoute
+  CSlugRoute: typeof CSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       path: '/products/$slug'
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$slug': {
+      id: '/c/$slug'
+      path: '/c/$slug'
+      fullPath: '/c/$slug'
+      preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -536,6 +556,7 @@ const rootRouteChildren: RootRouteChildren = {
   LuxuryRoute: LuxuryRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
   SupportRoute: SupportRoute,
+  CSlugRoute: CSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
