@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_usage: {
+        Row: {
+          coupon_code: string
+          created_at: string
+          discount: number
+          id: number
+          phone: string
+          wc_order_id: number
+        }
+        Insert: {
+          coupon_code: string
+          created_at?: string
+          discount?: number
+          id?: number
+          phone: string
+          wc_order_id: number
+        }
+        Update: {
+          coupon_code?: string
+          created_at?: string
+          discount?: number
+          id?: number
+          phone?: string
+          wc_order_id?: number
+        }
+        Relationships: []
+      }
       customer_history: {
         Row: {
           data: Json
