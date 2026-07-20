@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
@@ -28,22 +28,29 @@ const productQuery = (slug: string) =>
   queryOptions({
     queryKey: ["product", slug],
     queryFn: () => getProductBySlug({ data: { slug } }),
+    staleTime: 2 * 60 * 1000,
   });
 
 export const Route = createFileRoute("/products/$slug")({
   loader: async ({ context, params }) => {
-    const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
-    if (!res.product) throw notFound();
+    if (typeof document === "undefined") {
+      const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
+      if (!res.product) throw notFound();
+    } else {
+      void context.queryClient.prefetchQuery(productQuery(params.slug));
+    }
     return { id: params.slug };
   },
   head: ({ match }) => {
-    const detail = match.context?.queryClient.getQueryData(productQuery(match.params.slug).queryKey) as
-      | { product: WooProduct | null }
-      | undefined;
+    const detail = match.context?.queryClient.getQueryData(
+      productQuery(match.params.slug).queryKey,
+    ) as { product: WooProduct | null } | undefined;
     const p = detail?.product;
     if (!p) return { meta: [{ title: "Product — Zonash" }] };
     const img = p.images?.[0]?.src;
-    const desc = (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) || `Buy ${p.name} at Zonash.`;
+    const desc =
+      (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
+      `Buy ${p.name} at Zonash.`;
     return {
       meta: [
         { title: `${p.name} — ${p.price} Tk` },
@@ -86,7 +93,10 @@ function ProductPageSkeleton() {
       <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
         <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
           <div>
-            <div className="aspect-square w-full bg-muted" />
+            <div
+              className="aspect-square w-full bg-muted"
+              style={{ viewTransitionName: "product-hero" }}
+            />
             <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1 md:hidden">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-[3px] bg-muted" />
@@ -150,7 +160,12 @@ function parseHighlights(html: string): string[] {
   const liMatches = Array.from(html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)).map((m) => m[1]);
   const source = liMatches.length ? liMatches : html.split(/<br\s*\/?>|<\/p>|\n/i);
   const cleaned = source
-    .map((s) => s.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim())
+    .map((s) =>
+      s
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .trim(),
+    )
     .filter((s) => s.length > 0 && s.length < 140);
   // Deduplicate while preserving order
   const seen = new Set<string>();
@@ -178,14 +193,33 @@ function sanitizeHtml(html: string): string {
     .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
     .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[^>]*\/?>/gi, "")
     .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript):[^"']*\2/gi, '$1="#"');
+    .replace(
+      /(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript):[^"']*\2/gi,
+      '$1="#"',
+    );
 }
-
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const { data } = useSuspenseQuery(productQuery(slug));
-  const p = data.product!;
+  const { data, isPending } = useQuery(productQuery(slug));
+  if (isPending) return <ProductPageSkeleton />;
+  if (!data?.product) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-background">
+        <EmptyState
+          icon={PackageX}
+          title="Product not found"
+          description={data?.error || "This piece may have been removed or the link is incorrect."}
+          primary={{ label: "Back to home", to: "/" }}
+          secondary={{ label: "Browse categories", to: "/categories" }}
+        />
+      </div>
+    );
+  }
+  return <ProductDetail p={data.product} />;
+}
+
+function ProductDetail({ p }: { p: WooProduct }) {
   const gallery = p.images.map((i) => i.src);
   const { add, count: cartCount } = useCart();
   const navigate = useNavigate();
@@ -199,7 +233,10 @@ function ProductPage() {
     enabled: isVariable,
     staleTime: 5 * 60 * 1000,
   });
-  const variations: WooVariation[] = variationsQuery.data?.variations ?? [];
+  const variations = useMemo<WooVariation[]>(
+    () => variationsQuery.data?.variations ?? [],
+    [variationsQuery.data?.variations],
+  );
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
@@ -235,9 +272,8 @@ function ProductPage() {
   const matchedVariation: WooVariation | null = useMemo(() => {
     if (!isVariable || variations.length === 0) return null;
     return (
-      variations.find((v) =>
-        v.attributes.every((a) => (selected[a.name] ?? "") === a.option),
-      ) ?? null
+      variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ??
+      null
     );
   }, [isVariable, variations, selected]);
 
@@ -258,21 +294,27 @@ function ProductPage() {
   }
 
   // ---------- Pricing / stock (variation-aware) ----------
-  const activePriceStr = matchedVariation?.price || (p.sale_price && p.on_sale ? p.sale_price : p.price);
+  const activePriceStr =
+    matchedVariation?.price || (p.sale_price && p.on_sale ? p.sale_price : p.price);
   const activeRegularStr = matchedVariation?.regular_price || p.regular_price;
   const activeSaleStr = matchedVariation?.sale_price || p.sale_price;
   const priceNum = parseFloat(activePriceStr) || 0;
-  const oldPrice =
-    (matchedVariation ? parseFloat(activeRegularStr) || 0 : p.on_sale ? parseFloat(activeRegularStr) || 0 : 0);
+  const oldPrice = matchedVariation
+    ? parseFloat(activeRegularStr) || 0
+    : p.on_sale
+      ? parseFloat(activeRegularStr) || 0
+      : 0;
   const showOld = oldPrice > priceNum;
   const discount = showOld ? Math.round(((oldPrice - priceNum) / oldPrice) * 100) : 0;
   const stockStatus = matchedVariation?.stock_status ?? p.stock_status;
   const inStock = stockStatus === "instock";
   const activeImage = matchedVariation?.image?.src;
 
-  const highlights = useMemo(() => parseHighlights(p.short_description ?? ""), [p.short_description]);
+  const highlights = useMemo(
+    () => parseHighlights(p.short_description ?? ""),
+    [p.short_description],
+  );
   const longDesc = useMemo(() => sanitizeHtml((p.description ?? "").trim()), [p.description]);
-
 
   // ---------- UI state ----------
   const [qty, setQty] = useState(1);
@@ -325,7 +367,8 @@ function ProductPage() {
     );
   };
   const readyToBuy =
-    inStock && (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
+    inStock &&
+    (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
   const handleAdd = () => {
     if (!readyToBuy) {
       toast.error("Please select all options");
@@ -442,7 +485,6 @@ function ProductPage() {
                     )}
                   </div>
                 ))}
-
               </div>
               {gallery.length > 1 && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
@@ -513,9 +555,7 @@ function ProductPage() {
                 </div>
                 <span
                   className={`shrink-0 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                    inStock
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
+                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                   }`}
                 >
                   {inStock ? "In stock" : "Sold out"}
@@ -552,7 +592,10 @@ function ProductPage() {
                   </div>
                   <ul className="grid gap-1.5 px-3 pb-3 pt-2">
                     {(highlightsOpen ? highlights : highlights.slice(0, 2)).map((line, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-[13px] leading-snug text-foreground"
+                      >
                         <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
                           <Check className="h-2.5 w-2.5" strokeWidth={3} />
                         </span>
@@ -577,7 +620,9 @@ function ProductPage() {
                           {attr.name}
                         </span>
                         {current && (
-                          <span className="text-[12px] font-semibold text-foreground">{current}</span>
+                          <span className="text-[12px] font-semibold text-foreground">
+                            {current}
+                          </span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -588,9 +633,7 @@ function ProductPage() {
                             <button
                               key={opt}
                               type="button"
-                              onClick={() =>
-                                setSelected((prev) => ({ ...prev, [attr.name]: opt }))
-                              }
+                              onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
                               disabled={!enabled && !active}
                               className={`relative min-w-[3rem] rounded-[4px] border px-3 py-1.5 text-[12px] font-semibold transition-all ${
                                 active
@@ -610,8 +653,6 @@ function ProductPage() {
                 })}
               </div>
             )}
-
-
             {/* Delivery + guarantees */}
             <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center md:border-none md:px-0 md:pt-4">
               <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
@@ -702,7 +743,6 @@ function ProductPage() {
           <InfiniteFeed />
         </div>
       </div>
-
 
       {/* Mobile sticky action bar */}
       <div

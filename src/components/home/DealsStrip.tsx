@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
@@ -28,6 +29,7 @@ function useResetCountdown() {
 
 export function DealsStrip({ products }: { products: WooProduct[] }) {
   const timer = useResetCountdown();
+  const queryClient = useQueryClient();
   if (!products.length) return null;
   return (
     <section aria-label="Mega Deals" className="pb-3">
@@ -66,6 +68,20 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                   to="/products/$slug"
                   params={{ slug: p.slug }}
                   preload="intent"
+                  onPointerDown={(e) => {
+                    if (e.button === 0) {
+                      queryClient.setQueryData(["product", p.slug], {
+                        product: p,
+                        error: null as string | null,
+                      });
+                    }
+                  }}
+                  onFocus={() => {
+                    queryClient.setQueryData(["product", p.slug], {
+                      product: p,
+                      error: null as string | null,
+                    });
+                  }}
                   className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
                 >
                   <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">

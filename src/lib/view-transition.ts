@@ -34,9 +34,10 @@ export interface TransitionOptions {
 }
 
 /**
- * Run `navigate` inside a view transition. `navigate` may return a Promise;
- * the transition waits for it (and for React to commit) before snapshotting
- * the destination.
+ * Run `navigate` inside a view transition without waiting for slow route data.
+ * Waiting for TanStack Router's navigation promise can freeze the current page
+ * until loaders finish, so navigation is started fire-and-forget and the route
+ * renders its own instant pending/product shell.
  */
 export function navigateWithTransition(
   navigate: () => void | Promise<unknown>,
@@ -51,11 +52,12 @@ export function navigateWithTransition(
   const prev = sourceEl?.style.viewTransitionName ?? "";
   if (sourceEl) sourceEl.style.viewTransitionName = name;
 
-  const tx = start(async () => {
-    await navigate();
-    // Give React one frame to commit the new route before the browser
-    // captures the destination snapshot.
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+  const tx = start(() => {
+    try {
+      void Promise.resolve(navigate()).catch(() => undefined);
+    } catch {
+      // If navigation fails synchronously, let the current UI remain usable.
+    }
   });
 
   tx.finished.finally(() => {
