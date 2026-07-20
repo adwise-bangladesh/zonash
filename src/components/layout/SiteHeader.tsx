@@ -1,270 +1,140 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, Heart, Menu, X } from "lucide-react";
+import { Search, ShoppingBag, User, Heart } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
 
-const NAV = [
-  { label: "Shop All", term: "" },
-  { label: "New Arrivals", term: "new" },
-  { label: "Best Sellers", term: "bestseller" },
-  { label: "Rings", term: "Rings" },
-  { label: "Earrings", term: "Earrings" },
-  { label: "Necklaces", term: "Necklaces" },
-  { label: "Bridal", term: "Bridal" },
-  { label: "Gifting", term: "Gift" },
-];
+const QUICK = ["Rings", "Earrings", "Necklaces", "Bridal", "Under 2000 Tk"];
 
 export function SiteHeader() {
   const [q, setQ] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
 
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
-  }, [searchOpen]);
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const t = q.trim();
-    setSearchOpen(false);
-    setMenuOpen(false);
-    navigate({ to: "/products", search: t ? { q: t } : {} });
+    const term = q.trim();
+    navigate({ to: "/products", search: term ? { q: term } : {} });
   };
 
   const goTerm = (term: string) => {
-    setSearchOpen(false);
-    setMenuOpen(false);
     const t = term.trim();
     navigate({ to: "/products", search: t ? { q: t } : {} });
   };
 
-  return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
-      {/* Announcement bar */}
-      <div className="bg-primary/[0.04] text-center">
-        <p className="container-page py-2 text-[10.5px] font-medium uppercase tracking-[0.24em] text-primary/80">
-          Complimentary shipping on orders over 3,000 Tk · Handcrafted in Bangladesh
-        </p>
+  // Shared premium pill search — identical on mobile & desktop
+  const SearchPill = ({ compact = false }: { compact?: boolean }) => (
+    <form onSubmit={submit} role="search" className="w-full">
+      <div className="group relative flex w-full items-center gap-2 rounded-full border border-border bg-surface-muted/60 pl-4 pr-1.5 py-1.5 transition-all focus-within:border-primary focus-within:bg-background focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_-14px_rgba(58,2,3,0.32)]">
+        <Search className="h-4 w-4 shrink-0 text-primary/70" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={compact ? "Search jewelry, collections…" : "Search for jewelry, collections and more"}
+          aria-label="Search products"
+          className="min-w-0 flex-1 bg-transparent px-1 text-[13.5px] outline-none placeholder:text-muted-foreground/60"
+        />
+        <button
+          type="submit"
+          className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-5 text-[12px] font-semibold uppercase tracking-[0.08em] text-primary-foreground shadow-sm hover:brightness-110 active:scale-[0.98] transition"
+        >
+          Search
+        </button>
       </div>
+    </form>
+  );
 
-      {/* ============ DESKTOP ============ */}
-      <div className="hidden md:block">
-        <div className="container-page relative grid h-24 grid-cols-3 items-center">
-          {/* Left — search trigger */}
-          <div className="flex items-center">
-            <button
-              type="button"
-              onClick={() => setSearchOpen((s) => !s)}
-              className="group inline-flex items-center gap-2.5 text-foreground/70 transition-colors hover:text-primary"
-              aria-label="Toggle search"
-            >
-              <Search className="h-[18px] w-[18px] stroke-[1.5]" />
-              <span className="text-[11px] font-medium uppercase tracking-[0.24em]">
-                Search
-              </span>
-            </button>
-          </div>
-
-          {/* Center — wordmark */}
-          <div className="flex justify-center">
-            <Link to="/" aria-label="Zonash home" className="focus:outline-none">
-              <Logo size={38} />
-            </Link>
-          </div>
-
-          {/* Right — icons */}
-          <nav className="flex items-center justify-end gap-6 text-foreground/80" aria-label="Account">
-            <Link
-              to="/auth"
-              preload="intent"
-              className="transition-colors hover:text-primary"
-              aria-label="Account"
-            >
-              <User className="h-[19px] w-[19px] stroke-[1.4]" />
-            </Link>
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
+      {/* Mobile */}
+      <div className="md:hidden">
+        <div className="container-page flex h-14 items-center justify-between gap-3">
+          <Link to="/" aria-label="Home" className="shrink-0">
+            <Logo size={26} />
+          </Link>
+          <div className="flex shrink-0 items-center gap-1">
             <Link
               to="/products"
-              preload="intent"
-              className="transition-colors hover:text-primary"
               aria-label="Wishlist"
+              className="grid h-9 w-9 place-items-center rounded-full text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
             >
-              <Heart className="h-[19px] w-[19px] stroke-[1.4]" />
-            </Link>
-            <Link
-              to="/cart"
-              preload="intent"
-              className="relative transition-colors hover:text-primary"
-              aria-label="Cart"
-            >
-              <ShoppingBag className="h-[19px] w-[19px] stroke-[1.4]" />
-              <span className="absolute -right-2 -top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[9.5px] font-semibold text-primary-foreground ring-2 ring-background">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            </Link>
-          </nav>
-        </div>
-
-        {/* Nav row */}
-        <nav
-          className="border-t border-border/50"
-          aria-label="Primary"
-        >
-          <ul className="container-page flex items-center justify-center gap-10 py-4">
-            {NAV.map((item) => (
-              <li key={item.label}>
-                <button
-                  type="button"
-                  onClick={() => goTerm(item.term)}
-                  className="group relative text-[11px] font-medium uppercase tracking-[0.22em] text-foreground/70 transition-colors hover:text-primary"
-                  style={{ fontFamily: '"Inter", "Figtree", ui-sans-serif, system-ui, sans-serif' }}
-                >
-                  {item.label}
-                  <span className="absolute -bottom-1 left-0 h-px w-0 bg-primary transition-all duration-300 group-hover:w-full" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Expandable search */}
-        {searchOpen && (
-          <div className="border-t border-border/60 bg-background">
-            <form onSubmit={submit} role="search" className="container-page relative py-6">
-              <div className="mx-auto flex max-w-3xl items-center gap-3 border-b border-foreground/20 pb-2 focus-within:border-primary">
-                <Search className="h-5 w-5 shrink-0 text-primary/70" />
-                <input
-                  ref={inputRef}
-                  type="search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search for jewelry, collections and more…"
-                  aria-label="Search products"
-                  className="min-w-0 flex-1 bg-transparent py-2 text-lg tracking-wide outline-none placeholder:text-muted-foreground/60"
-                  style={{ fontFamily: '"Bodoni Moda", "Cormorant Garamond", Georgia, serif' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setQ("");
-                  }}
-                  className="text-muted-foreground transition-colors hover:text-primary"
-                  aria-label="Close search"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="mx-auto mt-4 flex max-w-3xl flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/70">
-                  Popular
-                </span>
-                {["Engagement Rings", "Gold Bangles", "Diamond Earrings", "Bridal Sets", "Under 2000 Tk"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => goTerm(t)}
-                    className="text-[12px] font-medium tracking-wide text-foreground/70 underline decoration-transparent underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-      {/* ============ MOBILE ============ */}
-      <div className="md:hidden">
-        <div className="container-page grid h-16 grid-cols-3 items-center">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((m) => !m)}
-              aria-label="Menu"
-              className="grid h-10 w-10 place-items-center text-foreground/80 hover:text-primary"
-            >
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 stroke-[1.4]" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchOpen((s) => !s)}
-              aria-label="Search"
-              className="grid h-10 w-10 place-items-center text-foreground/80 hover:text-primary"
-            >
-              <Search className="h-[18px] w-[18px] stroke-[1.5]" />
-            </button>
-          </div>
-
-          <div className="flex justify-center">
-            <Link to="/" aria-label="Zonash home">
-              <Logo size={22} />
-            </Link>
-          </div>
-
-          <div className="flex items-center justify-end gap-1">
-            <Link
-              to="/auth"
-              aria-label="Account"
-              className="grid h-10 w-10 place-items-center text-foreground/80 hover:text-primary"
-            >
-              <User className="h-[18px] w-[18px] stroke-[1.4]" />
+              <Heart className="h-[18px] w-[18px]" />
             </Link>
             <Link
               to="/cart"
               aria-label="Cart"
-              className="relative grid h-10 w-10 place-items-center text-foreground/80 hover:text-primary"
+              className="relative grid h-9 w-9 place-items-center rounded-full text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
             >
-              <ShoppingBag className="h-[18px] w-[18px] stroke-[1.4]" />
+              <ShoppingBag className="h-[18px] w-[18px]" />
               {cartCount > 0 && (
-                <span className="absolute right-1 top-1 grid h-[16px] min-w-[16px] place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-background">
+                <span className="absolute -right-0.5 -top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
                   {cartCount > 9 ? "9+" : cartCount}
                 </span>
               )}
             </Link>
           </div>
         </div>
-
-        {searchOpen && (
-          <form onSubmit={submit} role="search" className="container-page border-t border-border/60 py-3">
-            <div className="flex items-center gap-2 border-b border-foreground/20 pb-2 focus-within:border-primary">
-              <Search className="h-4 w-4 shrink-0 text-primary/70" />
-              <input
-                ref={inputRef}
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search jewelry, collections…"
-                aria-label="Search products"
-                className="min-w-0 flex-1 bg-transparent py-1.5 text-[15px] outline-none placeholder:text-muted-foreground/60"
-                style={{ fontFamily: '"Bodoni Moda", "Cormorant Garamond", Georgia, serif' }}
-              />
-            </div>
-          </form>
-        )}
-
-        {menuOpen && (
-          <nav className="border-t border-border/60 bg-background" aria-label="Primary">
-            <ul className="container-page flex flex-col divide-y divide-border/50">
-              {NAV.map((item) => (
-                <li key={item.label}>
-                  <button
-                    type="button"
-                    onClick={() => goTerm(item.term)}
-                    className="w-full py-3.5 text-left text-[12px] font-medium uppercase tracking-[0.22em] text-foreground/80 transition-colors hover:text-primary"
-                    style={{ fontFamily: '"Inter", "Figtree", ui-sans-serif, system-ui, sans-serif' }}
-                  >
-                    {item.label}
-                  </button>
-                </li>
+        <div className="container-page pb-3 pt-0.5">
+          <SearchPill compact />
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">Popular</span>
+            <div className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {QUICK.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => goTerm(t)}
+                  className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary transition-colors"
+                >
+                  {t}
+                </button>
               ))}
-            </ul>
-          </nav>
-        )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop */}
+      <div className="container-page hidden h-20 items-center gap-6 md:flex">
+        <Link to="/" aria-label="Home" className="shrink-0">
+          <Logo size={32} />
+        </Link>
+        <div className="flex max-w-2xl flex-1 items-center">
+          <SearchPill />
+        </div>
+        <nav className="flex items-center gap-1" aria-label="Account">
+          <Link
+            to="/products"
+            preload="intent"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
+            aria-label="Wishlist"
+          >
+            <Heart className="h-[18px] w-[18px]" />
+          </Link>
+          <Link
+            to="/auth"
+            preload="intent"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-foreground/80 hover:bg-primary/[0.06] hover:text-primary transition-colors"
+          >
+            <User className="h-4 w-4" />
+            <span>Account</span>
+          </Link>
+          <Link
+            to="/cart"
+            preload="intent"
+            className="relative ml-1 inline-flex h-10 items-center gap-1.5 rounded-full bg-primary/[0.06] px-3.5 text-[13px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+            aria-label="Cart"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            <span>Cart</span>
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+        </nav>
       </div>
     </header>
   );
