@@ -79,7 +79,7 @@ function splitName(full: string): { first: string; last: string } {
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, clear } = useCart();
-  const createOrderFn = useServerFn(createOrder);
+  const submitFn = useServerFn(submitPendingOrder);
 
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -161,23 +161,32 @@ function CheckoutPage() {
         parsed.data.notes?.trim(),
         coupon ? `Coupon: ${coupon.code}` : undefined,
       ].filter(Boolean);
-      const res = await createOrderFn({
+
+      const tracking = await collectTracking({
+        name: parsed.data.name,
+        email: parsed.data.email || undefined,
+        phone: parsed.data.phone,
+      });
+
+      const res = await submitFn({
         data: {
           items: items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
           billing: {
             first_name: first,
-            last_name: last,
+            last_name: last || "",
             email: parsed.data.email || "",
             phone: parsed.data.phone,
             address_1: parsed.data.address,
             address_2: "",
             city: parsed.data.thana,
-            state: parsed.data.thana,
-            postcode: "",
             country: "BD",
           },
-          payment_method: "cod",
-          customer_note: notePieces.length ? notePieces.join(" | ") : undefined,
+          shipping_amount: shipping,
+          shipping_label: shipping === 80 ? "Inside Dhaka" : "Outside Dhaka",
+          discount,
+          coupon_code: coupon?.code,
+          customer_note: notePieces.length ? notePieces.join(" | ") : "",
+          tracking,
         },
       });
       if (!res.ok) {
@@ -186,7 +195,19 @@ function CheckoutPage() {
         return;
       }
       clear();
-      navigate({ to: "/order-confirmed", search: { number: String(res.number), total: res.total } as never });
+      if (!res.sms_ok) {
+        toast.message("Order created", {
+          description: "We couldn't text your code — tap Resend on the next screen.",
+        });
+      }
+      navigate({
+        to: "/verify-otp",
+        search: {
+          order: res.order_id,
+          number: res.order_number,
+          phone: res.phone_masked,
+        } as never,
+      });
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
