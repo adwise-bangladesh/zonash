@@ -89,9 +89,6 @@ function Home() {
           <DealsStrip products={trending.length ? trending : featured} />
         </div>
 
-        <BigProductGrid products={featured} />
-
-
         <InfiniteFeed />
 
         <TrustRow />
