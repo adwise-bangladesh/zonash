@@ -475,10 +475,7 @@ function CheckoutPage() {
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
           <button
             type="submit"
-            onClick={(e) => {
-              const f = (e.currentTarget.closest("div")?.parentElement?.parentElement?.previousElementSibling as HTMLFormElement | null) ?? (document.querySelector("form") as HTMLFormElement | null);
-              f?.requestSubmit();
-            }}
+            form="checkout-form"
             disabled={submitting}
             className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99] disabled:opacity-60"
           >
