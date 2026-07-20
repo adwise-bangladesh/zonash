@@ -175,29 +175,46 @@ function CheckoutPage() {
     <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-[132px]">
       <CheckoutHeader title="Checkout" />
 
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
+      <form onSubmit={onSubmit} className="mx-auto w-full max-w-md flex-1 px-3 pt-3" autoComplete="on" name="checkout">
         {/* Delivery details */}
         <Section title="Delivery details">
-          <Field label="Name" error={errors.name}>
-            <input value={form.name} onChange={(e) => update({ name: e.target.value })} className={inputCls(errors.name)} autoComplete="name" />
+          <Field label="Full name" error={errors.name}>
+            <input
+              name="name"
+              id="checkout-name"
+              value={form.name}
+              onChange={(e) => update({ name: e.target.value })}
+              className={inputCls(errors.name)}
+              autoComplete="name"
+              placeholder="যেমন: রহিম উদ্দিন"
+            />
           </Field>
-          <Field label="Phone" error={errors.phone}>
-            <input inputMode="tel" value={form.phone} onChange={(e) => update({ phone: e.target.value })} placeholder="01XXXXXXXXX" className={inputCls(errors.phone)} autoComplete="tel" />
+          <Field label="Mobile number" error={errors.phone}>
+            <input
+              name="tel"
+              id="checkout-phone"
+              type="tel"
+              inputMode="tel"
+              value={form.phone}
+              onChange={(e) => update({ phone: e.target.value })}
+              placeholder="01XXXXXXXXX"
+              className={inputCls(errors.phone)}
+              autoComplete="tel-national"
+            />
           </Field>
-          <Field label="Email (optional)" error={errors.email}>
-            <input type="email" value={form.email} onChange={(e) => update({ email: e.target.value })} className={inputCls(errors.email)} autoComplete="email" />
-          </Field>
-          <Field label="Address" error={errors.address}>
+          <Field label="Full address" error={errors.address}>
             <textarea
+              name="street-address"
+              id="checkout-address"
               rows={2}
               value={form.address}
               onChange={(e) => update({ address: e.target.value })}
               className={textareaCls(errors.address)}
               autoComplete="street-address"
-              placeholder="House, road, area"
+              placeholder="বাসা / হোল্ডিং নং, রোড, এলাকা, পোস্ট অফিস, জেলা"
             />
           </Field>
-          <Field label="Thana" error={errors.thana}>
+          <Field label="Thana / Upazila" error={errors.thana}>
             <ThanaCombobox
               value={form.thana}
               onChange={(v) => update({ thana: v })}
@@ -206,30 +223,44 @@ function CheckoutPage() {
               buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
             />
           </Field>
-
-          {/* Notes — collapsible, closed by default */}
-          <details
-            open={notesOpen}
-            onToggle={(e) => setNotesOpen((e.target as HTMLDetailsElement).open)}
-            className="rounded-[3px] border border-dashed border-border [&[open]>summary>svg]:rotate-180"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[12px] font-medium text-muted-foreground">
-              <span>Add delivery notes (optional)</span>
-              <ChevronDown className="h-3.5 w-3.5 transition-transform" />
-            </summary>
-            <div className="border-t border-dashed border-border px-3 pb-3 pt-2">
-              <textarea
-                rows={2}
-                value={form.notes}
-                onChange={(e) => update({ notes: e.target.value })}
-                className={textareaCls(errors.notes)}
-                placeholder="Any delivery instruction"
-              />
-              {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
-            </div>
-          </details>
-
+          <Field label="Email (optional)" error={errors.email}>
+            <input
+              name="email"
+              id="checkout-email"
+              type="email"
+              value={form.email}
+              onChange={(e) => update({ email: e.target.value })}
+              className={inputCls(errors.email)}
+              autoComplete="email"
+              placeholder="name@example.com"
+            />
+          </Field>
         </Section>
+
+        {/* Delivery notes — collapsible, matches coupon/summary design */}
+        <details
+          open={notesOpen}
+          onToggle={(e) => setNotesOpen((e.target as HTMLDetailsElement).open)}
+          className="mt-3 rounded-[3px] border border-border bg-background [&[open]>summary>svg]:rotate-180"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between p-4">
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <ShoppingBag className="h-3.5 w-3.5" />
+              {form.notes?.trim() ? "Delivery notes · added" : "Add delivery notes (optional)"}
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+          </summary>
+          <div className="border-t border-dashed border-border p-4 pt-3">
+            <textarea
+              rows={3}
+              value={form.notes}
+              onChange={(e) => update({ notes: e.target.value })}
+              className={textareaCls(errors.notes)}
+              placeholder="যেমন: কল করে আসবেন, গেটের সামনে রেখে যাবেন না"
+            />
+            {errors.notes && <span className="mt-1 block text-[11px] font-semibold text-destructive">{errors.notes}</span>}
+          </div>
+        </details>
 
         {/* Coupon — collapsible */}
         <details
@@ -261,7 +292,7 @@ function CheckoutPage() {
                   <input
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
-                    placeholder="Enter code"
+                    placeholder="যেমন: ZONASH10"
                     className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
                   />
                 </div>
@@ -273,6 +304,7 @@ function CheckoutPage() {
             {couponError && <p className="mt-1.5 text-[11px] font-semibold text-destructive">{couponError}</p>}
           </div>
         </details>
+
 
         {/* Order summary — collapsible, closed by default */}
         <details
