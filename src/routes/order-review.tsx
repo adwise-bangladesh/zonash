@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { FlowIcon } from "@/components/checkout/FlowIcon";
 import { formatBDT } from "@/lib/format";
 
