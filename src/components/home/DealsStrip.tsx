@@ -7,7 +7,7 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
   if (!products.length) return null;
   return (
     <section aria-label="Mega Deals" className="bg-background pb-3">
-      <div className="mx-3 overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:container-page md:p-3">
+      <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:container-page md:p-3">
         <div className="flex items-stretch gap-2.5">
           {/* Left banner */}
           <div className="relative flex w-[92px] shrink-0 flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-primary via-primary to-[#5a0405] p-2.5 text-primary-foreground shadow-sm md:w-[108px]">
