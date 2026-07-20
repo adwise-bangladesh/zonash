@@ -328,7 +328,7 @@ function CheckoutPage() {
                   <input
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
-                    placeholder="যেমন: ZONASH10"
+                    placeholder="e.g. ZONASH10"
                     className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
                   />
                 </div>
