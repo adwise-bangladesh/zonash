@@ -231,41 +231,63 @@ function CheckoutPage() {
 
         </Section>
 
-        {/* Coupon */}
-        <Section title="Coupon">
-          {coupon ? (
-            <div className="flex items-center justify-between rounded-[3px] bg-success/10 px-3 py-2 text-sm">
-              <span className="flex items-center gap-2 font-semibold text-success">
-                <Check className="h-4 w-4" /> {coupon.code} applied
-              </span>
-              <button type="button" onClick={removeCoupon} aria-label="Remove coupon" className="grid h-6 w-6 place-items-center rounded-full hover:bg-background">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={couponInput}
-                  onChange={(e) => setCouponInput(e.target.value)}
-                  placeholder="Enter code"
-                  className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
-                />
-              </div>
-              <button type="button" onClick={applyCoupon} className="h-10 rounded-[3px] border border-primary px-3 text-sm font-semibold text-primary">
-                Apply
-              </button>
-            </div>
-          )}
-          {couponError && <p className="mt-1.5 text-[11px] font-semibold text-destructive">{couponError}</p>}
-        </Section>
-
-        {/* Order summary */}
-        <details open className="group mt-3 rounded-[3px] border border-border bg-background [&[open]>summary>svg]:rotate-180">
+        {/* Coupon — collapsible */}
+        <details
+          open={couponOpen || !!coupon}
+          onToggle={(e) => setCouponOpen((e.target as HTMLDetailsElement).open)}
+          className="mt-3 rounded-[3px] border border-border bg-background [&[open]>summary>svg]:rotate-180"
+        >
           <summary className="flex cursor-pointer list-none items-center justify-between p-4">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Order summary · {items.length} items</span>
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Tag className="h-3.5 w-3.5" />
+              {coupon ? `Coupon: ${coupon.code}` : "Coupon or gift card"}
+            </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+          </summary>
+          <div className="border-t border-dashed border-border p-4 pt-3">
+            {coupon ? (
+              <div className="flex items-center justify-between rounded-[3px] bg-success/10 px-3 py-2 text-sm">
+                <span className="flex items-center gap-2 font-semibold text-success">
+                  <Check className="h-4 w-4" /> {coupon.code} applied
+                </span>
+                <button type="button" onClick={removeCoupon} aria-label="Remove coupon" className="grid h-6 w-6 place-items-center rounded-full hover:bg-background">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="Enter code"
+                    className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
+                  />
+                </div>
+                <button type="button" onClick={applyCoupon} className="h-10 rounded-[3px] border border-primary px-3 text-sm font-semibold text-primary">
+                  Apply
+                </button>
+              </div>
+            )}
+            {couponError && <p className="mt-1.5 text-[11px] font-semibold text-destructive">{couponError}</p>}
+          </div>
+        </details>
+
+        {/* Order summary — collapsible, closed by default */}
+        <details
+          open={summaryOpen}
+          onToggle={(e) => setSummaryOpen((e.target as HTMLDetailsElement).open)}
+          className="mt-3 rounded-[3px] border border-border bg-background [&[open]>summary>svg]:rotate-180"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between p-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Order summary · {items.length} {items.length === 1 ? "item" : "items"}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-bold text-primary">{formatBDT(total)}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+            </span>
           </summary>
           <div className="border-t border-dashed border-border">
             <ul className="divide-y divide-border/60 px-4">
@@ -293,6 +315,7 @@ function CheckoutPage() {
             </dl>
           </div>
         </details>
+
 
         <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
           <Lock className="h-3 w-3" /> Secure checkout · Encrypted end-to-end
