@@ -4,26 +4,27 @@ import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   Clock,
+  CreditCard,
   Inbox,
   Loader2,
   LogOut,
+  MapPin,
   Package,
   Phone,
   RefreshCw,
   ShieldCheck,
+  StickyNote,
   Sparkles,
   Truck,
   X,
   XCircle,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { SiteHeader } from "@/components/layout/SiteHeader";
-import { TopAnnouncementBar } from "@/components/layout/TopAnnouncementBar";
+import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { useCustomerSession } from "@/lib/customer-session";
 import {
   listOrdersByPhone,
@@ -60,7 +61,7 @@ function OrdersPage() {
 }
 
 // ============================================================
-// Login gate — full-screen, app-style, no header/footer
+// Login gate — clean, simple, cart-style header
 // ============================================================
 
 function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
@@ -137,243 +138,177 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   }, [code]);
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-primary/8 via-background to-background">
-      {/* Ambient glows */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/25 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-32 right-0 h-72 w-72 rounded-full bg-primary/15 blur-3xl"
-      />
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30">
+      <CheckoutHeader title={step === "phone" ? "Sign in" : "Verify code"} />
 
-      {/* Top bar */}
-      <div
-        className="relative z-10 flex items-center justify-between px-4 pb-2"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 14px)" }}
-      >
-        <Link
-          to="/"
-          aria-label="Back to home"
-          className="grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-background/70 text-foreground backdrop-blur transition-colors hover:bg-background"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span className="font-display text-[15px] font-semibold tracking-tight">Zonash</span>
-        <span className="h-9 w-9" aria-hidden />
-      </div>
-
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-10">
-        <div className="mx-auto flex w-full max-w-sm flex-col items-center">
-          <div className="relative mb-6">
-            <div
-              aria-hidden
-              className="absolute inset-0 -m-3 animate-pulse rounded-3xl bg-primary/20 blur-xl"
-            />
-            <div className="relative grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-xl shadow-primary/30">
-              <Package className="h-9 w-9" strokeWidth={1.6} />
-            </div>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-[6px] bg-primary/10 text-primary">
+            <Package className="h-5 w-5" strokeWidth={1.8} />
           </div>
-
-          <h1 className="text-center font-display text-[26px] font-semibold leading-tight tracking-tight">
-            {step === "phone" ? "Your orders, one tap away" : "Enter verification code"}
-          </h1>
-          <p className="mt-2 max-w-[280px] text-center text-[13.5px] leading-relaxed text-muted-foreground">
-            {step === "phone"
-              ? "Sign in with your mobile number to view every order you've placed with Zonash."
-              : `We sent a 4-digit code to ${phone}. It auto-fills when your SMS arrives.`}
-          </p>
-
-          <div className="mt-8 w-full">
-            {step === "phone" ? (
-              <div className="space-y-3">
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 select-none text-[15px] font-semibold text-muted-foreground">
-                    +880
-                  </span>
-                  <Phone
-                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 11));
-                      if (error) setError(null);
-                    }}
-                    placeholder="1XXXXXXXXX"
-                    autoComplete="tel-national"
-                    aria-label="Mobile number"
-                    className="h-14 w-full rounded-2xl border border-border/70 bg-background/80 pl-16 pr-11 text-[16px] font-medium tracking-wide backdrop-blur outline-none transition-all focus:border-primary focus:bg-background focus:shadow-[0_0_0_4px] focus:shadow-primary/15"
-                  />
-                </div>
-                {error && (
-                  <p className="text-center text-[12.5px] font-medium text-destructive">{error}</p>
-                )}
-                <button
-                  onClick={() => sendCode(false)}
-                  disabled={busy || !/^01[3-9]\d{8}$/.test(phone)}
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-primary/85 text-[14px] font-bold uppercase tracking-[0.1em] text-primary-foreground shadow-lg shadow-primary/25 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-                >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      Send code <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-                <div className="mt-2 flex items-center justify-center gap-1.5 text-[11.5px] text-muted-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Secure sign-in · No password
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="relative">
-                  <input
-                    ref={codeRef}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    value={code}
-                    onChange={(e) => {
-                      setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
-                      if (error) setError(null);
-                    }}
-                    aria-label="One-time verification code"
-                    className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                  />
-                  <div
-                    className="flex justify-center gap-3"
-                    onClick={() => codeRef.current?.focus()}
-                  >
-                    {boxes.map((d, i) => {
-                      const active = code.length === i;
-                      const filled = !!d;
-                      return (
-                        <div
-                          key={i}
-                          className={[
-                            "grid h-16 w-14 place-items-center rounded-2xl border-2 bg-background/70 text-2xl font-bold tabular-nums backdrop-blur transition-all",
-                            error
-                              ? "border-destructive/70 text-destructive"
-                              : filled
-                                ? "border-primary text-foreground shadow-md shadow-primary/20"
-                                : active
-                                  ? "border-primary/60"
-                                  : "border-border/70",
-                          ].join(" ")}
-                        >
-                          {d ||
-                            (active && !busy ? (
-                              <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
-                            ) : null)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="mt-4 min-h-[20px] text-center text-[12.5px]">
-                  {error ? (
-                    <span className="font-medium text-destructive">{error}</span>
-                  ) : busy ? (
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying…
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Sparkles className="h-3 w-3 text-primary" />
-                      Auto-detects when SMS arrives
-                    </span>
-                  )}
-                </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("phone");
-                      setCode("");
-                      setError(null);
-                    }}
-                    className="text-[12.5px] font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    ← Change number
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => sendCode(true)}
-                    disabled={cooldown > 0 || busy}
-                    className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary disabled:text-muted-foreground"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
-                  </button>
-                </div>
-              </div>
-            )}
+          <div>
+            <h1 className="text-[16px] font-semibold leading-tight">
+              {step === "phone" ? "View your orders" : `Sent to +880 ${phone}`}
+            </h1>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              {step === "phone"
+                ? "Sign in with your mobile number."
+                : "Enter the 4-digit code we just sent."}
+            </p>
           </div>
         </div>
-      </div>
+
+        {step === "phone" ? (
+          <div className="rounded-[6px] border border-border bg-background p-4">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Mobile number
+            </label>
+            <div className="relative mt-1.5">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
+                +880
+              </span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={(e) => {
+                  setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 11));
+                  if (error) setError(null);
+                }}
+                placeholder="1XXXXXXXXX"
+                autoComplete="tel-national"
+                aria-label="Mobile number"
+                className="h-11 w-full rounded-[4px] border border-border bg-background pl-14 pr-3 text-[15px] font-medium outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            {error && (
+              <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>
+            )}
+            <button
+              onClick={() => sendCode(false)}
+              disabled={busy || !/^01[3-9]\d{8}$/.test(phone)}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[4px] bg-primary text-[13px] font-bold uppercase tracking-[0.08em] text-primary-foreground transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Send code <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+            <p className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              We only use your number to look up your orders.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-[6px] border border-border bg-background p-4">
+            <div className="relative">
+              <input
+                ref={codeRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
+                  if (error) setError(null);
+                }}
+                aria-label="One-time verification code"
+                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              />
+              <div
+                className="flex justify-center gap-2.5"
+                onClick={() => codeRef.current?.focus()}
+              >
+                {boxes.map((d, i) => {
+                  const active = code.length === i;
+                  const filled = !!d;
+                  return (
+                    <div
+                      key={i}
+                      className={[
+                        "grid h-14 w-12 place-items-center rounded-[4px] border-2 bg-background text-2xl font-bold tabular-nums transition-all",
+                        error
+                          ? "border-destructive/70 text-destructive"
+                          : filled
+                            ? "border-primary text-foreground"
+                            : active
+                              ? "border-primary/60"
+                              : "border-border",
+                      ].join(" ")}
+                    >
+                      {d ||
+                        (active && !busy ? (
+                          <span className="h-5 w-[2px] animate-pulse rounded-full bg-primary" />
+                        ) : null)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="mt-3 min-h-[18px] text-center text-[12px]">
+              {error ? (
+                <span className="font-medium text-destructive">{error}</span>
+              ) : busy ? (
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying…
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Auto-detects when SMS arrives
+                </span>
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-dashed border-border pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("phone");
+                  setCode("");
+                  setError(null);
+                }}
+                className="text-[12px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                ← Change number
+              </button>
+              <button
+                type="button"
+                onClick={() => sendCode(true)}
+                disabled={cooldown > 0 || busy}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary disabled:text-muted-foreground"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend"}
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
 
 // ============================================================
-// Orders list — app-style with infinite scroll + detail sheet
+// Orders list — cart-style header + real data + real timeline
 // ============================================================
 
 type OrderRow = Awaited<ReturnType<typeof listOrdersByPhone>>["orders"][number];
 
-const STATUS_STYLES: Record<
-  string,
-  { label: string; chip: string; dot: string }
-> = {
-  pending: {
-    label: "Pending",
-    chip: "bg-amber-500/12 text-amber-700 border-amber-500/25",
-    dot: "bg-amber-500",
-  },
-  "on-hold": {
-    label: "On hold",
-    chip: "bg-amber-500/12 text-amber-700 border-amber-500/25",
-    dot: "bg-amber-500",
-  },
-  processing: {
-    label: "Processing",
-    chip: "bg-sky-500/12 text-sky-700 border-sky-500/25",
-    dot: "bg-sky-500",
-  },
-  confirmed: {
-    label: "Confirmed",
-    chip: "bg-sky-500/12 text-sky-700 border-sky-500/25",
-    dot: "bg-sky-500",
-  },
-  completed: {
-    label: "Delivered",
-    chip: "bg-emerald-500/12 text-emerald-700 border-emerald-500/25",
-    dot: "bg-emerald-500",
-  },
-  cancelled: {
-    label: "Cancelled",
-    chip: "bg-rose-500/10 text-rose-700 border-rose-500/20",
-    dot: "bg-rose-500",
-  },
-  refunded: {
-    label: "Refunded",
-    chip: "bg-rose-500/10 text-rose-700 border-rose-500/20",
-    dot: "bg-rose-500",
-  },
-  failed: {
-    label: "Failed",
-    chip: "bg-rose-500/10 text-rose-700 border-rose-500/20",
-    dot: "bg-rose-500",
-  },
+const STATUS_STYLES: Record<string, { label: string; chip: string; dot: string }> = {
+  pending: { label: "Pending", chip: "bg-amber-500/12 text-amber-700 border-amber-500/25", dot: "bg-amber-500" },
+  "on-hold": { label: "On hold", chip: "bg-amber-500/12 text-amber-700 border-amber-500/25", dot: "bg-amber-500" },
+  processing: { label: "Processing", chip: "bg-sky-500/12 text-sky-700 border-sky-500/25", dot: "bg-sky-500" },
+  confirmed: { label: "Confirmed", chip: "bg-sky-500/12 text-sky-700 border-sky-500/25", dot: "bg-sky-500" },
+  shipped: { label: "Shipped", chip: "bg-indigo-500/12 text-indigo-700 border-indigo-500/25", dot: "bg-indigo-500" },
+  completed: { label: "Delivered", chip: "bg-emerald-500/12 text-emerald-700 border-emerald-500/25", dot: "bg-emerald-500" },
+  cancelled: { label: "Cancelled", chip: "bg-rose-500/10 text-rose-700 border-rose-500/20", dot: "bg-rose-500" },
+  refunded: { label: "Refunded", chip: "bg-rose-500/10 text-rose-700 border-rose-500/20", dot: "bg-rose-500" },
+  failed: { label: "Failed", chip: "bg-rose-500/10 text-rose-700 border-rose-500/20", dot: "bg-rose-500" },
 };
 
 function statusMeta(s: string) {
@@ -398,6 +333,30 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => void }) {
   const listFn = useServerFn(listOrdersByPhone);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
@@ -417,17 +376,12 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
     [query.data],
   );
 
-  // Infinite-scroll observer
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          query.hasNextPage &&
-          !query.isFetchingNextPage
-        ) {
+        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
           void query.fetchNextPage();
         }
       },
@@ -440,55 +394,46 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
   const firstError = query.data?.pages[0]?.error;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/25">
-      <TopAnnouncementBar />
-      <SiteHeader />
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-20">
+      <CheckoutHeader title="My Orders" count={orders.length} />
 
-      {/* App-style compact page header */}
-      <div className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur-lg">
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-3">
-          <div>
-            <h1 className="font-display text-[18px] font-semibold leading-tight tracking-tight">
-              My orders
-            </h1>
-            <p className="text-[11.5px] text-muted-foreground">
-              +880 <span className="font-semibold text-foreground/85">{phone}</span>
-            </p>
+      {/* Slim account strip */}
+      <div className="border-b border-border bg-background">
+        <div className="mx-auto flex w-full max-w-md items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-2 text-[12px]">
+            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Signed in as</span>
+            <span className="font-semibold text-foreground">+880 {phone}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => query.refetch()}
               disabled={query.isFetching}
               aria-label="Refresh"
-              className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground/70 transition-colors hover:text-foreground disabled:opacity-50"
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? "animate-spin" : ""}`} />
             </button>
             <button
               onClick={onLogout}
               aria-label="Sign out"
-              className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground/70 transition-colors hover:text-destructive"
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-4">
+      <main className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
         {query.isLoading ? (
           <ul className="space-y-2.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <li
-                key={i}
-                className="h-[92px] animate-pulse rounded-2xl border border-border bg-background"
-              />
+              <li key={i} className="h-[112px] animate-pulse rounded-[6px] border border-border bg-background" />
             ))}
           </ul>
         ) : firstError || query.isError ? (
-          <div className="rounded-2xl border border-dashed border-border bg-background p-8 text-center">
+          <div className="rounded-[6px] border border-dashed border-border bg-background p-8 text-center">
             <p className="text-sm text-muted-foreground">
               {firstError ?? "Could not load your orders."}
             </p>
@@ -500,7 +445,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-background p-12 text-center">
+          <div className="rounded-[6px] border border-dashed border-border bg-background p-12 text-center">
             <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-muted">
               <Inbox className="h-7 w-7 text-muted-foreground" />
             </div>
@@ -537,39 +482,36 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
         )}
       </main>
 
-      <OrderDetailSheet
-        order={openOrder}
-        onClose={() => setOpenOrder(null)}
-      />
+      <OrderDetailSheet order={openOrder} onClose={() => setOpenOrder(null)} />
     </div>
   );
 }
 
 function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
-  const first = order.line_items?.[0];
+  const items = order.line_items ?? [];
+  const first = items[0];
   const image = first?.image?.src;
-  const rest = Math.max(0, (order.line_items?.length ?? 0) - 1);
-  const itemCount = (order.line_items ?? []).reduce(
-    (n, li) => n + (li.quantity ?? 1),
-    0,
-  );
+  const rest = Math.max(0, items.length - 1);
+  const itemCount = items.reduce((n, li) => n + (li.quantity ?? 1), 0);
+  const city = order.shipping?.city || order.billing?.city;
+
   return (
     <li>
       <button
         onClick={onOpen}
-        className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-background p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm active:scale-[0.997]"
+        className="group flex w-full items-stretch gap-3 rounded-[6px] border border-border bg-background p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm active:scale-[0.997]"
       >
-        <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
+        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
           {image ? (
-            <img src={image} alt="" className="h-full w-full object-cover" />
+            <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
             <Package className="h-6 w-6 text-muted-foreground" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-semibold text-muted-foreground">
-              #{order.number}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11.5px] font-semibold text-muted-foreground">
+              #{order.number} · {formatDate(order.date_created)}
             </span>
             <StatusChip status={order.status} />
           </div>
@@ -579,20 +521,21 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
               <span className="text-muted-foreground"> + {rest} more</span>
             )}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {new Date(order.date_created).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}{" "}
-            · {itemCount} item{itemCount !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="text-[15px] font-bold text-primary">
-            {formatBDT(Number(order.total))}
+          {first?.sku && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+              SKU · {first.sku}
+            </p>
+          )}
+          <div className="mt-auto flex items-end justify-between pt-1">
+            <span className="line-clamp-1 text-[11px] text-muted-foreground">
+              {itemCount} item{itemCount !== 1 ? "s" : ""}
+              {city ? ` · ${city}` : ""}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[14px] font-bold text-primary">
+              {formatBDT(Number(order.total))}
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </span>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </div>
       </button>
     </li>
@@ -600,74 +543,69 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
 }
 
 // ============================================================
-// Order detail sheet with status timeline
+// Order detail sheet with real-data timeline
 // ============================================================
 
-const TIMELINE: {
-  key: string;
-  label: string;
-  hint: string;
-  icon: typeof Clock;
-}[] = [
-  { key: "placed", label: "Order placed", hint: "We received your order", icon: CheckCircle2 },
-  { key: "confirmed", label: "Confirmed", hint: "Payment method confirmed", icon: ShieldCheck },
-  { key: "processing", label: "Processing", hint: "Packing your items", icon: Package },
-  { key: "shipped", label: "Shipped", hint: "Handed to courier", icon: Truck },
-  { key: "completed", label: "Delivered", hint: "Enjoy your order", icon: Sparkles },
-];
-
-function timelineStateFor(status: string): {
-  activeIndex: number;
-  cancelled: boolean;
-} {
-  if (["cancelled", "failed", "refunded"].includes(status))
-    return { activeIndex: 0, cancelled: true };
-  if (status === "pending" || status === "on-hold") return { activeIndex: 0, cancelled: false };
-  if (status === "confirmed") return { activeIndex: 1, cancelled: false };
-  if (status === "processing") return { activeIndex: 2, cancelled: false };
-  if (status === "shipped") return { activeIndex: 3, cancelled: false };
-  if (status === "completed") return { activeIndex: 4, cancelled: false };
-  return { activeIndex: 0, cancelled: false };
-}
-
-function OrderDetailSheet({
-  order,
-  onClose,
-}: {
-  order: OrderRow | null;
-  onClose: () => void;
-}) {
+function OrderDetailSheet({ order, onClose }: { order: OrderRow | null; onClose: () => void }) {
   return (
     <Sheet open={!!order} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-full overflow-y-auto p-0 sm:max-w-md"
-      >
+      <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">
         {order && <OrderDetailBody order={order} onClose={onClose} />}
       </SheetContent>
     </Sheet>
   );
 }
 
-function OrderDetailBody({
-  order,
-  onClose,
-}: {
-  order: OrderRow;
-  onClose: () => void;
-}) {
+type TimelineStep = { key: string; label: string; hint: string; at: string | null; icon: typeof Clock };
+
+function buildTimeline(order: OrderRow): { steps: TimelineStep[]; activeIndex: number; cancelled: boolean } {
+  const cancelled = ["cancelled", "failed", "refunded"].includes(order.status);
+  const created = order.date_created;
+  const modified = order.date_modified ?? null;
+  const paid = order.date_paid ?? null;
+  const completed = order.date_completed ?? null;
+
+  // Milestone reached if status has passed it. Woo doesn't store per-step timestamps,
+  // so we mark reached steps with the best available timestamp (paid / modified / completed).
+  const order_of: Record<string, number> = {
+    pending: 0,
+    "on-hold": 0,
+    confirmed: 1,
+    processing: 2,
+    shipped: 3,
+    completed: 4,
+  };
+  const idx = order_of[order.status] ?? (cancelled ? 0 : 0);
+
+  const steps: TimelineStep[] = [
+    { key: "placed", label: "Order placed", hint: "We received your order", at: created, icon: CheckCircle2 },
+    { key: "confirmed", label: "Confirmed", hint: "Verified & ready to pack", at: idx >= 1 ? (paid ?? modified) : null, icon: ShieldCheck },
+    { key: "processing", label: "Processing", hint: "Packing your items", at: idx >= 2 ? modified : null, icon: Package },
+    { key: "shipped", label: "Shipped", hint: "Handed to courier", at: idx >= 3 ? modified : null, icon: Truck },
+    { key: "completed", label: "Delivered", hint: "Enjoy your order", at: completed, icon: Sparkles },
+  ];
+  return { steps, activeIndex: idx, cancelled };
+}
+
+function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => void }) {
   const m = statusMeta(order.status);
-  const { activeIndex, cancelled } = timelineStateFor(order.status);
+  const { steps, activeIndex, cancelled } = buildTimeline(order);
   const items = order.line_items ?? [];
-  const itemsTotal = items.reduce(
-    (n, li) => n + (li.quantity ?? 1) * 0, // unused; woo returns total already
-    0,
-  );
-  void itemsTotal;
+  const shippingTotal = Number(order.shipping_total ?? 0);
+  const discount = Number(order.discount_total ?? 0);
+  const total = Number(order.total ?? 0);
+  const itemsSubtotal = items.reduce((n, li) => n + Number(li.subtotal ?? li.total ?? 0), 0);
+  const shippingMethod = order.shipping_lines?.[0]?.method_title;
+  const shipTo = order.shipping ?? order.billing ?? {};
+  const addressLines = [
+    [shipTo.first_name, shipTo.last_name].filter(Boolean).join(" "),
+    shipTo.address_1,
+    shipTo.address_2,
+    [shipTo.city, shipTo.state].filter(Boolean).join(", "),
+  ].filter(Boolean) as string[];
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/20">
-      {/* Header */}
+    <div className="flex min-h-[100dvh] flex-col bg-muted/25">
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -689,40 +627,36 @@ function OrderDetailBody({
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 px-4 py-4">
+      <div className="flex-1 space-y-3 px-3 py-3">
         {/* Hero status */}
-        <div className="rounded-2xl border border-border bg-background p-4">
+        <div className="rounded-[6px] border border-border bg-background p-4">
           <div className="flex items-center justify-between">
             <StatusChip status={order.status} />
             <span className="text-[11.5px] text-muted-foreground">
-              {new Date(order.date_created).toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
+              Placed {formatDateTime(order.date_created)}
             </span>
           </div>
-          <p className="mt-2 text-[13.5px] font-medium">
+          <p className="mt-2 text-[13px] font-medium">
             {cancelled
               ? "This order was not completed."
               : order.status === "completed"
                 ? "Your order was delivered. Thanks for shopping with Zonash."
                 : order.status === "pending" || order.status === "on-hold"
                   ? "We're verifying your order. You'll get an SMS as it progresses."
-                  : "Your order is on the way through our fulfillment flow."}
+                  : "Your order is moving through fulfilment."}
           </p>
         </div>
 
         {/* Timeline */}
-        <div className="rounded-2xl border border-border bg-background p-4">
+        <div className="rounded-[6px] border border-border bg-background p-4">
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Status timeline
           </div>
           <ol className="relative space-y-4">
-            {TIMELINE.map((step, i) => {
+            {steps.map((step, i) => {
               const isDone = !cancelled && i <= activeIndex;
               const isCurrent = !cancelled && i === activeIndex;
-              const isLast = i === TIMELINE.length - 1;
+              const isLast = i === steps.length - 1;
               const Icon = step.icon;
               return (
                 <li key={step.key} className="relative flex gap-3">
@@ -744,17 +678,18 @@ function OrderDetailBody({
                     <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
                   </div>
                   <div className="min-w-0 flex-1 pt-1">
-                    <div
-                      className={`text-[13px] font-semibold ${
-                        isDone ? "text-foreground" : "text-muted-foreground"
-                      }`}
-                    >
+                    <div className={`text-[13px] font-semibold ${isDone ? "text-foreground" : "text-muted-foreground"}`}>
                       {step.label}
                     </div>
                     <div className="mt-0.5 text-[11.5px] text-muted-foreground">
                       {isCurrent ? "In progress · " : ""}
                       {step.hint}
                     </div>
+                    {isDone && step.at && (
+                      <div className="mt-0.5 text-[11px] font-medium text-foreground/70">
+                        {formatDateTime(step.at)}
+                      </div>
+                    )}
                   </div>
                 </li>
               );
@@ -765,11 +700,9 @@ function OrderDetailBody({
                   <XCircle className="h-4 w-4" strokeWidth={2.2} />
                 </div>
                 <div className="pt-1">
-                  <div className="text-[13px] font-semibold text-destructive">
-                    {m.label}
-                  </div>
+                  <div className="text-[13px] font-semibold text-destructive">{m.label}</div>
                   <div className="mt-0.5 text-[11.5px] text-muted-foreground">
-                    This order was closed without delivery.
+                    {formatDateTime(order.date_modified) ?? "This order was closed without delivery."}
                   </div>
                 </div>
               </li>
@@ -778,74 +711,124 @@ function OrderDetailBody({
         </div>
 
         {/* Items */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-background">
+        <div className="overflow-hidden rounded-[6px] border border-border bg-background">
           <div className="border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Items ({items.length})
           </div>
           <ul className="divide-y divide-border">
-            {items.map((li, i) => (
-              <li key={i} className="flex items-center gap-3 px-4 py-3">
-                <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-                  {li.image?.src ? (
-                    <img
-                      src={li.image.src}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-[13px] font-medium">{li.name}</p>
-                  <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                    Qty · {li.quantity ?? 1}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {items.map((li, i) => {
+              const lineTotal = Number(li.total ?? 0);
+              return (
+                <li key={i} className="flex items-center gap-3 px-4 py-3">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
+                    {li.image?.src ? (
+                      <img src={li.image.src} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-[13px] font-medium">{li.name}</p>
+                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                      {li.sku ? `SKU · ${li.sku} · ` : ""}Qty · {li.quantity ?? 1}
+                    </p>
+                    {li.meta_data && li.meta_data.length > 0 && (
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80">
+                        {li.meta_data
+                          .filter((md) => md.display_key && md.display_value)
+                          .map((md) => `${md.display_key}: ${md.display_value}`)
+                          .join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right text-[12.5px] font-semibold tabular-nums">
+                    {formatBDT(lineTotal)}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
-        {/* Delivery */}
-        {(order.shipping?.city || order.billing?.address_1) && (
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Delivery to
+        {/* Totals */}
+        <div className="rounded-[6px] border border-border bg-background p-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Payment summary
+          </div>
+          <dl className="space-y-1.5 text-[13px]">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Subtotal</dt>
+              <dd className="font-medium tabular-nums">{formatBDT(itemsSubtotal)}</dd>
             </div>
-            <p className="text-[13px] font-medium">
-              {[order.billing?.first_name, order.billing?.last_name]
-                .filter(Boolean)
-                .join(" ") || "—"}
-            </p>
-            {order.billing?.address_1 && (
-              <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                {order.billing.address_1}
-              </p>
+            {discount > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Discount</dt>
+                <dd className="font-medium tabular-nums text-emerald-700">− {formatBDT(discount)}</dd>
+              </div>
             )}
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              {order.shipping?.city || order.billing?.city || ""}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">
+                Delivery Charge{shippingMethod ? ` · ${shippingMethod}` : ""}
+              </dt>
+              <dd className="font-medium tabular-nums">{formatBDT(shippingTotal)}</dd>
+            </div>
+            <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-2">
+              <dt className="text-[13px] font-semibold">Total</dt>
+              <dd className="font-display text-[18px] font-bold text-primary tabular-nums">
+                {formatBDT(total)}
+              </dd>
+            </div>
+          </dl>
+          {order.payment_method_title && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+              <CreditCard className="h-3.5 w-3.5" />
+              {order.payment_method_title}
             </p>
+          )}
+        </div>
+
+        {/* Delivery address */}
+        {addressLines.length > 0 && (
+          <div className="rounded-[6px] border border-border bg-background p-4">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" /> Delivery address
+            </div>
+            {addressLines.map((line, i) => (
+              <p key={i} className={i === 0 ? "text-[13px] font-medium" : "mt-0.5 text-[12.5px] text-muted-foreground"}>
+                {line}
+              </p>
+            ))}
             {order.billing?.phone && (
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+              <p className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
                 <Phone className="h-3 w-3" /> {order.billing.phone}
               </p>
             )}
           </div>
         )}
+
+        {/* Customer note */}
+        {order.customer_note && (
+          <div className="rounded-[6px] border border-border bg-background p-4">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <StickyNote className="h-3.5 w-3.5" /> Order note
+            </div>
+            <p className="whitespace-pre-wrap text-[12.5px] text-foreground/80">
+              {order.customer_note}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Sticky total footer */}
       <div
         className="sticky bottom-0 border-t border-border bg-background/95 px-4 py-3 backdrop-blur"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
         <div className="flex items-center justify-between">
           <span className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Total paid
+            Total
           </span>
-          <span className="font-display text-[20px] font-bold text-primary">
-            {formatBDT(Number(order.total))}
+          <span className="font-display text-[20px] font-bold text-primary tabular-nums">
+            {formatBDT(total)}
           </span>
         </div>
       </div>
