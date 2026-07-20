@@ -171,6 +171,16 @@ function CheckoutPage() {
     return { code: couponCode, discount: Math.min(value, subtotal) };
   }, [couponCode, subtotal]);
   const discount = coupon?.discount ?? 0;
+  const regularTotal = useMemo(
+    () =>
+      items.reduce(
+        (s, i) =>
+          s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
+        0,
+      ),
+    [items],
+  );
+  const savings = Math.max(0, regularTotal - subtotal);
   const total = useMemo(() => Math.max(0, subtotal - discount) + shipping, [subtotal, discount, shipping]);
 
   const applyCoupon = () => {
