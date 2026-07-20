@@ -119,11 +119,20 @@ async function fingerprint(): Promise<string> {
 }
 
 async function tryGeo(timeoutMs = 2500): Promise<GpsFix | undefined> {
+  // Prefer the session-cached fix collected by <GpsGate/> on first page load.
+  try {
+    const cached = sessionStorage.getItem("zonash:gps");
+    if (cached) {
+      const parsed = JSON.parse(cached) as GpsFix;
+      return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
   if (typeof navigator === "undefined" || !("geolocation" in navigator)) return undefined;
   try {
     if ("permissions" in navigator) {
       const p = await navigator.permissions.query({ name: "geolocation" as PermissionName });
-      // Do NOT prompt from checkout — only capture if already granted.
       if (p.state !== "granted") return undefined;
     } else {
       return undefined;
