@@ -11,12 +11,19 @@ type Promo = {
 };
 
 const promos: Promo[] = [
-  { label: "Flash Deals", icon: Flame, tint: "bg-rose-50 text-rose-600 ring-rose-100", to: "/products", search: { orderby: "popularity" } },
-  { label: "Gift Boxes", icon: Gift, tint: "bg-sky-50 text-sky-600 ring-sky-100", to: "/products", search: { category: "gift-boxes" } },
-  { label: "Gift Cards", icon: CreditCard, tint: "bg-amber-50 text-amber-600 ring-amber-100", to: "/products", search: { category: "gift-cards" } },
-  { label: "Trending", icon: TrendingUp, tint: "bg-emerald-50 text-emerald-600 ring-emerald-100", to: "/products", search: { orderby: "popularity" } },
+  { label: "Flash Deals", icon: Flame, tint: "bg-rose-50 text-rose-600 ring-rose-100", to: "/c/$slug", search: undefined },
+  { label: "Gift Boxes", icon: Gift, tint: "bg-sky-50 text-sky-600 ring-sky-100", to: "/c/$slug" },
+  { label: "Gift Cards", icon: CreditCard, tint: "bg-amber-50 text-amber-600 ring-amber-100", to: "/c/$slug" },
+  { label: "Trending", icon: TrendingUp, tint: "bg-emerald-50 text-emerald-600 ring-emerald-100", to: "/c/$slug" },
   { label: "Luxury", icon: Crown, tint: "bg-primary/10 text-primary ring-primary/15", to: "/luxury" },
 ];
+
+const promoParams: Record<string, { slug: string }> = {
+  "Flash Deals": { slug: "flash-deals" },
+  "Gift Boxes": { slug: "gift-boxes" },
+  "Gift Cards": { slug: "gift-cards" },
+  Trending: { slug: "trending" },
+};
 
 export function PromoIcons() {
   return (
