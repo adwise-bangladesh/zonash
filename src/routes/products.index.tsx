@@ -15,10 +15,19 @@ const searchSchema = z.object({
   orderby: z.enum(["date", "price", "popularity", "rating", "title"]).optional(),
 });
 
-const productsQuery = (page: number, search: string, category: string | undefined) =>
+const productsQuery = (
+  page: number,
+  search: string,
+  category: string | undefined,
+  featured: boolean | undefined,
+  orderby: "date" | "price" | "popularity" | "rating" | "title" | undefined,
+) =>
   queryOptions({
-    queryKey: ["products", page, search, category ?? ""],
-    queryFn: () => listProducts({ data: { page, perPage: 24, search: search || undefined, category } }),
+    queryKey: ["products", page, search, category ?? "", featured ?? false, orderby ?? ""],
+    queryFn: () =>
+      listProducts({
+        data: { page, perPage: 24, search: search || undefined, category, featured, orderby },
+      }),
   });
 
 const catQuery = queryOptions({
@@ -28,7 +37,12 @@ const catQuery = queryOptions({
 
 export const Route = createFileRoute("/products/")({
   validateSearch: (s) => searchSchema.parse(s),
-  loaderDeps: ({ search }) => ({ category: search.category, q: search.q }),
+  loaderDeps: ({ search }) => ({
+    category: search.category,
+    q: search.q,
+    featured: search.featured,
+    orderby: search.orderby,
+  }),
   head: () => ({
     meta: [
       { title: "Shop — Zonash Fine Jewelry" },
@@ -36,18 +50,22 @@ export const Route = createFileRoute("/products/")({
     ],
   }),
   loader: ({ context, deps }) => {
-    context.queryClient.ensureQueryData(productsQuery(1, deps.q ?? "", deps.category));
+    context.queryClient.ensureQueryData(
+      productsQuery(1, deps.q ?? "", deps.category, deps.featured, deps.orderby),
+    );
     context.queryClient.ensureQueryData(catQuery);
   },
   component: Products,
 });
 
 function Products() {
-  const { category } = Route.useSearch();
+  const { category, q: urlQ, featured, orderby } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlQ ?? "");
   const [page, setPage] = useState(1);
-  const { data } = useSuspenseQuery(productsQuery(page, search, category));
+  // Sync when URL q changes (e.g. from header search)
+  const effectiveSearch = search || urlQ || "";
+  const { data } = useSuspenseQuery(productsQuery(page, effectiveSearch, category, featured, orderby));
   const { data: catData } = useSuspenseQuery(catQuery);
   const activeCat = catData.categories.find((c) => c.slug === category);
 
