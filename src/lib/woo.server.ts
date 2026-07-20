@@ -88,6 +88,8 @@ export type WooProduct = {
   sale_price: string;
   on_sale: boolean;
   stock_status: string;
+  backorders?: string;
+  backorders_allowed?: boolean;
   short_description: string;
   description: string;
   images: { id: number; src: string; alt: string }[];
