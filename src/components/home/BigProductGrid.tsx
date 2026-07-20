@@ -62,7 +62,7 @@ function BigCard({ p }: { p: WooProduct }) {
 export function BigProductGrid({ products, title }: { products: WooProduct[]; title?: string }) {
   if (!products.length) return null;
   return (
-    <section aria-label={title || "For you"} className="bg-background pb-6">
+    <section aria-label={title || "For you"} className="pb-6">
       {title && (
         <div className="container-page mb-3 flex items-center gap-2">
           <span className="h-4 w-1 rounded-full bg-primary" />
