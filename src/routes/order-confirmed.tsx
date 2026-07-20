@@ -3,10 +3,11 @@ import { z } from "zod";
 import { PackageCheck } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
-  id: z.number().optional(),
+  id: z.coerce.number().int().positive().optional(),
   number: z.string().optional(),
   total: z.string().optional(),
 });
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/order-confirmed")({
 });
 
 function Confirmed() {
-  const { number } = Route.useSearch();
+  const { id, number } = Route.useSearch();
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-background via-muted/40 to-background">
       <CheckoutHeader title="Order confirmed" />
@@ -54,7 +55,9 @@ function Confirmed() {
             Cash on Delivery — pay only on arrival
           </div>
 
-          <div className="mt-6 grid gap-2">
+          {id ? <OrderSummaryCard orderId={id} /> : null}
+
+          <div className="mt-5 grid gap-2">
             <Link
               to="/products"
               className="flex h-12 items-center justify-center rounded-2xl bg-primary text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)]"
@@ -73,7 +76,7 @@ function Confirmed() {
               waMessage={buildSupportMessage({
                 page: "Order confirmed",
                 orderNumber: number ?? "",
-                extra: "I need help with this confirmed order.",
+                extra: `Order #${number ?? ""} — I need help with this confirmed order.`,
               })}
             />
           </div>
