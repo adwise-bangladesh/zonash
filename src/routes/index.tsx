@@ -26,7 +26,6 @@ const fallbackQuery = queryOptions({
   staleTime: 60_000,
 });
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -188,5 +187,4 @@ function Home() {
       </main>
     </div>
   );
-
 }

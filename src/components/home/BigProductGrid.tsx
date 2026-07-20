@@ -53,7 +53,9 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
           </p>
         )}
         <div className="mt-0.5 flex items-baseline gap-1.5">
-          <span className="text-[13px] font-extrabold leading-none text-primary md:text-[15px]">{formatBDT(price)}</span>
+          <span className="text-[13px] font-extrabold leading-none text-primary md:text-[15px]">
+            {formatBDT(price)}
+          </span>
           {p.on_sale && p.regular_price && (
             <span className="text-[10px] text-muted-foreground line-through">
               {formatBDT(p.regular_price)}
@@ -79,7 +81,6 @@ export function BigProductGrid({ products, title }: { products: WooProduct[]; ti
         {products.map((p, i) => (
           <BigCard key={p.id} p={p} priority={i < 2} />
         ))}
-
       </div>
     </section>
   );
