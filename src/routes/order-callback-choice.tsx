@@ -119,10 +119,9 @@ function CallbackChoicePage() {
           <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
             Cash on Delivery · Pay only when the parcel arrives.
           </p>
-        </div>
-
-        <div className="relative mx-auto w-full max-w-md pb-[env(safe-area-inset-bottom)]">
-          <SupportFooter />
+          <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
+            <SupportFooter />
+          </div>
         </div>
       </main>
     </div>
