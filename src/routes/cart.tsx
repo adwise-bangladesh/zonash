@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { ArrowRight, ChevronDown, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
