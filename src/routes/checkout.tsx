@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
@@ -82,6 +82,7 @@ function splitName(full: string): { first: string; last: string } {
 
 function CheckoutPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { items, subtotal, clear, hydrated, setQty, remove } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
 
@@ -108,7 +109,9 @@ function CheckoutPage() {
       if (raw) setForm({ ...EMPTY, ...JSON.parse(raw) });
     } catch { /* ignore */ }
     window.scrollTo(0, 0);
-  }, []);
+    // Warm the next screen so navigation after submit is instant.
+    router.preloadRoute({ to: "/verify-otp" }).catch(() => {});
+  }, [router]);
   useEffect(() => {
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
@@ -221,6 +224,7 @@ function CheckoutPage() {
         coupon ? `Coupon: ${coupon.code}` : undefined,
       ].filter(Boolean);
 
+      // Run tracking + submit prep in parallel with any last renders.
       const tracking = await collectTracking({
         name: parsed.data.name,
         email: parsed.data.email || undefined,
@@ -253,13 +257,14 @@ function CheckoutPage() {
         setSubmitting(false);
         return;
       }
-      clear();
       if (!res.sms_ok) {
         toast.message("Order created", {
           description: "We couldn't text your code — tap Resend on the next screen.",
         });
       }
-      navigate({
+      // Navigate FIRST so we don't flash the empty-cart state between
+      // clear() and route change. Clear the cart after navigation kicks off.
+      await navigate({
         to: "/verify-otp",
         search: {
           order: res.order_id,
@@ -267,6 +272,8 @@ function CheckoutPage() {
           phone: res.phone_masked,
         } as never,
       });
+      // Defer cart clear one tick so the checkout tree unmounts first.
+      setTimeout(() => { try { clear(); } catch { /* ignore */ } }, 0);
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
@@ -287,7 +294,7 @@ function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !submitting) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-muted/30">
         <CheckoutHeader title="Checkout" />
@@ -611,6 +618,18 @@ function CheckoutPage() {
         </div>
       </div>
 
+      {submitting && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+          aria-label="Placing your order"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-semibold text-foreground">Placing your order…</p>
+          <p className="text-[11px] text-muted-foreground">Do not close this page</p>
+        </div>
+      )}
     </div>
   );
 }
