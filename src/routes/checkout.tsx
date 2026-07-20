@@ -257,6 +257,7 @@ function CheckoutPage() {
           coupon_code: coupon?.code,
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
           tracking,
+          idempotency_key: idempotencyKey,
         },
       });
       if (!res.ok) {
