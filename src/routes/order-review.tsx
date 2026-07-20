@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { AlertTriangle } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 import { formatBDT } from "@/lib/format";
 
 const searchSchema = z.object({
@@ -49,12 +49,7 @@ function OrderReviewPage() {
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-amber-400/15 blur-3xl" />
 
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          {/* Animated warning */}
-          <div className="relative mx-auto mb-5 grid h-24 w-24 place-items-center">
-            <span className="absolute inset-0 rounded-full bg-amber-500/10 animate-ping" />
-            <span className="absolute inset-3 rounded-full bg-amber-500/20" />
-            <AlertTriangle className="relative h-12 w-12 text-amber-600 animate-in zoom-in-50 duration-500" />
-          </div>
+          <FlowIcon variant="warn" />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Reviewing your order</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -102,7 +97,14 @@ function OrderReviewPage() {
             Back to home
           </Link>
           <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter label="Talk to our team" />
+            <SupportFooter
+              label="Talk to our team"
+              waMessage={buildSupportMessage({
+                page: "Order under review",
+                orderNumber: order,
+                extra: reason || "My order is under review.",
+              })}
+            />
           </div>
         </div>
       </main>

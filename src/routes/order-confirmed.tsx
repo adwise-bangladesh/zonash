@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { PackageCheck } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   id: z.number().optional(),
@@ -37,38 +38,7 @@ function Confirmed() {
         <span aria-hidden className="pointer-events-none absolute right-16 top-56 h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:400ms]" />
 
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          {/* Animated check */}
-          <div className="relative mx-auto mb-6 h-28 w-28">
-            <svg viewBox="0 0 112 112" className="h-28 w-28">
-              <circle cx="56" cy="56" r="52" fill="hsl(var(--primary) / 0.08)" />
-              <circle
-                cx="56"
-                cy="56"
-                r="48"
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray="302"
-                strokeDashoffset="302"
-                transform="rotate(-90 56 56)"
-              >
-                <animate attributeName="stroke-dashoffset" from="302" to="0" dur="0.9s" fill="freeze" />
-              </circle>
-              <path
-                d="M34 58 L50 74 L80 42"
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="70"
-                strokeDashoffset="70"
-              >
-                <animate attributeName="stroke-dashoffset" from="70" to="0" dur="0.5s" begin="0.7s" fill="freeze" />
-              </path>
-            </svg>
-          </div>
+          <FlowIcon variant="check" />
 
           <h1 className="text-center font-display text-4xl leading-tight animate-in fade-in slide-in-from-bottom-2 duration-500">
             Thank you!
@@ -99,7 +69,13 @@ function Confirmed() {
             </Link>
           </div>
           <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter />
+            <SupportFooter
+              waMessage={buildSupportMessage({
+                page: "Order confirmed",
+                orderNumber: number ?? "",
+                extra: "I need help with this confirmed order.",
+              })}
+            />
           </div>
         </div>
       </main>

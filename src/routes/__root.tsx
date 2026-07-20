@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
+import { CustomerSessionProvider } from "@/lib/customer-session";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
 
@@ -147,12 +148,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        <GpsGate />
-        <Outlet />
-        <MobileBottomNav />
-        <Toaster richColors position="top-right" />
-      </CartProvider>
+      <CustomerSessionProvider>
+        <CartProvider>
+          <GpsGate />
+          <Outlet />
+          <MobileBottomNav />
+          <Toaster richColors position="top-right" />
+        </CartProvider>
+      </CustomerSessionProvider>
     </QueryClientProvider>
   );
 }

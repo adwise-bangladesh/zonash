@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { MessageSquareLock, Loader2, RefreshCw } from "lucide-react";
 import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { SupportFooter } from "@/components/checkout/SupportFooter";
+import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
+import { FlowIcon } from "@/components/checkout/FlowIcon";
 
 const searchSchema = z.object({
   order: z.coerce.number().int().positive(),
@@ -140,9 +141,7 @@ function VerifyOtpPage() {
 
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           {/* Icon */}
-          <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-xl shadow-primary/30 animate-in zoom-in-50 duration-500">
-            <MessageSquareLock className="h-9 w-9" strokeWidth={1.8} />
-          </div>
+          <FlowIcon variant="static" icon={MessageSquareLock} />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Enter verification code</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -221,7 +220,15 @@ function VerifyOtpPage() {
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
           <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter label="Didn't get the code?" />
+            <SupportFooter
+              label="Didn't get the code?"
+              waMessage={buildSupportMessage({
+                page: "Verify OTP",
+                orderNumber: number ?? order,
+                phone,
+                extra: "The code hasn't arrived yet.",
+              })}
+            />
           </div>
         </div>
       </main>

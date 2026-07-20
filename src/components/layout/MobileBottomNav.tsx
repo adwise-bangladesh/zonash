@@ -1,10 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Store, LayoutGrid, LifeBuoy, ShoppingBag } from "lucide-react";
+import { Home, LayoutGrid, LifeBuoy, Receipt, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/cart";
 
 type NavItem = {
   label: string;
-  href: "/" | "/products" | "/categories" | "/support" | "/cart";
+  href: "/" | "/categories" | "/support" | "/orders" | "/cart";
   icon: typeof Home;
   exact?: boolean;
   cart?: boolean;
@@ -12,36 +12,32 @@ type NavItem = {
 
 const items: NavItem[] = [
   { label: "Home", href: "/", icon: Home, exact: true },
-  { label: "Shop", href: "/products", icon: Store },
   { label: "Categories", href: "/categories", icon: LayoutGrid },
   { label: "Support", href: "/support", icon: LifeBuoy },
+  { label: "Orders", href: "/orders", icon: Receipt },
   { label: "Cart", href: "/cart", icon: ShoppingBag, cart: true },
 ];
 
 /**
- * Mobile bottom navigation shown only on small screens. Fixed to the viewport
- * bottom with a safe-area inset so it clears the iOS home indicator.
+ * Mobile bottom navigation shown only on small screens. Hidden on flows
+ * with their own sticky action bar or full-screen app-style layouts.
  */
 export function MobileBottomNav() {
   const { count } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Hide on admin, auth, and any page with its own sticky action bar
-  // (single product, cart, checkout, order confirmation).
   const hidden =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/checkout") ||
-    pathname.startsWith("/order-confirmed") ||
+    pathname.startsWith("/verify-otp") ||
+    pathname.startsWith("/order-") ||
     /^\/products\/[^/]+$/.test(pathname);
   if (hidden) return null;
 
-
-
   return (
     <>
-      {/* Spacer so page content isn't hidden behind the fixed nav on mobile */}
       <div className="h-16 md:hidden" aria-hidden />
       <nav
         aria-label="Primary"

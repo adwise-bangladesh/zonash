@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OrderReviewRouteImport } from './routes/order-review'
 import { Route as OrderPendingRouteImport } from './routes/order-pending'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
@@ -46,6 +47,11 @@ const VerifyOtpRoute = VerifyOtpRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderReviewRoute = OrderReviewRouteImport.update({
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/orders': typeof OrdersRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/orders': typeof OrdersRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/orders': typeof OrdersRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/orders'
     | '/support'
     | '/verify-otp'
     | '/admin'
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/orders'
     | '/support'
     | '/verify-otp'
     | '/c/$slug'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/orders'
     | '/support'
     | '/verify-otp'
     | '/_authenticated/admin'
@@ -375,6 +387,7 @@ export interface RootRouteChildren {
   OrderConfirmedRoute: typeof OrderConfirmedRoute
   OrderPendingRoute: typeof OrderPendingRoute
   OrderReviewRoute: typeof OrderReviewRoute
+  OrdersRoute: typeof OrdersRoute
   SupportRoute: typeof SupportRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-review': {
@@ -638,6 +658,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrderConfirmedRoute: OrderConfirmedRoute,
   OrderPendingRoute: OrderPendingRoute,
   OrderReviewRoute: OrderReviewRoute,
+  OrdersRoute: OrdersRoute,
   SupportRoute: SupportRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,

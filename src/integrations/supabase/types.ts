@@ -32,6 +32,39 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_login_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          last_sent_at: string
+          max_attempts: number
+          phone: string
+          send_count: number
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          last_sent_at?: string
+          max_attempts?: number
+          phone: string
+          send_count?: number
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          last_sent_at?: string
+          max_attempts?: number
+          phone?: string
+          send_count?: number
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           body: string
