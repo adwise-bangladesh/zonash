@@ -123,15 +123,24 @@ function CheckoutPage() {
   useEffect(() => {
     const b = lastOrderQ.data?.billing;
     if (!b) return;
+    const opts = policeQ.data?.items ?? [];
+    const raw = (b.thana || "").trim();
+    // Snap to a canonical option (case/whitespace-insensitive) so shipping
+    // detection and the combobox recognise the value.
+    const canonicalThana =
+      raw && opts.length
+        ? (opts.find((o) => o.toLowerCase() === raw.toLowerCase()) ?? raw)
+        : raw;
     setForm((f) => ({
       name: f.name || b.name || "",
       phone: f.phone || b.phone || sessionPhone || "",
       email: f.email || b.email || "",
       address: f.address || b.address || "",
-      thana: f.thana || b.thana || "",
+      thana: f.thana || canonicalThana || "",
       notes: f.notes || "",
     }));
-  }, [lastOrderQ.data, sessionPhone]);
+  }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
+
 
   const update = (patch: Partial<FormData>) => {
     setForm((f) => ({ ...f, ...patch }));

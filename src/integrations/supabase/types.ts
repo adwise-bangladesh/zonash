@@ -389,6 +389,33 @@ export type Database = {
         }
         Relationships: []
       }
+      police_stations: {
+        Row: {
+          created_at: string
+          district_id: number
+          district_name: string
+          id: number
+          is_dhaka_city: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          district_id: number
+          district_name: string
+          id?: number
+          is_dhaka_city?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          district_id?: number
+          district_name?: string
+          id?: number
+          is_dhaka_city?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
