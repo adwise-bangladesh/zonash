@@ -409,9 +409,11 @@ function CheckoutPage() {
                   <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <input
                     value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
+                    onChange={(e) => { setCouponInput(e.target.value); if (couponError) setCouponError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
                     placeholder="e.g. ZONASH10"
-                    className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm outline-none focus:border-primary"
+                    autoCapitalize="characters"
+                    className="h-10 w-full rounded-[3px] border border-border bg-background pl-8 pr-2 text-sm uppercase outline-none focus:border-primary"
                   />
                 </div>
                 <button type="button" onClick={applyCoupon} className="h-10 rounded-[3px] border border-primary px-3 text-sm font-semibold text-primary">
