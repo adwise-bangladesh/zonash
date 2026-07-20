@@ -9,11 +9,7 @@ export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
       className="sticky top-12 z-30 border-b border-border bg-background/95 backdrop-blur md:top-14"
     >
       <div className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4">
-        <Link
-          to="/"
-          className="relative shrink-0 text-primary"
-          aria-current="page"
-        >
+        <Link to="/" className="relative shrink-0 text-primary" aria-current="page">
           Recommended
           <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
         </Link>

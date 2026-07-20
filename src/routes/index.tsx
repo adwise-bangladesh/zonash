@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { listProducts, listCategories } from "@/lib/woo.functions";
+import { listProducts, listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
@@ -9,20 +9,21 @@ import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import type { WooProduct } from "@/lib/woo.server";
 
-const featuredQuery = queryOptions({
-  queryKey: ["home", "featured"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 12 } }),
-  staleTime: 60_000,
-});
-const trendingQuery = queryOptions({
-  queryKey: ["home", "trending"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 16, orderby: "popularity" } }),
+const megaSaleQuery = queryOptions({
+  queryKey: ["home", "mega-sale"],
+  queryFn: () => listProductsByCategorySlug({ data: { slug: "mega-sale", perPage: 16 } }),
   staleTime: 60_000,
 });
 const catQuery = queryOptions({
   queryKey: ["home", "categories"],
   queryFn: () => listCategories(),
   staleTime: 5 * 60_000,
+});
+// Fallback: featured/popular products in case the "mega-sale" category is empty.
+const fallbackQuery = queryOptions({
+  queryKey: ["home", "featured-fallback"],
+  queryFn: () => listProducts({ data: { page: 1, perPage: 16, orderby: "popularity" } }),
+  staleTime: 60_000,
 });
 
 export const Route = createFileRoute("/")({
@@ -46,11 +47,12 @@ export const Route = createFileRoute("/")({
   }),
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(featuredQuery),
-      context.queryClient.ensureQueryData(trendingQuery),
+      context.queryClient.ensureQueryData(megaSaleQuery),
+      context.queryClient.ensureQueryData(fallbackQuery),
       context.queryClient.ensureQueryData(catQuery),
     ]);
   },
+
   component: Home,
   pendingComponent: HomeSkeleton,
 });
@@ -149,12 +151,14 @@ function HomeSkeleton() {
 }
 
 function Home() {
-  const { data: feat } = useSuspenseQuery(featuredQuery);
-  const { data: trend } = useSuspenseQuery(trendingQuery);
+  const { data: mega } = useSuspenseQuery(megaSaleQuery);
+  const { data: fallback } = useSuspenseQuery(fallbackQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
-  const featured = feat.products as WooProduct[];
-  const trending = trend.products as WooProduct[];
+  const megaSale = mega.products as WooProduct[];
+  const fallbackProducts = fallback.products as WooProduct[];
   const categories = catData.categories;
+  const dealsProducts = megaSale.length ? megaSale : fallbackProducts;
+  const errorMessage = mega.error ?? fallback.error;
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
@@ -163,20 +167,20 @@ function Home() {
         <div className="bg-background">
           <CategoryTabs categories={categories} />
           <PromoIcons />
-          <DealsStrip products={trending.length ? trending : featured} />
+          <DealsStrip products={dealsProducts} />
         </div>
 
         <InfiniteFeed />
 
         <TrustRow />
 
-        {feat.error && (
+        {errorMessage && (
           <div className="container-page py-6">
             <div
               role="alert"
               className="rounded-[3px] border border-warning/40 bg-warning/10 p-4 text-sm"
             >
-              {feat.error}
+              {errorMessage}
             </div>
           </div>
         )}

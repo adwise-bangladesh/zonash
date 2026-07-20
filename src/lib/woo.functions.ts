@@ -143,6 +143,48 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
     }
   });
 
+// Fetch products by category slug (e.g. "mega-sale"). Resolves slug -> ID
+// server-side to avoid two client round-trips and to keep filtering safe.
+export const listProductsByCategorySlug = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        slug: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/),
+        perPage: z.number().int().min(1).max(50).default(16),
+        orderby: z.enum(["date", "price", "popularity", "rating", "title"]).default("popularity"),
+      })
+      .parse(raw ?? {}),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const cats = await wooFetch<{ id: number }[]>({
+        path: "/products/categories",
+        query: { slug: data.slug, per_page: 1 },
+        timeoutMs: 8000,
+      });
+      const catId = cats[0]?.id;
+      if (!catId) return { products: [] as WooProduct[], error: null as string | null };
+      const products = await wooFetch<WooProduct[]>({
+        path: "/products",
+        query: {
+          category: catId,
+          per_page: data.perPage,
+          orderby: data.orderby,
+          order: "desc",
+          status: "publish",
+        },
+        timeoutMs: 8000,
+      });
+      return { products, error: null as string | null };
+    } catch (e) {
+      console.error("listProductsByCategorySlug failed", e);
+      return { products: [] as WooProduct[], error: "Products are temporarily unavailable." };
+    }
+  });
+
+
+
 // -------------------- Checkout (public) --------------------
 
 const createOrderSchema = z.object({
