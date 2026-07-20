@@ -76,9 +76,10 @@ export function BigProductGrid({ products, title }: { products: WooProduct[]; ti
         </div>
       )}
       <div className="grid grid-cols-2 gap-2 px-[5px] md:grid-cols-3 md:gap-3 lg:grid-cols-4">
-        {products.map((p) => (
-          <BigCard key={p.id} p={p} />
+        {products.map((p, i) => (
+          <BigCard key={p.id} p={p} priority={i < 2} />
         ))}
+
       </div>
     </section>
   );
