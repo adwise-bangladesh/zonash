@@ -3,7 +3,7 @@ import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import type { WooProduct } from "@/lib/woo.server";
 
-function BigCard({ p }: { p: WooProduct }) {
+function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
   const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
   const rating = parseFloat(p.average_rating as unknown as string);
   const soldish = p.rating_count ?? 0;
@@ -19,7 +19,12 @@ function BigCard({ p }: { p: WooProduct }) {
           <img
             src={p.images[0].src}
             alt={p.images[0].alt || p.name}
-            loading="lazy"
+            width={600}
+            height={600}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -28,6 +33,7 @@ function BigCard({ p }: { p: WooProduct }) {
           </div>
         )}
       </div>
+
       <div className="flex flex-col gap-1.5 p-2.5">
         <div className="flex flex-wrap items-center gap-1">
           {p.stock_status !== "instock" && p.backorders_allowed && (
