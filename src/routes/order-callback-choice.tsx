@@ -58,10 +58,8 @@ function CallbackChoicePage() {
       <CheckoutHeader title="Almost done" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <FlowIcon variant="static" icon={ShieldCheck} />
+          <ShieldCheckAnim />
 
           <h1 className="text-center text-2xl font-bold tracking-tight">Verification complete</h1>
           <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -70,6 +68,7 @@ function CallbackChoicePage() {
             <br />
             Do you want us to call and confirm first?
           </p>
+
 
           <div className="mt-7 grid gap-2.5">
             <button
