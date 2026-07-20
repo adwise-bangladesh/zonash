@@ -3,10 +3,10 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Phone, PhoneOff, Loader2, ShieldCheck } from "lucide-react";
+import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
-import { FlowIcon } from "@/components/checkout/FlowIcon";
+
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
