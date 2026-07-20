@@ -383,7 +383,7 @@ function CheckoutPage() {
           <summary className="flex cursor-pointer list-none items-center justify-between p-4">
             <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <ShoppingBag className="h-3.5 w-3.5" />
-              {form.notes?.trim() ? "Delivery notes · added" : "Add delivery notes (optional)"}
+              {form.notes?.trim() ? "Delivery notes · added" : "Delivery notes"}
             </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
           </summary>
