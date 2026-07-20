@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ArrowRight, Loader2 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
