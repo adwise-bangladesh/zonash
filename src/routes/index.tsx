@@ -48,11 +48,12 @@ export const Route = createFileRoute("/")({
   }),
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(featuredQuery),
-      context.queryClient.ensureQueryData(trendingQuery),
+      context.queryClient.ensureQueryData(megaSaleQuery),
+      context.queryClient.ensureQueryData(fallbackQuery),
       context.queryClient.ensureQueryData(catQuery),
     ]);
   },
+
   component: Home,
   pendingComponent: HomeSkeleton,
 });
