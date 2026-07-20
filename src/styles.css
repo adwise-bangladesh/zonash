@@ -234,6 +234,11 @@
   100% { background-position: 450px 0; }
 }
 
+@keyframes flowIconFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
@@ -263,6 +268,7 @@
   .logo-fun, .hero-letter { animation: none; color: inherit; }
   .skeleton-shimmer { animation: none; }
   .skeleton-row-fade { animation: none; }
+  [class*="flowIconFloat"] { animation: none; }
 }
 
 
