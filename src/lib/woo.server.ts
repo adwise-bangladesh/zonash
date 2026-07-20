@@ -95,6 +95,9 @@ export type WooProduct = {
   images: { id: number; src: string; alt: string }[];
   categories: { id: number; name: string; slug: string }[];
   variations?: number[];
+  attributes?: { id: number; name: string; slug?: string; option?: string; options?: string[]; variation?: boolean; visible?: boolean }[];
+  default_attributes?: { id: number; name: string; option: string }[];
+  meta_data?: { id?: number; key: string; value: unknown }[];
   average_rating: string;
   rating_count: number;
 };
