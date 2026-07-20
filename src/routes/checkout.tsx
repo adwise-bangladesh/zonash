@@ -222,7 +222,7 @@ function CheckoutPage() {
               onChange={(e) => update({ name: e.target.value })}
               className={inputCls(errors.name)}
               autoComplete="name"
-              placeholder="যেমন: রহিম উদ্দিন"
+              placeholder="e.g. Rahim Uddin"
             />
           </Field>
           <Field label="Mobile number" error={errors.phone}>
