@@ -247,7 +247,7 @@ function CheckoutPage() {
               onChange={(e) => update({ address: e.target.value })}
               className={textareaCls(errors.address)}
               autoComplete="street-address"
-              placeholder="বাসা / হোল্ডিং নং, রোড, এলাকা, পোস্ট অফিস, জেলা"
+              placeholder="House / holding no, road, area, post office, district"
             />
           </Field>
           <Field label="Thana / Upazila" error={errors.thana}>
