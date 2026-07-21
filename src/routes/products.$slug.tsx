@@ -550,10 +550,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </div>
           </div>
 
-          {/* Info */}
-          <div className="bg-background">
+          {/* Info — blended hero block (gallery → title → variations → trust) */}
+          <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
             {/* Title + price */}
-            <div className="border-b border-border px-4 pb-4 pt-5">
+            <div className="px-4 pb-5 pt-5">
               <div className="mb-2 flex items-center gap-2">
                 {p.rating_count > 0 && (
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
