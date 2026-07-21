@@ -893,7 +893,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </div>
           </CollapsibleSection>
 
-
           <CollapsibleSection
             title={
               p.rating_count > 0 ? `Reviews · ${p.average_rating} (${p.rating_count})` : "Reviews"
