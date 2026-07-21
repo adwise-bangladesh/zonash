@@ -565,65 +565,19 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </span>
               </div>
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
+              {activeSku && (
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  SKU: <span className="font-mono normal-case text-foreground/80">{activeSku}</span>
+                </p>
+              )}
+              {p.rating_count > 0 && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
+                  <Stars value={parseFloat(p.average_rating) || 0} />
+                  <span className="font-semibold text-foreground">{p.average_rating}</span>
+                  <span className="text-muted-foreground">({p.rating_count} reviews)</span>
+                </div>
+              )}
             </div>
-
-            {/* Highlights — quiet editorial list, mask-faded with See more */}
-            {highlights.length > 0 && (
-              <div className="border-t border-border px-3 py-4">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Highlights
-                  </span>
-                </div>
-                <div className="relative">
-                  <ul
-                    className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
-                      highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
-                    }`}
-                    style={
-                      !highlightsOpen && highlights.length > 2
-                        ? {
-                            maskImage:
-                              "linear-gradient(to bottom, black 40%, transparent 100%)",
-                            WebkitMaskImage:
-                              "linear-gradient(to bottom, black 40%, transparent 100%)",
-                          }
-                        : undefined
-                    }
-                  >
-                    {highlights.map((line, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
-                      >
-                        <span
-                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
-                          aria-hidden="true"
-                        />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {highlights.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setHighlightsOpen((v) => !v)}
-                    aria-expanded={highlightsOpen}
-                    className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80"
-                  >
-                    <span>{highlightsOpen ? "Show less" : "See more"}</span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                )}
-              </div>
-            )}
-
-
-
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
@@ -650,7 +604,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                         {options.map((opt) => {
                           const active = current === opt;
                           const enabled = isOptionAvailable(attr.name, opt);
-                          // Find best (lowest price, in-stock) variation matching this option + other selections.
                           const candidates = variations.filter((v) =>
                             v.attributes.every((a) =>
                               a.name === attr.name
@@ -739,6 +692,62 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 })}
               </div>
             )}
+
+            {/* Highlights — quiet editorial list, mask-faded with See more */}
+            {highlights.length > 0 && (
+              <div className="border-t border-border px-3 py-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Highlights
+                  </span>
+                </div>
+                <div className="relative">
+                  <ul
+                    className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
+                      highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
+                    }`}
+                    style={
+                      !highlightsOpen && highlights.length > 2
+                        ? {
+                            maskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                            WebkitMaskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {highlights.map((line, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
+                      >
+                        <span
+                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
+                          aria-hidden="true"
+                        />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {highlights.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setHighlightsOpen((v) => !v)}
+                    aria-expanded={highlightsOpen}
+                    className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    <span>{highlightsOpen ? "Show less" : "See more"}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Delivery + guarantees */}
             <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center">
               <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
@@ -757,39 +766,109 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 <span>Authentic</span>
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* Full description */}
-        {longDesc && (
-          <details
-            open={descOpen}
-            onToggle={(e) => setDescOpen((e.target as HTMLDetailsElement).open)}
-            className="mt-3 rounded-[3px] border border-border bg-background"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between p-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Description
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 text-muted-foreground transition-transform ${
-                  descOpen ? "rotate-180" : ""
-                }`}
+        {/* Collapsible info sections */}
+        <div className="mt-3 space-y-2">
+          {longDesc && (
+            <CollapsibleSection title="Description" defaultOpen={descOpen} onToggle={setDescOpen}>
+              <div
+                className="prose prose-sm max-w-none text-[13px] leading-relaxed text-muted-foreground"
+                dangerouslySetInnerHTML={{ __html: longDesc }}
               />
-            </summary>
-            <div
-              className="prose prose-sm max-w-none border-t border-dashed border-border px-3 pb-4 pt-3 text-[13px] leading-relaxed text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: longDesc }}
-            />
-          </details>
-        )}
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection title="Product details">
+            <dl className="grid grid-cols-1 gap-2 text-[13px]">
+              {activeSku && (
+                <InfoRow label="SKU" value={<span className="font-mono">{activeSku}</span>} />
+              )}
+              {p.type && <InfoRow label="Type" value={<span className="capitalize">{p.type}</span>} />}
+              {p.weight && <InfoRow label="Weight" value={`${p.weight} kg`} />}
+              {p.dimensions &&
+                (p.dimensions.length || p.dimensions.width || p.dimensions.height) && (
+                  <InfoRow
+                    label="Dimensions"
+                    value={`${p.dimensions.length || "—"} × ${p.dimensions.width || "—"} × ${p.dimensions.height || "—"} cm`}
+                  />
+                )}
+              {(p.attributes ?? [])
+                .filter((a) => !a.variation && a.visible !== false && (a.options?.length ?? 0) > 0)
+                .map((a) => (
+                  <InfoRow key={a.id + a.name} label={a.name} value={a.options!.join(", ")} />
+                ))}
+            </dl>
+          </CollapsibleSection>
+
+          {p.categories?.length > 0 && (
+            <CollapsibleSection title={`Categories (${p.categories.length})`}>
+              <div className="flex flex-wrap gap-1.5">
+                {p.categories.map((c) => (
+                  <Link
+                    key={c.id}
+                    to="/categories/$slug"
+                    params={{ slug: c.slug }}
+                    className="rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-[12px] font-medium text-foreground hover:border-primary hover:text-primary"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {(p.tags?.length ?? 0) > 0 && (
+            <CollapsibleSection title={`Tags (${p.tags!.length})`}>
+              <div className="flex flex-wrap gap-1.5">
+                {p.tags!.map((t) => (
+                  <span
+                    key={t.id}
+                    className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+                  >
+                    #{t.name}
+                  </span>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection
+            title={
+              p.rating_count > 0
+                ? `Reviews · ${p.average_rating} (${p.rating_count})`
+                : "Reviews"
+            }
+          >
+            {p.rating_count > 0 ? (
+              <div className="flex items-center gap-3">
+                <div className="text-3xl font-extrabold text-foreground">{p.average_rating}</div>
+                <div>
+                  <Stars value={parseFloat(p.average_rating) || 0} />
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Based on {p.rating_count} verified {p.rating_count === 1 ? "review" : "reviews"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                No reviews yet. Verified customers can leave a review from their{" "}
+                <Link to="/orders" className="font-semibold text-primary hover:underline">
+                  orders dashboard
+                </Link>{" "}
+                after receiving this item.
+              </p>
+            )}
+          </CollapsibleSection>
+        </div>
 
         {/* Related products — infinite feed, no header */}
         <div className="mt-4 pb-24">
           <InfiniteFeed />
         </div>
       </div>
+
 
       {/* Mobile sticky action bar */}
       <div
