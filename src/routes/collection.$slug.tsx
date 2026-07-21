@@ -19,6 +19,7 @@ import { useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
 import type { WooProduct } from "@/lib/woo.server";
 import { QuickCard, VARIATIONS_STALE_MS } from "@/components/collection/QuickCard";
+import { NotFoundView } from "@/components/NotFoundView";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
