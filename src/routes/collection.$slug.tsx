@@ -160,21 +160,13 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
   }, [products]);
 
   // O(1) cart lookup — index by productId (which for variable products
-  // is the resolved variation id) AND by parent product id via a
-  // secondary map, so lookup works whether the card knows the variation
-  // yet or not.
-  const { byId, parentToLine } = useMemo(() => {
-    const byId = new Map<number, CartItem>();
-    const parentToLine = new Map<number, CartItem>();
-    for (const it of items) {
-      byId.set(it.productId, it);
-      // Cart lines don't store parent product id; parent lookup below
-      // walks each product's variations list to match. Kept for future
-      // extension.
-    }
-    return { byId, parentToLine };
+  // is the resolved variation id). Fallback walk over p.variations
+  // handles the case where the card hasn't resolved its default yet.
+  const byId = useMemo(() => {
+    const m = new Map<number, CartItem>();
+    for (const it of items) m.set(it.productId, it);
+    return m;
   }, [items]);
-  void parentToLine;
 
   // Warm variation cache for variable products in view.
   useEffect(() => {
@@ -183,7 +175,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
       (p) => p.type === "variable" && (p.variations?.length ?? 0) > 0,
     );
     if (!variable.length) return;
-    const ac = new AbortController();
     let cancelled = false;
     (async () => {
       const CONCURRENCY = 4;
@@ -196,7 +187,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
               queryKey: ["product-variations", p.id],
               queryFn: () =>
                 getProductVariations({ data: { productId: p.id } }),
-
               staleTime: VARIATIONS_STALE_MS,
             });
           } catch {
@@ -210,10 +200,10 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     })();
     return () => {
       cancelled = true;
-      ac.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefetchKey, qc]);
+
 
   useEffect(() => {
     const el = sentinel.current;
