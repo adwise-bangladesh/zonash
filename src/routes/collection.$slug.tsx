@@ -859,7 +859,12 @@ function FloatingCartBar() {
       }`}
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
     >
-      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-xl ring-1 ring-primary/20">
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/cart" })}
+        aria-label={`View cart — ${count} ${count === 1 ? "item" : "items"}, ${formatBDT(subtotal)}`}
+        className="pointer-events-auto flex w-full items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-left text-primary-foreground shadow-xl ring-1 ring-primary/20 transition active:scale-[0.99]"
+      >
         <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15">
           <ShoppingBag className="h-5 w-5" />
           <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[11px] font-extrabold text-primary shadow">
@@ -874,18 +879,14 @@ function FloatingCartBar() {
             {formatBDT(subtotal)}
           </p>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => navigate({ to: "/cart" })}
-          className="h-9 shrink-0 rounded-full bg-white px-4 text-[12px] font-bold text-primary hover:bg-white/90"
-        >
+        <span className="shrink-0 rounded-full bg-white px-4 py-2 text-[12px] font-bold text-primary">
           View Cart
-        </Button>
-      </div>
+        </span>
+      </button>
     </div>
   );
 }
+
 
 /* -------------------- Skeletons -------------------- */
 
