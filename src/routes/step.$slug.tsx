@@ -648,28 +648,6 @@ function StepLandingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="mt-6 px-4">
-        <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Frequently asked
-        </h2>
-        <div className="divide-y divide-border rounded-[6px] border border-border bg-background">
-          {[
-            { q: "How do I pay?", a: "Cash on delivery — pay only when you receive the product." },
-            { q: "How long is delivery?", a: "Inside Dhaka: 1–2 days. Outside Dhaka: 2–4 days via Steadfast." },
-            { q: "What if I don't like it?", a: "You can return it within 7 days as long as it's unused and in original packaging." },
-            { q: "Is the product authentic?", a: "Yes, 100% authentic — sourced directly from the manufacturer." },
-          ].map((f) => (
-            <details key={f.q} className="group px-3 py-2.5 [&[open]>summary>svg]:rotate-180">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                <span className="text-[13px] font-semibold text-foreground">{f.q}</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" aria-hidden />
-              </summary>
-              <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">{f.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
 
       {/* Order form */}
       <section ref={orderRef} id="order" className="mt-6 px-4">
