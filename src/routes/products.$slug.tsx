@@ -4,6 +4,8 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
   ChevronDown,
+  Copy,
+  MessageCircle,
   Minus,
   Plus,
   Share2,
@@ -398,6 +400,37 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
   };
 
+  const detailsText = useMemo(() => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const lines: string[] = [];
+    lines.push(`🛍️ ${p.name}`);
+    if (activeSku) lines.push(`SKU: ${activeSku}`);
+    lines.push(`Price: ${formatBDT(priceNum)}`);
+    if (showOld) lines.push(`Regular: ${formatBDT(oldPrice)} (Save ${discount}%)`);
+    if (matchedVariation) {
+      const opts = matchedVariation.attributes.map((a) => `${a.name}: ${a.option}`).join(", ");
+      if (opts) lines.push(`Variation: ${opts}`);
+    }
+    lines.push(`Quantity: ${qty}`);
+    lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
+    if (url) lines.push(`Link: ${url}`);
+    lines.push("");
+    lines.push("Please confirm my order 🙏");
+    return lines.join("\n");
+  }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
+
+  const waOrderUrl = `https://wa.me/8809610000000?text=${encodeURIComponent(detailsText)}`;
+
+  const handleCopyDetails = async () => {
+    try {
+      await navigator.clipboard.writeText(detailsText);
+      toast.success("Details copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
+
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
       {/* Floating transparent header — becomes solid on scroll */}
@@ -566,11 +599,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </span>
               </div>
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
-              {activeSku && (
-                <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  SKU: <span className="font-mono normal-case text-foreground/80">{activeSku}</span>
-                </p>
-              )}
               {p.rating_count > 0 && (
                 <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
                   <Stars value={parseFloat(p.average_rating) || 0} />
@@ -781,12 +809,47 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Product details">
-            <dl className="grid grid-cols-1 gap-2 text-[13px]">
+          <CollapsibleSection title="Product details" defaultOpen>
+            <dl className="grid grid-cols-1 gap-1 text-[13px]">
               {activeSku && (
                 <InfoRow label="SKU" value={<span className="font-mono">{activeSku}</span>} />
               )}
-              {p.type && <InfoRow label="Type" value={<span className="capitalize">{p.type}</span>} />}
+              {p.type && (
+                <InfoRow label="Type" value={<span className="capitalize">{p.type}</span>} />
+              )}
+              <InfoRow
+                label="Availability"
+                value={
+                  <span className={inStock ? "text-success" : "text-destructive"}>
+                    {inStock ? "In stock" : "Sold out"}
+                  </span>
+                }
+              />
+              <InfoRow label="Price" value={formatBDT(priceNum)} />
+              {showOld && (
+                <>
+                  <InfoRow
+                    label="Regular price"
+                    value={
+                      <span className="text-muted-foreground line-through">
+                        {formatBDT(oldPrice)}
+                      </span>
+                    }
+                  />
+                  <InfoRow
+                    label="You save"
+                    value={
+                      <span className="text-emerald-600">
+                        {formatBDT(oldPrice - priceNum)} ({discount}%)
+                      </span>
+                    }
+                  />
+                </>
+              )}
+              {matchedVariation &&
+                matchedVariation.attributes.map((a) => (
+                  <InfoRow key={a.id + a.name} label={a.name} value={a.option} />
+                ))}
               {p.weight && <InfoRow label="Weight" value={`${p.weight} kg`} />}
               {p.dimensions &&
                 (p.dimensions.length || p.dimensions.width || p.dimensions.height) && (
@@ -800,25 +863,43 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 .map((a) => (
                   <InfoRow key={a.id + a.name} label={a.name} value={a.options!.join(", ")} />
                 ))}
+              {p.categories?.length > 0 && (
+                <InfoRow
+                  label="Category"
+                  value={p.categories.map((c) => c.name).join(", ")}
+                />
+              )}
+              {(p.tags?.length ?? 0) > 0 && (
+                <InfoRow label="Tags" value={p.tags!.map((t) => t.name).join(", ")} />
+              )}
+              <InfoRow
+                label="Delivery"
+                value="Dhaka 80 Tk · Outside 130 Tk"
+              />
             </dl>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCopyDetails}
+                className="flex h-9 items-center justify-center gap-1.5 rounded-[3px] border border-border bg-background text-[12px] font-semibold text-foreground hover:border-primary hover:text-primary"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy details
+              </button>
+              <a
+                href={waOrderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 items-center justify-center gap-1.5 rounded-[3px] bg-emerald-600 text-[12px] font-bold text-white hover:bg-emerald-700"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Order on WhatsApp
+              </a>
+            </div>
           </CollapsibleSection>
 
-          {p.categories?.length > 0 && (
-            <CollapsibleSection title={`Categories (${p.categories.length})`}>
-              <div className="flex flex-wrap gap-1.5">
-                {p.categories.map((c) => (
-                  <Link
-                    key={c.id}
-                    to="/categories/$slug"
-                    params={{ slug: c.slug }}
-                    className="rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-[12px] font-medium text-foreground hover:border-primary hover:text-primary"
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-              </div>
-            </CollapsibleSection>
-          )}
+
 
           {(p.tags?.length ?? 0) > 0 && (
             <CollapsibleSection title={`Tags (${p.tags!.length})`}>
