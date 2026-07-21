@@ -447,7 +447,7 @@ function QuickCard({ p }: { p: WooProduct }) {
         const res = await qc.ensureQueryData({
           queryKey: ["product-variations", p.id],
           queryFn: () => getProductVariations({ data: { productId: p.id } }),
-          staleTime: 5 * 60 * 1000,
+          staleTime: VARIATIONS_STALE_MS,
         });
         const variations = (res?.variations ?? []) as WooVariation[];
         const v = pickDefaultVariation(p, variations);
