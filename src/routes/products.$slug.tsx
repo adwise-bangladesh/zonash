@@ -567,44 +567,51 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
             </div>
 
-            {/* Highlights — clean list, faded after 2 lines with chevron toggle */}
+            {/* Highlights — quiet editorial list, mask-faded with See more */}
             {highlights.length > 0 && (
-              <div className="border-t border-border p-3">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className="h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+              <div className="border-t border-border px-3 py-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Highlights
                   </span>
                 </div>
                 <div className="relative">
                   <ul
-                    className={`grid gap-1.5 overflow-hidden transition-[max-height] duration-300 ease-out ${
-                      highlightsOpen ? "max-h-[999px]" : "max-h-[3.25rem]"
+                    className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
+                      highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
                     }`}
+                    style={
+                      !highlightsOpen && highlights.length > 2
+                        ? {
+                            maskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                            WebkitMaskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                          }
+                        : undefined
+                    }
                   >
                     {highlights.map((line, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-2 text-[13px] leading-snug text-foreground"
+                        className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
                       >
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.5} />
+                        <span
+                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
+                          aria-hidden="true"
+                        />
                         <span>{line}</span>
                       </li>
                     ))}
                   </ul>
-                  {highlights.length > 2 && !highlightsOpen && (
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background via-background/85 to-transparent"
-                      aria-hidden="true"
-                    />
-                  )}
                 </div>
                 {highlights.length > 2 && (
                   <button
                     type="button"
                     onClick={() => setHighlightsOpen((v) => !v)}
                     aria-expanded={highlightsOpen}
-                    className="mt-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-primary hover:underline"
+                    className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80"
                   >
                     <span>{highlightsOpen ? "Show less" : "See more"}</span>
                     <ChevronDown
@@ -614,6 +621,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 )}
               </div>
             )}
+
 
 
 
