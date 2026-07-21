@@ -53,86 +53,98 @@ export function NotFoundView({
     primaryLabel ?? (onRetry ? "Try again" : defaults.primaryLabel);
   const HeroIcon = icon ?? defaults.icon;
 
-  const body = (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-[480px] flex-col items-center justify-start px-5 pt-6 pb-24">
-        {/* Hero card */}
-        <div className="relative w-full overflow-hidden rounded-[28px] bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent px-6 pt-9 pb-7 text-center ring-1 ring-primary/10">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-16 -right-14 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-primary/[0.06] blur-3xl"
-          />
+  const hero = (
+    <div className="mx-auto flex w-full max-w-[480px] flex-col items-center justify-start px-5 pt-6 pb-24">
+      {/* Hero card */}
+      <div className="relative w-full overflow-hidden rounded-[28px] bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent px-6 pt-9 pb-7 text-center ring-1 ring-primary/10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 -right-14 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-primary/[0.06] blur-3xl"
+        />
 
-          {/* Illustration */}
-          <div className="relative mx-auto mb-5 grid h-28 w-28 place-items-center">
-            <div className="absolute inset-0 rounded-full bg-primary/10" />
-            <div className="absolute inset-2 rounded-full bg-background shadow-inner ring-1 ring-primary/10" />
-            <HeroIcon
-              className="relative h-12 w-12 text-primary"
-              strokeWidth={1.75}
-            />
-            <Sparkles
-              className="absolute -top-1 right-2 h-4 w-4 text-primary/60"
-              strokeWidth={2}
-            />
-            <Sparkles
-              className="absolute bottom-1 -left-1 h-3 w-3 text-primary/40"
-              strokeWidth={2}
-            />
-          </div>
+        {/* Illustration */}
+        <div className="relative mx-auto mb-5 grid h-28 w-28 place-items-center">
+          <div className="absolute inset-0 rounded-full bg-primary/10" />
+          <div className="absolute inset-2 rounded-full bg-background shadow-inner ring-1 ring-primary/10" />
+          <HeroIcon
+            className="relative h-12 w-12 text-primary"
+            strokeWidth={1.75}
+          />
+          <Sparkles
+            className="absolute -top-1 right-2 h-4 w-4 text-primary/60"
+            strokeWidth={2}
+          />
+          <Sparkles
+            className="absolute bottom-1 -left-1 h-3 w-3 text-primary/40"
+            strokeWidth={2}
+          />
+        </div>
 
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary/70">
-            {resolvedCode}
-          </p>
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary/70">
+          {resolvedCode}
+        </p>
+        {bare ? (
+          <h2 className="mt-2 text-[22px] font-semibold tracking-tight text-ink">
+            {resolvedTitle}
+          </h2>
+        ) : (
           <h1 className="mt-2 text-[22px] font-semibold tracking-tight text-ink">
             {resolvedTitle}
           </h1>
-          <p className="mx-auto mt-2 max-w-[300px] text-[13px] leading-relaxed text-muted-foreground">
-            {resolvedDescription}
-          </p>
+        )}
+        <p className="mx-auto mt-2 max-w-[300px] text-[13px] leading-relaxed text-muted-foreground">
+          {resolvedDescription}
+        </p>
 
-          {/* Primary CTA */}
-          {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
-            >
-              <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
-              {resolvedPrimaryLabel}
-            </button>
-          ) : (
-            <Link
-              to={primaryTo}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
-            >
-              <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
-              {resolvedPrimaryLabel}
-            </Link>
-          )}
-        </div>
+        {/* Primary CTA */}
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
+            {resolvedPrimaryLabel}
+          </button>
+        ) : (
+          <Link
+            to={primaryTo}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+            {resolvedPrimaryLabel}
+          </Link>
+        )}
+      </div>
 
-        {/* Quick actions */}
-        <div className="mt-5 grid w-full grid-cols-2 gap-3">
-          <QuickAction
-            to="/"
-            icon={<Home className="h-4 w-4" strokeWidth={2} />}
-            label="Home"
-            hint="Start over"
-          />
-          <QuickAction
-            to="/products"
-            icon={<Search className="h-4 w-4" strokeWidth={2} />}
-            label="Browse shop"
-            hint="Discover pieces"
-          />
-        </div>
-      </main>
+      {/* Quick actions */}
+      <div className="mt-5 grid w-full grid-cols-2 gap-3">
+        <QuickAction
+          to="/"
+          icon={<Home className="h-4 w-4" strokeWidth={2} />}
+          label="Home"
+          hint="Start over"
+        />
+        <QuickAction
+          to="/products"
+          icon={<Search className="h-4 w-4" strokeWidth={2} />}
+          label="Browse shop"
+          hint="Discover pieces"
+        />
+      </div>
+    </div>
+  );
+
+  if (bare) return hero;
+
+  return (
+    <div className="min-h-screen bg-surface-muted/40">
+      <AppHeader />
+      <main>{hero}</main>
     </div>
   );
 }
