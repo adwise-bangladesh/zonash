@@ -1463,18 +1463,6 @@ function OrderDrawer({
     return Array.from(set).slice(0, 8);
   }, [historyQ.data]);
 
-  // Ops fields
-  const opsFn = useServerFn(updateOrderOps);
-  const [courier, setCourier] = useState(initialOps?.courier ?? "");
-  const [tracking, setTracking] = useState(initialOps?.tracking_number ?? "");
-  const [pickup, setPickup] = useState(initialOps?.pickup_slot ?? "");
-  const [notes, setNotes] = useState(initialOps?.internal_notes ?? "");
-  useEffect(() => {
-    setCourier(initialOps?.courier ?? "");
-    setTracking(initialOps?.tracking_number ?? "");
-    setPickup(initialOps?.pickup_slot ?? "");
-    setNotes(initialOps?.internal_notes ?? "");
-  }, [initialOps?.wc_order_id, initialOps?.updated_at]);
 
 
 
