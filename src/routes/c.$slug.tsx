@@ -264,44 +264,6 @@ function CollectionSkeleton() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Empty state — soft gradient card with a floating parcel icon        */
-/* ------------------------------------------------------------------ */
-function CollectionEmpty() {
-  return (
-    <div className="px-[5px] pt-4 pb-16">
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-amber-50/60 px-6 py-14 text-center shadow-sm">
-        {/* Decorative sparkles */}
-        <span aria-hidden="true" className="pointer-events-none absolute left-6 top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-        <span aria-hidden="true" className="pointer-events-none absolute right-8 bottom-8 h-32 w-32 rounded-full bg-amber-200/40 blur-3xl" />
-
-        <div className="relative mx-auto flex h-24 w-24 items-center justify-center">
-          <span aria-hidden="true" className="absolute inset-0 rounded-full bg-white shadow-md ring-1 ring-border/60" />
-          <PackageOpen className="relative h-11 w-11 text-primary" strokeWidth={1.5} />
-          <Sparkles className="absolute -right-1 -top-1 h-5 w-5 text-amber-500" strokeWidth={2} />
-        </div>
-
-        <h2 className="mt-6 font-display text-[18px] font-bold tracking-tight text-ink md:text-[20px]">
-          The shelves are being restocked
-        </h2>
-        <p className="mx-auto mt-2 max-w-[22rem] text-[12.5px] leading-relaxed text-muted-foreground">
-          We're curating fresh pieces for this collection. New arrivals drop weekly — be the first to see them.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <Button asChild size="sm" className="rounded-full px-5">
-            <Link to="/">Explore homepage</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline" className="rounded-full px-5">
-            <Link to="/c/$slug" params={{ slug: "new-arrivals" }}>
-              <BellRing className="mr-1.5 h-3.5 w-3.5" /> See new arrivals
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Demo collection with dummy data (open /c/demo to preview design)    */
