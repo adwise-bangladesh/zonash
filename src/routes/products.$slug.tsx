@@ -702,93 +702,65 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             )}
 
-            {/* Highlights — quiet editorial list, mask-faded with See more */}
-            {highlights.length > 0 && (
-              <div className="border-b border-border px-4 py-5">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Highlights
-                  </span>
-                </div>
-                <div className="relative">
-                  <ul
-                    className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
-                      highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
-                    }`}
-                    style={
-                      !highlightsOpen && highlights.length > 2
-                        ? {
-                            maskImage: "linear-gradient(to bottom, black 40%, transparent 100%)",
-                            WebkitMaskImage:
-                              "linear-gradient(to bottom, black 40%, transparent 100%)",
-                          }
-                        : undefined
-                    }
-                  >
-                    {highlights.map((line, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
-                      >
-                        <span
-                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
-                          aria-hidden="true"
-                        />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {highlights.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setHighlightsOpen((v) => !v)}
-                    aria-expanded={highlightsOpen}
-                    className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80"
-                  >
-                    <span>{highlightsOpen ? "Show less" : "See more"}</span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Delivery + guarantees */}
-            <div className="px-4 py-5">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            {/* Compact trust footer — matches homepage TrustRow */}
+            <div className="px-4 pb-6 pt-5">
+              <div className="mx-auto flex max-w-md items-center gap-3">
+                <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   Why buy from Zonash
                 </span>
+                <span className="h-px flex-1 bg-border" aria-hidden="true" />
               </div>
-              <div className="grid grid-cols-3 divide-x divide-border rounded-[6px] border border-border bg-muted/20">
-                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
-                  <Truck className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-foreground">Fast delivery</span>
-                  <span>1-3 days</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
-                  <Undo2 className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-foreground">Easy returns</span>
-                  <span>7-day</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-foreground">Guarantee</span>
-                  <span>Authentic</span>
-                </div>
-              </div>
+              <ul className="mx-auto mt-4 flex max-w-md items-start justify-between gap-2">
+                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
+                  <Truck className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
+                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
+                    Fast delivery
+                  </span>
+                </li>
+                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
+                  <Undo2 className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
+                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
+                    7-Day Returns
+                  </span>
+                </li>
+                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
+                  <Shield className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
+                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
+                    100% Authentic
+                  </span>
+                </li>
+              </ul>
+              <p className="mt-5 text-center text-[10px] uppercase tracking-[0.25em] text-muted-foreground/70">
+                — Zonash · Dhaka —
+              </p>
             </div>
           </div>
         </div>
 
         {/* Collapsible info sections */}
         <div className="mt-2 divide-y divide-border border-y border-border bg-background">
+          {highlights.length > 0 && (
+            <CollapsibleSection title="Highlights" defaultOpen>
+              <ul className="grid gap-3">
+                {highlights.map((line, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
+                  >
+                    <span
+                      className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
+                      aria-hidden="true"
+                    />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleSection>
+          )}
+
           {longDesc && (
-            <CollapsibleSection title="Description" defaultOpen={descOpen} onToggle={setDescOpen}>
+            <CollapsibleSection title="Description">
               <div
                 className="prose prose-sm max-w-none text-[13px] leading-relaxed text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: longDesc }}
@@ -796,7 +768,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Product details" defaultOpen>
+          <CollapsibleSection title="Product details">
+
             <dl className="grid grid-cols-1 gap-1 text-[13px]">
               {activeSku && (
                 <InfoRow label="SKU" value={<span className="font-mono">{activeSku}</span>} />
