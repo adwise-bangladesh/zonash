@@ -13,7 +13,7 @@ import {
   getProductVariations,
 } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { EmptyState } from "@/components/ui/empty-state";
+
 import { formatBDT } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
