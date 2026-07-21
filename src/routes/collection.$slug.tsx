@@ -7,7 +7,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight, Plus, Minus, Trash2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   getCategoryWithSubs,
@@ -346,7 +346,7 @@ function pickDefaultVariation(
 
 
 function QuickCard({ p }: { p: WooProduct }) {
-  const { add, items } = useCart();
+  const { add, items, setQty, remove } = useCart();
   const qc = useQueryClient();
   const [state, setState] = useState<CardState>("idle");
   const [lightbox, setLightbox] = useState(false);
@@ -402,7 +402,11 @@ function QuickCard({ p }: { p: WooProduct }) {
   // crossfade with a CSS transition instead of a hard jump.
   const cardImageKey = cardImage ?? "empty";
 
-  const inCart = items.some((i) => i.productId === (p.id || -1));
+  // Track the exact cart line for this card. Variable products live under
+  // their default variation's id once resolved; simple products under p.id.
+  const trackedId = isVariable ? (defaultVariation?.id ?? -1) : p.id;
+  const cartLine = items.find((i) => i.productId === trackedId);
+  const inCart = !!cartLine;
 
   // Availability -----------------------------------------------------
   const productSoldOut =
@@ -493,18 +497,25 @@ function QuickCard({ p }: { p: WooProduct }) {
   const unavailableLabel = productSoldOut ? "Sold out" : "Unavailable";
 
   return (
-    <button
-      type="button"
-      onClick={handleAdd}
-      disabled={unavailable}
+    <div
+      role="button"
+      tabIndex={unavailable ? -1 : 0}
+      onClick={(e) => handleAdd(e as unknown as React.MouseEvent)}
+      onKeyDown={(e) => {
+        if (unavailable) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleAdd(e as unknown as React.MouseEvent);
+        }
+      }}
       aria-disabled={unavailable}
       aria-label={
         unavailable ? `${p.name} — ${unavailableLabel}` : `Add ${p.name} to cart`
       }
-      className={`group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 ${
+      className={`group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
         unavailable
           ? "cursor-not-allowed opacity-95"
-          : "active:scale-[0.97]"
+          : "cursor-pointer active:scale-[0.97]"
       }`}
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
@@ -551,7 +562,7 @@ function QuickCard({ p }: { p: WooProduct }) {
           </div>
         )}
 
-        {/* Preview (eye) — top-left */}
+        {/* Preview (eye) — top-left, no background */}
         {state === "idle" && (
           <span
             role="button"
@@ -569,18 +580,56 @@ function QuickCard({ p }: { p: WooProduct }) {
                 setLightbox(true);
               }
             }}
-            className="absolute left-1 top-1 grid h-5 w-5 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-sm ring-1 ring-black/5 backdrop-blur transition-all hover:scale-110 hover:bg-white active:scale-95"
+            className="absolute left-1 top-1 grid h-6 w-6 cursor-pointer place-items-center rounded-full text-white transition-transform hover:scale-110 active:scale-95 [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.55))]"
           >
-            <Eye className="h-3 w-3" strokeWidth={2.25} />
+            <Eye className="h-4 w-4" strokeWidth={2.5} />
           </span>
         )}
 
-        {/* Persistent in-cart tick — top-right */}
-        {state === "idle" && inCart && (
-          <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
-            <Check className="h-3 w-3" strokeWidth={3} />
-          </span>
+        {/* Quantity stepper — bottom of image when in cart */}
+        {state === "idle" && inCart && cartLine && !unavailable && (
+          <div
+            className="absolute inset-x-1 bottom-1 flex animate-fade-in items-center justify-between gap-1 rounded-full bg-primary/95 px-1 py-1 text-primary-foreground shadow-lg ring-1 ring-primary/30 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label={
+                cartLine.quantity <= 1 ? "Remove from cart" : "Decrease quantity"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                if (cartLine.quantity <= 1) remove(trackedId);
+                else setQty(trackedId, cartLine.quantity - 1);
+              }}
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25 active:scale-90"
+            >
+              {cartLine.quantity <= 1 ? (
+                <Trash2 className="h-3 w-3" strokeWidth={2.5} />
+              ) : (
+                <Minus className="h-3 w-3" strokeWidth={3} />
+              )}
+            </button>
+            <span
+              className="min-w-[16px] text-center text-[11px] font-extrabold leading-none tabular-nums"
+              aria-live="polite"
+            >
+              {cartLine.quantity}
+            </span>
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQty(trackedId, cartLine.quantity + 1);
+              }}
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25 active:scale-90"
+            >
+              <Plus className="h-3 w-3" strokeWidth={3} />
+            </button>
+          </div>
         )}
+
 
         {unavailable && (
           <>
@@ -626,7 +675,8 @@ function QuickCard({ p }: { p: WooProduct }) {
           onClose={() => setLightbox(false)}
         />
       )}
-    </button>
+    </div>
+
   );
 }
 
@@ -673,9 +723,11 @@ function Lightbox({
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
-      {/* Header */}
+      {/* Header — rendered with z-20 so it sits above the slides layer;
+          otherwise the full-size slides div would swallow clicks on the
+          close (X) button. */}
       <div
-        className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 bg-gradient-to-b from-black/60 to-transparent px-4 pb-8 pt-3"
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-w-0">
@@ -686,17 +738,21 @@ function Lightbox({
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           aria-label="Close preview"
-          className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition hover:bg-white/20 active:scale-95"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
+
       {/* Slides */}
       <div
-        className="relative h-full w-full overflow-hidden"
+        className="relative z-10 h-full w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => {
           touchX.current = e.touches[0].clientX;
@@ -758,7 +814,7 @@ function Lightbox({
       {/* Dots */}
       {total > 1 && (
         <div
-          className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5"
+          className="absolute inset-x-0 bottom-4 z-20 flex justify-center gap-1.5"
           onClick={(e) => e.stopPropagation()}
         >
           {images.map((_, idx) => (
