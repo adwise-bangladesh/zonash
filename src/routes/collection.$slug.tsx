@@ -30,24 +30,25 @@ const categoryQuery = (slug: string) =>
 export const Route = createFileRoute("/collection/$slug")({
   loader: ({ params, context }) =>
     context.queryClient.ensureQueryData(categoryQuery(params.slug)),
-  head: ({ params }) => {
-    const pretty = params.slug
+  head: ({ params, loaderData }) => {
+    const fallback = params.slug
       .split("-")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
+    const name = loaderData?.parent?.name || fallback;
+    const url = `https://zonash.lovable.app/collection/${params.slug}`;
+    const title = `${name} — Quick Shop | Zonash`;
+    const description = `Tap to add — shop the entire ${name} collection in seconds.`;
     return {
       meta: [
-        { title: `${pretty} — Quick Shop | Zonash` },
-        {
-          name: "description",
-          content: `Tap to add — shop the entire ${pretty} collection in seconds.`,
-        },
-        { property: "og:title", content: `${pretty} — Quick Shop | Zonash` },
-        {
-          property: "og:description",
-          content: `Tap to add — shop the entire ${pretty} collection in seconds.`,
-        },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:url", content: url },
+        { property: "og:type", content: "website" },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: CollectionQuickShop,
@@ -72,6 +73,7 @@ export const Route = createFileRoute("/collection/$slug")({
     </Shell>
   ),
 });
+
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -115,35 +117,52 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const { items } = useCart();
-  const enabled = !!categoryId;
+  const enabled = categoryId != null;
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["collection-feed", categoryId],
-      enabled,
-      initialPageParam: 1,
-      queryFn: ({ pageParam }) =>
-        listProducts({
-          data: {
-            page: pageParam as number,
-            perPage: 24,
-            category: String(categoryId),
-            orderby: "date",
-          },
-        }),
-      getNextPageParam: (last, all) =>
-        last.products.length < 24 ? undefined : all.length + 1,
-      staleTime: 60_000,
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["collection-feed", categoryId],
+    enabled,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      listProducts({
+        data: {
+          page: pageParam as number,
+          perPage: 24,
+          category: String(categoryId),
+          orderby: "date",
+        },
+      }),
+
+    getNextPageParam: (last, all) =>
+      last.products.length < 24 ? undefined : all.length + 1,
+    staleTime: 60_000,
+  });
 
   const products = useMemo<WooProduct[]>(
     () => data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [],
     [data],
   );
-  const prefetchKey = useMemo(() => products.map((p) => p.id).join(","), [products]);
+  // Stable dep — pages count + first/last id captures "new page arrived"
+  // without joining every id on each render.
+  const prefetchKey = useMemo(() => {
+    const n = products.length;
+    if (!n) return "0";
+    return `${n}:${products[0].id}:${products[n - 1].id}`;
+  }, [products]);
 
-  // O(1) cart lookup instead of O(n) find per card
-  const cartMap = useMemo(() => {
+  // O(1) cart lookup — index by productId (which for variable products
+  // is the resolved variation id). Fallback walk over p.variations
+  // handles the case where the card hasn't resolved its default yet.
+  const byId = useMemo(() => {
     const m = new Map<number, CartItem>();
     for (const it of items) m.set(it.productId, it);
     return m;
@@ -185,6 +204,7 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefetchKey, qc]);
 
+
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
@@ -214,6 +234,27 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
 
   if (isLoading && products.length === 0) return <GridSkeleton />;
 
+  if (isError && products.length === 0) {
+    return (
+      <div className="px-[5px] pt-8 pb-16 text-center">
+        <PackageOpen
+          className="mx-auto h-10 w-10 text-muted-foreground/40"
+          strokeWidth={1.5}
+        />
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {error instanceof Error ? error.message : "Failed to load products."}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-sm active:scale-95"
+        >
+          <Loader2 className="h-3 w-3" /> Retry
+        </button>
+      </div>
+    );
+  }
+
   if (products.length === 0) {
     return (
       <div className="px-[5px] pt-8 pb-16 text-center">
@@ -230,15 +271,24 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-1.5 px-[5px] pt-2">
+      <div
+        className="grid grid-cols-4 gap-1.5 px-[5px] pt-2"
+        style={{ contentVisibility: "auto", containIntrinsicSize: "800px" } as React.CSSProperties}
+      >
         {products.map((p) => {
-          // For variable products the cart line is keyed by the resolved
-          // variation id; QuickCard resolves that internally. We pass both
-          // lookups so the card renders the stepper without an extra query.
-          const line =
-            cartMap.get(p.id) ??
-            // Try any known variation id from the product's variations list.
-            (p.variations ?? []).map((id) => cartMap.get(id)).find(Boolean);
+          // Variable products may have their line keyed by any variation id.
+          // Walk the (usually short) variations list only when the direct
+          // product-id lookup misses.
+          let line = byId.get(p.id);
+          if (!line && p.variations?.length) {
+            for (const vid of p.variations) {
+              const hit = byId.get(vid);
+              if (hit) {
+                line = hit;
+                break;
+              }
+            }
+          }
           return <QuickCard key={p.id} p={p} cartLine={line} />;
         })}
       </div>
@@ -251,7 +301,16 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading more…
           </span>
         )}
-        {!hasNextPage && products.length > 0 && (
+        {isError && !isFetchingNextPage && products.length > 0 && (
+          <button
+            type="button"
+            onClick={() => fetchNextPage()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15 active:scale-95"
+          >
+            <Loader2 className="h-3 w-3" /> Retry loading more
+          </button>
+        )}
+        {!hasNextPage && !isError && products.length > 0 && (
           <span className="text-[10px] text-muted-foreground/70">
             End of collection ✦
           </span>
@@ -260,6 +319,7 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     </>
   );
 }
+
 
 function FloatingCartBar() {
   const { count, subtotal, hydrated } = useCart();
