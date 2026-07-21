@@ -349,9 +349,13 @@ function QuickCard({ p }: { p: WooProduct }) {
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
         {displayPrice != null ? (
           <>
+            {isVariable && (
+              <span className="text-[9px] font-medium leading-none text-muted-foreground">
+                from
+              </span>
+            )}
             <span className="text-[11px] font-extrabold leading-none text-primary">
-              {isVariable ? "৳" : ""}
-              {formatBDT(displayPrice).replace(/^৳/, isVariable ? "" : "৳")}
+              {formatBDT(displayPrice)}
             </span>
             {displayRegular != null && (
               <span className="text-[9px] leading-none text-muted-foreground line-through">
@@ -360,6 +364,8 @@ function QuickCard({ p }: { p: WooProduct }) {
             )}
           </>
         ) : (
+          <span className="text-[10px] text-muted-foreground">—</span>
+        )}
           <span className="text-[10px] text-muted-foreground">—</span>
         )}
       </div>

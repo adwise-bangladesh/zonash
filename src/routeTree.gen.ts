@@ -26,6 +26,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as StepSlugRouteImport } from './routes/step.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -124,6 +125,11 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   path: '/products/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CollectionSlugRoute = CollectionSlugRouteImport.update({
+  id: '/collection/$slug',
+  path: '/collection/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CSlugRoute = CSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/verify-otp': typeof VerifyOtpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/admin'
     | '/c/$slug'
+    | '/collection/$slug'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/verify-otp'
     | '/c/$slug'
+    | '/collection/$slug'
     | '/products/$slug'
     | '/step/$slug'
     | '/products'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/_authenticated/admin'
     | '/c/$slug'
+    | '/collection/$slug'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
+  CollectionSlugRoute: typeof CollectionSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
@@ -529,6 +542,13 @@ declare module '@tanstack/react-router' {
       path: '/products/$slug'
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collection/$slug': {
+      id: '/collection/$slug'
+      path: '/collection/$slug'
+      fullPath: '/collection/$slug'
+      preLoaderRoute: typeof CollectionSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/c/$slug': {
@@ -682,6 +702,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,
+  CollectionSlugRoute: CollectionSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
