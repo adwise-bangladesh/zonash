@@ -376,12 +376,22 @@ function QuickCard({ p }: { p: WooProduct }) {
 
 
 
+  const unavailableLabel = productSoldOut ? "Sold out" : "Unavailable";
+
   return (
     <button
       type="button"
       onClick={handleAdd}
-      aria-label={`Add ${p.name} to cart`}
-      className="group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 active:scale-[0.97]"
+      disabled={unavailable}
+      aria-disabled={unavailable}
+      aria-label={
+        unavailable ? `${p.name} — ${unavailableLabel}` : `Add ${p.name} to cart`
+      }
+      className={`group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 ${
+        unavailable
+          ? "cursor-not-allowed opacity-95"
+          : "active:scale-[0.97]"
+      }`}
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {cardImage ? (
@@ -390,7 +400,11 @@ function QuickCard({ p }: { p: WooProduct }) {
             alt={cardImageAlt}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className={`h-full w-full object-cover transition-transform duration-300 ${
+              unavailable
+                ? "scale-100 grayscale-[0.4] opacity-60"
+                : "group-hover:scale-105"
+            }`}
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-muted-foreground/40">
