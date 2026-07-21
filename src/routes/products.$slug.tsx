@@ -566,11 +566,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </span>
               </div>
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
-              {activeSku && (
-                <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  SKU: <span className="font-mono normal-case text-foreground/80">{activeSku}</span>
-                </p>
-              )}
               {p.rating_count > 0 && (
                 <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
                   <Stars value={parseFloat(p.average_rating) || 0} />
