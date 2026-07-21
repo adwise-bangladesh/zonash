@@ -85,9 +85,7 @@ export function BigProductGrid({
 }) {
   if (!products.length) return null;
   const gridClass =
-    columns === 3
-      ? "grid grid-cols-3 gap-1.5 px-[5px]"
-      : "grid grid-cols-2 gap-2 px-[5px]";
+    columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
     <section aria-label={title || "For you"} className="pb-6">
       {title && (

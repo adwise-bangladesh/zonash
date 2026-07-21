@@ -55,11 +55,7 @@ export function PromoIcons() {
                 ? ({ to: "/luxury" } as const)
                 : ({ to: "/c/$slug", params: { slug: promo.slug } } as const);
             return (
-              <Link
-                key={label}
-                {...linkProps}
-                className="group flex flex-col items-center gap-2"
-              >
+              <Link key={label} {...linkProps} className="group flex flex-col items-center gap-2">
                 <span
                   className={`grid h-14 w-14 place-items-center rounded-2xl ring-1 transition-all group-hover:-translate-y-0.5 group-hover:shadow-sm md:h-16 md:w-16 ${tint}`}
                 >
