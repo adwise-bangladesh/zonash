@@ -30,24 +30,25 @@ const categoryQuery = (slug: string) =>
 export const Route = createFileRoute("/collection/$slug")({
   loader: ({ params, context }) =>
     context.queryClient.ensureQueryData(categoryQuery(params.slug)),
-  head: ({ params }) => {
-    const pretty = params.slug
+  head: ({ params, loaderData }) => {
+    const fallback = params.slug
       .split("-")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
+    const name = loaderData?.parent?.name || fallback;
+    const url = `https://zonash.lovable.app/collection/${params.slug}`;
+    const title = `${name} — Quick Shop | Zonash`;
+    const description = `Tap to add — shop the entire ${name} collection in seconds.`;
     return {
       meta: [
-        { title: `${pretty} — Quick Shop | Zonash` },
-        {
-          name: "description",
-          content: `Tap to add — shop the entire ${pretty} collection in seconds.`,
-        },
-        { property: "og:title", content: `${pretty} — Quick Shop | Zonash` },
-        {
-          property: "og:description",
-          content: `Tap to add — shop the entire ${pretty} collection in seconds.`,
-        },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:url", content: url },
+        { property: "og:type", content: "website" },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: CollectionQuickShop,
@@ -72,6 +73,7 @@ export const Route = createFileRoute("/collection/$slug")({
     </Shell>
   ),
 });
+
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
