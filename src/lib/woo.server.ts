@@ -162,7 +162,10 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
               status: 200,
               headers: {
                 "Content-Type": "application/json",
-                "Cache-Control": `public, max-age=${EDGE_TTL_SECONDS}`,
+                // Stale-while-revalidate: serve cached instantly for 60s, then
+                // continue serving stale for up to 10 min while a background
+                // refresh hits WooCommerce. Keeps LCP flat under load spikes.
+                "Cache-Control": `public, max-age=${EDGE_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, stale-while-revalidate=600, stale-if-error=86400`,
               },
             });
             // Fire and forget — do not block the response.

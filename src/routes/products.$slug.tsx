@@ -425,6 +425,47 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => window.clearInterval(id);
   }, [gallery.length]);
 
+  // IntersectionObserver-based preload+decode for offscreen gallery slides.
+  // When a slide gets within 1 viewport of scrolling in, fetch + decode its
+  // image off the main thread so the swipe is a no-op paint.
+  useEffect(() => {
+    const root = galleryRef.current;
+    if (!root || gallery.length < 2) return;
+    const decoded = new Set<string>();
+    const decode = (src: string) => {
+      if (!src || decoded.has(src)) return;
+      decoded.add(src);
+      const img = new Image();
+      img.decoding = "async";
+      const responsive = buildResponsiveImage(src);
+      if (responsive) {
+        img.srcset = responsive.srcSet;
+        img.sizes = responsive.sizes;
+        img.src = responsive.src;
+      } else {
+        img.src = src;
+      }
+      // decode() rejects on broken URLs — swallow so we don't spam console.
+      img.decode?.().catch(() => {});
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const idx = Number((e.target as HTMLElement).dataset.idx ?? -1);
+          if (Number.isNaN(idx) || idx < 0) continue;
+          decode(gallery[idx]);
+          decode(gallery[(idx + 1) % gallery.length]);
+          decode(gallery[(idx - 1 + gallery.length) % gallery.length]);
+        }
+      },
+      { root, rootMargin: "0px 100% 0px 100%", threshold: 0.01 },
+    );
+    const slides = root.querySelectorAll<HTMLElement>("[data-slide]");
+    slides.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [gallery]);
+
   const addLine = () => {
     const variantSuffix = matchedVariation
       ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
@@ -573,7 +614,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
             {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
               const responsive = src ? buildResponsiveImage(src) : null;
               return (
-                <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
+                <div key={i} data-slide data-idx={i} className="relative aspect-square w-full shrink-0 snap-center">
                   {responsive ? (
                     <picture>
                       <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
