@@ -6,12 +6,9 @@ import { z } from "zod";
 import {
   ArrowRight,
   Check,
-  ChevronDown,
-  Clock,
   Flame,
   Lock,
-  Minus,
-  Plus,
+  Sparkles,
   ShieldCheck,
   Star,
   Truck,
