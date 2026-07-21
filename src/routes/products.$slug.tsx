@@ -64,6 +64,21 @@ export const Route = createFileRoute("/products/$slug")({
   component: ProductPage,
   pendingComponent: ProductPageSkeleton,
   pendingMs: 0,
+  errorComponent: ({ error, reset }) => {
+    const message =
+      error instanceof Error ? error.message : "Something went wrong loading this product.";
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-background">
+        <EmptyState
+          icon={PackageX}
+          title="Couldn't load product"
+          description={message}
+          primary={{ label: "Try again", onClick: () => reset() }}
+          secondary={{ label: "Back to home", to: "/" }}
+        />
+      </div>
+    );
+  },
   notFoundComponent: () => (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <EmptyState
@@ -80,6 +95,7 @@ export const Route = createFileRoute("/products/$slug")({
 function ProductPageSkeleton() {
   return (
     <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28">
+      {/* Floating header placeholder */}
       <header className="fixed inset-x-0 top-0 z-40 mx-auto flex h-11 max-w-[480px] items-center gap-1 bg-gradient-to-b from-black/40 to-transparent px-3">
         <div className="h-9 w-9 rounded-full bg-black/25" />
         <div className="flex-1" />
@@ -88,54 +104,47 @@ function ProductPageSkeleton() {
       </header>
 
       <div className="mx-auto max-w-md">
-        <div>
-          <div>
-            <div
-              className="aspect-square w-full bg-muted"
-              style={{ viewTransitionName: "product-hero" }}
-            />
-            <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-[3px] bg-muted" />
-              ))}
+        {/* Gallery */}
+        <div
+          className="aspect-square w-full bg-muted"
+          style={{ viewTransitionName: "product-hero" }}
+        />
+
+        {/* Info hero — matches real layout: rating → title → price row */}
+        <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
+          <div className="px-4 pb-5 pt-5">
+            <div className="mb-2 h-3 w-24 rounded bg-muted" />
+            <div className="h-5 w-4/5 rounded bg-muted" />
+            <div className="mt-1.5 h-5 w-2/3 rounded bg-muted" />
+            <div className="mt-3 flex items-center gap-2">
+              <div className="h-7 w-24 rounded bg-muted" />
+              <div className="h-4 w-14 rounded bg-muted" />
+              <div className="h-4 w-12 rounded-full bg-muted" />
+              <div className="ml-auto h-4 w-16 rounded-full bg-muted" />
             </div>
           </div>
 
-          <div className="bg-background">
-            <div className="border-b border-border p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <div className="h-8 w-24 rounded bg-muted" />
-                  <div className="h-4 w-16 rounded bg-muted" />
-                  <div className="h-4 w-10 rounded bg-muted" />
-                </div>
-                <div className="h-5 w-16 rounded-[3px] bg-muted" />
-              </div>
-              <div className="mt-2 h-5 w-3/4 rounded bg-muted" />
-              <div className="mt-1.5 h-5 w-1/2 rounded bg-muted" />
-            </div>
-
-            <div className="p-3">
-              <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-3">
-                <div className="mb-2 h-3 w-32 rounded bg-primary/20" />
-                <div className="mb-1.5 h-4 w-full rounded bg-muted" />
-                <div className="h-4 w-4/5 rounded bg-muted" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 border-t border-border p-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-muted" />
-                  <div className="h-3 w-16 rounded bg-muted" />
-                  <div className="h-2.5 w-10 rounded bg-muted" />
-                </div>
-              ))}
-            </div>
+          {/* Variation grid placeholder (2×2 cards) */}
+          <div className="grid grid-cols-2 gap-2 px-4 pb-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[74px] rounded-xl border border-border bg-white" />
+            ))}
           </div>
+        </div>
+
+        {/* Collapsible section placeholders */}
+        <div className="mt-2 divide-y divide-border border-y border-border bg-background">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-4">
+              <span className="h-px w-6 bg-primary/40" />
+              <div className="h-3 w-24 rounded bg-muted" />
+              <div className="ml-auto h-4 w-4 rounded bg-muted" />
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Sticky action bar placeholder */}
       <div
         className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[480px] border-x border-t border-border bg-background/95"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -229,11 +238,23 @@ function ProductDetail({ p }: { p: WooProduct }) {
     queryFn: () => getProductVariations({ data: { productId: p.id } }),
     enabled: isVariable,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
   const variations = useMemo<WooVariation[]>(
     () => variationsQuery.data?.variations ?? [],
     [variationsQuery.data?.variations],
   );
+  // Surface a soft warning once if variations fail to load — the CTA guards
+  // against an incomplete selection so the user is never stuck.
+  const variationsErrShownRef = useRef(false);
+  useEffect(() => {
+    if (!isVariable) return;
+    const msg = variationsQuery.data?.error;
+    if (msg && !variationsErrShownRef.current) {
+      variationsErrShownRef.current = true;
+      toast.error(msg);
+    }
+  }, [isVariable, variationsQuery.data?.error]);
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
@@ -326,13 +347,24 @@ function ProductDetail({ p }: { p: WooProduct }) {
   }, []);
 
   const lastInteractRef = useRef(0);
+  const scrollRafRef = useRef(0);
   const onGalleryScroll = () => {
-    const el = galleryRef.current;
-    if (!el) return;
     lastInteractRef.current = Date.now();
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== activeImg) setActiveImg(i);
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const el = galleryRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((prev) => (prev === i ? prev : i));
+    });
   };
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    },
+    [],
+  );
   const scrollToImg = (i: number) => {
     const el = galleryRef.current;
     if (!el) return;
@@ -514,12 +546,26 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     alt={p.name}
                     width={800}
                     height={800}
-                    className="h-full w-full object-cover"
+                    draggable={false}
+                    className="h-full w-full select-none object-cover"
                     loading={i === 0 ? "eager" : "lazy"}
                     decoding={i === 0 ? "sync" : "async"}
                     fetchPriority={i === 0 ? "high" : "auto"}
-                    sizes="(min-width: 768px) 640px, 100vw"
+                    sizes="(min-width: 768px) 480px, 100vw"
                     style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.style.display = "none";
+                      const parent = img.parentElement;
+                      if (parent && !parent.querySelector("[data-img-fallback]")) {
+                        const fallback = document.createElement("div");
+                        fallback.setAttribute("data-img-fallback", "");
+                        fallback.className = "grid h-full w-full place-items-center bg-muted";
+                        fallback.innerHTML =
+                          '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
+                        parent.appendChild(fallback);
+                      }
+                    }}
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center bg-muted">
