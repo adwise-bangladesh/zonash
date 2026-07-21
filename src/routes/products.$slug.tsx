@@ -348,8 +348,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     if (idx >= 0 && idx !== activeImg) scrollToImg(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImage]);
-  const [descOpen, setDescOpen] = useState(false);
-  const [highlightsOpen, setHighlightsOpen] = useState(false);
 
   const addLine = () => {
     const variantSuffix = matchedVariation
