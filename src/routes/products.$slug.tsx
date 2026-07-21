@@ -19,6 +19,7 @@ import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
+import { buildResponsiveImage } from "@/lib/product-image";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
@@ -33,11 +34,24 @@ const productQuery = (slug: string) =>
     staleTime: 2 * 60 * 1000,
   });
 
+const variationsQueryOptions = (productId: number) =>
+  queryOptions({
+    queryKey: ["product-variations", productId],
+    queryFn: () => getProductVariations({ data: { productId } }),
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const Route = createFileRoute("/products/$slug")({
   loader: async ({ context, params }) => {
     if (typeof document === "undefined") {
       const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
       if (!res.product) throw notFound();
+      // Chain-prefetch variations on the server to collapse the client
+      // waterfall — wooFetch dedupes/coalesces so this is ~free on cache hits.
+      const prod = res.product;
+      if (prod.type === "variable" && (prod.variations?.length ?? 0) > 0) {
+        void context.queryClient.prefetchQuery(variationsQueryOptions(prod.id));
+      }
     } else {
       void context.queryClient.prefetchQuery(productQuery(params.slug));
     }
@@ -50,6 +64,7 @@ export const Route = createFileRoute("/products/$slug")({
     const p = detail?.product;
     if (!p) return { meta: [{ title: "Product — Zonash" }] };
     const img = p.images?.[0]?.src;
+    const responsive = buildResponsiveImage(img);
     const desc =
       (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
       `Buy ${p.name} at Zonash.`;
@@ -64,17 +79,17 @@ export const Route = createFileRoute("/products/$slug")({
         { name: "twitter:card", content: "summary_large_image" },
         ...(img ? [{ name: "twitter:image", content: img } as const] : []),
       ],
-      // Preload the hero image — this is the LCP element. Emitting the
-      // <link rel="preload"> in the SSR document lets the browser begin the
-      // fetch during HTML parse, before React hydrates and mounts the <img>.
-      links: img
+      // Preload the hero image responsively — the browser picks the smallest
+      // srcset candidate that fits the viewport × DPR before React hydrates.
+      links: responsive
         ? [
             {
               rel: "preload",
               as: "image",
-              href: img,
+              href: responsive.src,
+              imagesrcset: responsive.srcSet,
+              imagesizes: responsive.sizes,
               fetchpriority: "high",
-              imagesizes: "(min-width: 768px) 480px, 100vw",
             } as const,
           ]
         : [],
@@ -251,12 +266,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const isVariable = p.type === "variable" && (p.variations?.length ?? 0) > 0;
 
-  // ---------- Variations ----------
+  // ---------- Variations ---------- (shared queryOptions → dedupes with loader prefetch)
   const variationsQuery = useQuery({
-    queryKey: ["product-variations", p.id],
-    queryFn: () => getProductVariations({ data: { productId: p.id } }),
+    ...variationsQueryOptions(p.id),
     enabled: isVariable,
-    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
   const variations = useMemo<WooVariation[]>(
@@ -557,42 +570,49 @@ function ProductDetail({ p }: { p: WooProduct }) {
             onPointerDown={() => (lastInteractRef.current = Date.now())}
             className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
-              <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
-                {src ? (
-                  <img
-                    src={src}
-                    alt={p.name}
-                    width={800}
-                    height={800}
-                    draggable={false}
-                    className="h-full w-full select-none object-cover"
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding={i === 0 ? "sync" : "async"}
-                    fetchPriority={i === 0 ? "high" : "auto"}
-                    sizes="(min-width: 768px) 480px, 100vw"
-                    style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.style.display = "none";
-                      const parent = img.parentElement;
-                      if (parent && !parent.querySelector("[data-img-fallback]")) {
-                        const fallback = document.createElement("div");
-                        fallback.setAttribute("data-img-fallback", "");
-                        fallback.className = "grid h-full w-full place-items-center bg-muted";
-                        fallback.innerHTML =
-                          '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
-                        parent.appendChild(fallback);
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="grid h-full w-full place-items-center bg-muted">
-                    <Gem className="h-16 w-16 text-muted-foreground/40" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
+              const responsive = src ? buildResponsiveImage(src) : null;
+              return (
+                <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
+                  {responsive ? (
+                    <picture>
+                      <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
+                      <img
+                        src={responsive.src}
+                        srcSet={responsive.srcSet}
+                        sizes={responsive.sizes}
+                        alt={p.name}
+                        width={800}
+                        height={800}
+                        draggable={false}
+                        className="h-full w-full select-none object-cover"
+                        loading={i === 0 ? "eager" : "lazy"}
+                        decoding={i === 0 ? "sync" : "async"}
+                        fetchPriority={i === 0 ? "high" : "auto"}
+                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = "none";
+                          const parent = img.parentElement?.parentElement;
+                          if (parent && !parent.querySelector("[data-img-fallback]")) {
+                            const fallback = document.createElement("div");
+                            fallback.setAttribute("data-img-fallback", "");
+                            fallback.className = "grid h-full w-full place-items-center bg-muted";
+                            fallback.innerHTML =
+                              '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    </picture>
+                  ) : (
+                    <div className="grid h-full w-full place-items-center bg-muted">
+                      <Gem className="h-16 w-16 text-muted-foreground/40" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {gallery.length > 1 && (
             <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
