@@ -77,8 +77,6 @@ function humanize(slug: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const GRID =
-  "grid-cols-[32px_100px_minmax(160px,1.2fr)_minmax(160px,1.2fr)_minmax(200px,1.4fr)_150px_130px_170px]";
 
 
 function money(currency: string, n: number | string) {
@@ -225,11 +223,6 @@ function AdminOrders() {
   });
 
 
-  const pageRevenue = useMemo(
-    () => orders.reduce((s, o) => s + Number(o.total || 0), 0),
-    [orders],
-  );
-  const currency = orders[0]?.currency ?? "";
 
   // Batch-fetch dashboard-owned ops fields + per-customer stats for visible orders.
   const opsFn = useServerFn(getOrderOps);
@@ -266,7 +259,6 @@ function AdminOrders() {
   const statsMap = statsQ.data ?? {};
 
   // Bulk actions ------------------------------------------------------------
-  const sendSfFn = useServerFn(sendOrderToSteadfast);
   const bulkSendSfFn = useServerFn(bulkSendOrdersToSteadfast);
 
 
@@ -909,7 +901,7 @@ function OrderRow({
   onUpdateStatus,
   wooStatuses,
   ops,
-  rating,
+  
   totalOrders,
   addr,
   itemsTotal,
