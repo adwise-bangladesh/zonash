@@ -297,3 +297,11 @@
     animation-duration: 220ms;
   }
 }
+
+/* Bangla text uses Tiro Bangla. `:lang(bn)` catches elements explicitly
+ * marked with lang="bn". The `.font-bangla` utility is available for
+ * one-off usage. Latin glyphs still render with Figtree because Tiro
+ * Bangla has no Latin coverage — the browser falls through the stack. */
+:lang(bn) {
+  font-family: var(--font-bangla);
+}
