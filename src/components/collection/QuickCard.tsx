@@ -361,17 +361,19 @@ function QuickCardImpl({
       </div>
 
       {lightbox && (
-        <Lightbox
-          title={p.name}
-          images={
-            p.images.length > 0
-              ? p.images
-              : cardImage
-                ? [{ src: cardImage, alt: cardImageAlt }]
-                : []
-          }
-          onClose={() => setLightbox(false)}
-        />
+        <Suspense fallback={null}>
+          <Lightbox
+            title={p.name}
+            images={
+              p.images.length > 0
+                ? p.images
+                : cardImage
+                  ? [{ src: cardImage, alt: cardImageAlt }]
+                  : []
+            }
+            onClose={() => setLightbox(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
