@@ -813,7 +813,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
 
         {/* Collapsible info sections */}
-        <div className="mt-3 space-y-2">
+        <div className="mt-2 divide-y divide-border border-y border-border bg-background">
+
           {longDesc && (
             <CollapsibleSection title="Description" defaultOpen={descOpen} onToggle={setDescOpen}>
               <div
