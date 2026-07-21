@@ -22,8 +22,8 @@ import type { WooProduct, WooVariation } from "@/lib/woo.server";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
-    queryKey: ["collection-resolve", slug],
-    queryFn: () => resolveCollection({ data: { slug } }),
+    queryKey: ["collection-page", slug],
+    queryFn: () => getCategoryWithSubs({ data: { slug } }),
     staleTime: 60_000,
   });
 
