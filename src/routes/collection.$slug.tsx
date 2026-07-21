@@ -387,7 +387,31 @@ function QuickCard({ p }: { p: WooProduct }) {
           </div>
         )}
 
-        {/* Persistent in-cart tick */}
+        {/* Preview (eye) — top-left */}
+        {state === "idle" && (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label={`Preview ${p.name} images`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLightbox(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                setLightbox(true);
+              }
+            }}
+            className="absolute left-1 top-1 grid h-5 w-5 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-sm ring-1 ring-black/5 backdrop-blur transition-all hover:scale-110 hover:bg-white active:scale-95"
+          >
+            <Eye className="h-3 w-3" strokeWidth={2.25} />
+          </span>
+        )}
+
+        {/* Persistent in-cart tick — top-right */}
         {state === "idle" && inCart && (
           <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
             <Check className="h-3 w-3" strokeWidth={3} />
