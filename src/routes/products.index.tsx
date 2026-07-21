@@ -6,7 +6,7 @@ import { listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
-import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
