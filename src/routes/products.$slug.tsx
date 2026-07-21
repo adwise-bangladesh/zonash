@@ -400,6 +400,37 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
   };
 
+  const detailsText = useMemo(() => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const lines: string[] = [];
+    lines.push(`🛍️ ${p.name}`);
+    if (activeSku) lines.push(`SKU: ${activeSku}`);
+    lines.push(`Price: ${formatBDT(priceNum)}`);
+    if (showOld) lines.push(`Regular: ${formatBDT(oldPrice)} (Save ${discount}%)`);
+    if (matchedVariation) {
+      const opts = matchedVariation.attributes.map((a) => `${a.name}: ${a.option}`).join(", ");
+      if (opts) lines.push(`Variation: ${opts}`);
+    }
+    lines.push(`Quantity: ${qty}`);
+    lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
+    if (url) lines.push(`Link: ${url}`);
+    lines.push("");
+    lines.push("Please confirm my order 🙏");
+    return lines.join("\n");
+  }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
+
+  const waOrderUrl = `https://wa.me/8809610000000?text=${encodeURIComponent(detailsText)}`;
+
+  const handleCopyDetails = async () => {
+    try {
+      await navigator.clipboard.writeText(detailsText);
+      toast.success("Details copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
+
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
       {/* Floating transparent header — becomes solid on scroll */}
