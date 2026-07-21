@@ -508,6 +508,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <div
                 ref={galleryRef}
                 onScroll={onGalleryScroll}
+                onTouchStart={() => (lastInteractRef.current = Date.now())}
+                onPointerDown={() => (lastInteractRef.current = Date.now())}
                 className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
