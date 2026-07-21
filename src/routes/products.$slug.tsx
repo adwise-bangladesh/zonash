@@ -570,43 +570,49 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
           {/* Info */}
           <div className="bg-background">
-            {/* Price + stock badge */}
-            <div className="border-b border-border p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-primary">
-                      {formatBDT(priceNum)}
-                    </span>
-                    {showOld && (
-                      <span className="text-sm text-muted-foreground line-through">
-                        {formatBDT(oldPrice)}
-                      </span>
-                    )}
-                    {discount > 0 && (
-                      <span className="rounded-[3px] bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
-                        -{discount}%
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {/* Title + price */}
+            <div className="border-b border-border px-4 pb-4 pt-5">
+              <div className="mb-2 flex items-center gap-2">
                 <span
-                  className={`shrink-0 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                    inStock
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive"
                   }`}
                 >
+                  <span
+                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                  />
                   {inStock ? "In stock" : "Sold out"}
                 </span>
+                {p.rating_count > 0 && (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Stars value={parseFloat(p.average_rating) || 0} />
+                    <span className="font-semibold text-foreground">{p.average_rating}</span>
+                    <span>({p.rating_count})</span>
+                  </span>
+                )}
               </div>
-              <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
-              {p.rating_count > 0 && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
-                  <Stars value={parseFloat(p.average_rating) || 0} />
-                  <span className="font-semibold text-foreground">{p.average_rating}</span>
-                  <span className="text-muted-foreground">({p.rating_count} reviews)</span>
-                </div>
-              )}
+              <h1 className="text-[17px] font-semibold leading-snug text-foreground">
+                {p.name}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                <span className="text-[26px] font-extrabold leading-none text-primary">
+                  {formatBDT(priceNum)}
+                </span>
+                {showOld && (
+                  <span className="text-[13px] text-muted-foreground line-through">
+                    {formatBDT(oldPrice)}
+                  </span>
+                )}
+                {discount > 0 && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                    Save {discount}%
+                  </span>
+                )}
+              </div>
             </div>
+
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
