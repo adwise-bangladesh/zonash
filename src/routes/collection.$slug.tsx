@@ -73,15 +73,6 @@ export const Route = createFileRoute("/collection/$slug")({
 });
 
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main className="container-page py-6">{children}</main>
-    </div>
-  );
-}
-
 function CollectionQuickShop() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(categoryQuery(slug));
