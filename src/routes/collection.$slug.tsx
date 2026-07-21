@@ -132,7 +132,7 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     queryKey: ["collection-feed", categoryId],
     enabled,
     initialPageParam: 1,
-    queryFn: ({ pageParam, signal }) =>
+    queryFn: ({ pageParam }) =>
       listProducts({
         data: {
           page: pageParam as number,
@@ -140,8 +140,8 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
           category: String(categoryId),
           orderby: "date",
         },
-        signal,
       }),
+
     getNextPageParam: (last, all) =>
       last.products.length < 24 ? undefined : all.length + 1,
     staleTime: 60_000,
