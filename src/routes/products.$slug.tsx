@@ -9,12 +9,12 @@ import {
   Share2,
   Shield,
   ShoppingBag,
+  Star,
   Truck,
   Undo2,
   Gem,
   PackageX,
   Check,
-  
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
