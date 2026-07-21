@@ -1,14 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useInfiniteQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Loader2, LayoutGrid, PackageOpen, Sparkles, BellRing } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NotFoundView } from "@/components/NotFoundView";
 import type { WooProduct } from "@/lib/woo.server";
-import { Button } from "@/components/ui/button";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
