@@ -136,13 +136,16 @@ function FilteredResults({
           )}
 
           {products.length === 0 && !data.error ? (
-            <EmptyState
-              icon={LayoutGrid}
-              title={q ? "No matches" : "Nothing here yet"}
-              description={
-                q ? `We couldn't find anything for "${q}". Try a different word.` : "Try another filter."
+            <NotFoundView
+              bare
+              variant={q ? "not-found" : "empty"}
+              title={q ? "No matches found" : "Nothing here yet"}
+              message={
+                q
+                  ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
+                  : "Try another filter or browse the full shop."
               }
-              primary={{ label: "Browse shop", to: "/products" }}
+              primaryCta={{ label: "Browse shop", to: "/products" }}
             />
           ) : (
             <ProductGrid products={products} />
