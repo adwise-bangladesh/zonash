@@ -6,6 +6,7 @@ import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 import type { WooProduct } from "@/lib/woo.server";
 import { Button } from "@/components/ui/button";
 
