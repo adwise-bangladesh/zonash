@@ -614,7 +614,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
             {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
               const responsive = src ? buildResponsiveImage(src) : null;
               return (
-                <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
+                <div key={i} data-slide data-idx={i} className="relative aspect-square w-full shrink-0 snap-center">
                   {responsive ? (
                     <picture>
                       <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
