@@ -356,13 +356,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
       ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
       : "";
     const productKey = matchedVariation ? p.id * 100000 + matchedVariation.id : p.id;
-    const activeSku = (matchedVariation?.sku || p.sku || "").trim() || undefined;
     add(
       {
         productId: productKey,
         name: p.name + variantSuffix,
         slug: p.slug,
-        sku: activeSku,
+        sku: activeSku || undefined,
         price: priceNum,
         regularPrice: showOld ? oldPrice : undefined,
         image: activeImage || gallery[0],
