@@ -776,12 +776,47 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Product details">
-            <dl className="grid grid-cols-1 gap-2 text-[13px]">
+          <CollapsibleSection title="Product details" defaultOpen>
+            <dl className="grid grid-cols-1 gap-1 text-[13px]">
               {activeSku && (
                 <InfoRow label="SKU" value={<span className="font-mono">{activeSku}</span>} />
               )}
-              {p.type && <InfoRow label="Type" value={<span className="capitalize">{p.type}</span>} />}
+              {p.type && (
+                <InfoRow label="Type" value={<span className="capitalize">{p.type}</span>} />
+              )}
+              <InfoRow
+                label="Availability"
+                value={
+                  <span className={inStock ? "text-success" : "text-destructive"}>
+                    {inStock ? "In stock" : "Sold out"}
+                  </span>
+                }
+              />
+              <InfoRow label="Price" value={formatBDT(priceNum)} />
+              {showOld && (
+                <>
+                  <InfoRow
+                    label="Regular price"
+                    value={
+                      <span className="text-muted-foreground line-through">
+                        {formatBDT(oldPrice)}
+                      </span>
+                    }
+                  />
+                  <InfoRow
+                    label="You save"
+                    value={
+                      <span className="text-emerald-600">
+                        {formatBDT(oldPrice - priceNum)} ({discount}%)
+                      </span>
+                    }
+                  />
+                </>
+              )}
+              {matchedVariation &&
+                matchedVariation.attributes.map((a) => (
+                  <InfoRow key={a.id + a.name} label={a.name} value={a.option} />
+                ))}
               {p.weight && <InfoRow label="Weight" value={`${p.weight} kg`} />}
               {p.dimensions &&
                 (p.dimensions.length || p.dimensions.width || p.dimensions.height) && (
@@ -795,25 +830,43 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 .map((a) => (
                   <InfoRow key={a.id + a.name} label={a.name} value={a.options!.join(", ")} />
                 ))}
+              {p.categories?.length > 0 && (
+                <InfoRow
+                  label="Category"
+                  value={p.categories.map((c) => c.name).join(", ")}
+                />
+              )}
+              {(p.tags?.length ?? 0) > 0 && (
+                <InfoRow label="Tags" value={p.tags!.map((t) => t.name).join(", ")} />
+              )}
+              <InfoRow
+                label="Delivery"
+                value="Dhaka 80 Tk · Outside 130 Tk"
+              />
             </dl>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCopyDetails}
+                className="flex h-9 items-center justify-center gap-1.5 rounded-[3px] border border-border bg-background text-[12px] font-semibold text-foreground hover:border-primary hover:text-primary"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy details
+              </button>
+              <a
+                href={waOrderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 items-center justify-center gap-1.5 rounded-[3px] bg-emerald-600 text-[12px] font-bold text-white hover:bg-emerald-700"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Order on WhatsApp
+              </a>
+            </div>
           </CollapsibleSection>
 
-          {p.categories?.length > 0 && (
-            <CollapsibleSection title={`Categories (${p.categories.length})`}>
-              <div className="flex flex-wrap gap-1.5">
-                {p.categories.map((c) => (
-                  <Link
-                    key={c.id}
-                    to="/categories/$slug"
-                    params={{ slug: c.slug }}
-                    className="rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-[12px] font-medium text-foreground hover:border-primary hover:text-primary"
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-              </div>
-            </CollapsibleSection>
-          )}
+
 
           {(p.tags?.length ?? 0) > 0 && (
             <CollapsibleSection title={`Tags (${p.tags!.length})`}>
