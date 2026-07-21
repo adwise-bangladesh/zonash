@@ -914,9 +914,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        {/* Related products — infinite feed, no header */}
-        <div className="mt-4 pb-24">
-          <InfiniteFeed />
+        {/* Related products — lazy-loaded below the fold. content-visibility
+            lets the browser skip layout/paint until the section is near the
+            viewport, keeping initial render focused on the hero. */}
+        <div
+          className="mt-4 pb-24"
+          style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
+        >
+          <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
+            <InfiniteFeed />
+          </Suspense>
         </div>
       </div>
 
