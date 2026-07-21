@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
+import { LayoutGrid } from "lucide-react";
 
-import { listProducts } from "@/lib/woo.functions";
+import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
@@ -10,6 +11,13 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
+const primaryCategoriesQuery = queryOptions({
+  queryKey: ["categories", "primary"],
+  queryFn: () => listPrimaryCategories(),
+  staleTime: 5 * 60_000,
+});
+
 
 const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "title"] as const;
 
