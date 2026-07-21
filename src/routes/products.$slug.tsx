@@ -430,7 +430,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
   };
 
-
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
       {/* Floating transparent header — becomes solid on scroll */}
@@ -575,9 +574,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <div className="mb-2 flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                    inStock
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
+                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                   }`}
                 >
                   <span
@@ -593,9 +590,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   </span>
                 )}
               </div>
-              <h1 className="text-[17px] font-semibold leading-snug text-foreground">
-                {p.name}
-              </h1>
+              <h1 className="text-[17px] font-semibold leading-snug text-foreground">{p.name}</h1>
               <div className="mt-3 flex flex-wrap items-baseline gap-2">
                 <span className="text-[26px] font-extrabold leading-none text-primary">
                   {formatBDT(priceNum)}
@@ -612,7 +607,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 )}
               </div>
             </div>
-
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
@@ -646,8 +640,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                             ),
                           );
                           const best =
-                            candidates.find((v) => v.stock_status === "instock") ??
-                            candidates[0];
+                            candidates.find((v) => v.stock_status === "instock") ?? candidates[0];
                           const bp = best ? parseFloat(best.price) || 0 : 0;
                           const br = best ? parseFloat(best.regular_price) || 0 : 0;
                           const save = br > bp ? br - bp : 0;
@@ -656,9 +649,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                             <button
                               key={opt}
                               type="button"
-                              onClick={() =>
-                                setSelected((prev) => ({ ...prev, [attr.name]: opt }))
-                              }
+                              onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
                               disabled={!enabled && !active}
                               className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
                                 active
@@ -687,7 +678,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
                                 </span>
                                 <span
                                   className={`text-[13px] font-bold leading-tight ${
-                                    enabled ? "text-foreground" : "text-muted-foreground line-through"
+                                    enabled
+                                      ? "text-foreground"
+                                      : "text-muted-foreground line-through"
                                   }`}
                                 >
                                   {opt}
@@ -744,8 +737,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     style={
                       !highlightsOpen && highlights.length > 2
                         ? {
-                            maskImage:
-                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                            maskImage: "linear-gradient(to bottom, black 40%, transparent 100%)",
                             WebkitMaskImage:
                               "linear-gradient(to bottom, black 40%, transparent 100%)",
                           }
@@ -811,10 +803,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </div>
         </div>
 
-
         {/* Collapsible info sections */}
         <div className="mt-2 divide-y divide-border border-y border-border bg-background">
-
           {longDesc && (
             <CollapsibleSection title="Description" defaultOpen={descOpen} onToggle={setDescOpen}>
               <div
@@ -883,7 +873,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   label="Category"
                   value={
                     p.categories.length > 2
-                      ? `${p.categories.slice(0, 2).map((c) => c.name).join(", ")} +${p.categories.length - 2}`
+                      ? `${p.categories
+                          .slice(0, 2)
+                          .map((c) => c.name)
+                          .join(", ")} +${p.categories.length - 2}`
                       : p.categories.map((c) => c.name).join(", ")
                   }
                 />
@@ -892,10 +885,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
               {(p.tags?.length ?? 0) > 0 && (
                 <InfoRow label="Tags" value={p.tags!.map((t) => t.name).join(", ")} />
               )}
-              <InfoRow
-                label="Delivery"
-                value="Dhaka 80 Tk · Outside 130 Tk"
-              />
+              <InfoRow label="Delivery" value="Dhaka 80 Tk · Outside 130 Tk" />
             </dl>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -914,15 +904,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 className="flex h-9 items-center justify-center gap-1.5 rounded-[3px] bg-emerald-600 text-[12px] font-bold text-white hover:bg-emerald-700"
               >
                 <svg viewBox="0 0 32 32" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-                  <path d="M19.11 17.205c-.372 0-1.088 1.39-1.518 1.39a.63.63 0 0 1-.315-.1c-.802-.402-1.504-.817-2.163-1.447-.545-.516-1.146-1.29-1.46-1.963a.426.426 0 0 1-.073-.215c0-.33.99-.945.99-1.49 0-.143-.73-2.09-.832-2.335-.143-.372-.214-.487-.6-.487-.187 0-.36-.043-.53-.043-.302 0-.53.115-.746.315-.688.645-1.032 1.318-1.06 2.264v.114c-.015.99.472 1.977 1.017 2.78 1.23 1.82 2.506 3.41 4.554 4.34.616.287 2.035.888 2.722.888.817 0 2.15-.515 2.478-1.318.13-.33.244-.7.244-1.058 0-.157-.03-.315-.058-.472-.157-.288-2.335-1.32-2.65-1.32zm-2.42 7.943c-1.762 0-3.53-.588-4.99-1.632l-3.482.891.9-3.353a8.696 8.696 0 0 1-1.86-5.4c0-4.822 3.925-8.747 8.747-8.747 4.822 0 8.746 3.925 8.746 8.747-.001 4.822-3.926 8.747-8.747 8.747zm7.442-16.19a10.472 10.472 0 0 0-7.442-3.084c-5.795 0-10.526 4.732-10.526 10.527 0 1.85.487 3.674 1.41 5.273l-1.532 5.68 5.809-1.516a10.53 10.53 0 0 0 15.808-9.112c0-2.816-1.088-5.474-3.084-7.47z"/>
+                  <path d="M19.11 17.205c-.372 0-1.088 1.39-1.518 1.39a.63.63 0 0 1-.315-.1c-.802-.402-1.504-.817-2.163-1.447-.545-.516-1.146-1.29-1.46-1.963a.426.426 0 0 1-.073-.215c0-.33.99-.945.99-1.49 0-.143-.73-2.09-.832-2.335-.143-.372-.214-.487-.6-.487-.187 0-.36-.043-.53-.043-.302 0-.53.115-.746.315-.688.645-1.032 1.318-1.06 2.264v.114c-.015.99.472 1.977 1.017 2.78 1.23 1.82 2.506 3.41 4.554 4.34.616.287 2.035.888 2.722.888.817 0 2.15-.515 2.478-1.318.13-.33.244-.7.244-1.058 0-.157-.03-.315-.058-.472-.157-.288-2.335-1.32-2.65-1.32zm-2.42 7.943c-1.762 0-3.53-.588-4.99-1.632l-3.482.891.9-3.353a8.696 8.696 0 0 1-1.86-5.4c0-4.822 3.925-8.747 8.747-8.747 4.822 0 8.746 3.925 8.746 8.747-.001 4.822-3.926 8.747-8.747 8.747zm7.442-16.19a10.472 10.472 0 0 0-7.442-3.084c-5.795 0-10.526 4.732-10.526 10.527 0 1.85.487 3.674 1.41 5.273l-1.532 5.68 5.809-1.516a10.53 10.53 0 0 0 15.808-9.112c0-2.816-1.088-5.474-3.084-7.47z" />
                 </svg>
                 Order on WhatsApp
-
               </a>
             </div>
           </CollapsibleSection>
-
-
 
           {(p.tags?.length ?? 0) > 0 && (
             <CollapsibleSection title={`Tags (${p.tags!.length})`}>
@@ -941,9 +928,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
           <CollapsibleSection
             title={
-              p.rating_count > 0
-                ? `Reviews · ${p.average_rating} (${p.rating_count})`
-                : "Reviews"
+              p.rating_count > 0 ? `Reviews · ${p.average_rating} (${p.rating_count})` : "Reviews"
             }
           >
             {p.rating_count > 0 ? (
@@ -973,7 +958,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <InfiniteFeed />
         </div>
       </div>
-
 
       {/* Mobile sticky action bar */}
       <div
@@ -1059,7 +1043,6 @@ function CollapsibleSection({
   );
 }
 
-
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-dashed border-border/60 py-1.5 last:border-0">
@@ -1085,4 +1068,3 @@ function Stars({ value }: { value: number }) {
     </div>
   );
 }
-
