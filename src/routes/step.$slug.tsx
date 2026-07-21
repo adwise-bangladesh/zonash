@@ -716,40 +716,10 @@ function StepLandingPage() {
               />
             </Field>
 
-            {/* Quantity */}
-            <div>
-              <span className="mb-1 block text-[11px] font-medium text-muted-foreground">Quantity</span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center rounded-[3px] border border-border bg-background">
-                  <button
-                    type="button"
-                    aria-label="Decrease"
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    className="grid h-10 w-10 place-items-center text-muted-foreground active:scale-95"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-10 text-center text-sm font-bold tabular-nums" aria-live="polite">{qty}</span>
-                  <button
-                    type="button"
-                    aria-label="Increase"
-                    onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))}
-                    disabled={qty >= MAX_QTY}
-                    className="grid h-10 w-10 place-items-center text-primary active:scale-95 disabled:opacity-40"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <span className="text-[11.5px] text-muted-foreground">
-                  Max {MAX_QTY} per order
-                </span>
-              </div>
-            </div>
-
             {/* Summary */}
             <dl className="mt-2 space-y-1.5 rounded-[6px] border border-dashed border-border bg-background p-3 text-[13px]">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Subtotal ({qty})</dt>
+                <dt className="text-muted-foreground">Subtotal</dt>
                 <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
               </div>
               {savings > 0 && (
