@@ -90,8 +90,8 @@ function ProductPageSkeleton() {
         <div className="h-9 w-9 rounded-full bg-black/25" />
       </header>
 
-      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
+      <div className="mx-auto max-w-md">
+        <div>
           <div>
             <div
               className="aspect-square w-full bg-muted"
@@ -104,11 +104,11 @@ function ProductPageSkeleton() {
             </div>
           </div>
 
-          <div className="bg-background md:rounded-[3px] md:border md:border-border md:p-5">
-            <div className="border-b border-border p-3 md:border-none md:p-0">
+          <div className="bg-background">
+            <div className="border-b border-border p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <div className="h-8 w-24 rounded bg-muted md:h-9 md:w-28" />
+                  <div className="h-8 w-24 rounded bg-muted" />
                   <div className="h-4 w-16 rounded bg-muted" />
                   <div className="h-4 w-10 rounded bg-muted" />
                 </div>
@@ -118,7 +118,7 @@ function ProductPageSkeleton() {
               <div className="mt-1.5 h-5 w-1/2 rounded bg-muted" />
             </div>
 
-            <div className="p-3 md:px-0 md:pt-4">
+            <div className="p-3">
               <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-3">
                 <div className="mb-2 h-3 w-32 rounded bg-primary/20" />
                 <div className="mb-1.5 h-4 w-full rounded bg-muted" />
@@ -126,7 +126,7 @@ function ProductPageSkeleton() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 md:border-none md:px-0 md:pt-4">
+            <div className="grid grid-cols-3 gap-2 border-t border-border p-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex flex-col items-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-muted" />
@@ -456,8 +456,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-md md:max-w-6xl md:px-4 md:pt-6">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-8">
+      <div className="mx-auto max-w-md">
+        <div>
           {/* Gallery */}
           <div>
             <div className="relative bg-background">
