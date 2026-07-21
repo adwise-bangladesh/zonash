@@ -290,9 +290,31 @@ function QuickCard({ p }: { p: WooProduct }) {
 
   const inCart = items.some((i) => i.productId === (p.id || -1));
 
+  // Availability -----------------------------------------------------
+  const productSoldOut =
+    p.stock_status !== "instock" && !p.backorders_allowed;
+  const productNotPurchasable =
+    (p as { purchasable?: boolean }).purchasable === false;
+
+  // For variable: once variations resolved, check the default variation.
+  // If none is purchasable/in-stock → unavailable.
+  const variationsLoaded = isVariable && variationsQuery.isSuccess;
+  const variableUnavailable =
+    variationsLoaded &&
+    (!defaultVariation ||
+      (defaultVariation.stock_status !== "instock" &&
+        !(defaultVariation as { backorders_allowed?: boolean })
+          .backorders_allowed) ||
+      (defaultVariation as { purchasable?: boolean }).purchasable === false ||
+      !(parseFloat(defaultVariation.price || "0") > 0 ||
+        parseFloat(defaultVariation.sale_price || "0") > 0));
+
+  const unavailable =
+    productSoldOut || productNotPurchasable || variableUnavailable;
+
   async function handleAdd(e: React.MouseEvent) {
     e.preventDefault();
-    if (state === "loading") return;
+    if (state === "loading" || unavailable) return;
 
     try {
       if (!isVariable) {
@@ -320,7 +342,12 @@ function QuickCard({ p }: { p: WooProduct }) {
         });
         const variations = (res?.variations ?? []) as WooVariation[];
         const v = pickDefaultVariation(p, variations);
-        if (!v) {
+        if (
+          !v ||
+          (v.stock_status !== "instock" &&
+            !(v as { backorders_allowed?: boolean }).backorders_allowed) ||
+          (v as { purchasable?: boolean }).purchasable === false
+        ) {
           setState("idle");
           return;
         }
@@ -346,6 +373,7 @@ function QuickCard({ p }: { p: WooProduct }) {
       setState("idle");
     }
   }
+
 
 
   return (
