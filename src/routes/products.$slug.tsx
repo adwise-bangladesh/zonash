@@ -239,11 +239,24 @@ function ProductDetail({ p }: { p: WooProduct }) {
     queryFn: () => getProductVariations({ data: { productId: p.id } }),
     enabled: isVariable,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
   const variations = useMemo<WooVariation[]>(
     () => variationsQuery.data?.variations ?? [],
     [variationsQuery.data?.variations],
   );
+  // Surface a soft warning once if variations fail to load — the CTA guards
+  // against an incomplete selection so the user is never stuck.
+  const variationsErrShownRef = useRef(false);
+  useEffect(() => {
+    if (!isVariable) return;
+    const msg = variationsQuery.data?.error;
+    if (msg && !variationsErrShownRef.current) {
+      variationsErrShownRef.current = true;
+      toast.error(msg);
+    }
+  }, [isVariable, variationsQuery.data?.error]);
+
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
