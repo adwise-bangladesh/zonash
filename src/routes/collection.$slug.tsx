@@ -675,7 +675,8 @@ function QuickCard({ p }: { p: WooProduct }) {
           onClose={() => setLightbox(false)}
         />
       )}
-    </button>
+    </div>
+
   );
 }
 
