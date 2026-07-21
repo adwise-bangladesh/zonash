@@ -240,15 +240,12 @@ function ProductPage() {
   if (isPending) return <ProductPageSkeleton />;
   if (!data?.product) {
     return (
-      <div className="flex min-h-[100dvh] flex-col bg-background">
-        <EmptyState
-          icon={PackageX}
-          title="Product not found"
-          description={data?.error || "This piece may have been removed or the link is incorrect."}
-          primary={{ label: "Back to home", to: "/" }}
-          secondary={{ label: "Browse categories", to: "/categories" }}
-        />
-      </div>
+      <NotFoundView
+        title="Product not found"
+        description={data?.error || "This piece may have been removed or the link is incorrect."}
+        primaryLabel="Browse shop"
+        primaryTo="/products"
+      />
     );
   }
   return <ProductDetail p={data.product} />;
