@@ -570,42 +570,49 @@ function ProductDetail({ p }: { p: WooProduct }) {
             onPointerDown={() => (lastInteractRef.current = Date.now())}
             className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
-              <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
-                {src ? (
-                  <img
-                    src={src}
-                    alt={p.name}
-                    width={800}
-                    height={800}
-                    draggable={false}
-                    className="h-full w-full select-none object-cover"
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding={i === 0 ? "sync" : "async"}
-                    fetchPriority={i === 0 ? "high" : "auto"}
-                    sizes="(min-width: 768px) 480px, 100vw"
-                    style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.style.display = "none";
-                      const parent = img.parentElement;
-                      if (parent && !parent.querySelector("[data-img-fallback]")) {
-                        const fallback = document.createElement("div");
-                        fallback.setAttribute("data-img-fallback", "");
-                        fallback.className = "grid h-full w-full place-items-center bg-muted";
-                        fallback.innerHTML =
-                          '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
-                        parent.appendChild(fallback);
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="grid h-full w-full place-items-center bg-muted">
-                    <Gem className="h-16 w-16 text-muted-foreground/40" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
+              const responsive = src ? buildResponsiveImage(src) : null;
+              return (
+                <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
+                  {responsive ? (
+                    <picture>
+                      <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
+                      <img
+                        src={responsive.src}
+                        srcSet={responsive.srcSet}
+                        sizes={responsive.sizes}
+                        alt={p.name}
+                        width={800}
+                        height={800}
+                        draggable={false}
+                        className="h-full w-full select-none object-cover"
+                        loading={i === 0 ? "eager" : "lazy"}
+                        decoding={i === 0 ? "sync" : "async"}
+                        fetchPriority={i === 0 ? "high" : "auto"}
+                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = "none";
+                          const parent = img.parentElement?.parentElement;
+                          if (parent && !parent.querySelector("[data-img-fallback]")) {
+                            const fallback = document.createElement("div");
+                            fallback.setAttribute("data-img-fallback", "");
+                            fallback.className = "grid h-full w-full place-items-center bg-muted";
+                            fallback.innerHTML =
+                              '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    </picture>
+                  ) : (
+                    <div className="grid h-full w-full place-items-center bg-muted">
+                      <Gem className="h-16 w-16 text-muted-foreground/40" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {gallery.length > 1 && (
             <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
