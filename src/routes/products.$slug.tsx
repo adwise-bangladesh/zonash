@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -14,12 +14,17 @@ import {
   PackageX,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
-import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
+
+// Below-the-fold related-products feed — split out of the critical bundle so
+// it doesn't compete with the hero image for main-thread time.
+const InfiniteFeed = lazy(() =>
+  import("@/components/home/InfiniteFeed").then((m) => ({ default: m.InfiniteFeed })),
+);
 
 const productQuery = (slug: string) =>
   queryOptions({
