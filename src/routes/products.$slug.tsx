@@ -159,7 +159,6 @@ function ProductPageSkeleton() {
   );
 }
 
-
 /** Extract clean bullet lines from short_description HTML (strips tags, splits on <li>/newlines). */
 function parseHighlights(html: string): string[] {
   if (!html) return [];
@@ -256,7 +255,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       toast.error(msg);
     }
   }, [isVariable, variationsQuery.data?.error]);
-
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
@@ -562,8 +560,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                       if (parent && !parent.querySelector("[data-img-fallback]")) {
                         const fallback = document.createElement("div");
                         fallback.setAttribute("data-img-fallback", "");
-                        fallback.className =
-                          "grid h-full w-full place-items-center bg-muted";
+                        fallback.className = "grid h-full w-full place-items-center bg-muted";
                         fallback.innerHTML =
                           '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
                         parent.appendChild(fallback);
