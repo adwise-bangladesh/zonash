@@ -1,16 +1,9 @@
-import { TopAnnouncementBar } from "@/components/layout/TopAnnouncementBar";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 /**
- * AppHeader — thin wrapper composing the announcement bar and the site header.
- * Kept as a named export so existing route imports (`@/components/AppHeader`)
- * continue to work.
+ * AppHeader — thin wrapper around the site header. The top announcement bar
+ * was intentionally removed to keep the storefront chrome minimal.
  */
 export function AppHeader() {
-  return (
-    <>
-      <TopAnnouncementBar />
-      <SiteHeader />
-    </>
-  );
+  return <SiteHeader />;
 }
