@@ -240,6 +240,7 @@ function QuickCard({ p }: { p: WooProduct }) {
   const { add, items } = useCart();
   const qc = useQueryClient();
   const [state, setState] = useState<CardState>("idle");
+  const [lightbox, setLightbox] = useState(false);
 
   const isVariable = p.type === "variable" && (p.variations?.length ?? 0) > 0;
 
