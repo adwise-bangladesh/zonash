@@ -6,9 +6,9 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen } from "lucide-react";
+import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles } from "lucide-react";
 import {
-  resolveCollection,
+  getCategoryWithSubs,
   listProducts,
   getProductVariations,
 } from "@/lib/woo.functions";
