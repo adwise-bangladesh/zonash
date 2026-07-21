@@ -123,11 +123,10 @@ function CollectionQuickShop() {
   );
 }
 
-function ProductFeed({ categoryId }: { categoryId: number | null }) {
+function ProductFeed({ categoryId }: { categoryId: number }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const { items } = useCart();
-  const enabled = categoryId != null;
 
   const {
     data,
@@ -140,7 +139,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     refetch,
   } = useInfiniteQuery({
     queryKey: ["collection-feed", categoryId],
-    enabled,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       listProducts({
