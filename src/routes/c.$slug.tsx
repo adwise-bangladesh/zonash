@@ -6,6 +6,7 @@ import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 import type { WooProduct } from "@/lib/woo.server";
 import { Button } from "@/components/ui/button";
 
@@ -37,21 +38,21 @@ export const Route = createFileRoute("/c/$slug")({
   },
   component: CollectionPage,
   pendingComponent: CollectionSkeleton,
-  errorComponent: ({ error }) => (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main className="container-page py-10">
-        <EmptyState icon={LayoutGrid} title="Couldn't load this collection" description={error.message} />
-      </main>
-    </div>
+  errorComponent: ({ error, reset }) => (
+    <NotFoundView
+      variant="error"
+      title="Couldn't load this collection"
+      description={error.message}
+      onRetry={() => reset()}
+    />
   ),
   notFoundComponent: () => (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main className="container-page py-10">
-        <EmptyState icon={LayoutGrid} title="Collection not found" description="This category doesn't exist yet." primary={{ label: "Browse all", to: "/products" }} />
-      </main>
-    </div>
+    <NotFoundView
+      title="Collection not found"
+      description="This category doesn't exist yet. Browse everything else in the shop."
+      primaryLabel="Browse all"
+      primaryTo="/products"
+    />
   ),
 });
 

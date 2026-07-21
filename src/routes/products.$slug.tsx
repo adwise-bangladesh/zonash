@@ -11,13 +11,12 @@ import {
   ShoppingBag,
   Star,
   Gem,
-  PackageX,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
-import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 import { toast } from "sonner";
 import { buildResponsiveImage } from "@/lib/product-image";
 
@@ -102,27 +101,21 @@ export const Route = createFileRoute("/products/$slug")({
     const message =
       error instanceof Error ? error.message : "Something went wrong loading this product.";
     return (
-      <div className="flex min-h-[100dvh] flex-col bg-background">
-        <EmptyState
-          icon={PackageX}
-          title="Couldn't load product"
-          description={message}
-          primary={{ label: "Try again", onClick: () => reset() }}
-          secondary={{ label: "Back to home", to: "/" }}
-        />
-      </div>
+      <NotFoundView
+        variant="error"
+        title="Couldn't load product"
+        description={message}
+        onRetry={() => reset()}
+      />
     );
   },
   notFoundComponent: () => (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
-      <EmptyState
-        icon={PackageX}
-        title="Product not found"
-        description="This piece may have been removed or the link is incorrect."
-        primary={{ label: "Back to home", to: "/" }}
-        secondary={{ label: "Browse categories", to: "/categories" }}
-      />
-    </div>
+    <NotFoundView
+      title="Product not found"
+      description="This piece may have been removed or the link is incorrect."
+      primaryLabel="Browse shop"
+      primaryTo="/products"
+    />
   ),
 });
 
@@ -245,15 +238,12 @@ function ProductPage() {
   if (isPending) return <ProductPageSkeleton />;
   if (!data?.product) {
     return (
-      <div className="flex min-h-[100dvh] flex-col bg-background">
-        <EmptyState
-          icon={PackageX}
-          title="Product not found"
-          description={data?.error || "This piece may have been removed or the link is incorrect."}
-          primary={{ label: "Back to home", to: "/" }}
-          secondary={{ label: "Browse categories", to: "/categories" }}
-        />
-      </div>
+      <NotFoundView
+        title="Product not found"
+        description={data?.error || "This piece may have been removed or the link is incorrect."}
+        primaryLabel="Browse shop"
+        primaryTo="/products"
+      />
     );
   }
   return <ProductDetail p={data.product} />;

@@ -6,14 +6,14 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, PackageOpen, Sparkles } from "lucide-react";
+import { Loader2, ShoppingBag, PackageOpen, Sparkles } from "lucide-react";
 import {
   getCategoryWithSubs,
   listProducts,
   getProductVariations,
 } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { EmptyState } from "@/components/ui/empty-state";
+
 import { formatBDT } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
@@ -54,14 +54,13 @@ export const Route = createFileRoute("/collection/$slug")({
   },
   component: CollectionQuickShop,
   pendingComponent: PageSkeleton,
-  errorComponent: ({ error }) => (
-    <Shell>
-      <EmptyState
-        icon={LayoutGrid}
-        title="Couldn't load this collection"
-        description={error.message}
-      />
-    </Shell>
+  errorComponent: ({ error, reset }) => (
+    <NotFoundView
+      variant="error"
+      title="Couldn't load this collection"
+      description={error.message}
+      onRetry={() => reset()}
+    />
   ),
   notFoundComponent: () => (
     <NotFoundView
@@ -73,15 +72,6 @@ export const Route = createFileRoute("/collection/$slug")({
   ),
 });
 
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main className="container-page py-6">{children}</main>
-    </div>
-  );
-}
 
 function CollectionQuickShop() {
   const { slug } = Route.useParams();
