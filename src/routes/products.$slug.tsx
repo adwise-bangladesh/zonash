@@ -593,7 +593,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-5 border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent px-4 py-5">
+              <div className="space-y-5 px-4 pb-2 pt-1">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
