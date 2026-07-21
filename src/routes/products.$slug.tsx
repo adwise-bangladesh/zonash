@@ -729,7 +729,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Highlights — quiet editorial list, mask-faded with See more */}
             {highlights.length > 0 && (
-              <div className="border-t border-border px-3 py-4">
+              <div className="border-b border-border px-4 py-5">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
                   <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
