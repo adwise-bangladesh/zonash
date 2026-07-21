@@ -567,63 +567,60 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
             </div>
 
-            {/* Highlights — quiet editorial list in a rounded card */}
+            {/* Highlights — quiet editorial list, mask-faded with See more */}
             {highlights.length > 0 && (
-              <div className="px-3 pt-3">
-                <div className="rounded-2xl border border-border bg-background px-4 pt-4 pb-2">
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                      Highlights
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <ul
-                      className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
-                        highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
-                      }`}
-                      style={
-                        !highlightsOpen && highlights.length > 2
-                          ? {
-                              maskImage:
-                                "linear-gradient(to bottom, black 40%, transparent 100%)",
-                              WebkitMaskImage:
-                                "linear-gradient(to bottom, black 40%, transparent 100%)",
-                            }
-                          : undefined
-                      }
-                    >
-                      {highlights.map((line, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
-                        >
-                          <span
-                            className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
-                            aria-hidden="true"
-                          />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  {highlights.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setHighlightsOpen((v) => !v)}
-                      aria-expanded={highlightsOpen}
-                      aria-label={highlightsOpen ? "Show less" : "See more"}
-                      className="mx-auto mt-2 grid h-7 w-7 place-items-center rounded-full text-primary transition-colors hover:bg-muted"
-                    >
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  )}
+              <div className="border-t border-border px-3 py-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Highlights
+                  </span>
                 </div>
+                <div className="relative">
+                  <ul
+                    className={`grid gap-3 overflow-hidden transition-[max-height] duration-500 ease-out ${
+                      highlightsOpen ? "max-h-[999px]" : "max-h-[5.5rem]"
+                    }`}
+                    style={
+                      !highlightsOpen && highlights.length > 2
+                        ? {
+                            maskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                            WebkitMaskImage:
+                              "linear-gradient(to bottom, black 40%, transparent 100%)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {highlights.map((line, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-4 text-[13px] leading-relaxed text-muted-foreground"
+                      >
+                        <span
+                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-primary"
+                          aria-hidden="true"
+                        />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {highlights.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setHighlightsOpen((v) => !v)}
+                    aria-expanded={highlightsOpen}
+                    className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    <span>{highlightsOpen ? "Show less" : "See more"}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                )}
               </div>
             )}
-
 
 
 
