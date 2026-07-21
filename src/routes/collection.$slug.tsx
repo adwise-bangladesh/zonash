@@ -814,7 +814,7 @@ function Lightbox({
       {/* Dots */}
       {total > 1 && (
         <div
-          className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5"
+          className="absolute inset-x-0 bottom-4 z-20 flex justify-center gap-1.5"
           onClick={(e) => e.stopPropagation()}
         >
           {images.map((_, idx) => (
