@@ -8,11 +8,8 @@ import {
   Minus,
   Plus,
   Share2,
-  Shield,
   ShoppingBag,
   Star,
-  Truck,
-  Undo2,
   Gem,
   PackageX,
 } from "lucide-react";
