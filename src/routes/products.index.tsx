@@ -140,12 +140,13 @@ function FilteredResults({
               bare
               variant={q ? "not-found" : "empty"}
               title={q ? "No matches found" : "Nothing here yet"}
-              message={
+              description={
                 q
                   ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
                   : "Try another filter or browse the full shop."
               }
-              primaryCta={{ label: "Browse shop", to: "/products" }}
+              primaryLabel="Browse shop"
+              primaryTo="/products"
             />
           ) : (
             <ProductGrid products={products} />
