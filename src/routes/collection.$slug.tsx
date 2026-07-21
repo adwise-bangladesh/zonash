@@ -752,7 +752,7 @@ function Lightbox({
 
       {/* Slides */}
       <div
-        className="relative h-full w-full overflow-hidden"
+        className="relative z-10 h-full w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => {
           touchX.current = e.touches[0].clientX;
