@@ -19,6 +19,7 @@ import { CartProvider } from "@/lib/cart";
 import { CustomerSessionProvider } from "@/lib/customer-session";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
+import { NotFoundView } from "@/components/NotFoundView";
 
 function NotFoundComponent() {
   return <NotFoundView />;
