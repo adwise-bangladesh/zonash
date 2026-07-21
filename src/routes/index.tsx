@@ -130,7 +130,7 @@ function HomeSkeleton() {
       </div>
 
       {/* Product grid (matches BigProductGrid) */}
-      <div className="grid grid-cols-2 gap-2 px-[5px] md:grid-cols-3 md:gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 px-[5px]">
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
