@@ -62,7 +62,9 @@ export const Route = createFileRoute("/")({
         initialPageParam: 1,
         queryFn: ({ pageParam }) =>
           listProducts({ data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" } }),
-        getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
+        getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
+          getFeedNextPageParam(last, all, FEED_PER_PAGE),
+
         staleTime: 60_000,
       })
       .catch(() => {});
