@@ -359,8 +359,8 @@ function QuickCard({ p }: { p: WooProduct }) {
     queryKey: ["product-variations", p.id],
     queryFn: () => getProductVariations({ data: { productId: p.id } }),
     enabled: isVariable,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: VARIATIONS_STALE_MS,
+    gcTime: 24 * 60 * 60 * 1000,
   });
 
   const defaultVariation = isVariable
