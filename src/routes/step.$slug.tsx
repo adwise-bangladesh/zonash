@@ -457,6 +457,11 @@ function StepLandingPage() {
       {/* Title + price */}
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
         <h1 className="text-[19px] font-bold leading-tight text-foreground">{product.name}</h1>
+        {(selectedVar?.sku || product.sku) && (
+          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
+            SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
+          </div>
+        )}
         <div className="mt-1 flex items-center gap-2 text-[11.5px] text-muted-foreground">
           <span className="flex items-center gap-0.5" aria-label={`Rating ${product.average_rating}`}>
             {[0,1,2,3,4].map((i) => (
