@@ -552,16 +552,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
             {/* Title + price */}
             <div className="border-b border-border px-4 pb-4 pt-5">
               <div className="mb-2 flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  <span
-                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
-                  />
-                  {inStock ? "In stock" : "Sold out"}
-                </span>
                 {p.rating_count > 0 && (
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Stars value={parseFloat(p.average_rating) || 0} />
@@ -585,6 +575,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     Save {discount}%
                   </span>
                 )}
+                <span
+                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  <span
+                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                  />
+                  {inStock ? "In stock" : "Sold out"}
+                </span>
               </div>
             </div>
 
@@ -700,16 +700,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             )}
 
-            {/* Compact trust footer — matches homepage TrustRow */}
+            {/* Trust badges */}
             <div className="px-4 pb-6 pt-5">
-              <div className="mx-auto flex max-w-md items-center gap-3">
-                <span className="h-px flex-1 bg-border" aria-hidden="true" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  Why buy from Zonash
-                </span>
-                <span className="h-px flex-1 bg-border" aria-hidden="true" />
-              </div>
-              <ul className="mx-auto mt-4 flex max-w-md items-start justify-between gap-2">
+              <ul className="mx-auto flex max-w-md items-start justify-between gap-2">
                 <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
                   <Truck className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
                   <span className="text-[10px] font-medium leading-tight text-muted-foreground">
@@ -729,9 +722,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   </span>
                 </li>
               </ul>
-              <p className="mt-5 text-center text-[10px] uppercase tracking-[0.25em] text-muted-foreground/70">
-                — Zonash · Dhaka —
-              </p>
             </div>
           </div>
         </div>
