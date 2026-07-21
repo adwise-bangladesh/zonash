@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star, Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
 
 export function ProductCard({ p }: { p: WooProduct }) {
@@ -10,6 +11,15 @@ export function ProductCard({ p }: { p: WooProduct }) {
   const queryClient = useQueryClient();
   const seedProductCache = () => {
     queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
+    // Warm variations in the background so the detail page renders instantly
+    // even for variable products. wooFetch dedupes + edge-caches this call.
+    if (p.type === "variable" && (p.variations?.length ?? 0) > 0) {
+      void queryClient.prefetchQuery({
+        queryKey: ["product-variations", p.id],
+        queryFn: () => getProductVariations({ data: { productId: p.id } }),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
   };
   return (
     <Link
