@@ -452,12 +452,6 @@ function StepLandingPage() {
             −{discountPct}% OFF
           </span>
         )}
-        {product.on_sale && (
-          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-bold text-destructive shadow-lg">
-            <Flame className="h-3 w-3" aria-hidden />
-            HOT DEAL
-          </span>
-        )}
       </section>
 
       {/* Title + price */}
