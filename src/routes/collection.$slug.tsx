@@ -54,14 +54,13 @@ export const Route = createFileRoute("/collection/$slug")({
   },
   component: CollectionQuickShop,
   pendingComponent: PageSkeleton,
-  errorComponent: ({ error }) => (
-    <Shell>
-      <EmptyState
-        icon={LayoutGrid}
-        title="Couldn't load this collection"
-        description={error.message}
-      />
-    </Shell>
+  errorComponent: ({ error, reset }) => (
+    <NotFoundView
+      variant="error"
+      title="Couldn't load this collection"
+      description={error.message}
+      onRetry={() => reset()}
+    />
   ),
   notFoundComponent: () => (
     <NotFoundView
