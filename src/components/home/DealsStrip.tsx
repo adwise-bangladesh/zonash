@@ -8,17 +8,16 @@ import type { WooProduct } from "@/lib/woo.server";
 const WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 function useResetCountdown() {
-  const [remaining, setRemaining] = useState(() => {
-    const now = Date.now();
-    return WINDOW_MS - (now % WINDOW_MS);
-  });
+  // Stable placeholder for SSR / first client render so hydration matches.
+  // Real clock starts after mount.
+  const [remaining, setRemaining] = useState<number | null>(null);
   useEffect(() => {
-    const id = setInterval(() => {
-      const now = Date.now();
-      setRemaining(WINDOW_MS - (now % WINDOW_MS));
-    }, 1000);
+    const tick = () => setRemaining(WINDOW_MS - (Date.now() % WINDOW_MS));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+  if (remaining == null) return "--:--:--";
   const totalSec = Math.max(0, Math.floor(remaining / 1000));
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);

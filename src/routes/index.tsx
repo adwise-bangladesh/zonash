@@ -10,7 +10,6 @@ import { TrustRow } from "@/components/home/TrustRow";
 import { getFeedNextPageParam } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
 
-
 const megaSaleQuery = queryOptions({
   queryKey: ["home", "mega-sale"],
   queryFn: () => listProductsByCategorySlug({ data: { slug: "mega-sale", perPage: 16 } }),
@@ -61,7 +60,9 @@ export const Route = createFileRoute("/")({
         queryKey: [...feedQueryKey],
         initialPageParam: 1,
         queryFn: ({ pageParam }) =>
-          listProducts({ data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" } }),
+          listProducts({
+            data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
+          }),
         getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
           getFeedNextPageParam(last, all, FEED_PER_PAGE),
 
@@ -69,7 +70,6 @@ export const Route = createFileRoute("/")({
       })
       .catch(() => {});
   },
-
 
   component: Home,
   pendingComponent: HomeSkeleton,
@@ -206,4 +206,3 @@ function Home() {
     </div>
   );
 }
-
