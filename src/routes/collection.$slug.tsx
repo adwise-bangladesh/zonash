@@ -63,14 +63,12 @@ export const Route = createFileRoute("/collection/$slug")({
     </Shell>
   ),
   notFoundComponent: () => (
-    <Shell>
-      <EmptyState
-        icon={LayoutGrid}
-        title="Collection not found"
-        description="This category doesn't exist yet."
-        primary={{ label: "Browse all", to: "/products" }}
-      />
-    </Shell>
+    <NotFoundView
+      title="Collection not found"
+      description="This category doesn't exist yet. Browse everything else in the shop."
+      primaryLabel="Browse all"
+      primaryTo="/products"
+    />
   ),
 });
 
