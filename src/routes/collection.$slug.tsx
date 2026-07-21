@@ -19,6 +19,7 @@ import { useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
 import type { WooProduct } from "@/lib/woo.server";
 import { QuickCard, VARIATIONS_STALE_MS } from "@/components/collection/QuickCard";
+import { NotFoundView } from "@/components/NotFoundView";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
@@ -63,14 +64,12 @@ export const Route = createFileRoute("/collection/$slug")({
     </Shell>
   ),
   notFoundComponent: () => (
-    <Shell>
-      <EmptyState
-        icon={LayoutGrid}
-        title="Collection not found"
-        description="This category doesn't exist yet."
-        primary={{ label: "Browse all", to: "/products" }}
-      />
-    </Shell>
+    <NotFoundView
+      title="Collection not found"
+      description="This category doesn't exist yet. Browse everything else in the shop."
+      primaryLabel="Browse all"
+      primaryTo="/products"
+    />
   ),
 });
 
@@ -89,6 +88,17 @@ function CollectionQuickShop() {
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
 
+  if (!parent?.id) {
+    return (
+      <NotFoundView
+        title="Collection unavailable"
+        description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
+        primaryLabel="Browse all"
+        primaryTo="/products"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface-muted/40 pb-28">
       <AppHeader />
@@ -106,18 +116,17 @@ function CollectionQuickShop() {
             </p>
           </div>
         </div>
-        <ProductFeed categoryId={parent?.id ?? null} />
+        <ProductFeed categoryId={parent.id} />
       </main>
       <FloatingCartBar />
     </div>
   );
 }
 
-function ProductFeed({ categoryId }: { categoryId: number | null }) {
+function ProductFeed({ categoryId }: { categoryId: number }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const { items } = useCart();
-  const enabled = categoryId != null;
 
   const {
     data,
@@ -130,7 +139,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     refetch,
   } = useInfiniteQuery({
     queryKey: ["collection-feed", categoryId],
-    enabled,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       listProducts({
@@ -219,18 +227,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     io.observe(el);
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  if (!enabled) {
-    return (
-      <div className="px-[5px] pt-6">
-        <EmptyState
-          icon={LayoutGrid}
-          title="Collection unavailable"
-          description="This collection isn't set up yet."
-        />
-      </div>
-    );
-  }
 
   if (isLoading && products.length === 0) return <GridSkeleton />;
 
