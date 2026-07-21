@@ -625,43 +625,111 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
 
 
-            {/* Variation attribute selector */}
+            {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-3 border-t border-border p-3">
+              <div className="space-y-4 border-t border-border bg-gradient-to-b from-primary/[0.03] to-transparent p-3">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
                   return (
                     <div key={attr.id + attr.name}>
-                      <div className="mb-1.5 flex items-baseline justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                          {attr.name}
-                        </span>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-0.5 rounded-full bg-primary" />
+                          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-foreground">
+                            Choose {attr.name}
+                          </span>
+                        </div>
                         {current && (
-                          <span className="text-[12px] font-semibold text-foreground">
+                          <span className="text-[11px] font-semibold text-primary">
                             {current}
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="grid grid-cols-2 gap-2">
                         {options.map((opt) => {
                           const active = current === opt;
                           const enabled = isOptionAvailable(attr.name, opt);
+                          // Find best (lowest price, in-stock) variation matching this option + other selections.
+                          const candidates = variations.filter((v) =>
+                            v.attributes.every((a) =>
+                              a.name === attr.name
+                                ? a.option === opt
+                                : !selected[a.name] || selected[a.name] === a.option,
+                            ),
+                          );
+                          const best =
+                            candidates.find((v) => v.stock_status === "instock") ??
+                            candidates[0];
+                          const bp = best ? parseFloat(best.price) || 0 : 0;
+                          const br = best ? parseFloat(best.regular_price) || 0 : 0;
+                          const save = br > bp ? br - bp : 0;
+                          const pct = br > bp ? Math.round((save / br) * 100) : 0;
                           return (
                             <button
                               key={opt}
                               type="button"
-                              onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
+                              onClick={() =>
+                                setSelected((prev) => ({ ...prev, [attr.name]: opt }))
+                              }
                               disabled={!enabled && !active}
-                              className={`relative min-w-[3rem] rounded-[4px] border px-3 py-1.5 text-[12px] font-semibold transition-all ${
+                              className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
                                 active
-                                  ? "border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary))_inset]"
+                                  ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
                                   : enabled
-                                    ? "border-border bg-background text-foreground hover:border-primary/60 hover:text-primary"
-                                    : "border-dashed border-border bg-muted/40 text-muted-foreground/60 line-through"
+                                    ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
+                                    : "border-dashed border-border bg-muted/30 opacity-60"
                               }`}
                             >
-                              {opt}
+                              {save > 0 && enabled && (
+                                <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
+                                  −{pct}%
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
+                                    active
+                                      ? "border-primary bg-primary"
+                                      : "border-border bg-background"
+                                  }`}
+                                >
+                                  {active && (
+                                    <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
+                                  )}
+                                </span>
+                                <span
+                                  className={`text-[13px] font-bold leading-tight ${
+                                    enabled ? "text-foreground" : "text-muted-foreground line-through"
+                                  }`}
+                                >
+                                  {opt}
+                                </span>
+                              </div>
+                              {best && (
+                                <div className="mt-1.5 pl-[22px]">
+                                  <div className="flex items-baseline gap-1.5">
+                                    <span className="text-[14px] font-extrabold leading-none text-primary">
+                                      {formatBDT(bp)}
+                                    </span>
+                                    {save > 0 && (
+                                      <span className="text-[10px] text-muted-foreground line-through">
+                                        {formatBDT(br)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {save > 0 && enabled && (
+                                    <p className="mt-1 text-[10px] font-semibold text-emerald-600">
+                                      Save {formatBDT(save)}
+                                    </p>
+                                  )}
+                                  {!enabled && (
+                                    <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                                      Out of stock
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </button>
                           );
                         })}
