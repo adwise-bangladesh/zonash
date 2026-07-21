@@ -25,12 +25,14 @@ type Props = {
   onRetry?: () => void;
   /** Override the illustration mark. Defaults per variant. */
   icon?: LucideIcon;
+  /** When true, skip the AppHeader + full-screen shell (host page renders its own). */
+  bare?: boolean;
 };
 
 /**
  * App-native empty / not-found / error view. Used by the root 404 boundary
  * and by storefront pages that need a "nothing here" or "something broke"
- * screen. Always renders the site header for consistency.
+ * screen. Renders the site header unless `bare` is set.
  */
 export function NotFoundView({
   variant = "not-found",
@@ -41,6 +43,7 @@ export function NotFoundView({
   primaryTo = "/",
   onRetry,
   icon,
+  bare = false,
 }: Props) {
   const defaults = VARIANT_DEFAULTS[variant];
   const resolvedCode = code ?? defaults.code;
@@ -50,7 +53,7 @@ export function NotFoundView({
     primaryLabel ?? (onRetry ? "Try again" : defaults.primaryLabel);
   const HeroIcon = icon ?? defaults.icon;
 
-  return (
+  const body = (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
       <main className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-[480px] flex-col items-center justify-start px-5 pt-6 pb-24">
