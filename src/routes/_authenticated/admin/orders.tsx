@@ -1476,23 +1476,7 @@ function OrderDrawer({
     setNotes(initialOps?.internal_notes ?? "");
   }, [initialOps?.wc_order_id, initialOps?.updated_at]);
 
-  const saveOps = useMutation({
-    mutationFn: () =>
-      opsFn({
-        data: {
-          wc_order_id: id,
-          courier: courier || null,
-          tracking_number: tracking || null,
-          pickup_slot: pickup || null,
-          internal_notes: notes || null,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Operations saved");
-      qc.invalidateQueries({ queryKey: ["admin", "order-ops"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+
 
   // Save order edits (billing/shipping/items/fees/shipping charge/note)
   const updateFn = useServerFn(updateWooOrder);
