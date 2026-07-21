@@ -290,9 +290,31 @@ function QuickCard({ p }: { p: WooProduct }) {
 
   const inCart = items.some((i) => i.productId === (p.id || -1));
 
+  // Availability -----------------------------------------------------
+  const productSoldOut =
+    p.stock_status !== "instock" && !p.backorders_allowed;
+  const productNotPurchasable =
+    (p as { purchasable?: boolean }).purchasable === false;
+
+  // For variable: once variations resolved, check the default variation.
+  // If none is purchasable/in-stock → unavailable.
+  const variationsLoaded = isVariable && variationsQuery.isSuccess;
+  const variableUnavailable =
+    variationsLoaded &&
+    (!defaultVariation ||
+      (defaultVariation.stock_status !== "instock" &&
+        !(defaultVariation as { backorders_allowed?: boolean })
+          .backorders_allowed) ||
+      (defaultVariation as { purchasable?: boolean }).purchasable === false ||
+      !(parseFloat(defaultVariation.price || "0") > 0 ||
+        parseFloat(defaultVariation.sale_price || "0") > 0));
+
+  const unavailable =
+    productSoldOut || productNotPurchasable || variableUnavailable;
+
   async function handleAdd(e: React.MouseEvent) {
     e.preventDefault();
-    if (state === "loading") return;
+    if (state === "loading" || unavailable) return;
 
     try {
       if (!isVariable) {
@@ -320,7 +342,12 @@ function QuickCard({ p }: { p: WooProduct }) {
         });
         const variations = (res?.variations ?? []) as WooVariation[];
         const v = pickDefaultVariation(p, variations);
-        if (!v) {
+        if (
+          !v ||
+          (v.stock_status !== "instock" &&
+            !(v as { backorders_allowed?: boolean }).backorders_allowed) ||
+          (v as { purchasable?: boolean }).purchasable === false
+        ) {
           setState("idle");
           return;
         }
@@ -348,12 +375,23 @@ function QuickCard({ p }: { p: WooProduct }) {
   }
 
 
+
+  const unavailableLabel = productSoldOut ? "Sold out" : "Unavailable";
+
   return (
     <button
       type="button"
       onClick={handleAdd}
-      aria-label={`Add ${p.name} to cart`}
-      className="group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 active:scale-[0.97]"
+      disabled={unavailable}
+      aria-disabled={unavailable}
+      aria-label={
+        unavailable ? `${p.name} — ${unavailableLabel}` : `Add ${p.name} to cart`
+      }
+      className={`group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 ${
+        unavailable
+          ? "cursor-not-allowed opacity-95"
+          : "active:scale-[0.97]"
+      }`}
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {cardImage ? (
@@ -362,7 +400,11 @@ function QuickCard({ p }: { p: WooProduct }) {
             alt={cardImageAlt}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className={`h-full w-full object-cover transition-transform duration-300 ${
+              unavailable
+                ? "scale-100 grayscale-[0.4] opacity-60"
+                : "group-hover:scale-105"
+            }`}
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-muted-foreground/40">
@@ -418,17 +460,24 @@ function QuickCard({ p }: { p: WooProduct }) {
           </span>
         )}
 
-        {p.stock_status !== "instock" && !p.backorders_allowed && (
-          <span className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[9px] font-semibold text-white">
-            Sold out
-          </span>
+        {unavailable && (
+          <>
+            <span className="pointer-events-none absolute inset-0 grid place-items-center">
+              <span className="rotate-[-8deg] rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-lg ring-1 ring-white/10">
+                {unavailableLabel}
+              </span>
+            </span>
+            <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-white">
+              {unavailableLabel}
+            </span>
+          </>
         )}
       </div>
 
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
         {displayPrice != null ? (
           <>
-            <span className="text-[11px] font-extrabold leading-none text-primary">
+            <span className={`text-[11px] font-extrabold leading-none ${unavailable ? "text-muted-foreground line-through" : "text-primary"}`}>
               {formatBDT(displayPrice)}
             </span>
             {displayRegular != null && (
