@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -14,12 +14,17 @@ import {
   PackageX,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
-import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
+
+// Below-the-fold related-products feed — split out of the critical bundle so
+// it doesn't compete with the hero image for main-thread time.
+const InfiniteFeed = lazy(() =>
+  import("@/components/home/InfiniteFeed").then((m) => ({ default: m.InfiniteFeed })),
+);
 
 const productQuery = (slug: string) =>
   queryOptions({
@@ -59,6 +64,20 @@ export const Route = createFileRoute("/products/$slug")({
         { name: "twitter:card", content: "summary_large_image" },
         ...(img ? [{ name: "twitter:image", content: img } as const] : []),
       ],
+      // Preload the hero image — this is the LCP element. Emitting the
+      // <link rel="preload"> in the SSR document lets the browser begin the
+      // fetch during HTML parse, before React hydrates and mounts the <img>.
+      links: img
+        ? [
+            {
+              rel: "preload",
+              as: "image",
+              href: img,
+              fetchpriority: "high",
+              imagesizes: "(min-width: 768px) 480px, 100vw",
+            } as const,
+          ]
+        : [],
     };
   },
   component: ProductPage,
@@ -895,9 +914,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        {/* Related products — infinite feed, no header */}
-        <div className="mt-4 pb-24">
-          <InfiniteFeed />
+        {/* Related products — lazy-loaded below the fold. content-visibility
+            lets the browser skip layout/paint until the section is near the
+            viewport, keeping initial render focused on the hero. */}
+        <div
+          className="mt-4 pb-24"
+          style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
+        >
+          <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
+            <InfiniteFeed />
+          </Suspense>
         </div>
       </div>
 
