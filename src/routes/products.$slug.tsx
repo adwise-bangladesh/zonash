@@ -19,6 +19,7 @@ import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
+import { buildResponsiveImage } from "@/lib/product-image";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
