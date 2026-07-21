@@ -43,7 +43,7 @@ function CartSkeleton() {
         <div className="mt-4 h-14 animate-pulse rounded-[3px] border border-border bg-background" />
       </div>
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-x border-t border-border bg-background/95 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
@@ -253,7 +253,7 @@ function CartPage() {
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-x border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
