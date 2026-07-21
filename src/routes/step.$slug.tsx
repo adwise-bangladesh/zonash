@@ -772,7 +772,7 @@ function StepLandingPage() {
           </a>
           <a
             href={`https://wa.me/8801926644575?text=${encodeURIComponent(
-              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(price)}\n\nLink: ${product.permalink}`,
+              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}\n\nLink: ${product.permalink}`,
             )}`}
             target="_blank"
             rel="noopener noreferrer"
