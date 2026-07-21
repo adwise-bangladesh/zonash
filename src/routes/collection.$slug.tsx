@@ -366,8 +366,6 @@ function QuickCard({ p }: { p: WooProduct }) {
         ) : (
           <span className="text-[10px] text-muted-foreground">—</span>
         )}
-          <span className="text-[10px] text-muted-foreground">—</span>
-        )}
       </div>
     </button>
   );
