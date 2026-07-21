@@ -346,7 +346,7 @@ function pickDefaultVariation(
 
 
 function QuickCard({ p }: { p: WooProduct }) {
-  const { add, items } = useCart();
+  const { add, items, setQty, remove } = useCart();
   const qc = useQueryClient();
   const [state, setState] = useState<CardState>("idle");
   const [lightbox, setLightbox] = useState(false);
@@ -402,7 +402,11 @@ function QuickCard({ p }: { p: WooProduct }) {
   // crossfade with a CSS transition instead of a hard jump.
   const cardImageKey = cardImage ?? "empty";
 
-  const inCart = items.some((i) => i.productId === (p.id || -1));
+  // Track the exact cart line for this card. Variable products live under
+  // their default variation's id once resolved; simple products under p.id.
+  const trackedId = isVariable ? (defaultVariation?.id ?? -1) : p.id;
+  const cartLine = items.find((i) => i.productId === trackedId);
+  const inCart = !!cartLine;
 
   // Availability -----------------------------------------------------
   const productSoldOut =
