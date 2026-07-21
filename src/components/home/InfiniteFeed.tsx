@@ -11,7 +11,6 @@ import {
 } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
-
 export function InfiniteFeed() {
   const sentinel = useRef<HTMLDivElement>(null);
 
