@@ -567,48 +567,55 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
             </div>
 
-            {/* Highlights — show 2 lines, expand with chevron */}
+            {/* Highlights — clean list, faded after 2 lines with chevron toggle */}
             {highlights.length > 0 && (
-              <div className="p-3">
-                <div className="relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
-                  <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-                  <div className="flex items-center justify-between gap-2 px-3 pt-3">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
-                        Product highlights
-                      </span>
-                    </span>
-                    {highlights.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => setHighlightsOpen((v) => !v)}
-                        aria-label={highlightsOpen ? "Show less" : "Show more"}
-                        aria-expanded={highlightsOpen}
-                        className="grid h-6 w-6 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10"
-                      >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                    )}
-                  </div>
-                  <ul className="grid gap-1.5 px-3 pb-3 pt-2">
-                    {(highlightsOpen ? highlights : highlights.slice(0, 2)).map((line, i) => (
+              <div className="border-t border-border p-3">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <span className="h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                    Highlights
+                  </span>
+                </div>
+                <div className="relative">
+                  <ul
+                    className={`grid gap-1.5 overflow-hidden transition-[max-height] duration-300 ease-out ${
+                      highlightsOpen ? "max-h-[999px]" : "max-h-[3.25rem]"
+                    }`}
+                  >
+                    {highlights.map((line, i) => (
                       <li
                         key={i}
                         className="flex items-start gap-2 text-[13px] leading-snug text-foreground"
                       >
-                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-                          <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                        </span>
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2.5} />
                         <span>{line}</span>
                       </li>
                     ))}
                   </ul>
+                  {highlights.length > 2 && !highlightsOpen && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background via-background/85 to-transparent"
+                      aria-hidden="true"
+                    />
+                  )}
                 </div>
+                {highlights.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setHighlightsOpen((v) => !v)}
+                    aria-expanded={highlightsOpen}
+                    className="mt-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-primary hover:underline"
+                  >
+                    <span>{highlightsOpen ? "Show less" : "See more"}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${highlightsOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                )}
               </div>
             )}
+
+
 
             {/* Variation attribute selector */}
             {isVariable && variationAttrs.length > 0 && (
