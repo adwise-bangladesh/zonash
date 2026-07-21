@@ -597,8 +597,13 @@ function QuickCard({ p }: { p: WooProduct }) {
       </div>
 
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
-        {displayPrice != null ? (
-          <>
+        {variationsPending ? (
+          <span className="flex items-center gap-1" aria-hidden="true">
+            <span className="block h-2.5 w-10 animate-pulse rounded-sm bg-muted-foreground/20" />
+            <span className="block h-2 w-6 animate-pulse rounded-sm bg-muted-foreground/10" />
+          </span>
+        ) : displayPrice != null ? (
+          <span className="flex animate-fade-in items-baseline gap-1">
             <span className={`text-[11px] font-extrabold leading-none ${unavailable ? "text-muted-foreground line-through" : "text-primary"}`}>
               {formatBDT(displayPrice)}
             </span>
@@ -607,11 +612,12 @@ function QuickCard({ p }: { p: WooProduct }) {
                 {formatBDT(displayRegular)}
               </span>
             )}
-          </>
+          </span>
         ) : (
           <span className="text-[10px] text-muted-foreground">—</span>
         )}
       </div>
+
 
       {lightbox && (
         <Lightbox
