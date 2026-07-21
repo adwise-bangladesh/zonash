@@ -460,10 +460,17 @@ function QuickCard({ p }: { p: WooProduct }) {
           </span>
         )}
 
-        {p.stock_status !== "instock" && !p.backorders_allowed && (
-          <span className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[9px] font-semibold text-white">
-            Sold out
-          </span>
+        {unavailable && (
+          <>
+            <span className="pointer-events-none absolute inset-0 grid place-items-center">
+              <span className="rotate-[-8deg] rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-lg ring-1 ring-white/10">
+                {unavailableLabel}
+              </span>
+            </span>
+            <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-white">
+              {unavailableLabel}
+            </span>
+          </>
         )}
       </div>
 
