@@ -91,14 +91,19 @@ function CollectionQuickShop() {
     <div className="min-h-screen bg-surface-muted/40 pb-28">
       <AppHeader />
       <main>
-        <header className="border-b border-border/60 bg-background px-[5px] py-3">
-          <h1 className="font-display text-[15px] font-bold tracking-tight text-ink">
-            {parent?.name ?? "Collection"}
-          </h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Tap any item to add — checkout everything at once.
-          </p>
-        </header>
+        <div className="px-[5px] pt-2.5 pb-1.5">
+          <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-3 py-2 ring-1 ring-primary/15">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} />
+            </span>
+            <p className="text-[12px] font-semibold leading-tight text-ink">
+              Tap any item to add
+              <span className="ml-1 font-normal text-muted-foreground">
+                — checkout everything at once.
+              </span>
+            </p>
+          </div>
+        </div>
         <ProductFeed categoryId={parent?.id ?? null} />
       </main>
       <FloatingCartBar />
