@@ -34,11 +34,24 @@ const productQuery = (slug: string) =>
     staleTime: 2 * 60 * 1000,
   });
 
+const variationsQueryOptions = (productId: number) =>
+  queryOptions({
+    queryKey: ["product-variations", productId],
+    queryFn: () => getProductVariations({ data: { productId } }),
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const Route = createFileRoute("/products/$slug")({
   loader: async ({ context, params }) => {
     if (typeof document === "undefined") {
       const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
       if (!res.product) throw notFound();
+      // Chain-prefetch variations on the server to collapse the client
+      // waterfall — wooFetch dedupes/coalesces so this is ~free on cache hits.
+      const prod = res.product;
+      if (prod.type === "variable" && (prod.variations?.length ?? 0) > 0) {
+        void context.queryClient.prefetchQuery(variationsQueryOptions(prod.id));
+      }
     } else {
       void context.queryClient.prefetchQuery(productQuery(params.slug));
     }
