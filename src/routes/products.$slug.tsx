@@ -294,7 +294,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const activePriceStr =
     matchedVariation?.price || (p.sale_price && p.on_sale ? p.sale_price : p.price);
   const activeRegularStr = matchedVariation?.regular_price || p.regular_price;
-  const activeSaleStr = matchedVariation?.sale_price || p.sale_price;
   const priceNum = parseFloat(activePriceStr) || 0;
   const oldPrice = matchedVariation
     ? parseFloat(activeRegularStr) || 0
@@ -498,10 +497,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
       </header>
 
       <div className="mx-auto max-w-md">
-        <div>
-          {/* Gallery */}
-          <div>
-            <div className="relative bg-background">
+        {/* Gallery */}
+        <div className="relative bg-background">
               <div
                 ref={galleryRef}
                 onScroll={onGalleryScroll}
