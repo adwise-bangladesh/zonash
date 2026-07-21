@@ -703,30 +703,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             )}
 
-            {/* Trust badges — soft close of the hero block */}
-            <div className="px-4 pb-7 pt-6">
-              <div className="mx-auto mb-4 h-px w-16 bg-border/70" aria-hidden="true" />
-              <ul className="mx-auto flex max-w-md items-start justify-between gap-2">
-                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
-                  <Truck className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
-                    Fast delivery
-                  </span>
-                </li>
-                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
-                  <Undo2 className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
-                    7-Day Returns
-                  </span>
-                </li>
-                <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
-                  <Shield className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
-                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">
-                    100% Authentic
-                  </span>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
 
