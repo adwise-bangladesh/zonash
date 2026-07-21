@@ -31,6 +31,7 @@ export function MobileBottomNav() {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/checkout") ||
+    pathname.startsWith("/step/") ||
     pathname.startsWith("/verify-otp") ||
     pathname.startsWith("/order-confirmed") ||
     pathname.startsWith("/thank-you") ||

@@ -24,6 +24,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
+import { Route as StepSlugRouteImport } from './routes/step.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
@@ -111,6 +112,11 @@ const IndexRoute = IndexRouteImport.update({
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StepSlugRoute = StepSlugRouteImport.update({
+  id: '/step/$slug',
+  path: '/step/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/c/$slug'
     | '/products/$slug'
+    | '/step/$slug'
     | '/products/'
     | '/account/orders'
     | '/admin/analytics'
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/c/$slug'
     | '/products/$slug'
+    | '/step/$slug'
     | '/products'
     | '/account/orders'
     | '/admin/analytics'
@@ -361,6 +372,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/c/$slug'
     | '/products/$slug'
+    | '/step/$slug'
     | '/products/'
     | '/_authenticated/account/orders'
     | '/_authenticated/admin/analytics'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
+  StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
@@ -502,6 +515,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products/'
       preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/step/$slug': {
+      id: '/step/$slug'
+      path: '/step/$slug'
+      fullPath: '/step/$slug'
+      preLoaderRoute: typeof StepSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products/$slug': {
@@ -663,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
+  StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
