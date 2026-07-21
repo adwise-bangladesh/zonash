@@ -15,7 +15,7 @@ import { parsePriceHtmlMin } from "@/lib/price-range";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { pickDefaultVariation } from "@/lib/pick-default-variation";
 import type { CartItem } from "@/lib/cart";
-import { useCart } from "@/lib/cart";
+import { useCartActions } from "@/lib/cart";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 
 // Lazy — Lightbox is only loaded when the user taps the eye button.
@@ -37,7 +37,7 @@ function QuickCardImpl({
   p: WooProduct;
   cartLine: CartItem | undefined;
 }) {
-  const { add, setQty, remove } = useCart();
+  const { add, setQty, remove } = useCartActions();
   const qc = useQueryClient();
   const [state, setState] = useState<CardState>("idle");
   const [lightbox, setLightbox] = useState(false);
