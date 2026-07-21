@@ -8,7 +8,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen } from "lucide-react";
 import {
-  getCategoryWithSubs,
+  resolveCollection,
   listProducts,
   getProductVariations,
 } from "@/lib/woo.functions";
@@ -22,8 +22,8 @@ import type { WooProduct, WooVariation } from "@/lib/woo.server";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
-    queryKey: ["collection-page", slug],
-    queryFn: () => getCategoryWithSubs({ data: { slug } }),
+    queryKey: ["collection-resolve", slug],
+    queryFn: () => resolveCollection({ data: { slug } }),
     staleTime: 60_000,
   });
 
