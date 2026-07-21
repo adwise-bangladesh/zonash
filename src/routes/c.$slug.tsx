@@ -193,6 +193,7 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   if (!enabled) {
     return (
       <NotFoundView
+        bare
         variant="empty"
         title="Collection unavailable"
         description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
@@ -205,6 +206,7 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   if (products.length === 0) {
     return (
       <NotFoundView
+        bare
         variant="empty"
         title="The shelves are being restocked"
         description="We're curating fresh pieces for this collection. New arrivals drop weekly — check back soon."
