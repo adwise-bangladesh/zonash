@@ -64,6 +64,7 @@ export const Route = createFileRoute("/products/$slug")({
     const p = detail?.product;
     if (!p) return { meta: [{ title: "Product — Zonash" }] };
     const img = p.images?.[0]?.src;
+    const responsive = buildResponsiveImage(img);
     const desc =
       (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
       `Buy ${p.name} at Zonash.`;
@@ -78,17 +79,17 @@ export const Route = createFileRoute("/products/$slug")({
         { name: "twitter:card", content: "summary_large_image" },
         ...(img ? [{ name: "twitter:image", content: img } as const] : []),
       ],
-      // Preload the hero image — this is the LCP element. Emitting the
-      // <link rel="preload"> in the SSR document lets the browser begin the
-      // fetch during HTML parse, before React hydrates and mounts the <img>.
-      links: img
+      // Preload the hero image responsively — the browser picks the smallest
+      // srcset candidate that fits the viewport × DPR before React hydrates.
+      links: responsive
         ? [
             {
               rel: "preload",
               as: "image",
-              href: img,
+              href: responsive.src,
+              imagesrcset: responsive.srcSet,
+              imagesizes: responsive.sizes,
               fetchpriority: "high",
-              imagesizes: "(min-width: 768px) 480px, 100vw",
             } as const,
           ]
         : [],
