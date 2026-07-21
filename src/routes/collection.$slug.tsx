@@ -510,11 +510,12 @@ function QuickCard({ p }: { p: WooProduct }) {
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {cardImage ? (
           <img
+            key={cardImageKey}
             src={cardImage}
             alt={cardImageAlt}
             loading="lazy"
             decoding="async"
-            className={`h-full w-full object-cover transition-transform duration-300 ${
+            className={`h-full w-full animate-fade-in object-cover transition-transform duration-300 ${
               unavailable
                 ? "scale-100 grayscale-[0.4] opacity-60"
                 : "group-hover:scale-105"
@@ -525,6 +526,13 @@ function QuickCard({ p }: { p: WooProduct }) {
             <ShoppingBag className="h-5 w-5" />
           </div>
         )}
+
+        {/* Skeleton shimmer while variation data is still loading —
+            prevents the image/price from visibly jumping on swap. */}
+        {variationsPending && !unavailable && (
+          <div className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+        )}
+
 
         {/* Overlay state */}
         {state === "loading" && (
