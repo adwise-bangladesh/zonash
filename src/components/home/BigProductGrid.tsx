@@ -44,13 +44,11 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
       </div>
 
       <div className="flex flex-col gap-1.5 p-2.5">
-        <div className="flex flex-wrap items-center gap-1">
-          {p.stock_status !== "instock" && p.backorders_allowed && (
-            <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-              <Truck className="h-2.5 w-2.5" /> Slower delivery
-            </span>
-          )}
-        </div>
+        {p.stock_status !== "instock" && p.backorders_allowed && (
+          <span className="inline-flex w-fit items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+            <Truck className="h-2.5 w-2.5" /> Slower delivery
+          </span>
+        )}
         <p className="line-clamp-2 min-h-[2.4rem] text-[13px] font-medium leading-snug text-ink">
           {p.name}
         </p>
@@ -87,9 +85,7 @@ export function BigProductGrid({
 }) {
   if (!products.length) return null;
   const gridClass =
-    columns === 3
-      ? "grid grid-cols-3 gap-1.5 px-[5px]"
-      : "grid grid-cols-2 gap-2 px-[5px]";
+    columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
     <section aria-label={title || "For you"} className="pb-6">
       {title && (

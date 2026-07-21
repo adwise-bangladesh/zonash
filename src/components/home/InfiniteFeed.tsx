@@ -16,7 +16,9 @@ export function InfiniteFeed() {
     queryKey: feedQueryKey,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      listProducts({ data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" } }),
+      listProducts({
+        data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
+      }),
     getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
     staleTime: 60_000,
   });
@@ -34,7 +36,9 @@ export function InfiniteFeed() {
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const products = dedupeFeedPages<WooProduct>(data?.pages as { products: WooProduct[] }[] | undefined);
+  const products = dedupeFeedPages<WooProduct>(
+    data?.pages as { products: WooProduct[] }[] | undefined,
+  );
 
   return (
     <>
@@ -52,4 +56,3 @@ export function InfiniteFeed() {
     </>
   );
 }
-
