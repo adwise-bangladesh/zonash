@@ -893,20 +893,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </div>
           </CollapsibleSection>
 
-          {(p.tags?.length ?? 0) > 0 && (
-            <CollapsibleSection title={`Tags (${p.tags!.length})`}>
-              <div className="flex flex-wrap gap-1.5">
-                {p.tags!.map((t) => (
-                  <span
-                    key={t.id}
-                    className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
-                  >
-                    #{t.name}
-                  </span>
-                ))}
-              </div>
-            </CollapsibleSection>
-          )}
 
           <CollapsibleSection
             title={
