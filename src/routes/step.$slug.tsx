@@ -814,3 +814,69 @@ function StepSkeleton() {
     </div>
   );
 }
+
+// ---------- Countdown (4h per session) ----------
+const COUNTDOWN_KEY = "zonash:step:offerEndsAt";
+const COUNTDOWN_MS = 4 * 60 * 60 * 1000;
+
+function CountdownStrip() {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    let endsAt: number;
+    try {
+      const raw = sessionStorage.getItem(COUNTDOWN_KEY);
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(parsed) && parsed > Date.now()) {
+        endsAt = parsed;
+      } else {
+        endsAt = Date.now() + COUNTDOWN_MS;
+        sessionStorage.setItem(COUNTDOWN_KEY, String(endsAt));
+      }
+    } catch {
+      endsAt = Date.now() + COUNTDOWN_MS;
+    }
+    const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const ms = remaining ?? COUNTDOWN_MS;
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const s = Math.floor((ms % 60_000) / 1000);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-[8px] border border-destructive/30 bg-gradient-to-r from-destructive/[0.08] via-destructive/[0.04] to-transparent px-3 py-2">
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+      </span>
+      <div className="flex-1 text-[11px] font-bold uppercase tracking-wider text-destructive">
+        Limited stock · Offer ends in
+      </div>
+      <div className="flex items-center gap-1 tabular-nums">
+        <TimeBox value={pad(h)} label="hr" />
+        <span className="text-sm font-bold text-destructive/60">:</span>
+        <TimeBox value={pad(m)} label="min" />
+        <span className="text-sm font-bold text-destructive/60">:</span>
+        <TimeBox value={pad(s)} label="sec" />
+      </div>
+    </div>
+  );
+}
+
+function TimeBox({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="min-w-[26px] rounded-[4px] bg-destructive px-1.5 py-0.5 text-center text-[13px] font-extrabold leading-none text-destructive-foreground shadow-sm">
+        {value}
+      </span>
+      <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-destructive/70">
+        {label}
+      </span>
+    </div>
+  );
+}
