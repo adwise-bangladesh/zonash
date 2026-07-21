@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   queryOptions,
 } from "@tanstack/react-query";
