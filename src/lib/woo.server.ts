@@ -208,6 +208,9 @@ export type WooProduct = {
   description: string;
   images: { id: number; src: string; alt: string }[];
   categories: { id: number; name: string; slug: string }[];
+  tags?: { id: number; name: string; slug: string }[];
+  weight?: string;
+  dimensions?: { length?: string; width?: string; height?: string };
   variations?: number[];
   attributes?: { id: number; name: string; slug?: string; option?: string; options?: string[]; variation?: boolean; visible?: boolean }[];
   default_attributes?: { id: number; name: string; option: string }[];
