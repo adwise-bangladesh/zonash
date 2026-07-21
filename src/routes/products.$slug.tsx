@@ -83,7 +83,7 @@ export const Route = createFileRoute("/products/$slug")({
 function ProductPageSkeleton() {
   return (
     <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28">
-      <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-1 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
+      <header className="fixed inset-x-0 top-0 z-40 mx-auto flex h-11 max-w-[480px] items-center gap-1 bg-gradient-to-b from-black/40 to-transparent px-3">
         <div className="h-9 w-9 rounded-full bg-black/25" />
         <div className="flex-1" />
         <div className="h-9 w-9 rounded-full bg-black/25" />
