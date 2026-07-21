@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useInfiniteQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, LayoutGrid } from "lucide-react";
 import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
