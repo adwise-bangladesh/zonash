@@ -22,8 +22,6 @@ import {
   Minus,
   ShieldCheck,
   ShieldAlert,
-  ChevronDown,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
