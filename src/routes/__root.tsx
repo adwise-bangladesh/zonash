@@ -164,3 +164,22 @@ function RootComponent() {
 
   );
 }
+
+/**
+ * StorefrontFrame — constrains customer-facing pages to a 480px mobile-style
+ * column centered on desktop. Admin, auth, and API routes render full-width.
+ */
+function StorefrontFrame({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const unframed =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api");
+  if (unframed) return <>{children}</>;
+  return (
+    <div className="mx-auto min-h-[100dvh] max-w-[480px] bg-background shadow-[0_0_40px_rgba(0,0,0,0.06)]">
+      {children}
+    </div>
+  );
+}
+
