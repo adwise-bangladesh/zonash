@@ -88,6 +88,17 @@ function CollectionQuickShop() {
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
 
+  if (!parent?.id) {
+    return (
+      <NotFoundView
+        title="Collection unavailable"
+        description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
+        primaryLabel="Browse all"
+        primaryTo="/products"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface-muted/40 pb-28">
       <AppHeader />
@@ -105,7 +116,7 @@ function CollectionQuickShop() {
             </p>
           </div>
         </div>
-        <ProductFeed categoryId={parent?.id ?? null} />
+        <ProductFeed categoryId={parent.id} />
       </main>
       <FloatingCartBar />
     </div>
