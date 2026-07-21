@@ -767,7 +767,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
           )}
 
           <CollapsibleSection title="Product details">
-
             <dl className="grid grid-cols-1 gap-1 text-[13px]">
               {activeSku && (
                 <InfoRow label="SKU" value={<span className="font-mono">{activeSku}</span>} />
