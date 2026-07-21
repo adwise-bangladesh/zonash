@@ -499,202 +499,200 @@ function ProductDetail({ p }: { p: WooProduct }) {
       <div className="mx-auto max-w-md">
         {/* Gallery */}
         <div className="relative bg-background">
-              <div
-                ref={galleryRef}
-                onScroll={onGalleryScroll}
-                onTouchStart={() => (lastInteractRef.current = Date.now())}
-                onPointerDown={() => (lastInteractRef.current = Date.now())}
-                className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
-                  <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
-                    {src ? (
-                      <img
-                        src={src}
-                        alt={p.name}
-                        width={800}
-                        height={800}
-                        className="h-full w-full object-cover"
-                        loading={i === 0 ? "eager" : "lazy"}
-                        decoding={i === 0 ? "sync" : "async"}
-                        fetchPriority={i === 0 ? "high" : "auto"}
-                        sizes="(min-width: 768px) 640px, 100vw"
-                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center bg-muted">
-                        <Gem className="h-16 w-16 text-muted-foreground/40" />
-                      </div>
-                    )}
+          <div
+            ref={galleryRef}
+            onScroll={onGalleryScroll}
+            onTouchStart={() => (lastInteractRef.current = Date.now())}
+            onPointerDown={() => (lastInteractRef.current = Date.now())}
+            className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
+              <div key={i} className="relative aspect-square w-full shrink-0 snap-center">
+                {src ? (
+                  <img
+                    src={src}
+                    alt={p.name}
+                    width={800}
+                    height={800}
+                    className="h-full w-full object-cover"
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding={i === 0 ? "sync" : "async"}
+                    fetchPriority={i === 0 ? "high" : "auto"}
+                    sizes="(min-width: 768px) 640px, 100vw"
+                    style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center bg-muted">
+                    <Gem className="h-16 w-16 text-muted-foreground/40" />
                   </div>
-                ))}
+                )}
               </div>
-              {gallery.length > 1 && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-                  {gallery.map((_: string, i: number) => (
-                    <span
-                      key={i}
-                      className={`h-1.5 rounded-full transition-all ${
-                        i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+            ))}
+          </div>
+          {gallery.length > 1 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
+              {gallery.map((_: string, i: number) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-          {/* Info — blended hero block (gallery → title → variations → trust) */}
-          <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
-            {/* Title + price */}
-            <div className="px-4 pb-5 pt-5">
-              <div className="mb-2 flex items-center gap-2">
-                {p.rating_count > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Stars value={parseFloat(p.average_rating) || 0} />
-                    <span className="font-semibold text-foreground">{p.average_rating}</span>
-                    <span>({p.rating_count})</span>
-                  </span>
-                )}
-              </div>
-              <h1 className="text-[17px] font-semibold leading-snug text-foreground">{p.name}</h1>
-              <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                <span className="text-[26px] font-extrabold leading-none text-primary">
-                  {formatBDT(priceNum)}
+        {/* Info — blended hero block (gallery → title → variations → trust) */}
+        <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
+          {/* Title + price */}
+          <div className="px-4 pb-5 pt-5">
+            <div className="mb-2 flex items-center gap-2">
+              {p.rating_count > 0 && (
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Stars value={parseFloat(p.average_rating) || 0} />
+                  <span className="font-semibold text-foreground">{p.average_rating}</span>
+                  <span>({p.rating_count})</span>
                 </span>
-                {showOld && (
-                  <span className="text-[13px] text-muted-foreground line-through">
-                    {formatBDT(oldPrice)}
-                  </span>
-                )}
-                {discount > 0 && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-                    Save {discount}%
-                  </span>
-                )}
-                <span
-                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  <span
-                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
-                  />
-                  {inStock ? "In stock" : "Sold out"}
-                </span>
-              </div>
+              )}
             </div>
+            <h1 className="text-[17px] font-semibold leading-snug text-foreground">{p.name}</h1>
+            <div className="mt-3 flex flex-wrap items-baseline gap-2">
+              <span className="text-[26px] font-extrabold leading-none text-primary">
+                {formatBDT(priceNum)}
+              </span>
+              {showOld && (
+                <span className="text-[13px] text-muted-foreground line-through">
+                  {formatBDT(oldPrice)}
+                </span>
+              )}
+              {discount > 0 && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                  Save {discount}%
+                </span>
+              )}
+              <span
+                className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                  inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                }`}
+              >
+                <span
+                  className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                />
+                {inStock ? "In stock" : "Sold out"}
+              </span>
+            </div>
+          </div>
 
-            {/* Variation attribute selector — landing-page style with per-option savings */}
-            {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-5 px-4 pb-2 pt-1">
-                {variationAttrs.map((attr) => {
-                  const options = attr.options ?? [];
-                  const current = selected[attr.name];
-                  return (
-                    <div key={attr.id + attr.name}>
-                      <div className="mb-3 flex items-center gap-3">
-                        <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                          Choose {attr.name}
+          {/* Variation attribute selector — landing-page style with per-option savings */}
+          {isVariable && variationAttrs.length > 0 && (
+            <div className="space-y-5 px-4 pb-2 pt-1">
+              {variationAttrs.map((attr) => {
+                const options = attr.options ?? [];
+                const current = selected[attr.name];
+                return (
+                  <div key={attr.id + attr.name}>
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        Choose {attr.name}
+                      </span>
+                      {current && (
+                        <span className="ml-auto text-[11px] font-semibold text-primary">
+                          {current}
                         </span>
-                        {current && (
-                          <span className="ml-auto text-[11px] font-semibold text-primary">
-                            {current}
-                          </span>
-                        )}
-                      </div>
+                      )}
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        {options.map((opt) => {
-                          const active = current === opt;
-                          const enabled = isOptionAvailable(attr.name, opt);
-                          const candidates = variations.filter((v) =>
-                            v.attributes.every((a) =>
-                              a.name === attr.name
-                                ? a.option === opt
-                                : !selected[a.name] || selected[a.name] === a.option,
-                            ),
-                          );
-                          const best =
-                            candidates.find((v) => v.stock_status === "instock") ?? candidates[0];
-                          const bp = best ? parseFloat(best.price) || 0 : 0;
-                          const br = best ? parseFloat(best.regular_price) || 0 : 0;
-                          const save = br > bp ? br - bp : 0;
-                          const pct = br > bp ? Math.round((save / br) * 100) : 0;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
-                              disabled={!enabled && !active}
-                              className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
-                                active
-                                  ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
-                                  : enabled
-                                    ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
-                                    : "border-dashed border-border bg-muted/30 opacity-60"
-                              }`}
-                            >
-                              {save > 0 && enabled && (
-                                <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
-                                  −{pct}%
-                                </span>
-                              )}
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
-                                    active
-                                      ? "border-primary bg-primary"
-                                      : "border-border bg-background"
-                                  }`}
-                                >
-                                  {active && (
-                                    <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
-                                  )}
-                                </span>
-                                <span
-                                  className={`text-[13px] font-bold leading-tight ${
-                                    enabled
-                                      ? "text-foreground"
-                                      : "text-muted-foreground line-through"
-                                  }`}
-                                >
-                                  {opt}
-                                </span>
-                              </div>
-                              {best && (
-                                <div className="mt-1.5 pl-[22px]">
-                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="text-[14px] font-extrabold leading-none text-primary">
-                                      {formatBDT(bp)}
+                    <div className="grid grid-cols-2 gap-2">
+                      {options.map((opt) => {
+                        const active = current === opt;
+                        const enabled = isOptionAvailable(attr.name, opt);
+                        const candidates = variations.filter((v) =>
+                          v.attributes.every((a) =>
+                            a.name === attr.name
+                              ? a.option === opt
+                              : !selected[a.name] || selected[a.name] === a.option,
+                          ),
+                        );
+                        const best =
+                          candidates.find((v) => v.stock_status === "instock") ?? candidates[0];
+                        const bp = best ? parseFloat(best.price) || 0 : 0;
+                        const br = best ? parseFloat(best.regular_price) || 0 : 0;
+                        const save = br > bp ? br - bp : 0;
+                        const pct = br > bp ? Math.round((save / br) * 100) : 0;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
+                            disabled={!enabled && !active}
+                            className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
+                              active
+                                ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
+                                : enabled
+                                  ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
+                                  : "border-dashed border-border bg-muted/30 opacity-60"
+                            }`}
+                          >
+                            {save > 0 && enabled && (
+                              <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
+                                −{pct}%
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
+                                  active
+                                    ? "border-primary bg-primary"
+                                    : "border-border bg-background"
+                                }`}
+                              >
+                                {active && (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
+                                )}
+                              </span>
+                              <span
+                                className={`text-[13px] font-bold leading-tight ${
+                                  enabled ? "text-foreground" : "text-muted-foreground line-through"
+                                }`}
+                              >
+                                {opt}
+                              </span>
+                            </div>
+                            {best && (
+                              <div className="mt-1.5 pl-[22px]">
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-[14px] font-extrabold leading-none text-primary">
+                                    {formatBDT(bp)}
+                                  </span>
+                                  {save > 0 && (
+                                    <span className="text-[10px] text-muted-foreground line-through">
+                                      {formatBDT(br)}
                                     </span>
-                                    {save > 0 && (
-                                      <span className="text-[10px] text-muted-foreground line-through">
-                                        {formatBDT(br)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {save > 0 && enabled && (
-                                    <p className="mt-1 text-[10px] font-semibold text-emerald-600">
-                                      Save {formatBDT(save)}
-                                    </p>
-                                  )}
-                                  {!enabled && (
-                                    <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                      Out of stock
-                                    </p>
                                   )}
                                 </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                                {save > 0 && enabled && (
+                                  <p className="mt-1 text-[10px] font-semibold text-emerald-600">
+                                    Save {formatBDT(save)}
+                                  </p>
+                                )}
+                                {!enabled && (
+                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                                    Out of stock
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Collapsible info sections */}
