@@ -11,13 +11,11 @@ import {
   ShoppingBag,
   Star,
   Gem,
-  PackageX,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NotFoundView } from "@/components/NotFoundView";
 import { toast } from "sonner";
 import { buildResponsiveImage } from "@/lib/product-image";
