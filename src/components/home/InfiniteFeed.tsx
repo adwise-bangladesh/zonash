@@ -11,15 +11,25 @@ import {
 } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
-export function InfiniteFeed() {
+type Orderby = "date" | "price" | "popularity" | "rating" | "title";
+type Order = "asc" | "desc";
+
+export function InfiniteFeed({
+  orderby = "date",
+  order,
+}: {
+  orderby?: Orderby;
+  order?: Order;
+} = {}) {
   const sentinel = useRef<HTMLDivElement>(null);
+  const isDefault = orderby === "date" && !order;
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
-    queryKey: feedQueryKey,
+    queryKey: isDefault ? feedQueryKey : (["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"] as const),
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       listProducts({
-        data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
+        data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
       }),
     getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
     staleTime: 60_000,

@@ -2,42 +2,40 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { LayoutGrid } from "lucide-react";
-import { listProducts, listCategories } from "@/lib/woo.functions";
+import { listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
+import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatBDT } from "@/lib/format";
-import { getFeedNextPageParam, FEED_PER_PAGE, feedQueryKey } from "@/lib/home-feed";
+import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
 
-const searchSchema = z.object({
-  category: z.string().optional(),
-  q: z.string().optional(),
-  featured: z.boolean().optional(),
-  orderby: z.enum(["date", "price", "popularity", "rating", "title"]).optional(),
-});
+const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "title"] as const;
 
-const catQuery = queryOptions({
-  queryKey: ["categories"],
-  queryFn: () => listCategories(),
-  staleTime: 5 * 60_000,
+const searchSchema = z.object({
+  sort: z.enum(SORT_KEYS).optional(),
+  q: z.string().optional(),
+  category: z.string().optional(),
+  featured: z.boolean().optional(),
 });
 
 const searchProductsQuery = (
   search: string,
   category: string | undefined,
   featured: boolean | undefined,
-  orderby: "date" | "price" | "popularity" | "rating" | "title" | undefined,
-) =>
-  queryOptions({
-    queryKey: ["products", "search", search, category ?? "", featured ?? false, orderby ?? ""],
+  sort: SortKey,
+) => {
+  const { orderby, order } = sortToWoo(sort);
+  return queryOptions({
+    queryKey: ["products", "search", search, category ?? "", featured ?? false, sort],
     queryFn: () =>
       listProducts({
-        data: { page: 1, perPage: 30, search: search || undefined, category, featured, orderby },
+        data: { page: 1, perPage: 30, search: search || undefined, category, featured, orderby, order },
       }),
     staleTime: 60_000,
   });
+};
 
 export const Route = createFileRoute("/products/")({
   validateSearch: (s) => searchSchema.parse(s),
@@ -45,7 +43,7 @@ export const Route = createFileRoute("/products/")({
     q: search.q,
     category: search.category,
     featured: search.featured,
-    orderby: search.orderby,
+    sort: search.sort ?? "recommended",
   }),
   head: () => ({
     meta: [
@@ -54,21 +52,25 @@ export const Route = createFileRoute("/products/")({
     ],
   }),
   loader: async ({ context, deps }) => {
-    await context.queryClient.ensureQueryData(catQuery);
-    if (deps.q || deps.featured || deps.orderby) {
+    const sort = deps.sort as SortKey;
+    if (deps.q || deps.featured) {
       await context.queryClient.ensureQueryData(
-        searchProductsQuery(deps.q ?? "", deps.category, deps.featured, deps.orderby),
+        searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
       );
       return;
     }
-    // Warm the infinite feed's first page so scrolling feels instant.
+    const { orderby, order } = sortToWoo(sort);
+    const isDefault = orderby === "date" && !order;
+    const key = isDefault
+      ? ["home", "feed", FEED_PER_PAGE]
+      : ["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"];
     void context.queryClient
       .prefetchInfiniteQuery({
-        queryKey: [...feedQueryKey],
+        queryKey: key,
         initialPageParam: 1,
         queryFn: ({ pageParam }) =>
           listProducts({
-            data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
+            data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
           }),
         getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
           getFeedNextPageParam(last, all, FEED_PER_PAGE),
@@ -80,21 +82,22 @@ export const Route = createFileRoute("/products/")({
 });
 
 function Products() {
-  const { q, category, featured, orderby } = Route.useSearch();
-  if (q || featured || orderby) {
-    return <FilteredResults q={q} category={category} featured={featured} orderby={orderby} />;
+  const { q, category, featured, sort } = Route.useSearch();
+  const activeSort = (sort ?? "recommended") as SortKey;
+  if (q || featured) {
+    return <FilteredResults q={q} category={category} featured={featured} sort={activeSort} />;
   }
-  return <Shop />;
+  return <Shop sort={activeSort} />;
 }
 
-function Shop() {
-  const { data: catData } = useSuspenseQuery(catQuery);
+function Shop({ sort }: { sort: SortKey }) {
+  const { orderby, order } = sortToWoo(sort);
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
-      <CategoryTabs categories={catData.categories} />
+      <SortTabs active={sort} />
       <main className="animate-fade-in">
-        <InfiniteFeed />
+        <InfiniteFeed orderby={orderby} order={order} />
       </main>
     </div>
   );
@@ -104,28 +107,25 @@ function FilteredResults({
   q,
   category,
   featured,
-  orderby,
+  sort,
 }: {
   q: string | undefined;
   category: string | undefined;
   featured: boolean | undefined;
-  orderby: "date" | "price" | "popularity" | "rating" | "title" | undefined;
+  sort: SortKey;
 }) {
-  const { data } = useSuspenseQuery(searchProductsQuery(q ?? "", category, featured, orderby));
-  const { data: catData } = useSuspenseQuery(catQuery);
-  const activeCat = catData.categories.find((c) => c.slug === category);
+  const { data } = useSuspenseQuery(searchProductsQuery(q ?? "", category, featured, sort));
   const products = data.products as WooProduct[];
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
-      <CategoryTabs categories={catData.categories} />
+      <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="px-[5px] pb-24 pt-3">
           {q && (
             <p className="mb-3 text-xs text-muted-foreground">
               {products.length} result{products.length === 1 ? "" : "s"}
-              {activeCat ? ` in ${activeCat.name}` : ""}
             </p>
           )}
 
