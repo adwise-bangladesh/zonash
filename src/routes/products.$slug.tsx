@@ -550,10 +550,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </div>
           </div>
 
-          {/* Info */}
-          <div className="bg-background">
+          {/* Info — blended hero block (gallery → title → variations → trust) */}
+          <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
             {/* Title + price */}
-            <div className="border-b border-border px-4 pb-4 pt-5">
+            <div className="px-4 pb-5 pt-5">
               <div className="mb-2 flex items-center gap-2">
                 {p.rating_count > 0 && (
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -593,7 +593,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-5 border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent px-4 py-5">
+              <div className="space-y-5 px-4 pb-2 pt-1">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
@@ -703,8 +703,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             )}
 
-            {/* Trust badges */}
-            <div className="px-4 pb-6 pt-5">
+            {/* Trust badges — soft close of the hero block */}
+            <div className="px-4 pb-7 pt-6">
+              <div className="mx-auto mb-4 h-px w-16 bg-border/70" aria-hidden="true" />
               <ul className="mx-auto flex max-w-md items-start justify-between gap-2">
                 <li className="flex flex-1 flex-col items-center gap-1.5 text-center">
                   <Truck className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden="true" />
