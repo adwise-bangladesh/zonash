@@ -5,9 +5,11 @@ import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
-import { InfiniteFeed } from "@/components/home/InfiniteFeed";
+import { InfiniteFeed, FEED_PER_PAGE, feedQueryKey } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
+import { getFeedNextPageParam } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 const megaSaleQuery = queryOptions({
   queryKey: ["home", "mega-sale"],
@@ -46,12 +48,28 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async ({ context }) => {
+    // Critical: block SSR/render on above-the-fold data.
     await Promise.all([
       context.queryClient.ensureQueryData(megaSaleQuery),
       context.queryClient.ensureQueryData(fallbackQuery),
       context.queryClient.ensureQueryData(catQuery),
     ]);
+    // Warm the infinite feed's first page so scrolling feels instant.
+    // Non-blocking: don't await, don't fail the route if Woo is slow.
+    void context.queryClient
+      .prefetchInfiniteQuery({
+        queryKey: [...feedQueryKey],
+        initialPageParam: 1,
+        queryFn: ({ pageParam }) =>
+          listProducts({ data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" } }),
+        getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
+          getFeedNextPageParam(last, all, FEED_PER_PAGE),
+
+        staleTime: 60_000,
+      })
+      .catch(() => {});
   },
+
 
   component: Home,
   pendingComponent: HomeSkeleton,

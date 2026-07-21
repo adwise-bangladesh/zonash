@@ -3,25 +3,21 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
+import { dedupeFeedPages, getFeedNextPageParam } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
+
+export const FEED_PER_PAGE = 18;
+export const feedQueryKey = ["home", "feed", FEED_PER_PAGE] as const;
 
 export function InfiniteFeed() {
   const sentinel = useRef<HTMLDivElement>(null);
 
-  const PER_PAGE = 18;
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
-    queryKey: ["home", "feed", PER_PAGE],
+    queryKey: feedQueryKey,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      listProducts({ data: { page: pageParam as number, perPage: PER_PAGE, orderby: "date" } }),
-    // End when the page returns fewer than a full page OR nothing at all.
-    // The strict `< PER_PAGE` check protects against endless spinner loops
-    // when WooCommerce returns partial pages or an error payload.
-    getNextPageParam: (last, all) => {
-      const n = last.products?.length ?? 0;
-      if (n === 0 || n < PER_PAGE) return undefined;
-      return all.length + 1;
-    },
+      listProducts({ data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" } }),
+    getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
     staleTime: 60_000,
   });
 
@@ -38,16 +34,7 @@ export function InfiniteFeed() {
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // De-dupe defensively in case pages overlap.
-  const seen = new Set<number>();
-  const products: WooProduct[] = [];
-  for (const page of data?.pages ?? []) {
-    for (const p of page.products as WooProduct[]) {
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-      products.push(p);
-    }
-  }
+  const products = dedupeFeedPages<WooProduct>(data?.pages as { products: WooProduct[] }[] | undefined);
 
   return (
     <>
@@ -65,3 +52,4 @@ export function InfiniteFeed() {
     </>
   );
 }
+
