@@ -5,9 +5,11 @@ import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
-import { InfiniteFeed } from "@/components/home/InfiniteFeed";
+import { InfiniteFeed, FEED_PER_PAGE, feedQueryKey } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
+import { getFeedNextPageParam } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 const megaSaleQuery = queryOptions({
   queryKey: ["home", "mega-sale"],
