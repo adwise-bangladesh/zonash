@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Zap, ArrowDownWideNarrow, ArrowUpNarrowWide, Star, AtSign } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Zap } from "lucide-react";
 
 export type SortKey =
   | "recommended"
@@ -10,21 +9,19 @@ export type SortKey =
   | "rating"
   | "title";
 
-export const SORT_OPTIONS: {
-  key: SortKey;
-  label: string;
-  icon?: LucideIcon;
-  iconClass?: string;
-}[] = [
-  { key: "recommended", label: "Recommended", icon: Sparkles, iconClass: "text-primary" },
-  { key: "new", label: "New Arrivals", icon: Zap, iconClass: "fill-emerald-500 text-emerald-500" },
-  { key: "price-asc", label: "Price: Low to High", icon: ArrowUpNarrowWide },
-  { key: "price-desc", label: "Price: High to Low", icon: ArrowDownWideNarrow },
-  { key: "rating", label: "Top Rated", icon: Star, iconClass: "fill-amber-400 text-amber-500" },
-  { key: "title", label: "A–Z", icon: AtSign },
+export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "recommended", label: "Recommended" },
+  { key: "new", label: "New Arrivals" },
+  { key: "price-asc", label: "Price: Low to High" },
+  { key: "price-desc", label: "Price: High to Low" },
+  { key: "rating", label: "Top Rated" },
+  { key: "title", label: "A–Z" },
 ];
 
-export function sortToWoo(sort: SortKey): { orderby: "date" | "price" | "popularity" | "rating" | "title"; order: "asc" | "desc" } {
+export function sortToWoo(sort: SortKey): {
+  orderby: "date" | "price" | "popularity" | "rating" | "title";
+  order: "asc" | "desc";
+} {
   switch (sort) {
     case "new":
       return { orderby: "date", order: "desc" };
@@ -51,20 +48,63 @@ export function SortTabs({ active }: { active: SortKey }) {
       <div className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4">
         {SORT_OPTIONS.map((opt) => {
           const isActive = opt.key === active;
-          const Icon = opt.icon;
+          const search = opt.key === "recommended" ? {} : { sort: opt.key };
+
+          if (opt.key === "recommended") {
+            return (
+              <Link
+                key={opt.key}
+                to="/products"
+                search={search}
+                className={
+                  isActive
+                    ? "relative shrink-0 text-primary"
+                    : "shrink-0 text-muted-foreground hover:text-foreground"
+                }
+                aria-current={isActive ? "page" : undefined}
+              >
+                {opt.label}
+                {isActive && (
+                  <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          }
+
+          if (opt.key === "new") {
+            return (
+              <Link
+                key={opt.key}
+                to="/products"
+                search={search}
+                className={
+                  isActive
+                    ? "relative inline-flex shrink-0 items-center gap-1 text-primary"
+                    : "inline-flex shrink-0 items-center gap-1 text-emerald-600"
+                }
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Zap className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
+                {opt.label}
+                {isActive && (
+                  <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={opt.key}
               to="/products"
-              search={opt.key === "recommended" ? {} : { sort: opt.key }}
+              search={search}
               className={
                 isActive
-                  ? "relative inline-flex shrink-0 items-center gap-1 text-primary"
-                  : "inline-flex shrink-0 items-center gap-1 text-muted-foreground hover:text-foreground"
+                  ? "relative shrink-0 text-primary"
+                  : "shrink-0 text-muted-foreground hover:text-foreground"
               }
               aria-current={isActive ? "page" : undefined}
             >
-              {Icon && <Icon className={`h-3.5 w-3.5 ${opt.iconClass ?? ""}`} />}
               {opt.label}
               {isActive && (
                 <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
