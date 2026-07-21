@@ -565,19 +565,29 @@ function StepLandingPage() {
         </button>
       </div>
 
-      {/* Highlights */}
+      {/* Why customers love it */}
       {highlights.length > 0 && (
-        <section className="mt-6 px-4">
-          <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Why customers love it
-          </h2>
-          <ul className="space-y-2">
+        <section className="mt-7 px-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border" />
+            <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Why customers love it
+            </h2>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
+          </div>
+          <ul className="grid gap-2">
             {highlights.map((h, i) => (
-              <li key={i} className="flex items-start gap-2.5 rounded-[6px] border border-border bg-background p-2.5">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <Check className="h-3 w-3" aria-hidden />
+              <li
+                key={i}
+                className="group flex items-start gap-3 rounded-[8px] border border-border/70 bg-gradient-to-br from-primary/[0.04] via-background to-background p-3 transition-colors hover:border-primary/40"
+              >
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
                 </span>
-                <span className="text-[13px] leading-snug text-foreground">{h}</span>
+                <span className="text-[13.5px] font-medium leading-snug text-foreground">
+                  {h}
+                </span>
               </li>
             ))}
           </ul>
