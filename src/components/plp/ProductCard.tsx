@@ -2,11 +2,26 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star, Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { parsePriceHtmlMin } from "@/lib/price-range";
 import { getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
 
 export function ProductCard({ p }: { p: WooProduct }) {
-  const price = p.sale_price && p.on_sale ? p.sale_price : p.price;
+  const isVariable = p.type === "variable";
+  // For variable products, Woo's list endpoint returns min values in `price_html`
+  // (with <del>regular</del><ins>sale</ins> when on sale). Parse to show the
+  // minimum sell price and minimum regular price for strikethrough.
+  const parsed = isVariable ? parsePriceHtmlMin(p.price_html) : null;
+  const sellPrice: number | string | undefined = isVariable
+    ? (parsed?.sale ?? p.price)
+    : p.on_sale && p.sale_price
+      ? p.sale_price
+      : p.price;
+  const regularPrice: number | string | undefined = isVariable
+    ? (parsed?.regular ?? undefined)
+    : p.on_sale
+      ? p.regular_price
+      : undefined;
   const rating = parseFloat(p.average_rating as unknown as string);
   const queryClient = useQueryClient();
   const seedProductCache = () => {
