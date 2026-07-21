@@ -6,12 +6,9 @@ import { z } from "zod";
 import {
   ArrowRight,
   Check,
-  ChevronDown,
-  Clock,
   Flame,
   Lock,
-  Minus,
-  Plus,
+  Sparkles,
   ShieldCheck,
   Star,
   Truck,
@@ -232,7 +229,7 @@ function StepLandingPage() {
   const submitFn = useServerFn(submitPendingOrder);
   const [form, setForm] = useState<FormShape>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [qty, setQty] = useState(1);
+  const qty = 1;
   const [submitting, setSubmitting] = useState(false);
   const [idem, setIdem] = useState(() =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -403,7 +400,7 @@ function StepLandingPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-[92px]">
+    <div className="min-h-[100dvh] bg-background pb-6">
       {/* Sticky trust bar */}
       <div className="sticky top-0 z-30 flex items-center justify-center gap-2 border-b border-border bg-primary text-primary-foreground py-1.5 text-[11px] font-semibold">
         <Truck className="h-3.5 w-3.5" aria-hidden />
@@ -494,10 +491,9 @@ function StepLandingPage() {
             </>
           )}
         </div>
-        {/* Urgency line */}
-        <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-destructive">
-          <Clock className="h-3.5 w-3.5" aria-hidden />
-          Limited stock · Offer ends today
+        {/* Countdown urgency */}
+        <div className="mt-3">
+          <CountdownStrip />
         </div>
       </section>
 
@@ -569,19 +565,29 @@ function StepLandingPage() {
         </button>
       </div>
 
-      {/* Highlights */}
+      {/* Why customers love it */}
       {highlights.length > 0 && (
-        <section className="mt-6 px-4">
-          <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Why customers love it
-          </h2>
-          <ul className="space-y-2">
+        <section className="mt-7 px-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border" />
+            <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Why customers love it
+            </h2>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
+          </div>
+          <ul className="grid gap-2">
             {highlights.map((h, i) => (
-              <li key={i} className="flex items-start gap-2.5 rounded-[6px] border border-border bg-background p-2.5">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <Check className="h-3 w-3" aria-hidden />
+              <li
+                key={i}
+                className="group flex items-start gap-3 rounded-[8px] border border-border/70 bg-gradient-to-br from-primary/[0.04] via-background to-background p-3 transition-colors hover:border-primary/40"
+              >
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
                 </span>
-                <span className="text-[13px] leading-snug text-foreground">{h}</span>
+                <span className="text-[13.5px] font-medium leading-snug text-foreground">
+                  {h}
+                </span>
               </li>
             ))}
           </ul>
@@ -642,28 +648,6 @@ function StepLandingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="mt-6 px-4">
-        <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Frequently asked
-        </h2>
-        <div className="divide-y divide-border rounded-[6px] border border-border bg-background">
-          {[
-            { q: "How do I pay?", a: "Cash on delivery — pay only when you receive the product." },
-            { q: "How long is delivery?", a: "Inside Dhaka: 1–2 days. Outside Dhaka: 2–4 days via Steadfast." },
-            { q: "What if I don't like it?", a: "You can return it within 7 days as long as it's unused and in original packaging." },
-            { q: "Is the product authentic?", a: "Yes, 100% authentic — sourced directly from the manufacturer." },
-          ].map((f) => (
-            <details key={f.q} className="group px-3 py-2.5 [&[open]>summary>svg]:rotate-180">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                <span className="text-[13px] font-semibold text-foreground">{f.q}</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" aria-hidden />
-              </summary>
-              <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">{f.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
 
       {/* Order form */}
       <section ref={orderRef} id="order" className="mt-6 px-4">
@@ -732,40 +716,10 @@ function StepLandingPage() {
               />
             </Field>
 
-            {/* Quantity */}
-            <div>
-              <span className="mb-1 block text-[11px] font-medium text-muted-foreground">Quantity</span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center rounded-[3px] border border-border bg-background">
-                  <button
-                    type="button"
-                    aria-label="Decrease"
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    className="grid h-10 w-10 place-items-center text-muted-foreground active:scale-95"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-10 text-center text-sm font-bold tabular-nums" aria-live="polite">{qty}</span>
-                  <button
-                    type="button"
-                    aria-label="Increase"
-                    onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))}
-                    disabled={qty >= MAX_QTY}
-                    className="grid h-10 w-10 place-items-center text-primary active:scale-95 disabled:opacity-40"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <span className="text-[11.5px] text-muted-foreground">
-                  Max {MAX_QTY} per order
-                </span>
-              </div>
-            </div>
-
             {/* Summary */}
             <dl className="mt-2 space-y-1.5 rounded-[6px] border border-dashed border-border bg-background p-3 text-[13px]">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Subtotal ({qty})</dt>
+                <dt className="text-muted-foreground">Subtotal</dt>
                 <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
               </div>
               {savings > 0 && (
@@ -807,35 +761,6 @@ function StepLandingPage() {
         </Link>
       </div>
 
-      {/* Sticky bottom CTA */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-x border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-extrabold text-primary tabular-nums">{formatBDT(total)}</span>
-              {showStrike && (
-                <span className="text-[11px] text-muted-foreground line-through tabular-nums">
-                  {formatBDT(effectiveRegular * qty + shipping)}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="submit"
-            form="step-order-form"
-            disabled={submitting || !inStock}
-            className="flex h-11 flex-[1.4] items-center justify-center gap-1.5 rounded-[6px] bg-gradient-to-r from-primary to-primary/90 px-3 text-sm font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99] disabled:opacity-60"
-          >
-            <Lock className="h-4 w-4" aria-hidden />
-            {submitting ? "Placing…" : "Order now"}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      </div>
 
       {submitting && (
         <div
@@ -886,6 +811,72 @@ function StepSkeleton() {
         <div className="h-20 animate-pulse rounded bg-muted" />
       </div>
       <div className="mx-4 mt-4 h-12 animate-pulse rounded bg-muted" />
+    </div>
+  );
+}
+
+// ---------- Countdown (4h per session) ----------
+const COUNTDOWN_KEY = "zonash:step:offerEndsAt";
+const COUNTDOWN_MS = 4 * 60 * 60 * 1000;
+
+function CountdownStrip() {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    let endsAt: number;
+    try {
+      const raw = sessionStorage.getItem(COUNTDOWN_KEY);
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(parsed) && parsed > Date.now()) {
+        endsAt = parsed;
+      } else {
+        endsAt = Date.now() + COUNTDOWN_MS;
+        sessionStorage.setItem(COUNTDOWN_KEY, String(endsAt));
+      }
+    } catch {
+      endsAt = Date.now() + COUNTDOWN_MS;
+    }
+    const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const ms = remaining ?? COUNTDOWN_MS;
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const s = Math.floor((ms % 60_000) / 1000);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-[8px] border border-destructive/30 bg-gradient-to-r from-destructive/[0.08] via-destructive/[0.04] to-transparent px-3 py-2">
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+      </span>
+      <div className="flex-1 text-[11px] font-bold uppercase tracking-wider text-destructive">
+        Limited stock · Offer ends in
+      </div>
+      <div className="flex items-center gap-1 tabular-nums">
+        <TimeBox value={pad(h)} label="hr" />
+        <span className="text-sm font-bold text-destructive/60">:</span>
+        <TimeBox value={pad(m)} label="min" />
+        <span className="text-sm font-bold text-destructive/60">:</span>
+        <TimeBox value={pad(s)} label="sec" />
+      </div>
+    </div>
+  );
+}
+
+function TimeBox({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="min-w-[26px] rounded-[4px] bg-destructive px-1.5 py-0.5 text-center text-[13px] font-extrabold leading-none text-destructive-foreground shadow-sm">
+        {value}
+      </span>
+      <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-destructive/70">
+        {label}
+      </span>
     </div>
   );
 }
