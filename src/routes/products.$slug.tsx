@@ -915,3 +915,70 @@ function ProductDetail({ p }: { p: WooProduct }) {
     </div>
   );
 }
+
+function CollapsibleSection({
+  title,
+  children,
+  defaultOpen,
+  onToggle,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  onToggle?: (open: boolean) => void;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-[6px] border border-border bg-background">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => {
+            const next = !v;
+            onToggle?.(next);
+            return next;
+          });
+        }}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-3 py-3 text-left"
+      >
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
+          {title}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-dashed border-border px-3 pb-4 pt-3">{children}</div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-dashed border-border/60 py-1.5 last:border-0">
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="text-right text-[13px] font-medium text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function Stars({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(5, value));
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${v} out of 5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={`h-3.5 w-3.5 ${i <= Math.round(v) ? "fill-amber-400 text-amber-400" : "fill-none text-muted-foreground/40"}`}
+          strokeWidth={1.5}
+        />
+      ))}
+    </div>
+  );
+}
+
