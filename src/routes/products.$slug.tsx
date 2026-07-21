@@ -783,25 +783,34 @@ function ProductDetail({ p }: { p: WooProduct }) {
             )}
 
             {/* Delivery + guarantees */}
-            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center">
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Truck className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Fast delivery</span>
-                <span>1-3 days</span>
+            <div className="px-4 py-5">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Why buy from Zonash
+                </span>
               </div>
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Undo2 className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Easy returns</span>
-                <span>7-day</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Shield className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Guarantee</span>
-                <span>Authentic</span>
+              <div className="grid grid-cols-3 divide-x divide-border rounded-[6px] border border-border bg-muted/20">
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Truck className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Fast delivery</span>
+                  <span>1-3 days</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Undo2 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Easy returns</span>
+                  <span>7-day</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Guarantee</span>
+                  <span>Authentic</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
 
         {/* Collapsible info sections */}
         <div className="mt-3 space-y-2">
