@@ -115,8 +115,14 @@ function CollectionQuickShop() {
 
 /* -------------------- Product Feed (4-col strict) -------------------- */
 
+// Long stale window for variation data — variations rarely change, and
+// keeping them fresh across the whole session (plus 24h in localStorage
+// via query-persist) means revisits render instantly with zero API calls.
+const VARIATIONS_STALE_MS = 24 * 60 * 60 * 1000;
+
 function ProductFeed({ categoryId }: { categoryId: number | null }) {
   const sentinel = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
   const enabled = !!categoryId;
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
@@ -137,6 +143,48 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
         last.products.length < 24 ? undefined : all.length + 1,
       staleTime: 60_000,
     });
+
+  // Warm the variation cache in the background for every variable product
+  // in the current feed. `ensureQueryData` is a no-op when a fresh entry
+  // already exists (in-memory or hydrated from localStorage), so returning
+  // to the same slug is effectively free.
+  const productsForPrefetch: WooProduct[] =
+    data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [];
+  const prefetchKey = productsForPrefetch.map((p) => p.id).join(",");
+  useEffect(() => {
+    if (!productsForPrefetch.length) return;
+    const variable = productsForPrefetch.filter(
+      (p) => p.type === "variable" && (p.variations?.length ?? 0) > 0,
+    );
+    let cancelled = false;
+    (async () => {
+      // Small concurrency window keeps the API happy on large feeds.
+      const CONCURRENCY = 4;
+      let i = 0;
+      async function worker() {
+        while (!cancelled && i < variable.length) {
+          const p = variable[i++];
+          try {
+            await qc.ensureQueryData({
+              queryKey: ["product-variations", p.id],
+              queryFn: () =>
+                getProductVariations({ data: { productId: p.id } }),
+              staleTime: VARIATIONS_STALE_MS,
+            });
+          } catch {
+            /* per-card query still handles retries + UI state */
+          }
+        }
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, variable.length) }, worker),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefetchKey, qc]);
 
   useEffect(() => {
     const el = sentinel.current;
@@ -311,8 +359,8 @@ function QuickCard({ p }: { p: WooProduct }) {
     queryKey: ["product-variations", p.id],
     queryFn: () => getProductVariations({ data: { productId: p.id } }),
     enabled: isVariable,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: VARIATIONS_STALE_MS,
+    gcTime: 24 * 60 * 60 * 1000,
   });
 
   const defaultVariation = isVariable
@@ -399,7 +447,7 @@ function QuickCard({ p }: { p: WooProduct }) {
         const res = await qc.ensureQueryData({
           queryKey: ["product-variations", p.id],
           queryFn: () => getProductVariations({ data: { productId: p.id } }),
-          staleTime: 5 * 60 * 1000,
+          staleTime: VARIATIONS_STALE_MS,
         });
         const variations = (res?.variations ?? []) as WooVariation[];
         const v = pickDefaultVariation(p, variations);
