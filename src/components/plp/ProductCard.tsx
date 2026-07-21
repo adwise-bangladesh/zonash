@@ -72,10 +72,10 @@ export function ProductCard({ p }: { p: WooProduct }) {
           {p.name}
         </p>
         <div className="mt-auto flex items-baseline gap-2">
-          <span className="text-sm font-bold text-ink sm:text-base">{formatBDT(price)}</span>
-          {p.on_sale && p.regular_price && (
+          <span className="text-sm font-bold text-ink sm:text-base">{formatBDT(sellPrice)}</span>
+          {regularPrice != null && (
             <span className="text-[11px] text-muted-foreground line-through sm:text-xs">
-              {formatBDT(p.regular_price)}
+              {formatBDT(regularPrice)}
             </span>
           )}
         </div>
