@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
-import { LayoutGrid } from "lucide-react";
+
 import { listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
-import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
@@ -136,13 +136,17 @@ function FilteredResults({
           )}
 
           {products.length === 0 && !data.error ? (
-            <EmptyState
-              icon={LayoutGrid}
-              title={q ? "No matches" : "Nothing here yet"}
+            <NotFoundView
+              bare
+              variant={q ? "not-found" : "empty"}
+              title={q ? "No matches found" : "Nothing here yet"}
               description={
-                q ? `We couldn't find anything for "${q}". Try a different word.` : "Try another filter."
+                q
+                  ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
+                  : "Try another filter or browse the full shop."
               }
-              primary={{ label: "Browse shop", to: "/products" }}
+              primaryLabel="Browse shop"
+              primaryTo="/products"
             />
           ) : (
             <ProductGrid products={products} />
