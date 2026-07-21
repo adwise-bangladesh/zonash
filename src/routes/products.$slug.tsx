@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Copy,
-  MessageCircle,
   Minus,
   Plus,
   Share2,
@@ -16,7 +15,6 @@ import {
   Undo2,
   Gem,
   PackageX,
-  Check,
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
