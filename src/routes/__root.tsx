@@ -148,6 +148,16 @@ function RootComponent() {
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
+  // Persist product / variations queries to localStorage so returning users
+  // get instant product-page renders with zero network wait.
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    void import("@/lib/query-persist").then((m) => {
+      unsub = m.attachQueryPersistence(queryClient);
+    });
+    return () => unsub?.();
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <CustomerSessionProvider>
