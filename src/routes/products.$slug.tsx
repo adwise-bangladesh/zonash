@@ -82,7 +82,7 @@ export const Route = createFileRoute("/products/$slug")({
 
 function ProductPageSkeleton() {
   return (
-    <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28 md:pb-8">
+    <div className="min-h-[100dvh] animate-pulse bg-muted/30 pb-28">
       <header className="fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-1 bg-gradient-to-b from-black/40 to-transparent px-3 md:h-14 md:px-6">
         <div className="h-9 w-9 rounded-full bg-black/25" />
         <div className="flex-1" />
@@ -398,7 +398,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-muted/30 pb-28 md:pb-8">
+    <div className="min-h-[100dvh] bg-muted/30 pb-28">
       {/* Floating transparent header — becomes solid on scroll */}
       <header
         className={`fixed inset-x-0 top-0 z-40 flex h-11 items-center gap-1 px-3 transition-all md:h-14 md:px-6 ${
@@ -535,13 +535,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </div>
 
           {/* Info */}
-          <div className="bg-background md:rounded-[3px] md:border md:border-border md:p-5">
+          <div className="bg-background">
             {/* Price + stock badge */}
-            <div className="border-b border-border p-3 md:border-none md:p-0">
+            <div className="border-b border-border p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-primary md:text-3xl">
+                    <span className="text-2xl font-extrabold text-primary">
                       {formatBDT(priceNum)}
                     </span>
                     {showOld && (
@@ -564,12 +564,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   {inStock ? "In stock" : "Sold out"}
                 </span>
               </div>
-              <h1 className="mt-2 text-[15px] font-semibold leading-snug md:text-xl">{p.name}</h1>
+              <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
             </div>
 
             {/* Highlights — show 2 lines, expand with chevron */}
             {highlights.length > 0 && (
-              <div className="p-3 md:px-0 md:pt-4">
+              <div className="p-3">
                 <div className="relative overflow-hidden rounded-[6px] border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-background to-primary/[0.06] shadow-[0_1px_0_0_rgba(0,0,0,0.02),0_8px_24px_-16px_hsl(var(--primary)/0.35)]">
                   <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
                   <div className="flex items-center justify-between gap-2 px-3 pt-3">
@@ -612,7 +612,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Variation attribute selector */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-3 border-t border-border p-3 md:border-none md:px-0 md:pt-4">
+              <div className="space-y-3 border-t border-border p-3">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
@@ -657,7 +657,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             )}
             {/* Delivery + guarantees */}
-            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center md:border-none md:px-0 md:pt-4">
+            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center">
               <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
                 <Truck className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-foreground">Fast delivery</span>
@@ -675,45 +675,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
               </div>
             </div>
 
-            {/* Desktop quantity + CTAs */}
-            <div className="hidden items-center justify-between border-t border-border p-3 md:flex md:border-none md:px-0 md:pt-5">
-              <span className="text-sm font-semibold">Quantity</span>
-              <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
-                <button
-                  aria-label="Decrease"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="grid h-9 w-9 place-items-center text-muted-foreground active:scale-95"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="w-9 text-center text-sm font-semibold">{qty}</span>
-                <button
-                  aria-label="Increase"
-                  onClick={() => setQty((q) => Math.min(99, q + 1))}
-                  className="grid h-9 w-9 place-items-center text-primary active:scale-95"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 hidden gap-2 md:flex">
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={!inStock}
-                className="h-11 flex-1 rounded-[3px] border border-primary bg-background text-sm font-bold uppercase tracking-wide text-primary disabled:opacity-40"
-              >
-                Add to cart
-              </button>
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                disabled={!inStock}
-                className="h-11 flex-1 rounded-[3px] bg-primary text-sm font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] disabled:opacity-40"
-              >
-                Buy now
-              </button>
-            </div>
           </div>
         </div>
 
@@ -722,9 +683,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <details
             open={descOpen}
             onToggle={(e) => setDescOpen((e.target as HTMLDetailsElement).open)}
-            className="mt-3 rounded-[3px] border border-border bg-background md:mt-6"
+            className="mt-3 rounded-[3px] border border-border bg-background"
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between p-3 md:p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between p-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Description
               </span>
@@ -735,14 +696,14 @@ function ProductDetail({ p }: { p: WooProduct }) {
               />
             </summary>
             <div
-              className="prose prose-sm max-w-none border-t border-dashed border-border px-3 pb-4 pt-3 text-[13px] leading-relaxed text-muted-foreground md:px-4"
+              className="prose prose-sm max-w-none border-t border-dashed border-border px-3 pb-4 pt-3 text-[13px] leading-relaxed text-muted-foreground"
               dangerouslySetInnerHTML={{ __html: longDesc }}
             />
           </details>
         )}
 
         {/* Related products — infinite feed, no header */}
-        <div className="mt-4 pb-24 md:mt-8 md:pb-8">
+        <div className="mt-4 pb-24">
           <InfiniteFeed />
         </div>
       </div>
