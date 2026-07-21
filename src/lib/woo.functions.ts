@@ -143,6 +143,49 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
     }
   });
 
+// Resolve a "collection" slug: try category first, then fall back to
+// product-by-slug and use that product's first non-uncategorized category.
+export const resolveCollection = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) =>
+    z.object({ slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/) }).parse(raw),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { wooFetch } = await import("./woo.server");
+      // 1) Try as category slug
+      const cats = await wooFetch<(WooCategory & { parent?: number })[]>({
+        path: "/products/categories",
+        query: { slug: data.slug, per_page: 1 },
+        timeoutMs: 8000,
+      }).catch(() => [] as WooCategory[]);
+      if (cats[0]) {
+        return { parent: cats[0], error: null as string | null };
+      }
+      // 2) Fall back to product slug -> first category
+      const products = await wooFetch<WooProduct[]>({
+        path: "/products",
+        query: { slug: data.slug, per_page: 1 },
+        timeoutMs: 8000,
+      }).catch(() => [] as WooProduct[]);
+      const product = products[0];
+      const productCat = product?.categories?.find(
+        (c) => c.slug && c.slug !== "uncategorized",
+      );
+      if (productCat) {
+        const full = await wooFetch<WooCategory[]>({
+          path: "/products/categories",
+          query: { slug: productCat.slug, per_page: 1 },
+          timeoutMs: 8000,
+        }).catch(() => [] as WooCategory[]);
+        return { parent: full[0] ?? { id: productCat.id, name: productCat.name, slug: productCat.slug, count: 0, image: null } as WooCategory, error: null };
+      }
+      return { parent: null as WooCategory | null, error: null };
+    } catch (e) {
+      console.error("resolveCollection failed", e);
+      return { parent: null as WooCategory | null, error: "Collection is temporarily unavailable." };
+    }
+  });
+
 // Fetch products by category slug (e.g. "mega-sale"). Resolves slug -> ID
 // server-side to avoid two client round-trips and to keep filtering safe.
 export const listProductsByCategorySlug = createServerFn({ method: "GET" })
