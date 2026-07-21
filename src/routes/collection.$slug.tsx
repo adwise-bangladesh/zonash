@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useInfiniteQuery,
@@ -6,8 +6,22 @@ import {
   useQueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight, Plus, Minus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Loader2,
+  LayoutGrid,
+  ShoppingBag,
+  Check,
+  PackageOpen,
+  Sparkles,
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus,
+  Trash2,
+} from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   getCategoryWithSubs,
@@ -16,11 +30,11 @@ import {
 } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import { formatBDT } from "@/lib/format";
 import { parsePriceHtmlMin } from "@/lib/price-range";
 import { useCart } from "@/lib/cart";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
+
 
 const categoryQuery = (slug: string) =>
   queryOptions({
@@ -144,18 +158,23 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
       staleTime: 60_000,
     });
 
+  // Flatten pages once; both the prefetch effect and the render use it.
+  const products = useMemo<WooProduct[]>(
+    () => data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [],
+    [data],
+  );
+  const prefetchKey = products.map((p) => p.id).join(",");
+
   // Warm the variation cache in the background for every variable product
   // in the current feed. `ensureQueryData` is a no-op when a fresh entry
   // already exists (in-memory or hydrated from localStorage), so returning
   // to the same slug is effectively free.
-  const productsForPrefetch: WooProduct[] =
-    data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [];
-  const prefetchKey = productsForPrefetch.map((p) => p.id).join(",");
   useEffect(() => {
-    if (!productsForPrefetch.length) return;
-    const variable = productsForPrefetch.filter(
+    if (!products.length) return;
+    const variable = products.filter(
       (p) => p.type === "variable" && (p.variations?.length ?? 0) > 0,
     );
+    if (!variable.length) return;
     let cancelled = false;
     (async () => {
       // Small concurrency window keeps the API happy on large feeds.
@@ -201,8 +220,7 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const products: WooProduct[] =
-    data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [];
+
 
   if (!enabled) {
     return (
