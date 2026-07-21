@@ -363,6 +363,8 @@ function QuickCard({ p }: { p: WooProduct }) {
     gcTime: 24 * 60 * 60 * 1000,
   });
 
+  const variationsPending = isVariable && !variationsQuery.isSuccess;
+
   const defaultVariation = isVariable
     ? pickDefaultVariation(p, (variationsQuery.data?.variations ?? []) as WooVariation[])
     : undefined;
@@ -396,6 +398,9 @@ function QuickCard({ p }: { p: WooProduct }) {
     (isVariable && defaultVariation?.image?.src) || p.images[0]?.src;
   const cardImageAlt =
     (isVariable && defaultVariation?.image?.alt) || p.images[0]?.alt || p.name;
+  // Key the <img> by src so React remounts on swap, letting us
+  // crossfade with a CSS transition instead of a hard jump.
+  const cardImageKey = cardImage ?? "empty";
 
   const inCart = items.some((i) => i.productId === (p.id || -1));
 
@@ -505,11 +510,12 @@ function QuickCard({ p }: { p: WooProduct }) {
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {cardImage ? (
           <img
+            key={cardImageKey}
             src={cardImage}
             alt={cardImageAlt}
             loading="lazy"
             decoding="async"
-            className={`h-full w-full object-cover transition-transform duration-300 ${
+            className={`h-full w-full animate-fade-in object-cover transition-transform duration-300 ${
               unavailable
                 ? "scale-100 grayscale-[0.4] opacity-60"
                 : "group-hover:scale-105"
@@ -520,6 +526,13 @@ function QuickCard({ p }: { p: WooProduct }) {
             <ShoppingBag className="h-5 w-5" />
           </div>
         )}
+
+        {/* Skeleton shimmer while variation data is still loading —
+            prevents the image/price from visibly jumping on swap. */}
+        {variationsPending && !unavailable && (
+          <div className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+        )}
+
 
         {/* Overlay state */}
         {state === "loading" && (
@@ -584,8 +597,13 @@ function QuickCard({ p }: { p: WooProduct }) {
       </div>
 
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
-        {displayPrice != null ? (
-          <>
+        {variationsPending ? (
+          <span className="flex items-center gap-1" aria-hidden="true">
+            <span className="block h-2.5 w-10 animate-pulse rounded-sm bg-muted-foreground/20" />
+            <span className="block h-2 w-6 animate-pulse rounded-sm bg-muted-foreground/10" />
+          </span>
+        ) : displayPrice != null ? (
+          <span className="flex animate-fade-in items-baseline gap-1">
             <span className={`text-[11px] font-extrabold leading-none ${unavailable ? "text-muted-foreground line-through" : "text-primary"}`}>
               {formatBDT(displayPrice)}
             </span>
@@ -594,11 +612,12 @@ function QuickCard({ p }: { p: WooProduct }) {
                 {formatBDT(displayRegular)}
               </span>
             )}
-          </>
+          </span>
         ) : (
           <span className="text-[10px] text-muted-foreground">—</span>
         )}
       </div>
+
 
       {lightbox && (
         <Lightbox
