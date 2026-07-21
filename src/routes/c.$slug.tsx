@@ -194,16 +194,25 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
 
   if (!enabled) {
     return (
-      <div className="container-page py-10">
-        <EmptyState icon={LayoutGrid} title="Collection unavailable" description="This collection isn't set up yet." />
-      </div>
+      <NotFoundView
+        variant="empty"
+        title="Collection unavailable"
+        description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
+      />
     );
   }
 
   if (isLoading && products.length === 0) return <FeedSkeleton />;
 
   if (products.length === 0) {
-    return <CollectionEmpty />;
+    return (
+      <NotFoundView
+        variant="empty"
+        title="The shelves are being restocked"
+        description="We're curating fresh pieces for this collection. New arrivals drop weekly — check back soon."
+        primaryLabel="Explore homepage"
+      />
+    );
   }
 
   return (
