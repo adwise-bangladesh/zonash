@@ -866,9 +866,14 @@ function ProductDetail({ p }: { p: WooProduct }) {
               {p.categories?.length > 0 && (
                 <InfoRow
                   label="Category"
-                  value={p.categories.map((c) => c.name).join(", ")}
+                  value={
+                    p.categories.length > 2
+                      ? `${p.categories.slice(0, 2).map((c) => c.name).join(", ")} +${p.categories.length - 2}`
+                      : p.categories.map((c) => c.name).join(", ")
+                  }
                 />
               )}
+
               {(p.tags?.length ?? 0) > 0 && (
                 <InfoRow label="Tags" value={p.tags!.map((t) => t.name).join(", ")} />
               )}
