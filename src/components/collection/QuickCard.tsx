@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { lazy, memo, Suspense, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
@@ -17,7 +17,11 @@ import { pickDefaultVariation } from "@/lib/pick-default-variation";
 import type { CartItem } from "@/lib/cart";
 import { useCart } from "@/lib/cart";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
-import { Lightbox } from "./Lightbox";
+
+// Lazy — Lightbox is only loaded when the user taps the eye button.
+const Lightbox = lazy(() =>
+  import("./Lightbox").then((m) => ({ default: m.Lightbox })),
+);
 
 // Long stale window for variation data — variations rarely change, and
 // keeping them fresh across the whole session (plus 24h in localStorage)
@@ -357,17 +361,19 @@ function QuickCardImpl({
       </div>
 
       {lightbox && (
-        <Lightbox
-          title={p.name}
-          images={
-            p.images.length > 0
-              ? p.images
-              : cardImage
-                ? [{ src: cardImage, alt: cardImageAlt }]
-                : []
-          }
-          onClose={() => setLightbox(false)}
-        />
+        <Suspense fallback={null}>
+          <Lightbox
+            title={p.name}
+            images={
+              p.images.length > 0
+                ? p.images
+                : cardImage
+                  ? [{ src: cardImage, alt: cardImageAlt }]
+                  : []
+            }
+            onClose={() => setLightbox(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
