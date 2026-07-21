@@ -76,24 +76,16 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
 
 export function BigProductGrid({
   products,
-  title,
   columns = 2,
 }: {
   products: WooProduct[];
-  title?: string;
   columns?: 2 | 3;
 }) {
   if (!products.length) return null;
   const gridClass =
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
-    <section aria-label={title || "For you"} className="pb-6">
-      {title && (
-        <div className="container-page mb-3 flex items-center gap-2">
-          <span className="h-4 w-1 rounded-full bg-primary" />
-          <h2 className="font-display text-lg font-bold text-ink md:text-xl">{title}</h2>
-        </div>
-      )}
+    <section aria-label="Products" className="pb-6">
       <div className={gridClass}>
         {products.map((p, i) => (
           <BigCard key={p.id} p={p} priority={i < 2} />
