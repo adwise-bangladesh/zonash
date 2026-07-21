@@ -159,7 +159,7 @@ function StepLandingPage() {
     ...variationsQueryOptions(product.id),
     enabled: isVariable,
   });
-  const variations: WooVariation[] = variationsQ.data ?? [];
+  const variations: WooVariation[] = variationsQ.data?.variations ?? [];
 
   // Selected variation: first in-stock by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
