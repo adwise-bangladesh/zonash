@@ -230,17 +230,6 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  if (!enabled) {
-    return (
-      <NotFoundView
-        title="Collection unavailable"
-        description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
-        primaryLabel="Browse all"
-        primaryTo="/products"
-      />
-    );
-  }
-
   if (isLoading && products.length === 0) return <GridSkeleton />;
 
   if (isError && products.length === 0) {
