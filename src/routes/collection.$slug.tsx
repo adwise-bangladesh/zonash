@@ -477,7 +477,7 @@ function QuickCard({ p }: { p: WooProduct }) {
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
         {displayPrice != null ? (
           <>
-            <span className="text-[11px] font-extrabold leading-none text-primary">
+            <span className={`text-[11px] font-extrabold leading-none ${unavailable ? "text-muted-foreground line-through" : "text-primary"}`}>
               {formatBDT(displayPrice)}
             </span>
             {displayRegular != null && (
