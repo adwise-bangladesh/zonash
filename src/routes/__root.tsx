@@ -153,11 +153,14 @@ function RootComponent() {
       <CustomerSessionProvider>
         <CartProvider>
           <GpsGate />
-          <Outlet />
+          <StorefrontFrame>
+            <Outlet />
+          </StorefrontFrame>
           <MobileBottomNav />
           <Toaster richColors position="top-right" />
         </CartProvider>
       </CustomerSessionProvider>
     </QueryClientProvider>
+
   );
 }
