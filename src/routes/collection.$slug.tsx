@@ -363,6 +363,8 @@ function QuickCard({ p }: { p: WooProduct }) {
     gcTime: 24 * 60 * 60 * 1000,
   });
 
+  const variationsPending = isVariable && !variationsQuery.isSuccess;
+
   const defaultVariation = isVariable
     ? pickDefaultVariation(p, (variationsQuery.data?.variations ?? []) as WooVariation[])
     : undefined;
@@ -396,6 +398,9 @@ function QuickCard({ p }: { p: WooProduct }) {
     (isVariable && defaultVariation?.image?.src) || p.images[0]?.src;
   const cardImageAlt =
     (isVariable && defaultVariation?.image?.alt) || p.images[0]?.alt || p.name;
+  // Key the <img> by src so React remounts on swap, letting us
+  // crossfade with a CSS transition instead of a hard jump.
+  const cardImageKey = cardImage ?? "empty";
 
   const inCart = items.some((i) => i.productId === (p.id || -1));
 
