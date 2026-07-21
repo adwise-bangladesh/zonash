@@ -203,6 +203,7 @@ export type WooProduct = {
   price: string;
   regular_price: string;
   sale_price: string;
+  price_html?: string;
   on_sale: boolean;
   stock_status: string;
   backorders?: string;
