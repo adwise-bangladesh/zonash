@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useInfiniteQuery,
@@ -6,8 +6,22 @@ import {
   useQueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight, Plus, Minus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Loader2,
+  LayoutGrid,
+  ShoppingBag,
+  Check,
+  PackageOpen,
+  Sparkles,
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus,
+  Trash2,
+} from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   getCategoryWithSubs,
@@ -16,11 +30,11 @@ import {
 } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import { formatBDT } from "@/lib/format";
 import { parsePriceHtmlMin } from "@/lib/price-range";
 import { useCart } from "@/lib/cart";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
+
 
 const categoryQuery = (slug: string) =>
   queryOptions({
