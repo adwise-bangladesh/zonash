@@ -64,7 +64,7 @@ export const Route = createFileRoute("/")({
  */
 function HomeSkeleton() {
   return (
-    <div className="mx-auto min-h-screen max-w-[480px] bg-surface-muted/40" aria-busy="true" aria-live="polite">
+    <div className="min-h-screen bg-surface-muted/40" aria-busy="true" aria-live="polite">
       {/* Header (mirrors SiteHeader h-14 / md:h-16) */}
       <div className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
         <div className="container-page flex h-14 items-center justify-between gap-3 md:h-16">
@@ -161,7 +161,7 @@ function Home() {
   const errorMessage = mega.error ?? fallback.error;
 
   return (
-    <div className="mx-auto min-h-screen max-w-[480px] bg-surface-muted/40 shadow-[0_0_40px_rgba(0,0,0,0.06)]">
+    <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
       <CategoryTabs categories={categories} />
       <main className="animate-fade-in">
