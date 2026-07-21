@@ -161,7 +161,7 @@ function Home() {
   const errorMessage = mega.error ?? fallback.error;
 
   return (
-    <div className="min-h-screen bg-surface-muted/40">
+    <div className="mx-auto min-h-screen max-w-[480px] bg-surface-muted/40 shadow-[0_0_40px_rgba(0,0,0,0.06)]">
       <AppHeader />
       <CategoryTabs categories={categories} />
       <main className="animate-fade-in">
