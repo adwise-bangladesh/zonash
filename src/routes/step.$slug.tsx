@@ -491,10 +491,9 @@ function StepLandingPage() {
             </>
           )}
         </div>
-        {/* Urgency line */}
-        <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-destructive">
-          <Clock className="h-3.5 w-3.5" aria-hidden />
-          Limited stock · Offer ends today
+        {/* Countdown urgency */}
+        <div className="mt-3">
+          <CountdownStrip />
         </div>
       </section>
 
