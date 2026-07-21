@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   queryOptions,
 } from "@tanstack/react-query";
@@ -212,6 +213,28 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
 
 type CardState = "idle" | "loading" | "added";
 
+function pickDefaultVariation(
+  p: WooProduct,
+  variations: WooVariation[],
+): WooVariation | undefined {
+  if (variations.length === 0) return undefined;
+  const defaults = p.default_attributes ?? [];
+  if (defaults.length > 0) {
+    const norm = (s: string) => s.toLowerCase().trim();
+    const match = variations.find((v) =>
+      defaults.every((d) =>
+        v.attributes.some(
+          (a) => norm(a.name) === norm(d.name) && norm(a.option) === norm(d.option),
+        ),
+      ),
+    );
+    if (match) return match;
+  }
+  return (
+    variations.find((v) => v.stock_status === "instock") ?? variations[0]
+  );
+}
+
 function QuickCard({ p }: { p: WooProduct }) {
   const { add, items } = useCart();
   const qc = useQueryClient();
@@ -219,10 +242,33 @@ function QuickCard({ p }: { p: WooProduct }) {
 
   const isVariable = p.type === "variable" && (p.variations?.length ?? 0) > 0;
 
+  // Lazy-fetch variations for variable products so we can show the
+  // default variation's price + image (falls back to price_html min).
+  const variationsQuery = useQuery({
+    queryKey: ["product-variations", p.id],
+    queryFn: () => getProductVariations({ data: { productId: p.id } }),
+    enabled: isVariable,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  const defaultVariation = isVariable
+    ? pickDefaultVariation(p, (variationsQuery.data?.variations ?? []) as WooVariation[])
+    : undefined;
+
   // Prices ------------------------------------------------------------
   let displayPrice: number | null = null;
   let displayRegular: number | null = null;
-  if (isVariable) {
+  if (isVariable && defaultVariation) {
+    const sale = parseFloat(defaultVariation.sale_price || "0");
+    const base = parseFloat(defaultVariation.price || "0");
+    const regular = parseFloat(defaultVariation.regular_price || "0");
+    const cur = sale > 0 ? sale : base;
+    displayPrice = Number.isFinite(cur) && cur > 0 ? cur : null;
+    displayRegular =
+      Number.isFinite(regular) && regular > (cur || 0) ? regular : null;
+  } else if (isVariable) {
+    // Still loading variations — show min from price_html as a placeholder.
     const range = parsePriceHtmlMin(p.price_html);
     displayPrice = range.sale ?? range.regular;
     displayRegular = range.regular && range.sale ? range.regular : null;
@@ -235,6 +281,11 @@ function QuickCard({ p }: { p: WooProduct }) {
       p.on_sale && Number.isFinite(reg) && reg > (cur || 0) ? reg : null;
   }
 
+  const cardImage =
+    (isVariable && defaultVariation?.image?.src) || p.images[0]?.src;
+  const cardImageAlt =
+    (isVariable && defaultVariation?.image?.alt) || p.images[0]?.alt || p.name;
+
   const inCart = items.some((i) => i.productId === (p.id || -1));
 
   async function handleAdd(e: React.MouseEvent) {
@@ -243,7 +294,6 @@ function QuickCard({ p }: { p: WooProduct }) {
 
     try {
       if (!isVariable) {
-        // Simple product — add straight away.
         const price =
           p.on_sale && p.sale_price
             ? parseFloat(p.sale_price)
@@ -260,7 +310,6 @@ function QuickCard({ p }: { p: WooProduct }) {
           image: p.images[0]?.src,
         });
       } else {
-        // Variable — silently pick the first in-stock variation.
         setState("loading");
         const res = await qc.ensureQueryData({
           queryKey: ["product-variations", p.id],
@@ -268,9 +317,7 @@ function QuickCard({ p }: { p: WooProduct }) {
           staleTime: 5 * 60 * 1000,
         });
         const variations = (res?.variations ?? []) as WooVariation[];
-        const v =
-          variations.find((x) => x.stock_status === "instock") ??
-          variations[0];
+        const v = pickDefaultVariation(p, variations);
         if (!v) {
           setState("idle");
           return;
@@ -298,6 +345,7 @@ function QuickCard({ p }: { p: WooProduct }) {
     }
   }
 
+
   return (
     <button
       type="button"
@@ -306,10 +354,10 @@ function QuickCard({ p }: { p: WooProduct }) {
       className="group relative flex flex-col overflow-hidden rounded-lg bg-white text-left shadow-sm ring-1 ring-border/60 transition-all duration-200 active:scale-[0.97]"
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
-        {p.images[0] ? (
+        {cardImage ? (
           <img
-            src={p.images[0].src}
-            alt={p.images[0].alt || p.name}
+            src={cardImage}
+            alt={cardImageAlt}
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -354,11 +402,6 @@ function QuickCard({ p }: { p: WooProduct }) {
       <div className="flex items-baseline justify-center gap-1 px-1 py-1.5">
         {displayPrice != null ? (
           <>
-            {isVariable && (
-              <span className="text-[9px] font-medium leading-none text-muted-foreground">
-                from
-              </span>
-            )}
             <span className="text-[11px] font-extrabold leading-none text-primary">
               {formatBDT(displayPrice)}
             </span>
