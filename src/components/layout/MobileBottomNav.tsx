@@ -43,12 +43,13 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <div className="h-16 md:hidden" aria-hidden />
+      <div className="h-16" aria-hidden />
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around gap-1 border-t border-border bg-background/95 px-2 pt-1.5 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-[480px] items-stretch justify-around gap-1 border-x border-t border-border bg-background/95 px-2 pt-1.5 backdrop-blur"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)" }}
       >
+
         {items.map(({ label, href, icon: Icon, cart, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           const badge = cart ? count : undefined;
