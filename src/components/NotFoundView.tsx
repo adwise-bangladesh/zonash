@@ -1,34 +1,61 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Home, Search, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Home,
+  Search,
+  Sparkles,
+  RotateCcw,
+  AlertTriangle,
+  PackageX,
+  LayoutGrid,
+  type LucideIcon,
+} from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 
+export type NotFoundVariant = "not-found" | "error" | "empty";
+
 type Props = {
+  variant?: NotFoundVariant;
   code?: string;
   title?: string;
   description?: string;
   primaryLabel?: string;
   primaryTo?: string;
+  /** When provided, primary CTA becomes a button and triggers this retry. */
+  onRetry?: () => void;
+  /** Override the illustration mark. Defaults per variant. */
+  icon?: LucideIcon;
 };
 
 /**
- * App-native empty / not-found view. Used by the root 404 boundary and by
- * storefront pages that need a "nothing here" screen (missing collection,
- * unavailable category, etc.). Always renders the site header.
+ * App-native empty / not-found / error view. Used by the root 404 boundary
+ * and by storefront pages that need a "nothing here" or "something broke"
+ * screen. Always renders the site header for consistency.
  */
 export function NotFoundView({
-  code = "404",
-  title = "Page not found",
-  description = "The page you're looking for doesn't exist or has moved.",
-  primaryLabel = "Back to home",
+  variant = "not-found",
+  code,
+  title,
+  description,
+  primaryLabel,
   primaryTo = "/",
+  onRetry,
+  icon,
 }: Props) {
+  const defaults = VARIANT_DEFAULTS[variant];
+  const resolvedCode = code ?? defaults.code;
+  const resolvedTitle = title ?? defaults.title;
+  const resolvedDescription = description ?? defaults.description;
+  const resolvedPrimaryLabel =
+    primaryLabel ?? (onRetry ? "Try again" : defaults.primaryLabel);
+  const HeroIcon = icon ?? defaults.icon;
+
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
-      <main className="flex min-h-[calc(100vh-64px)] flex-col items-center justify-start px-5 pt-6 pb-24">
+      <main className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-[480px] flex-col items-center justify-start px-5 pt-6 pb-24">
         {/* Hero card */}
         <div className="relative w-full overflow-hidden rounded-[28px] bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent px-6 pt-9 pb-7 text-center ring-1 ring-primary/10">
-          {/* Soft blobs */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -top-16 -right-14 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
@@ -42,7 +69,10 @@ export function NotFoundView({
           <div className="relative mx-auto mb-5 grid h-28 w-28 place-items-center">
             <div className="absolute inset-0 rounded-full bg-primary/10" />
             <div className="absolute inset-2 rounded-full bg-background shadow-inner ring-1 ring-primary/10" />
-            <FloatingBag />
+            <HeroIcon
+              className="relative h-12 w-12 text-primary"
+              strokeWidth={1.75}
+            />
             <Sparkles
               className="absolute -top-1 right-2 h-4 w-4 text-primary/60"
               strokeWidth={2}
@@ -53,25 +83,35 @@ export function NotFoundView({
             />
           </div>
 
-          {/* Text */}
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-primary/70">
-            Error {code}
+            {resolvedCode}
           </p>
           <h1 className="mt-2 text-[22px] font-semibold tracking-tight text-ink">
-            {title}
+            {resolvedTitle}
           </h1>
           <p className="mx-auto mt-2 max-w-[300px] text-[13px] leading-relaxed text-muted-foreground">
-            {description}
+            {resolvedDescription}
           </p>
 
           {/* Primary CTA */}
-          <Link
-            to={primaryTo}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
-          >
-            <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
-            {primaryLabel}
-          </Link>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
+            >
+              <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
+              {resolvedPrimaryLabel}
+            </button>
+          ) : (
+            <Link
+              to={primaryTo}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_rgba(74,15,15,0.55)] transition active:scale-[0.98]"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+              {resolvedPrimaryLabel}
+            </Link>
+          )}
         </div>
 
         {/* Quick actions */}
@@ -93,6 +133,40 @@ export function NotFoundView({
     </div>
   );
 }
+
+const VARIANT_DEFAULTS: Record<
+  NotFoundVariant,
+  {
+    code: string;
+    title: string;
+    description: string;
+    primaryLabel: string;
+    icon: LucideIcon;
+  }
+> = {
+  "not-found": {
+    code: "Error 404",
+    title: "Page not found",
+    description: "The page you're looking for doesn't exist or has moved.",
+    primaryLabel: "Back to home",
+    icon: PackageX,
+  },
+  error: {
+    code: "Something broke",
+    title: "This page didn't load",
+    description:
+      "We hit a snag loading this page. You can try again or head back home.",
+    primaryLabel: "Try again",
+    icon: AlertTriangle,
+  },
+  empty: {
+    code: "Nothing here yet",
+    title: "This collection is empty",
+    description: "We're stocking the shelves. Browse everything else in the shop.",
+    primaryLabel: "Browse all",
+    icon: LayoutGrid,
+  },
+};
 
 function QuickAction({
   to,
@@ -122,28 +196,5 @@ function QuickAction({
         </span>
       </span>
     </Link>
-  );
-}
-
-/** Playful "empty shopping bag" mark, drawn inline. */
-function FloatingBag() {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      className="relative h-14 w-14 text-primary"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 22h28l-2.5 26a4 4 0 0 1-4 3.6H24.5a4 4 0 0 1-4-3.6L18 22z" />
-      <path d="M25 22v-3a7 7 0 0 1 14 0v3" />
-      <path
-        d="M27 34c1.4 1.6 3.2 2.4 5 2.4s3.6-.8 5-2.4"
-        className="text-primary/60"
-      />
-    </svg>
   );
 }
