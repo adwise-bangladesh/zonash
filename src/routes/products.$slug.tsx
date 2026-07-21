@@ -422,7 +422,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <span
-          className={`min-w-0 flex-1 truncate text-sm font-semibold transition-opacity md:text-base ${
+          className={`min-w-0 flex-1 truncate text-sm font-semibold transition-opacity ${
             scrolled ? "opacity-100" : "opacity-0"
           }`}
         >
