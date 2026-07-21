@@ -218,7 +218,7 @@ function FilteredResults({
 
 function ProductGrid({ products }: { products: WooProduct[] }) {
   return (
-    <ul className="grid grid-cols-3 gap-1.5">
+    <ul className="grid grid-cols-2 gap-2">
       {products.map((p) => {
         const img = p.images?.[0]?.src;
         const priceNum = parseFloat(p.sale_price && p.on_sale ? p.sale_price : p.price) || 0;
