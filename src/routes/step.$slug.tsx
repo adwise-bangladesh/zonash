@@ -761,35 +761,6 @@ function StepLandingPage() {
         </Link>
       </div>
 
-      {/* Sticky bottom CTA */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-x border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-extrabold text-primary tabular-nums">{formatBDT(total)}</span>
-              {showStrike && (
-                <span className="text-[11px] text-muted-foreground line-through tabular-nums">
-                  {formatBDT(effectiveRegular * qty + shipping)}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="submit"
-            form="step-order-form"
-            disabled={submitting || !inStock}
-            className="flex h-11 flex-[1.4] items-center justify-center gap-1.5 rounded-[6px] bg-gradient-to-r from-primary to-primary/90 px-3 text-sm font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99] disabled:opacity-60"
-          >
-            <Lock className="h-4 w-4" aria-hidden />
-            {submitting ? "Placing…" : "Order now"}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      </div>
 
       {submitting && (
         <div
