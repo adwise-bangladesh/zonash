@@ -266,12 +266,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const isVariable = p.type === "variable" && (p.variations?.length ?? 0) > 0;
 
-  // ---------- Variations ----------
+  // ---------- Variations ---------- (shared queryOptions → dedupes with loader prefetch)
   const variationsQuery = useQuery({
-    queryKey: ["product-variations", p.id],
-    queryFn: () => getProductVariations({ data: { productId: p.id } }),
+    ...variationsQueryOptions(p.id),
     enabled: isVariable,
-    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
   const variations = useMemo<WooVariation[]>(
