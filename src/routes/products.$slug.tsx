@@ -616,25 +616,24 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-4 border-t border-border bg-gradient-to-b from-primary/[0.03] to-transparent p-3">
+              <div className="space-y-5 border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent px-4 py-5">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
                   return (
                     <div key={attr.id + attr.name}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-3 w-0.5 rounded-full bg-primary" />
-                          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-foreground">
-                            Choose {attr.name}
-                          </span>
-                        </div>
+                      <div className="mb-3 flex items-center gap-3">
+                        <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Choose {attr.name}
+                        </span>
                         {current && (
-                          <span className="text-[11px] font-semibold text-primary">
+                          <span className="ml-auto text-[11px] font-semibold text-primary">
                             {current}
                           </span>
                         )}
                       </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         {options.map((opt) => {
                           const active = current === opt;
