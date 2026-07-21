@@ -541,8 +541,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+        </div>
 
           {/* Info — blended hero block (gallery → title → variations → trust) */}
           <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
@@ -696,7 +695,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 })}
               </div>
             )}
-          </div>
         </div>
 
         {/* Collapsible info sections */}
