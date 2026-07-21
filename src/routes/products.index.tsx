@@ -61,6 +61,7 @@ export const Route = createFileRoute("/products/")({
   }),
   loader: async ({ context, deps }) => {
     const sort = deps.sort as SortKey;
+    void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => {});
     if (deps.q || deps.featured) {
       await context.queryClient.ensureQueryData(
         searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
@@ -86,6 +87,7 @@ export const Route = createFileRoute("/products/")({
       })
       .catch(() => {});
   },
+
   component: Products,
 });
 
