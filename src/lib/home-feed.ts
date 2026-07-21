@@ -6,6 +6,9 @@
  * React, WooCommerce, or a network layer.
  */
 
+export const FEED_PER_PAGE = 18;
+export const feedQueryKey = ["home", "feed", FEED_PER_PAGE] as const;
+
 export type FeedProduct = { id: number };
 
 export type FeedPage<P extends FeedProduct = FeedProduct> = {

@@ -3,11 +3,13 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import { dedupeFeedPages, getFeedNextPageParam } from "@/lib/home-feed";
+import {
+  dedupeFeedPages,
+  getFeedNextPageParam,
+  FEED_PER_PAGE,
+  feedQueryKey,
+} from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
-
-export const FEED_PER_PAGE = 18;
-export const feedQueryKey = ["home", "feed", FEED_PER_PAGE] as const;
 
 export function InfiniteFeed() {
   const sentinel = useRef<HTMLDivElement>(null);
