@@ -720,9 +720,14 @@ function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`${title} images`}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
+      {/* Content column — constrained to the storefront's 480px frame so
+          the lightbox sits inside the mobile-shaped layout on desktop.
+          The dark backdrop above still covers the full viewport. */}
+      <div className="relative mx-auto flex h-full w-full max-w-[480px] items-center justify-center">
+
       {/* Header — rendered with z-20 so it sits above the slides layer;
           otherwise the full-size slides div would swallow clicks on the
           close (X) button. */}
@@ -830,7 +835,9 @@ function Lightbox({
           ))}
         </div>
       )}
+      </div>
     </div>,
+
     document.body,
   );
 }
