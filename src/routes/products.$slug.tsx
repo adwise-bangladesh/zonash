@@ -4,6 +4,8 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
   ChevronDown,
+  Copy,
+  MessageCircle,
   Minus,
   Plus,
   Share2,
