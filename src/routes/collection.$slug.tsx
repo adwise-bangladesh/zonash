@@ -195,10 +195,8 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
             await qc.ensureQueryData({
               queryKey: ["product-variations", p.id],
               queryFn: () =>
-                getProductVariations({
-                  data: { productId: p.id },
-                  signal: ac.signal,
-                }),
+                getProductVariations({ data: { productId: p.id } }),
+
               staleTime: VARIATIONS_STALE_MS,
             });
           } catch {
