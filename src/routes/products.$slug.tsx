@@ -570,65 +570,70 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
           {/* Info */}
           <div className="bg-background">
-            {/* Price + stock badge */}
-            <div className="border-b border-border p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-primary">
-                      {formatBDT(priceNum)}
-                    </span>
-                    {showOld && (
-                      <span className="text-sm text-muted-foreground line-through">
-                        {formatBDT(oldPrice)}
-                      </span>
-                    )}
-                    {discount > 0 && (
-                      <span className="rounded-[3px] bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
-                        -{discount}%
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {/* Title + price */}
+            <div className="border-b border-border px-4 pb-4 pt-5">
+              <div className="mb-2 flex items-center gap-2">
                 <span
-                  className={`shrink-0 rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                    inStock
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive"
                   }`}
                 >
+                  <span
+                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                  />
                   {inStock ? "In stock" : "Sold out"}
                 </span>
+                {p.rating_count > 0 && (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Stars value={parseFloat(p.average_rating) || 0} />
+                    <span className="font-semibold text-foreground">{p.average_rating}</span>
+                    <span>({p.rating_count})</span>
+                  </span>
+                )}
               </div>
-              <h1 className="mt-2 text-[15px] font-semibold leading-snug">{p.name}</h1>
-              {p.rating_count > 0 && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
-                  <Stars value={parseFloat(p.average_rating) || 0} />
-                  <span className="font-semibold text-foreground">{p.average_rating}</span>
-                  <span className="text-muted-foreground">({p.rating_count} reviews)</span>
-                </div>
-              )}
+              <h1 className="text-[17px] font-semibold leading-snug text-foreground">
+                {p.name}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                <span className="text-[26px] font-extrabold leading-none text-primary">
+                  {formatBDT(priceNum)}
+                </span>
+                {showOld && (
+                  <span className="text-[13px] text-muted-foreground line-through">
+                    {formatBDT(oldPrice)}
+                  </span>
+                )}
+                {discount > 0 && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                    Save {discount}%
+                  </span>
+                )}
+              </div>
             </div>
+
 
             {/* Variation attribute selector — landing-page style with per-option savings */}
             {isVariable && variationAttrs.length > 0 && (
-              <div className="space-y-4 border-t border-border bg-gradient-to-b from-primary/[0.03] to-transparent p-3">
+              <div className="space-y-5 border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent px-4 py-5">
                 {variationAttrs.map((attr) => {
                   const options = attr.options ?? [];
                   const current = selected[attr.name];
                   return (
                     <div key={attr.id + attr.name}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-3 w-0.5 rounded-full bg-primary" />
-                          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-foreground">
-                            Choose {attr.name}
-                          </span>
-                        </div>
+                      <div className="mb-3 flex items-center gap-3">
+                        <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Choose {attr.name}
+                        </span>
                         {current && (
-                          <span className="text-[11px] font-semibold text-primary">
+                          <span className="ml-auto text-[11px] font-semibold text-primary">
                             {current}
                           </span>
                         )}
                       </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         {options.map((opt) => {
                           const active = current === opt;
@@ -724,7 +729,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
             {/* Highlights — quiet editorial list, mask-faded with See more */}
             {highlights.length > 0 && (
-              <div className="border-t border-border px-3 py-4">
+              <div className="border-b border-border px-4 py-5">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
                   <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -778,28 +783,38 @@ function ProductDetail({ p }: { p: WooProduct }) {
             )}
 
             {/* Delivery + guarantees */}
-            <div className="grid grid-cols-3 gap-2 border-t border-border p-3 text-center">
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Truck className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Fast delivery</span>
-                <span>1-3 days</span>
+            <div className="px-4 py-5">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Why buy from Zonash
+                </span>
               </div>
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Undo2 className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Easy returns</span>
-                <span>7-day</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 text-[10px] text-muted-foreground">
-                <Shield className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Guarantee</span>
-                <span>Authentic</span>
+              <div className="grid grid-cols-3 divide-x divide-border rounded-[6px] border border-border bg-muted/20">
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Truck className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Fast delivery</span>
+                  <span>1-3 days</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Undo2 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Easy returns</span>
+                  <span>7-day</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 py-3 text-[10px] text-muted-foreground">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground">Guarantee</span>
+                  <span>Authentic</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
+
         {/* Collapsible info sections */}
-        <div className="mt-3 space-y-2">
+        <div className="mt-2 divide-y divide-border border-y border-border bg-background">
+
           {longDesc && (
             <CollapsibleSection title="Description" defaultOpen={descOpen} onToggle={setDescOpen}>
               <div
@@ -1018,7 +1033,7 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div className="overflow-hidden rounded-[6px] border border-border bg-background">
+    <div className="bg-background">
       <button
         type="button"
         onClick={() => {
@@ -1029,21 +1044,21 @@ function CollapsibleSection({
           });
         }}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-3 py-3 text-left"
+        className="flex w-full items-center gap-3 px-4 py-4 text-left"
       >
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
+        <span className="h-px w-6 shrink-0 bg-primary/40" aria-hidden="true" />
+        <span className="flex-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {title}
         </span>
         <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && (
-        <div className="border-t border-dashed border-border px-3 pb-4 pt-3">{children}</div>
-      )}
+      {open && <div className="px-4 pb-5">{children}</div>}
     </div>
   );
 }
+
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
