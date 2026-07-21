@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
+import { LayoutGrid } from "lucide-react";
 
-import { listProducts } from "@/lib/woo.functions";
+import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
@@ -10,6 +11,13 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
+const primaryCategoriesQuery = queryOptions({
+  queryKey: ["categories", "primary"],
+  queryFn: () => listPrimaryCategories(),
+  staleTime: 5 * 60_000,
+});
+
 
 const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "title"] as const;
 
@@ -53,6 +61,7 @@ export const Route = createFileRoute("/products/")({
   }),
   loader: async ({ context, deps }) => {
     const sort = deps.sort as SortKey;
+    void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => {});
     if (deps.q || deps.featured) {
       await context.queryClient.ensureQueryData(
         searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
@@ -78,6 +87,7 @@ export const Route = createFileRoute("/products/")({
       })
       .catch(() => {});
   },
+
   component: Products,
 });
 
@@ -95,13 +105,62 @@ function Shop({ sort }: { sort: SortKey }) {
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
+      <PrimaryCategoryStrip />
       <SortTabs active={sort} />
       <main className="animate-fade-in">
-        <InfiniteFeed orderby={orderby} order={order} />
+        <div className="pt-2">
+          <InfiniteFeed orderby={orderby} order={order} columns={2} />
+        </div>
       </main>
     </div>
   );
 }
+
+function PrimaryCategoryStrip() {
+  const { data } = useSuspenseQuery(primaryCategoriesQuery);
+  const cats = data.categories as WooCategory[];
+  if (!cats.length) return null;
+  return (
+    <nav aria-label="Shop categories" className="bg-background pt-3 pb-3">
+      <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {cats.map((c) => (
+          <li
+            key={c.id}
+            className="shrink-0 basis-[22%] snap-start md:basis-[14%] lg:basis-[10%]"
+          >
+            <Link
+              to="/c/$slug"
+              params={{ slug: c.slug }}
+              preload="intent"
+              className="group flex flex-col items-center gap-1.5"
+              aria-label={c.name}
+            >
+              <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
+                {c.image?.src ? (
+                  <img
+                    src={c.image.src}
+                    alt={c.image.alt || c.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <span className="grid h-full w-full place-items-center bg-surface-muted text-muted-foreground/60">
+                    <LayoutGrid className="h-5 w-5" />
+                  </span>
+                )}
+              </span>
+              <span className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-ink md:text-[12px]">
+                {c.name}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 
 function FilteredResults({
   q,
@@ -159,7 +218,7 @@ function FilteredResults({
 
 function ProductGrid({ products }: { products: WooProduct[] }) {
   return (
-    <ul className="grid grid-cols-3 gap-1.5">
+    <ul className="grid grid-cols-2 gap-2">
       {products.map((p) => {
         const img = p.images?.[0]?.src;
         const priceNum = parseFloat(p.sale_price && p.on_sale ? p.sale_price : p.price) || 0;

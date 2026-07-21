@@ -17,10 +17,13 @@ type Order = "asc" | "desc";
 export function InfiniteFeed({
   orderby = "date",
   order,
+  columns = 3,
 }: {
   orderby?: Orderby;
   order?: Order;
+  columns?: 2 | 3;
 } = {}) {
+
   const sentinel = useRef<HTMLDivElement>(null);
   const isDefault = orderby === "date" && !order;
 
@@ -54,7 +57,7 @@ export function InfiniteFeed({
 
   return (
     <>
-      <BigProductGrid products={products} columns={3} />
+      <BigProductGrid products={products} columns={columns} />
       <div ref={sentinel} className="flex items-center justify-center py-6 text-muted-foreground">
         {(isLoading || isFetchingNextPage) && (
           <span className="inline-flex items-center gap-2 text-sm">

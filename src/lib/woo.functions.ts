@@ -116,6 +116,25 @@ export const listCategories = createServerFn({ method: "GET" })
     }
   });
 
+// Fetch top-level (parent=0) categories for the shop landing.
+export const listPrimaryCategories = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
+        path: "/products/categories",
+        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc" },
+      });
+      return {
+        categories: cats.filter((c) => c.slug !== "uncategorized"),
+        error: null as string | null,
+      };
+    } catch (e) {
+      console.error("listPrimaryCategories failed", e);
+      return { categories: [] as WooCategory[], error: "Categories are temporarily unavailable." };
+    }
+  });
+
+
 // Fetch a single category by slug plus its immediate child categories.
 export const getCategoryWithSubs = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
