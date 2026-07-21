@@ -17,10 +17,13 @@ type Order = "asc" | "desc";
 export function InfiniteFeed({
   orderby = "date",
   order,
+  columns = 3,
 }: {
   orderby?: Orderby;
   order?: Order;
+  columns?: 2 | 3;
 } = {}) {
+
   const sentinel = useRef<HTMLDivElement>(null);
   const isDefault = orderby === "date" && !order;
 
