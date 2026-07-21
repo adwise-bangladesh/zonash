@@ -723,9 +723,11 @@ function Lightbox({
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
-      {/* Header */}
+      {/* Header — rendered with z-20 so it sits above the slides layer;
+          otherwise the full-size slides div would swallow clicks on the
+          close (X) button. */}
       <div
-        className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 bg-gradient-to-b from-black/60 to-transparent px-4 pb-8 pt-3"
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-w-0">
@@ -736,13 +738,17 @@ function Lightbox({
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           aria-label="Close preview"
-          className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition hover:bg-white/20 active:scale-95"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
       </div>
+
 
       {/* Slides */}
       <div
