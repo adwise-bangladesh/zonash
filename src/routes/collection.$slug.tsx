@@ -140,7 +140,7 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
     () => data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [],
     [data],
   );
-  const prefetchKey = products.map((p) => p.id).join(",");
+  const prefetchKey = useMemo(() => products.map((p) => p.id).join(","), [products]);
 
   // O(1) cart lookup instead of O(n) find per card
   const cartMap = useMemo(() => {
