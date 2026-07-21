@@ -64,6 +64,21 @@ export const Route = createFileRoute("/products/$slug")({
   component: ProductPage,
   pendingComponent: ProductPageSkeleton,
   pendingMs: 0,
+  errorComponent: ({ error, reset }) => {
+    const message =
+      error instanceof Error ? error.message : "Something went wrong loading this product.";
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-background">
+        <EmptyState
+          icon={PackageX}
+          title="Couldn't load product"
+          description={message}
+          primary={{ label: "Try again", onClick: () => reset() }}
+          secondary={{ label: "Back to home", to: "/" }}
+        />
+      </div>
+    );
+  },
   notFoundComponent: () => (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <EmptyState
