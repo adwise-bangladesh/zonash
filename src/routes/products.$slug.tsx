@@ -699,7 +699,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 })}
               </div>
             )}
-
           </div>
         </div>
 
@@ -787,7 +786,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 .map((a) => (
                   <InfoRow key={a.id + a.name} label={a.name} value={a.options!.join(", ")} />
                 ))}
-              {p.categories?.length > 0 && (
+              {(p.categories?.length ?? 0) > 0 && (
                 <InfoRow
                   label="Category"
                   value={
@@ -912,25 +911,17 @@ function CollapsibleSection({
   title,
   children,
   defaultOpen,
-  onToggle,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
-  onToggle?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
     <div className="bg-background">
       <button
         type="button"
-        onClick={() => {
-          setOpen((v) => {
-            const next = !v;
-            onToggle?.(next);
-            return next;
-          });
-        }}
+        onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-4 text-left"
       >
