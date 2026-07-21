@@ -547,21 +547,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 ))}
               </div>
             )}
-            {gallery.length > 1 && (
-              <div className="mt-3 hidden grid-cols-6 gap-2 md:grid">
-                {gallery.slice(0, 6).map((src: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => scrollToImg(i)}
-                    className={`aspect-square overflow-hidden rounded-[3px] ${
-                      i === activeImg ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Info */}
