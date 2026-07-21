@@ -221,13 +221,12 @@ function ProductFeed({ categoryId }: { categoryId: number | null }) {
 
   if (!enabled) {
     return (
-      <div className="px-[5px] pt-6">
-        <EmptyState
-          icon={LayoutGrid}
-          title="Collection unavailable"
-          description="This collection isn't set up yet."
-        />
-      </div>
+      <NotFoundView
+        title="Collection unavailable"
+        description="This collection isn't set up yet. Explore the rest of the shop while we get it ready."
+        primaryLabel="Browse all"
+        primaryTo="/products"
+      />
     );
   }
 
