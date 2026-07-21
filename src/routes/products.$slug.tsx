@@ -329,9 +329,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const lastInteractRef = useRef(0);
   const onGalleryScroll = () => {
     const el = galleryRef.current;
     if (!el) return;
+    lastInteractRef.current = Date.now();
     const i = Math.round(el.scrollLeft / el.clientWidth);
     if (i !== activeImg) setActiveImg(i);
   };
@@ -348,6 +350,20 @@ function ProductDetail({ p }: { p: WooProduct }) {
     if (idx >= 0 && idx !== activeImg) scrollToImg(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImage]);
+
+  // Auto-advance slideshow (pauses ~6s after any user interaction).
+  useEffect(() => {
+    if (gallery.length < 2) return;
+    const id = window.setInterval(() => {
+      if (Date.now() - lastInteractRef.current < 6000) return;
+      if (document.hidden) return;
+      const el = galleryRef.current;
+      if (!el) return;
+      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % gallery.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, 3500);
+    return () => window.clearInterval(id);
+  }, [gallery.length]);
 
   const addLine = () => {
     const variantSuffix = matchedVariation
@@ -492,6 +508,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <div
                 ref={galleryRef}
                 onScroll={onGalleryScroll}
+                onTouchStart={() => (lastInteractRef.current = Date.now())}
+                onPointerDown={() => (lastInteractRef.current = Date.now())}
                 className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {(gallery.length ? gallery : [""]).map((src: string, i: number) => (
@@ -530,21 +548,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </div>
               )}
             </div>
-            {gallery.length > 1 && (
-              <div className="grid grid-cols-6 gap-1 border-y border-border bg-background p-1">
-                {gallery.slice(0, 6).map((src: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => scrollToImg(i)}
-                    className={`aspect-square overflow-hidden rounded-[3px] ${
-                      i === activeImg ? "ring-2 ring-primary" : "opacity-70"
-                    }`}
-                  >
-                    <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Info */}
