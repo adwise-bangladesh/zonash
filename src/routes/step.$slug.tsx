@@ -631,7 +631,7 @@ function StepLandingPage() {
         <div className="grid grid-cols-3 gap-2">
           {[
             { icon: Truck, label: "Fast delivery" },
-            { icon: Undo2, label: "7-day return" },
+            { icon: Undo2, label: "Instant return" },
             { icon: ShieldCheck, label: "100% Authentic" },
           ].map((b) => (
             <div key={b.label} className="flex flex-col items-center gap-1 rounded-[6px] border border-border bg-background p-3 text-center">
