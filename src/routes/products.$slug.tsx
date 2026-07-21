@@ -329,9 +329,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const lastInteractRef = useRef(0);
   const onGalleryScroll = () => {
     const el = galleryRef.current;
     if (!el) return;
+    lastInteractRef.current = Date.now();
     const i = Math.round(el.scrollLeft / el.clientWidth);
     if (i !== activeImg) setActiveImg(i);
   };
@@ -348,6 +350,20 @@ function ProductDetail({ p }: { p: WooProduct }) {
     if (idx >= 0 && idx !== activeImg) scrollToImg(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImage]);
+
+  // Auto-advance slideshow (pauses ~6s after any user interaction).
+  useEffect(() => {
+    if (gallery.length < 2) return;
+    const id = window.setInterval(() => {
+      if (Date.now() - lastInteractRef.current < 6000) return;
+      if (document.hidden) return;
+      const el = galleryRef.current;
+      if (!el) return;
+      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % gallery.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, 3500);
+    return () => window.clearInterval(id);
+  }, [gallery.length]);
 
   const addLine = () => {
     const variantSuffix = matchedVariation
