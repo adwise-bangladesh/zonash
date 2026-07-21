@@ -1033,7 +1033,7 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div className="overflow-hidden rounded-[6px] border border-border bg-background">
+    <div className="bg-background">
       <button
         type="button"
         onClick={() => {
@@ -1044,21 +1044,21 @@ function CollapsibleSection({
           });
         }}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-3 py-3 text-left"
+        className="flex w-full items-center gap-3 px-4 py-4 text-left"
       >
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
+        <span className="h-px w-6 shrink-0 bg-primary/40" aria-hidden="true" />
+        <span className="flex-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {title}
         </span>
         <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && (
-        <div className="border-t border-dashed border-border px-3 pb-4 pt-3">{children}</div>
-      )}
+      {open && <div className="px-4 pb-5">{children}</div>}
     </div>
   );
 }
+
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
