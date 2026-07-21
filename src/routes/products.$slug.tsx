@@ -552,16 +552,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
             {/* Title + price */}
             <div className="border-b border-border px-4 pb-4 pt-5">
               <div className="mb-2 flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  <span
-                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
-                  />
-                  {inStock ? "In stock" : "Sold out"}
-                </span>
                 {p.rating_count > 0 && (
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Stars value={parseFloat(p.average_rating) || 0} />
@@ -585,6 +575,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     Save {discount}%
                   </span>
                 )}
+                <span
+                  className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                    inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  <span
+                    className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                  />
+                  {inStock ? "In stock" : "Sold out"}
+                </span>
               </div>
             </div>
 
