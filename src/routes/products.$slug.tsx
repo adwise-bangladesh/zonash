@@ -349,13 +349,24 @@ function ProductDetail({ p }: { p: WooProduct }) {
   }, []);
 
   const lastInteractRef = useRef(0);
+  const scrollRafRef = useRef(0);
   const onGalleryScroll = () => {
-    const el = galleryRef.current;
-    if (!el) return;
     lastInteractRef.current = Date.now();
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== activeImg) setActiveImg(i);
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const el = galleryRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((prev) => (prev === i ? prev : i));
+    });
   };
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    },
+    [],
+  );
   const scrollToImg = (i: number) => {
     const el = galleryRef.current;
     if (!el) return;
