@@ -23,7 +23,7 @@ export function attachQueryPersistence(queryClient: QueryClient): () => void {
       throttleTime: 1000,
     });
     const [unsubscribe] = persistQueryClient({
-      queryClient,
+      queryClient: queryClient as unknown as Parameters<typeof persistQueryClient>[0]["queryClient"],
       persister,
       maxAge: MAX_AGE_MS,
       buster: "v1",
