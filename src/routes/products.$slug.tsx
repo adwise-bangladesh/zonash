@@ -309,6 +309,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const stockStatus = matchedVariation?.stock_status ?? p.stock_status;
   const inStock = stockStatus === "instock";
   const activeImage = matchedVariation?.image?.src;
+  const activeSku = ((matchedVariation?.sku || p.sku || "") + "").trim();
 
   const highlights = useMemo(
     () => parseHighlights(p.short_description ?? ""),
