@@ -129,19 +129,19 @@ function HomeSkeleton() {
         </section>
       </div>
 
-      {/* Product grid (matches BigProductGrid) */}
-      <div className="grid grid-cols-2 gap-2 px-[5px]">
-        {Array.from({ length: 8 }).map((_, i) => (
+      {/* Product grid (matches BigProductGrid — 3 columns for the feed) */}
+      <div className="grid grid-cols-3 gap-1.5 px-[5px]">
+        {Array.from({ length: 9 }).map((_, i) => (
           <div
             key={i}
             className="skeleton-row-fade flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60"
             style={{ animationDelay: `${i * 45}ms` }}
           >
             <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-            <div className="flex flex-col gap-1.5 p-2.5">
+            <div className="flex flex-col gap-1.5 p-2">
               <div className="h-3 w-[92%] skeleton-shimmer rounded" />
               <div className="h-3 w-[70%] skeleton-shimmer rounded" />
-              <div className="mt-1 h-3.5 w-16 skeleton-shimmer rounded" />
+              <div className="mt-1 h-3.5 w-12 skeleton-shimmer rounded" />
             </div>
           </div>
         ))}
