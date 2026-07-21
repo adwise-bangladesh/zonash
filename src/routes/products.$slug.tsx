@@ -64,6 +64,20 @@ export const Route = createFileRoute("/products/$slug")({
         { name: "twitter:card", content: "summary_large_image" },
         ...(img ? [{ name: "twitter:image", content: img } as const] : []),
       ],
+      // Preload the hero image — this is the LCP element. Emitting the
+      // <link rel="preload"> in the SSR document lets the browser begin the
+      // fetch during HTML parse, before React hydrates and mounts the <img>.
+      links: img
+        ? [
+            {
+              rel: "preload",
+              as: "image",
+              href: img,
+              fetchpriority: "high",
+              imagesizes: "(min-width: 768px) 480px, 100vw",
+            } as const,
+          ]
+        : [],
     };
   },
   component: ProductPage,
