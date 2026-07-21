@@ -14,7 +14,7 @@ import {
   Gem,
   PackageX,
   Check,
-  Sparkles,
+  
 } from "lucide-react";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
