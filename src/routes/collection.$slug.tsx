@@ -6,7 +6,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, PackageOpen, Sparkles } from "lucide-react";
+import { Loader2, ShoppingBag, PackageOpen, Sparkles } from "lucide-react";
 import {
   getCategoryWithSubs,
   listProducts,
