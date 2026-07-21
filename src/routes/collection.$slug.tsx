@@ -7,7 +7,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, LayoutGrid, ShoppingBag, Check, PackageOpen, Sparkles, Eye, X, ChevronLeft, ChevronRight, Plus, Minus, Trash2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   getCategoryWithSubs,
