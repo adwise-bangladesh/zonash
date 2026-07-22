@@ -249,6 +249,9 @@ function StepLandingPage() {
       .filter((s) => s.length >= 3)
       .slice(0, 6);
   }, [product.short_description]);
+  const [showAllHighlights, setShowAllHighlights] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+
 
   // ---------- form state ----------
   const submitFn = useServerFn(submitPendingOrder);
