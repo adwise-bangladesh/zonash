@@ -989,12 +989,13 @@ function CountdownInline() {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/[0.06] px-2 py-0.5 font-mono text-[10.5px] font-bold tabular-nums text-destructive">
-      <span className="relative flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive" />
-      </span>
-      {pad(h)}:{pad(m)}:{pad(s)}
+    <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+      <svg viewBox="0 0 24 24" className="h-3 w-3 text-muted-foreground/70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      <span className="font-mono text-foreground/80">{pad(h)}:{pad(m)}:{pad(s)}</span>
+      <span className="text-muted-foreground/70">left</span>
     </span>
   );
 }
