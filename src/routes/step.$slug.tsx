@@ -430,7 +430,7 @@ function StepLandingPage() {
   return (
     <div className="min-h-[100dvh] bg-background pb-6">
       {/* Sticky trust bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-center gap-2 border-b border-border bg-primary text-primary-foreground py-1.5 text-[11px] font-semibold">
+      <div className="sticky top-0 z-30 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-1.5 text-[11px] font-semibold">
         <Truck className="h-3.5 w-3.5" aria-hidden />
         Cash on Delivery · All over Bangladesh
       </div>
