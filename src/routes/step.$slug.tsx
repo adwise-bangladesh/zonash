@@ -264,7 +264,10 @@ function StepLandingPage() {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused || gallery.length <= 1) return;
-    const t = setInterval(() => setActiveImg((i) => (i + 1) % gallery.length), 3500);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setActiveImg((i) => (i + 1) % gallery.length);
+    }, 3500);
     return () => clearInterval(t);
   }, [paused, gallery.length]);
   const galleryRef = useRef<HTMLDivElement>(null);
