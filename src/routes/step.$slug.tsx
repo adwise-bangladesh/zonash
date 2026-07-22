@@ -136,7 +136,7 @@ const isValidName = (s: string) => {
 };
 const isValidAddress = (s: string) => {
   const t = s.trim();
-  return t.length >= 5 && /^[\p{L}\p{N}#,\.\-\/()\s]+$/u.test(t) &&
+  return t.length >= 5 && /^[\p{L}\p{N}#,.\-/()\s]+$/u.test(t) &&
     /\p{L}/u.test(t) && !/(.)\1{8,}/u.test(t);
 };
 
