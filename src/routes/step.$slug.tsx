@@ -531,7 +531,7 @@ function StepLandingPage() {
           <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             {variationHeading}
           </h2>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {variations.map((v) => {
               const selected = v.id === selectedVarId;
               const p = priceNum(v.price);
@@ -546,40 +546,44 @@ function StepLandingPage() {
                   type="button"
                   disabled={oos}
                   onClick={() => setSelectedVarId(v.id)}
-                  className={`relative flex flex-col items-start rounded-[6px] border-2 p-2.5 pt-3.5 text-left transition-all ${
+                  className={`relative flex items-center gap-2.5 rounded-[6px] border px-2.5 py-2 text-left transition-colors duration-150 ${
                     selected
-                      ? "border-primary bg-primary/[0.06] shadow-[var(--shadow-glow)]"
-                      : "border-border bg-background hover:border-primary/60"
-                  } ${oos ? "opacity-50" : ""}`}
+                      ? "border-primary bg-primary/[0.04]"
+                      : "border-border bg-background hover:border-foreground/30"
+                  } ${oos ? "opacity-45" : ""}`}
                 >
-                  {isBestSeller && !oos && (
-                    <span className="absolute -top-2 left-2 flex items-center gap-0.5 rounded-full bg-gradient-to-r from-warning to-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-md">
-                      <Flame className="h-2.5 w-2.5" aria-hidden />
-                      Most selling
+                  <span
+                    className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors ${
+                      selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
+                    }`}
+                    aria-hidden
+                  >
+                    {selected && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1">
+                      <span className="truncate text-[12.5px] font-semibold text-foreground">{optLabel}</span>
+                      {isBestSeller && !oos && (
+                        <Flame className="h-3 w-3 shrink-0 text-warning" aria-label="Most selling" />
+                      )}
                     </span>
-                  )}
-                  {save > 0 && (
-                    <span className="absolute -top-2 right-2 rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase text-destructive-foreground shadow">
-                      Save {formatBDT(save)}
+                    <span className="mt-0.5 flex items-baseline gap-1.5">
+                      <span className="text-[13px] font-bold text-foreground tabular-nums">{formatBDT(p)}</span>
+                      {r > p && (
+                        <span className="text-[10px] text-muted-foreground line-through tabular-nums">
+                          {formatBDT(r)}
+                        </span>
+                      )}
+                      {save > 0 && (
+                        <span className="ml-auto text-[10px] font-semibold text-success tabular-nums">
+                          −{formatBDT(save)}
+                        </span>
+                      )}
                     </span>
-                  )}
-                  <span className="text-[12.5px] font-bold text-foreground line-clamp-2">{optLabel}</span>
-                  <div className="mt-1 flex items-baseline gap-1.5">
-                    <span className="text-base font-extrabold text-primary tabular-nums">{formatBDT(p)}</span>
-                    {r > p && (
-                      <span className="text-[10.5px] text-muted-foreground line-through tabular-nums">
-                        {formatBDT(r)}
-                      </span>
+                    {oos && (
+                      <span className="mt-0.5 block text-[10px] font-semibold text-destructive">Out of stock</span>
                     )}
-                  </div>
-                  {selected && (
-                    <span className="absolute right-2 top-2 grid h-4 w-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <Check className="h-3 w-3" aria-hidden />
-                    </span>
-                  )}
-                  {oos && (
-                    <span className="mt-1 text-[10px] font-semibold text-destructive">Out of stock</span>
-                  )}
+                  </span>
                 </button>
               );
             })}
