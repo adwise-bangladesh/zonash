@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  Flame,
   Lock,
   Sparkles,
   ShieldCheck,
