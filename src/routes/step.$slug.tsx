@@ -472,11 +472,8 @@ function StepLandingPage() {
           phone: res.phone_masked,
         } as never,
       });
-      setIdem(
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      );
+      setIdem(genId());
+
     } catch (err) {
       console.error(err);
       toast.error("Could not place your order. Please try again.");
