@@ -1136,13 +1136,13 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
       <p className="mt-1 text-center text-[11px] text-muted-foreground">
         Verified from Facebook, Messenger, WhatsApp, TikTok &amp; Instagram
       </p>
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 min-h-[164px] sm:min-h-[132px]">
         {visible.map((r, k) => {
           const meta = SOURCE_META[r.source];
           return (
             <figure
               key={`${page}-${k}`}
-              className="animate-fade-in rounded-[6px] border border-border bg-background p-3"
+              className="animate-fade-in flex h-[150px] sm:h-[124px] flex-col rounded-[6px] border border-border bg-background p-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-0.5 text-warning" aria-hidden>
@@ -1161,7 +1161,7 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
                   {meta.label}
                 </span>
               </div>
-              <blockquote className="mt-1.5 line-clamp-3 text-[12px] leading-snug text-foreground">
+              <blockquote className="mt-1.5 line-clamp-3 flex-1 text-[12px] leading-snug text-foreground">
                 “{r.text}”
               </blockquote>
               <figcaption className="mt-1.5 flex items-center justify-between gap-2 text-[10.5px] text-muted-foreground">
