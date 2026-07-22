@@ -369,9 +369,9 @@ function StepLandingPage() {
   );
   const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
   const shipping = insideDhaka ? 80 : 130;
-  const subtotal = effectivePrice * qty;
+  const subtotal = effectivePrice;
   const total = subtotal + shipping;
-  const savings = showStrike ? Math.max(0, (effectiveRegular - effectivePrice) * qty) : 0;
+  const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
 
   const orderRef = useRef<HTMLDivElement>(null);
   const scrollToOrder = () => {
