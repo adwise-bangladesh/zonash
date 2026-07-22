@@ -28,6 +28,7 @@ import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
+import { NotFoundView } from "@/components/NotFoundView";
 
 // ---------- data ----------
 
