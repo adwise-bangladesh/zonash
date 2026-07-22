@@ -316,11 +316,8 @@ function StepLandingPage() {
   const [form, setForm] = useState<FormShape>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [idem, setIdem] = useState(() =>
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
+  const [idem, setIdem] = useState(genId);
+
 
   // Restore + persist
   useEffect(() => {
