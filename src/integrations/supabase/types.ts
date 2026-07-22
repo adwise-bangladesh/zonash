@@ -497,6 +497,33 @@ export type Database = {
         }
         Relationships: []
       }
+      server_error_log: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          meta: Json
+          scope: string
+          stack: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          meta?: Json
+          scope: string
+          stack?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          meta?: Json
+          scope?: string
+          stack?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
