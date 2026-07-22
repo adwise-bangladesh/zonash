@@ -522,11 +522,8 @@ function StepLandingPage() {
             </>
           )}
         </div>
-        {/* Countdown urgency */}
-        <div className="mt-3">
-          <CountdownStrip />
-        </div>
       </section>
+
 
       {/* Variation cards */}
       {isVariable && variations.length > 0 && (
