@@ -123,9 +123,11 @@ const formSchema = z.object({
   phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX)."),
   address: z.string().max(300).refine(isValidAddress, "Please enter a valid delivery address."),
   thana: z.string().trim().min(1, "Please select your thana / upazila.").max(80),
+  email: z.string().trim().max(120).email("Please enter a valid email address.").optional().or(z.literal("")),
 });
 type FormShape = z.infer<typeof formSchema>;
-const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "" };
+const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "", email: "" };
+
 const STORAGE_KEY = "zonash:step:form";
 const MAX_QTY = 10;
 
@@ -322,7 +324,9 @@ function StepLandingPage() {
       phone: f.phone || b.phone || sessionPhone || "",
       address: f.address || b.address || "",
       thana: f.thana || canonicalThana || "",
+      email: f.email || b.email || "",
     }));
+
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
 
   const update = (patch: Partial<FormShape>) => {
@@ -395,7 +399,7 @@ function StepLandingPage() {
           billing: {
             first_name: first,
             last_name: last || "",
-            email: "",
+            email: parsed.data.email || "",
             phone: parsed.data.phone,
             address_1: parsed.data.address,
             address_2: "",
@@ -795,6 +799,19 @@ function StepLandingPage() {
                 buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
               />
             </Field>
+            <Field label="Email (optional)" error={errors.email}>
+              <input
+                name="email"
+                type="email"
+                value={form.email ?? ""}
+                onChange={(e) => update({ email: e.target.value })}
+                className={inputCls(errors.email)}
+                aria-invalid={!!errors.email || undefined}
+                autoComplete="email"
+                placeholder="name@example.com"
+              />
+            </Field>
+
 
             {/* Summary — collapsible to keep the form compact */}
             <div className="mt-2 overflow-hidden rounded-[6px] border border-dashed border-border bg-background">
