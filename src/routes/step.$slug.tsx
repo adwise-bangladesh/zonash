@@ -981,3 +981,75 @@ function TimeBox({ value, label }: { value: string; label: string }) {
     </div>
   );
 }
+
+const REVIEWS = [
+  { name: "Rahim, Dhaka", stars: 5, text: "Product arrived quickly and quality was better than expected. Highly recommend!" },
+  { name: "Sadia, Chattogram", stars: 5, text: "Cash on delivery made it very easy. Will order again." },
+  { name: "Tanvir, Sylhet", stars: 4, text: "Good product, exactly as described. Delivery was 2 days." },
+  { name: "Nusrat, Khulna", stars: 5, text: "Packaging was neat and the item is genuine. Loved it." },
+  { name: "Imran, Rajshahi", stars: 5, text: "Support responded fast and delivery was smooth. 10/10." },
+];
+
+function ReviewsCarousel() {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setI((v) => (v + 1) % REVIEWS.length), 4200);
+    return () => clearInterval(t);
+  }, [paused]);
+  const r = REVIEWS[i];
+  return (
+    <div
+      className="overflow-hidden rounded-[8px] border border-border bg-gradient-to-b from-warning/10 to-background p-4"
+      onPointerDown={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+    >
+      <div className="flex items-center justify-center gap-2">
+        <span className="flex items-center gap-0.5" aria-hidden>
+          {[0,1,2,3,4].map((k) => (
+            <Star key={k} className="h-5 w-5 fill-warning text-warning" aria-hidden />
+          ))}
+        </span>
+        <span className="text-lg font-extrabold tabular-nums">4.8</span>
+      </div>
+      <p className="mt-1 text-center text-[11.5px] font-semibold text-muted-foreground">
+        Based on verified customer orders
+      </p>
+      <div className="relative mt-4 min-h-[104px]">
+        <figure
+          key={r.name}
+          className="animate-fade-in rounded-[6px] border border-border bg-background p-3"
+        >
+          <div className="flex items-center gap-1 text-warning" aria-hidden>
+            {Array.from({ length: r.stars }).map((_, k) => (
+              <Star key={k} className="h-3.5 w-3.5 fill-warning text-warning" />
+            ))}
+          </div>
+          <blockquote className="mt-1.5 text-[12.5px] leading-snug text-foreground">
+            “{r.text}”
+          </blockquote>
+          <figcaption className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+            — {r.name}
+          </figcaption>
+        </figure>
+      </div>
+      <div className="mt-3 flex items-center justify-center gap-1.5" role="tablist" aria-label="Reviews">
+        {REVIEWS.map((_, k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={k === i}
+            aria-label={`Review ${k + 1}`}
+            onClick={() => setI(k)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              k === i ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
