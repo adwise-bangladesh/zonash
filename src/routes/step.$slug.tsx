@@ -956,7 +956,7 @@ function StepSkeleton() {
 const COUNTDOWN_KEY = "zonash:step:offerEndsAt";
 const COUNTDOWN_MS = 4 * 60 * 60 * 1000;
 
-function CountdownInline() {
+function CountdownCard() {
   const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -985,17 +985,42 @@ function CountdownInline() {
   const s = Math.floor((ms % 60_000) / 1000);
   const pad = (n: number) => n.toString().padStart(2, "0");
 
+  const Cell = ({ v, label }: { v: string; label: string }) => (
+    <div className="flex flex-col items-center">
+      <span className="rounded-[6px] bg-foreground px-2 py-1 text-[15px] font-extrabold tabular-nums text-background shadow-sm min-w-[34px] text-center">
+        {v}
+      </span>
+      <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+
   return (
-    <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-      <svg viewBox="0 0 24 24" className="h-3 w-3 text-muted-foreground/70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-      <span className="font-mono text-foreground/80">{pad(h)}:{pad(m)}:{pad(s)}</span>
-      <span className="text-muted-foreground/70">left</span>
-    </span>
+    <div className="flex items-center justify-between gap-3 rounded-[8px] border border-border bg-card px-3.5 py-2.5">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <div className="text-[11px] font-bold text-foreground">Special offer ends in</div>
+          <div className="text-[10px] text-muted-foreground">Reserved for this session</div>
+        </div>
+      </div>
+      <div className="flex items-start gap-1.5 shrink-0">
+        <Cell v={pad(h)} label="Hrs" />
+        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
+        <Cell v={pad(m)} label="Min" />
+        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
+        <Cell v={pad(s)} label="Sec" />
+      </div>
+    </div>
   );
 }
+
 
 
 
