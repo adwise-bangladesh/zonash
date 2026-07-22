@@ -1086,7 +1086,10 @@ function CountdownInline() {
     }
     const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
     tick();
-    const t = setInterval(tick, 1000);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      tick();
+    }, 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -1097,7 +1100,10 @@ function CountdownInline() {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive tabular-nums">
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive tabular-nums"
+      aria-hidden="true"
+    >
       <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />
