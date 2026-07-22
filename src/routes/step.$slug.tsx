@@ -409,6 +409,7 @@ function StepLandingPage() {
       const tracking = await collectTracking({
         name: parsed.data.name,
         phone: parsed.data.phone,
+        email: parsed.data.email || undefined,
       });
       const line = {
         product_id: product.id,
