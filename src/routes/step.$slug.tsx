@@ -1205,7 +1205,10 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setPage((p) => (p + 1) % pages), 4500);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setPage((p) => (p + 1) % pages);
+    }, 4500);
     return () => clearInterval(t);
   }, [paused, pages]);
   const totalCount = fakeReviewCount(slug);
