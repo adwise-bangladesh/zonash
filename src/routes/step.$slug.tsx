@@ -261,9 +261,7 @@ function StepLandingPage() {
     ? priceNum(selectedVar?.regular_price ?? "")
     : priceNum(product.regular_price);
   const showStrike = effectiveRegular > effectivePrice && effectiveRegular > 0;
-  const discountPct = showStrike
-    ? Math.round(((effectiveRegular - effectivePrice) / effectiveRegular) * 100)
-    : 0;
+
   const inStock = isVariable
     ? (selectedVar ? selectedVar.stock_status !== "outofstock" : false)
     : product.stock_status !== "outofstock";
