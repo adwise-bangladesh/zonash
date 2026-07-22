@@ -415,7 +415,7 @@ function StepLandingPage() {
       const line = {
         product_id: product.id,
         variation_id: selectedVar?.id,
-        quantity: Math.max(1, Math.min(MAX_QTY, qty)),
+        quantity: 1,
       };
       const res = await submitFn({
         data: {
