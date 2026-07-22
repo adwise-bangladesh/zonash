@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { z } from "zod";
 
 import { listProducts } from "@/lib/woo.functions";
@@ -7,6 +9,7 @@ import type { WooProduct } from "@/lib/woo.server";
 import { formatBDT } from "@/lib/format";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { NotFoundView } from "@/components/NotFoundView";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 
 const searchSchema = z.object({
   q: z.string().trim().max(120).optional(),
