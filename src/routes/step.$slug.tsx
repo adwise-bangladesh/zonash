@@ -524,11 +524,6 @@ function StepLandingPage() {
             ))}
           </div>
         )}
-        {discountPct > 0 && (
-          <span className="absolute left-3 top-3 rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-destructive-foreground shadow-lg">
-            −{discountPct}% OFF
-          </span>
-        )}
       </section>
 
       {/* Title + price */}
