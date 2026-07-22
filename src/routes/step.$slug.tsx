@@ -1000,18 +1000,6 @@ function CountdownInline() {
 }
 
 
-function TimeBox({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="min-w-[26px] rounded-[4px] bg-destructive px-1.5 py-0.5 text-center text-[13px] font-extrabold leading-none text-destructive-foreground shadow-sm">
-        {value}
-      </span>
-      <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-destructive/70">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 const REVIEWS = [
   { name: "Rahim, Dhaka", stars: 5, text: "Product arrived quickly and quality was better than expected. Highly recommend!" },
