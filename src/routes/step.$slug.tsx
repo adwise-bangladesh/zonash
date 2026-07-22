@@ -324,7 +324,9 @@ function StepLandingPage() {
       phone: f.phone || b.phone || sessionPhone || "",
       address: f.address || b.address || "",
       thana: f.thana || canonicalThana || "",
+      email: f.email || b.email || "",
     }));
+
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
 
   const update = (patch: Partial<FormShape>) => {
