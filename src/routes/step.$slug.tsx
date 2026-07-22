@@ -194,8 +194,8 @@ function StepLandingPage() {
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
   useEffect(() => {
     if (!isVariable || variations.length === 0 || selectedVarId) return;
-    setSelectedVarId(bestSellerId ?? variations[0]?.id ?? null);
-  }, [isVariable, variations, bestSellerId, selectedVarId]);
+    setSelectedVarId(bestDealId ?? variations[0]?.id ?? null);
+  }, [isVariable, variations, bestDealId, selectedVarId]);
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
@@ -553,7 +553,7 @@ function StepLandingPage() {
               const save = r > p ? r - p : 0;
               const optLabel = v.attributes?.map((a) => a.option).filter(Boolean).join(" · ") || `Option ${v.id}`;
               const oos = v.stock_status === "outofstock";
-              const isBestSeller = v.id === bestSellerId;
+              const isBestDeal = v.id === bestDealId;
               return (
                 <button
                   key={v.id}
@@ -567,7 +567,7 @@ function StepLandingPage() {
                       : "border-border bg-background hover:border-primary/40"
                   } ${oos ? "opacity-45" : ""}`}
                 >
-                  {isBestSeller && !oos && (
+                  {isBestDeal && !oos && (
                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning-foreground shadow-sm">
                       Bestseller
                     </span>
