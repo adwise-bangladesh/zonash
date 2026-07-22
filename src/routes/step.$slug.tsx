@@ -151,7 +151,6 @@ type FormShape = z.infer<typeof formSchema>;
 const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "", email: "" };
 
 const STORAGE_KEY = "zonash:step:form";
-const MAX_QTY = 10;
 
 function splitName(full: string): { first: string; last: string } {
   const parts = full.trim().split(/\s+/);
