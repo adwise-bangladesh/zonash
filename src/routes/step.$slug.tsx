@@ -658,41 +658,9 @@ function StepLandingPage() {
 
       {/* Social proof */}
       <section className="mt-6 px-4">
-        <div className="rounded-[8px] border border-border bg-gradient-to-b from-warning/10 to-background p-4">
-          <div className="flex items-center justify-center gap-2">
-            <span className="flex items-center gap-0.5" aria-hidden>
-              {[0,1,2,3,4].map((i) => (
-                <Star key={i} className="h-5 w-5 fill-warning text-warning" aria-hidden />
-              ))}
-            </span>
-            <span className="text-lg font-extrabold tabular-nums">4.8</span>
-          </div>
-          <p className="mt-1 text-center text-[11.5px] font-semibold text-muted-foreground">
-            Based on verified customer orders
-          </p>
-          <div className="mt-4 grid gap-3">
-            {[
-              { name: "Rahim, Dhaka", stars: 5, text: "Product arrived quickly and quality was better than expected. Highly recommend!" },
-              { name: "Sadia, Chattogram", stars: 5, text: "Cash on delivery made it very easy. Will order again." },
-              { name: "Tanvir, Sylhet", stars: 4, text: "Good product, exactly as described. Delivery was 2 days." },
-            ].map((r) => (
-              <figure key={r.name} className="rounded-[6px] border border-border bg-background p-3">
-                <div className="flex items-center gap-1 text-warning" aria-hidden>
-                  {Array.from({ length: r.stars }).map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-warning text-warning" />
-                  ))}
-                </div>
-                <blockquote className="mt-1.5 text-[12.5px] leading-snug text-foreground">
-                  “{r.text}”
-                </blockquote>
-                <figcaption className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
-                  — {r.name}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
+        <ReviewsCarousel />
       </section>
+
 
       {/* Trust badges */}
       <section className="mt-6 px-4">
