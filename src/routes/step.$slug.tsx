@@ -810,11 +810,6 @@ function StepLandingPage() {
                   <span className="text-base font-extrabold text-primary tabular-nums">
                     {formatBDT(total)}
                   </span>
-                  {savings > 0 && (
-                    <span className="rounded-[3px] bg-destructive/10 px-1 py-0.5 text-[10px] font-bold text-destructive">
-                      −{formatBDT(savings)}
-                    </span>
-                  )}
                 </span>
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
                   {showSummary ? "Hide" : "Details"}
