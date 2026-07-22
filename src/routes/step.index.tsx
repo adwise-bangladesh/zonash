@@ -64,29 +64,21 @@ function priceNum(v: string | undefined | null): number {
 
 function StepIndex() {
   const { q } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  // Prime SSR cache with the URL-driven query
-  useSuspenseQuery(stepListQuery(q));
+  // Load once from URL query (SSR-primed). Further filtering is client-side
+  // so typing never re-suspends the route or refetches.
+  const { data } = useSuspenseQuery(stepListQuery(q));
 
   const [term, setTerm] = useState(q ?? "");
+  const needle = term.trim().toLowerCase();
+  const all = data.products ?? [];
+  const products = needle
+    ? all.filter((p) => {
+        const hay = `${p.name} ${p.sku ?? ""} ${p.slug ?? ""}`.toLowerCase();
+        return hay.includes(needle);
+      })
+    : all;
+  const isFetching = false;
 
-  // Debounce URL sync (300ms)
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      const value = term.trim();
-      if ((value || undefined) !== q) {
-        navigate({ search: (prev: { q?: string }) => ({ ...prev, q: value || undefined }), replace: true });
-      }
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [term, q, navigate]);
-
-  // Live results without suspense flicker
-  const { data, isFetching } = useQuery({
-    ...stepListQuery(term.trim() || undefined),
-    placeholderData: keepPreviousData,
-  });
-  const products = data?.products ?? [];
 
   return (
     <div className="min-h-[100dvh] bg-background pb-8">
