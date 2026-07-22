@@ -170,11 +170,25 @@ function StepLandingPage() {
     });
   }, [variationsQ.data]);
 
-  // Bestseller = first in-stock variation in merchant-sorted order.
-  const bestSellerId = useMemo(
-    () => variations.find((v) => v.stock_status !== "outofstock")?.id ?? null,
-    [variations],
-  );
+  // Best deal = in-stock variation with the largest absolute savings.
+  // Falls back to the first in-stock (menu_order sorted) when nothing is on sale.
+  const bestDealId = useMemo(() => {
+    const inStock = variations.filter((v) => v.stock_status !== "outofstock");
+    if (inStock.length === 0) return null;
+    let best = inStock[0];
+    let bestSave = 0;
+    for (const v of inStock) {
+      const p = priceNum(v.price);
+      const r = priceNum(v.regular_price);
+      const save = r > p ? r - p : 0;
+      if (save > bestSave) {
+        best = v;
+        bestSave = save;
+      }
+    }
+    return best.id;
+  }, [variations]);
+
 
   // Selected variation: bestseller by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
