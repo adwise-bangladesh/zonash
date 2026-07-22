@@ -76,6 +76,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      // Woo product data + images travel through the connector gateway; warming
+      // the TLS handshake here shaves ~150–300ms off first image byte.
+      { rel: "preconnect", href: "https://connector-gateway.lovable.dev", crossOrigin: "anonymous" },
+      { rel: "dns-prefetch", href: "https://i0.wp.com" },
+      { rel: "dns-prefetch", href: "https://i1.wp.com" },
+      { rel: "dns-prefetch", href: "https://i2.wp.com" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600&family=Tiro+Bangla:ital@0;1&display=swap",
