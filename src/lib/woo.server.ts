@@ -232,7 +232,9 @@ export type WooVariation = {
   stock_status: string;
   image?: { id: number; src: string; alt: string };
   attributes: { id: number; name: string; option: string }[];
+  menu_order?: number;
 };
+
 
 
 export type WooOrder = {
