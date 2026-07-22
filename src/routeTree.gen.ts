@@ -23,6 +23,7 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StepIndexRouteImport } from './routes/step.index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as StepSlugRouteImport } from './routes/step.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
@@ -108,6 +109,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StepIndexRoute = StepIndexRouteImport.update({
+  id: '/step/',
+  path: '/step/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
+  '/step/': typeof StepIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
+  '/step': typeof StepIndexRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
+  '/step/': typeof StepIndexRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
+    | '/step/'
     | '/account/orders'
     | '/admin/analytics'
     | '/admin/backfill'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/products/$slug'
     | '/step/$slug'
     | '/products'
+    | '/step'
     | '/account/orders'
     | '/admin/analytics'
     | '/admin/backfill'
@@ -386,6 +397,7 @@ export interface FileRouteTypes {
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
+    | '/step/'
     | '/_authenticated/account/orders'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/backfill'
@@ -419,6 +431,7 @@ export interface RootRouteChildren {
   ProductsSlugRoute: typeof ProductsSlugRoute
   StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  StepIndexRoute: typeof StepIndexRoute
   ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
@@ -521,6 +534,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/step/': {
+      id: '/step/'
+      path: '/step'
+      fullPath: '/step/'
+      preLoaderRoute: typeof StepIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products/': {
@@ -706,6 +726,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsSlugRoute: ProductsSlugRoute,
   StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  StepIndexRoute: StepIndexRoute,
   ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
