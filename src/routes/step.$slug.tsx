@@ -663,7 +663,7 @@ function StepLandingPage() {
 
       {/* Social proof */}
       <section className="mt-6 px-4">
-        <ReviewsCarousel />
+        <ReviewsCarousel slug={slug} productName={product.name} />
       </section>
 
 
