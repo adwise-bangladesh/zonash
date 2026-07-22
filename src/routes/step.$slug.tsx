@@ -193,24 +193,32 @@ function StepLandingPage() {
     });
   }, [variationsQ.data]);
 
-  // Best deal = in-stock variation with the largest absolute savings.
-  // Falls back to the first in-stock (menu_order sorted) when nothing is on sale.
+  // Best deal = in-stock variation with the largest DISCOUNT PERCENTAGE
+  // (regular vs sale). Percent is the fair comparison across price tiers —
+  // a 40% off 500tk item is a better deal than 10% off 5000tk.
+  // Tiebreakers: larger absolute savings, then lower menu_order.
   const bestDealId = useMemo(() => {
     const inStock = variations.filter((v) => v.stock_status !== "outofstock");
     if (inStock.length === 0) return null;
-    let best = inStock[0];
+    let best: (typeof inStock)[number] | null = null;
+    let bestPct = 0;
     let bestSave = 0;
     for (const v of inStock) {
       const p = priceNum(v.price);
       const r = priceNum(v.regular_price);
-      const save = r > p ? r - p : 0;
-      if (save > bestSave) {
+      if (r <= 0 || p <= 0 || p >= r) continue;
+      const save = r - p;
+      const pct = save / r;
+      if (pct > bestPct || (pct === bestPct && save > bestSave)) {
         best = v;
+        bestPct = pct;
         bestSave = save;
       }
     }
-    return best.id;
+    // No variation actually on sale → don't badge anything.
+    return best?.id ?? null;
   }, [variations]);
+
 
 
   // Selected variation: bestseller by default.
