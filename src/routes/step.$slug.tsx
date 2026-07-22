@@ -27,6 +27,13 @@ import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
 import { buildResponsiveImage } from "@/lib/product-image";
+import {
+  SOURCE_META,
+  fakeReviewCount,
+  pickReviewsForSlug,
+  type ReviewSource,
+} from "@/lib/step-reviews";
+import { useOnScreen } from "@/hooks/use-on-screen";
 import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
 import { NotFoundView } from "@/components/NotFoundView";
 
