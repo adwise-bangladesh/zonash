@@ -579,17 +579,12 @@ function StepLandingPage() {
                         : "border-border bg-background hover:border-primary/50 hover:shadow-sm"
                   }`}
                 >
-                  {isBestDeal && !oos && (
-                    <span className="absolute left-1.5 top-1.5 rounded-md bg-destructive px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-destructive-foreground shadow-sm">
-                      Best deal
-                    </span>
-                  )}
                   {pct > 0 && !oos && (
                     <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
                       −{pct}%
                     </span>
                   )}
-                  <div className={`flex items-center gap-1.5 ${isBestDeal && !oos ? "mt-5" : ""}`}>
+                  <div className="flex items-center gap-1.5">
                     <span
                       className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
                         active ? "border-primary bg-primary" : "border-border bg-background"
@@ -617,14 +612,20 @@ function StepLandingPage() {
                       )}
                     </div>
                     {save > 0 && !oos && (
-                      <p className="mt-1 text-[10px] font-semibold text-success">
-                        Save {formatBDT(save)}
+                      <p className="mt-1 flex items-center gap-1.5 text-[10px] font-semibold text-success">
+                        <span>Save {formatBDT(save)}</span>
+                        {isBestDeal && (
+                          <span className="rounded-md bg-destructive px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-destructive-foreground shadow-sm">
+                            Best deal
+                          </span>
+                        )}
                       </p>
                     )}
                     {oos && (
                       <p className="mt-1 text-[10px] font-medium text-muted-foreground">Out of stock</p>
                     )}
                   </div>
+
                 </button>
               );
             })}
