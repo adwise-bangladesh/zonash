@@ -786,18 +786,40 @@ function StepLandingPage() {
                       <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
                     </div>
                     {savings > 0 && (
-                      <div className="flex justify-between text-destructive">
+                      <div className="flex justify-between text-success">
                         <dt>You save</dt>
                         <dd className="tabular-nums">−{formatBDT(savings)}</dd>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">
-                        Delivery charge {insideDhaka ? "(Inside Dhaka)" : ""}
+                        Delivery charge {insideDhaka ? "(Inside Dhaka)" : "(Outside Dhaka)"}
                       </dt>
                       <dd className="tabular-nums">{formatBDT(shipping)}</dd>
                     </div>
+                    <div className="flex justify-between border-t border-dashed border-border pt-1.5 font-bold">
+                      <dt>Total payable</dt>
+                      <dd className="tabular-nums text-primary">{formatBDT(total)}</dd>
+                    </div>
                   </dl>
+                  <ul className="space-y-1 border-t border-dashed border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Truck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Delivery in {insideDhaka ? "1 day (Dhaka)" : "2–3 days (Nationwide)"}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Lock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Cash on Delivery · No online payment</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Undo2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Instant return if product is damaged</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>100% authentic · Quality checked before ship</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
