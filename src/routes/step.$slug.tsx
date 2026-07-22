@@ -690,8 +690,9 @@ function StepLandingPage() {
             Cash on Delivery
           </h2>
           <p className="mt-1 text-center text-[12px] text-muted-foreground">
-            Fill your details — we'll call to confirm.
+            Fill your details to place your order.
           </p>
+
 
           <form onSubmit={onSubmit} id="step-order-form" autoComplete="on" className="mt-4 space-y-2.5">
             <Field label="Full name" error={errors.name}>
