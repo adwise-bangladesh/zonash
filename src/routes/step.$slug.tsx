@@ -157,20 +157,42 @@ function StepLandingPage() {
     ...variationsQueryOptions(product.id),
     enabled: isVariable,
   });
-  const variations: WooVariation[] = variationsQ.data?.variations ?? [];
+  const variations: WooVariation[] = useMemo(() => {
+    const list = variationsQ.data?.variations ?? [];
+    // WooCommerce merchants order variations by `menu_order` — treat the
+    // lowest value as the merchant's featured / best-selling option.
+    return [...list].sort((a, b) => {
+      const am = a.menu_order ?? 9999;
+      const bm = b.menu_order ?? 9999;
+      if (am !== bm) return am - bm;
+      return a.id - b.id;
+    });
+  }, [variationsQ.data]);
 
-  // Selected variation: first in-stock by default.
+  // Bestseller = first in-stock variation in merchant-sorted order.
+  const bestSellerId = useMemo(
+    () => variations.find((v) => v.stock_status !== "outofstock")?.id ?? null,
+    [variations],
+  );
+
+  // Selected variation: bestseller by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
   useEffect(() => {
     if (!isVariable || variations.length === 0 || selectedVarId) return;
-    const firstInStock = variations.find((v) => v.stock_status !== "outofstock") ?? variations[0];
-    setSelectedVarId(firstInStock?.id ?? null);
-  }, [isVariable, variations, selectedVarId]);
+    setSelectedVarId(bestSellerId ?? variations[0]?.id ?? null);
+  }, [isVariable, variations, bestSellerId, selectedVarId]);
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
     [variations, selectedVarId],
   );
+
+  // Section title: use the variation attribute name (e.g. "Size", "Color").
+  const variationHeading = useMemo(() => {
+    const name = variations[0]?.attributes?.[0]?.name?.trim();
+    return name ? `Choose your ${name.toLowerCase()}` : "Choose your option";
+  }, [variations]);
+
 
   // Effective price / regular price / stock
   const effectivePrice = isVariable
