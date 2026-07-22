@@ -399,7 +399,7 @@ function StepLandingPage() {
           billing: {
             first_name: first,
             last_name: last || "",
-            email: "",
+            email: parsed.data.email || "",
             phone: parsed.data.phone,
             address_1: parsed.data.address,
             address_2: "",
