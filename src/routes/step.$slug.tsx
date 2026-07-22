@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   ArrowRight,
   Check,
-  
+  Flame,
   Lock,
   Sparkles,
   ShieldCheck,
@@ -14,6 +14,7 @@ import {
   Truck,
   Undo2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
