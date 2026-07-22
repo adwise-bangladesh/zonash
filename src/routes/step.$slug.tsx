@@ -28,6 +28,7 @@ import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
+import { NotFoundView } from "@/components/NotFoundView";
 
 // ---------- data ----------
 
@@ -95,7 +96,28 @@ export const Route = createFileRoute("/step/$slug")({
   component: StepLandingPage,
   pendingComponent: StepSkeleton,
   pendingMs: 0,
+  errorComponent: ({ error, reset }) => {
+    const message =
+      error instanceof Error ? error.message : "Something went wrong loading this page.";
+    return (
+      <NotFoundView
+        variant="error"
+        title="Couldn't load offer"
+        description={message}
+        onRetry={() => reset()}
+      />
+    );
+  },
+  notFoundComponent: () => (
+    <NotFoundView
+      title="Offer not found"
+      description="This offer may have ended or the link is incorrect."
+      primaryLabel="Browse shop"
+      primaryTo="/products"
+    />
+  ),
 });
+
 
 // ---------- form validation (mirrors /checkout) ----------
 
@@ -242,7 +264,10 @@ function StepLandingPage() {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused || gallery.length <= 1) return;
-    const t = setInterval(() => setActiveImg((i) => (i + 1) % gallery.length), 3500);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setActiveImg((i) => (i + 1) % gallery.length);
+    }, 3500);
     return () => clearInterval(t);
   }, [paused, gallery.length]);
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -387,6 +412,7 @@ function StepLandingPage() {
       const tracking = await collectTracking({
         name: parsed.data.name,
         phone: parsed.data.phone,
+        email: parsed.data.email || undefined,
       });
       const line = {
         product_id: product.id,
@@ -1060,7 +1086,10 @@ function CountdownInline() {
     }
     const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
     tick();
-    const t = setInterval(tick, 1000);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      tick();
+    }, 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -1071,7 +1100,10 @@ function CountdownInline() {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive tabular-nums">
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive tabular-nums"
+      aria-hidden="true"
+    >
       <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />
@@ -1173,7 +1205,10 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setPage((p) => (p + 1) % pages), 4500);
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setPage((p) => (p + 1) % pages);
+    }, 4500);
     return () => clearInterval(t);
   }, [paused, pages]);
   const totalCount = fakeReviewCount(slug);
