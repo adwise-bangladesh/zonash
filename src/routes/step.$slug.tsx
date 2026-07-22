@@ -705,7 +705,7 @@ function StepLandingPage() {
 
 
       {/* Social proof */}
-      <section className="mt-6 px-4">
+      <section className="mt-4 px-4">
         <ReviewsCarousel slug={slug} productName={product.name} />
       </section>
 
@@ -1191,61 +1191,96 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
   const visible = reviews.slice(page * 2, page * 2 + 2);
   return (
     <div
-      className="overflow-hidden rounded-[8px] border border-border bg-background p-4"
+      className="overflow-hidden rounded-[8px] border border-border bg-card/70 p-3 shadow-sm"
       onPointerDown={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
     >
-      <div className="flex items-center justify-center gap-2">
-        <span className="flex items-center gap-0.5" aria-hidden>
-          {[0,1,2,3,4].map((k) => (
-            <Star key={k} className="h-4.5 w-4.5 fill-warning text-warning" aria-hidden />
-          ))}
-        </span>
-        <span className="text-lg font-extrabold tabular-nums">4.8</span>
-        <span className="text-[11.5px] font-semibold text-muted-foreground">
-          · {totalCount.toLocaleString()} reviews
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[18px] font-extrabold leading-none tabular-nums text-foreground">4.8</span>
+            <span className="flex items-center gap-0.5" aria-hidden>
+              {[0,1,2,3,4].map((k) => (
+                <Star key={k} className="h-3.5 w-3.5 fill-warning text-warning" aria-hidden />
+              ))}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[10.5px] font-semibold text-muted-foreground">
+            {totalCount.toLocaleString()} happy customers
+          </p>
+        </div>
+        <div className="rounded-[6px] border border-border bg-background px-2.5 py-1.5 text-right">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Social proof</p>
+          <div className="mt-1 flex justify-end -space-x-1" aria-hidden>
+            {(Object.keys(SOURCE_META) as ReviewSource[]).map((source) => {
+              const meta = SOURCE_META[source];
+              return (
+                <span
+                  key={source}
+                  className="grid h-5 w-5 place-items-center rounded-full border border-background"
+                  style={{ backgroundColor: meta.bg, color: meta.color }}
+                >
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden>
+                    <path d={meta.icon} />
+                  </svg>
+                </span>
+              );
+            })}
+          </div>
+        </div>
       </div>
-      <p className="mt-1 text-center text-[11px] text-muted-foreground">
-        Verified from Facebook, Messenger, WhatsApp, TikTok &amp; Instagram
-      </p>
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 min-h-[164px] sm:min-h-[132px]">
+
+      <div className="mt-2 min-h-[168px] overflow-hidden rounded-[7px] border border-border bg-background">
         {visible.map((r, k) => {
           const meta = SOURCE_META[r.source];
+          const initials = r.name
+            .split(" ")
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("");
           return (
             <figure
               key={`${page}-${k}`}
-              className="animate-fade-in flex h-[150px] sm:h-[124px] flex-col rounded-[6px] border border-border bg-background p-3"
+              className="animate-fade-in grid h-[84px] grid-cols-[34px_minmax(0,1fr)_auto] items-start gap-2.5 border-b border-border p-2.5 last:border-b-0"
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-0.5 text-warning" aria-hidden>
-                  {Array.from({ length: r.stars }).map((_, i) => (
-                    <Star key={i} className="h-3 w-3 fill-warning text-warning" />
-                  ))}
-                </div>
+              <div className="relative grid h-8.5 w-8.5 place-items-center rounded-full bg-secondary text-[11px] font-extrabold text-secondary-foreground">
+                {initials}
                 <span
-                  className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold"
+                  className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full border border-background"
                   style={{ backgroundColor: meta.bg, color: meta.color }}
                   aria-label={`via ${meta.label}`}
                 >
                   <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="currentColor" aria-hidden>
                     <path d={meta.icon} />
                   </svg>
-                  {meta.label}
                 </span>
               </div>
-              <blockquote className="mt-1.5 line-clamp-3 flex-1 text-[12px] leading-snug text-foreground">
-                “{r.text}”
-              </blockquote>
-              <figcaption className="mt-1.5 flex items-center justify-between gap-2 text-[10.5px] text-muted-foreground">
-                <span className="truncate font-semibold text-foreground/80">{r.name}</span>
-                <span className="shrink-0">{r.city} · {r.days}d ago</span>
-              </figcaption>
+              <div className="min-w-0">
+                <figcaption className="flex items-center gap-1.5 text-[11px] leading-none">
+                  <span className="truncate font-bold text-foreground">{r.name}</span>
+                  <span className="shrink-0 text-muted-foreground">· {r.city}</span>
+                </figcaption>
+                <blockquote className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-foreground/90">
+                  “{r.text}”
+                </blockquote>
+              </div>
+              <div className="flex flex-col items-end gap-1 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-0.5 text-warning" aria-hidden>
+                  {Array.from({ length: r.stars }).map((_, i) => (
+                    <Star key={i} className="h-2.5 w-2.5 fill-warning text-warning" />
+                  ))}
+                </span>
+                <span className="whitespace-nowrap">{r.days}d ago</span>
+              </div>
             </figure>
           );
         })}
       </div>
-      <div className="mt-3 flex items-center justify-center gap-1.5" role="tablist" aria-label="Reviews">
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-[10.5px] font-semibold text-muted-foreground tabular-nums">
+          {page + 1}/{pages}
+        </span>
+        <div className="flex flex-1 items-center gap-1" role="tablist" aria-label="Reviews">
         {Array.from({ length: pages }).map((_, k) => (
           <button
             key={k}
@@ -1254,11 +1289,12 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
             aria-selected={k === page}
             aria-label={`Reviews page ${k + 1}`}
             onClick={() => setPage(k)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              k === page ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              k === page ? "bg-primary" : "bg-muted hover:bg-muted-foreground/30"
             }`}
           />
         ))}
+        </div>
       </div>
     </div>
   );
