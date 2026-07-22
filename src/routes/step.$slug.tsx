@@ -747,27 +747,64 @@ function StepLandingPage() {
               />
             </Field>
 
-            {/* Summary */}
-            <dl className="mt-2 space-y-1.5 rounded-[6px] border border-dashed border-border bg-background p-3 text-[13px]">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Subtotal</dt>
-                <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
-              </div>
-              {savings > 0 && (
-                <div className="flex justify-between text-destructive">
-                  <dt>You save</dt>
-                  <dd className="tabular-nums">−{formatBDT(savings)}</dd>
+            {/* Summary — collapsible to keep the form compact */}
+            <div className="mt-2 overflow-hidden rounded-[6px] border border-dashed border-border bg-background">
+              <button
+                type="button"
+                onClick={() => setShowSummary((v) => !v)}
+                aria-expanded={showSummary}
+                aria-controls="step-order-summary"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+              >
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[13px] font-bold text-foreground">Total</span>
+                  <span className="text-base font-extrabold text-primary tabular-nums">
+                    {formatBDT(total)}
+                  </span>
+                  {savings > 0 && (
+                    <span className="rounded-[3px] bg-destructive/10 px-1 py-0.5 text-[10px] font-bold text-destructive">
+                      −{formatBDT(savings)}
+                    </span>
+                  )}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                  {showSummary ? "Hide" : "Details"}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-300 ${showSummary ? "rotate-180" : ""}`}
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
+                </span>
+              </button>
+              <div
+                id="step-order-summary"
+                className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-out ${
+                  showSummary ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                }`}
+              >
+                <div className="min-h-0">
+                  <dl className="space-y-1.5 border-t border-dashed border-border px-3 py-2.5 text-[13px]">
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Subtotal</dt>
+                      <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
+                    </div>
+                    {savings > 0 && (
+                      <div className="flex justify-between text-destructive">
+                        <dt>You save</dt>
+                        <dd className="tabular-nums">−{formatBDT(savings)}</dd>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">
+                        Delivery charge {insideDhaka ? "(Inside Dhaka)" : ""}
+                      </dt>
+                      <dd className="tabular-nums">{formatBDT(shipping)}</dd>
+                    </div>
+                  </dl>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Delivery charge {insideDhaka ? "(Inside Dhaka)" : ""}</dt>
-                <dd className="tabular-nums">{formatBDT(shipping)}</dd>
               </div>
-              <div className="flex items-baseline justify-between border-t border-dashed border-border pt-1.5">
-                <dt className="text-sm font-bold">Total</dt>
-                <dd className="text-lg font-extrabold text-primary tabular-nums">{formatBDT(total)}</dd>
-              </div>
-            </dl>
+            </div>
+
 
             <button
               type="submit"
