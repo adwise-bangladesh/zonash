@@ -136,7 +136,7 @@ const isValidName = (s: string) => {
 };
 const isValidAddress = (s: string) => {
   const t = s.trim();
-  return t.length >= 5 && /^[\p{L}\p{N}#,\.\-\/()\s]+$/u.test(t) &&
+  return t.length >= 5 && /^[\p{L}\p{N}#,.\-/()\s]+$/u.test(t) &&
     /\p{L}/u.test(t) && !/(.)\1{8,}/u.test(t);
 };
 
@@ -151,7 +151,6 @@ type FormShape = z.infer<typeof formSchema>;
 const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "", email: "" };
 
 const STORAGE_KEY = "zonash:step:form";
-const MAX_QTY = 10;
 
 function splitName(full: string): { first: string; last: string } {
   const parts = full.trim().split(/\s+/);
@@ -297,7 +296,6 @@ function StepLandingPage() {
   const submitFn = useServerFn(submitPendingOrder);
   const [form, setForm] = useState<FormShape>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const qty = 1;
   const [submitting, setSubmitting] = useState(false);
   const [idem, setIdem] = useState(() =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -371,9 +369,9 @@ function StepLandingPage() {
   );
   const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
   const shipping = insideDhaka ? 80 : 130;
-  const subtotal = effectivePrice * qty;
+  const subtotal = effectivePrice;
   const total = subtotal + shipping;
-  const savings = showStrike ? Math.max(0, (effectiveRegular - effectivePrice) * qty) : 0;
+  const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
 
   const orderRef = useRef<HTMLDivElement>(null);
   const scrollToOrder = () => {
@@ -417,7 +415,7 @@ function StepLandingPage() {
       const line = {
         product_id: product.id,
         variation_id: selectedVar?.id,
-        quantity: Math.max(1, Math.min(MAX_QTY, qty)),
+        quantity: 1,
       };
       const res = await submitFn({
         data: {
