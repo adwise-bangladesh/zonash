@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
-  Flame,
   Lock,
   Sparkles,
   ShieldCheck,
@@ -486,11 +485,8 @@ function StepLandingPage() {
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
         <h1 className="text-[19px] font-bold leading-tight text-foreground">{product.name}</h1>
         {(selectedVar?.sku || product.sku) && (
-          <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-            <span>
-              SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
-            </span>
-            <CountdownInline />
+          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
+            SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
           </div>
         )}
 
@@ -524,14 +520,18 @@ function StepLandingPage() {
         </div>
       </section>
 
+      {/* Offer timer — simple card */}
+      <div className="px-4 -mt-1 mb-3">
+        <CountdownCard />
+      </div>
 
-      {/* Variation cards */}
+      {/* Variation cards — clean, roomy, single-focus */}
       {isVariable && variations.length > 0 && (
         <section className="px-4 pb-4">
           <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             {variationHeading}
           </h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {variations.map((v) => {
               const selected = v.id === selectedVarId;
               const p = priceNum(v.price);
@@ -546,50 +546,42 @@ function StepLandingPage() {
                   type="button"
                   disabled={oos}
                   onClick={() => setSelectedVarId(v.id)}
-                  className={`relative flex items-center gap-2.5 rounded-[6px] border px-2.5 py-2 text-left transition-colors duration-150 ${
+                  aria-pressed={selected}
+                  className={`relative flex flex-col items-center justify-center gap-1 rounded-[10px] border px-3 py-3 text-center transition-all duration-150 ${
                     selected
-                      ? "border-primary bg-primary/[0.04]"
-                      : "border-border bg-background hover:border-foreground/30"
+                      ? "border-primary bg-primary/[0.06] shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
+                      : "border-border bg-background hover:border-primary/40"
                   } ${oos ? "opacity-45" : ""}`}
                 >
-                  <span
-                    className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors ${
-                      selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
-                    }`}
-                    aria-hidden
-                  >
-                    {selected && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1">
-                      <span className="truncate text-[12.5px] font-semibold text-foreground">{optLabel}</span>
-                      {isBestSeller && !oos && (
-                        <Flame className="h-3 w-3 shrink-0 text-warning" aria-label="Most selling" />
-                      )}
+                  {isBestSeller && !oos && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning-foreground shadow-sm">
+                      Bestseller
                     </span>
-                    <span className="mt-0.5 flex items-baseline gap-1.5">
-                      <span className="text-[13px] font-bold text-foreground tabular-nums">{formatBDT(p)}</span>
-                      {r > p && (
-                        <span className="text-[10px] text-muted-foreground line-through tabular-nums">
-                          {formatBDT(r)}
-                        </span>
-                      )}
-                      {save > 0 && (
-                        <span className="ml-auto text-[10px] font-semibold text-success tabular-nums">
-                          −{formatBDT(save)}
-                        </span>
-                      )}
-                    </span>
-                    {oos && (
-                      <span className="mt-0.5 block text-[10px] font-semibold text-destructive">Out of stock</span>
+                  )}
+                  <span className="truncate text-[13px] font-semibold text-foreground">{optLabel}</span>
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="text-[15px] font-extrabold text-foreground tabular-nums">{formatBDT(p)}</span>
+                    {r > p && (
+                      <span className="text-[10px] text-muted-foreground line-through tabular-nums">
+                        {formatBDT(r)}
+                      </span>
                     )}
                   </span>
+                  {save > 0 && !oos && (
+                    <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-success">
+                      Save {formatBDT(save)}
+                    </span>
+                  )}
+                  {oos && (
+                    <span className="text-[10px] font-semibold text-destructive">Out of stock</span>
+                  )}
                 </button>
               );
             })}
           </div>
         </section>
       )}
+
 
 
       {/* Primary CTA above the fold */}
@@ -794,18 +786,40 @@ function StepLandingPage() {
                       <dd className="tabular-nums">{formatBDT(subtotal)}</dd>
                     </div>
                     {savings > 0 && (
-                      <div className="flex justify-between text-destructive">
+                      <div className="flex justify-between text-success">
                         <dt>You save</dt>
                         <dd className="tabular-nums">−{formatBDT(savings)}</dd>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">
-                        Delivery charge {insideDhaka ? "(Inside Dhaka)" : ""}
+                        Delivery charge {insideDhaka ? "(Inside Dhaka)" : "(Outside Dhaka)"}
                       </dt>
                       <dd className="tabular-nums">{formatBDT(shipping)}</dd>
                     </div>
+                    <div className="flex justify-between border-t border-dashed border-border pt-1.5 font-bold">
+                      <dt>Total payable</dt>
+                      <dd className="tabular-nums text-primary">{formatBDT(total)}</dd>
+                    </div>
                   </dl>
+                  <ul className="space-y-1 border-t border-dashed border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Truck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Delivery in {insideDhaka ? "1 day (Dhaka)" : "2–3 days (Nationwide)"}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Lock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Cash on Delivery · No online payment</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Undo2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>Instant return if product is damaged</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>100% authentic · Quality checked before ship</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -963,7 +977,7 @@ function StepSkeleton() {
 const COUNTDOWN_KEY = "zonash:step:offerEndsAt";
 const COUNTDOWN_MS = 4 * 60 * 60 * 1000;
 
-function CountdownInline() {
+function CountdownCard() {
   const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -992,17 +1006,42 @@ function CountdownInline() {
   const s = Math.floor((ms % 60_000) / 1000);
   const pad = (n: number) => n.toString().padStart(2, "0");
 
+  const Cell = ({ v, label }: { v: string; label: string }) => (
+    <div className="flex flex-col items-center">
+      <span className="rounded-[6px] bg-foreground px-2 py-1 text-[15px] font-extrabold tabular-nums text-background shadow-sm min-w-[34px] text-center">
+        {v}
+      </span>
+      <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+
   return (
-    <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-      <svg viewBox="0 0 24 24" className="h-3 w-3 text-muted-foreground/70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-      <span className="font-mono text-foreground/80">{pad(h)}:{pad(m)}:{pad(s)}</span>
-      <span className="text-muted-foreground/70">left</span>
-    </span>
+    <div className="flex items-center justify-between gap-3 rounded-[8px] border border-border bg-card px-3.5 py-2.5">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <div className="text-[11px] font-bold text-foreground">Special offer ends in</div>
+          <div className="text-[10px] text-muted-foreground">Reserved for this session</div>
+        </div>
+      </div>
+      <div className="flex items-start gap-1.5 shrink-0">
+        <Cell v={pad(h)} label="Hrs" />
+        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
+        <Cell v={pad(m)} label="Min" />
+        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
+        <Cell v={pad(s)} label="Sec" />
+      </div>
+    </div>
   );
 }
+
 
 
 
@@ -1119,13 +1158,13 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
       <p className="mt-1 text-center text-[11px] text-muted-foreground">
         Verified from Facebook, Messenger, WhatsApp, TikTok &amp; Instagram
       </p>
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 min-h-[164px] sm:min-h-[132px]">
         {visible.map((r, k) => {
           const meta = SOURCE_META[r.source];
           return (
             <figure
               key={`${page}-${k}`}
-              className="animate-fade-in rounded-[6px] border border-border bg-background p-3"
+              className="animate-fade-in flex h-[150px] sm:h-[124px] flex-col rounded-[6px] border border-border bg-background p-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-0.5 text-warning" aria-hidden>
@@ -1144,7 +1183,7 @@ function ReviewsCarousel({ slug, productName: _productName }: { slug: string; pr
                   {meta.label}
                 </span>
               </div>
-              <blockquote className="mt-1.5 line-clamp-3 text-[12px] leading-snug text-foreground">
+              <blockquote className="mt-1.5 line-clamp-3 flex-1 text-[12px] leading-snug text-foreground">
                 “{r.text}”
               </blockquote>
               <figcaption className="mt-1.5 flex items-center justify-between gap-2 text-[10.5px] text-muted-foreground">
