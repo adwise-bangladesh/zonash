@@ -296,7 +296,6 @@ function StepLandingPage() {
   const submitFn = useServerFn(submitPendingOrder);
   const [form, setForm] = useState<FormShape>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const qty = 1;
   const [submitting, setSubmitting] = useState(false);
   const [idem, setIdem] = useState(() =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
