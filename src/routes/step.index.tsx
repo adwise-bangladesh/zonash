@@ -79,7 +79,7 @@ function StepIndex() {
               defaultValue={q ?? ""}
               onChange={(e) => {
                 const value = e.target.value.trim();
-                navigate({ search: (prev) => ({ ...prev, q: value || undefined }), replace: true });
+                navigate({ search: (prev: { q?: string }) => ({ ...prev, q: value || undefined }), replace: true });
               }}
               placeholder="Search products…"
               className="h-9 w-full rounded-full border border-border bg-muted/40 px-3 text-[13px] outline-none transition-colors focus:border-primary focus:bg-background"
