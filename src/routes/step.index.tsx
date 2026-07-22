@@ -65,34 +65,55 @@ function priceNum(v: string | undefined | null): number {
 function StepIndex() {
   const { q } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { data } = useSuspenseQuery(stepListQuery(q));
-  const products = data.products ?? [];
+  // Prime SSR cache with the URL-driven query
+  useSuspenseQuery(stepListQuery(q));
+
+  const [term, setTerm] = useState(q ?? "");
+
+  // Debounce URL sync (300ms)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const value = term.trim();
+      if ((value || undefined) !== q) {
+        navigate({ search: (prev: { q?: string }) => ({ ...prev, q: value || undefined }), replace: true });
+      }
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [term, q, navigate]);
+
+  // Live results without suspense flicker
+  const { data, isFetching } = useQuery({
+    ...stepListQuery(term.trim() || undefined),
+    placeholderData: keepPreviousData,
+  });
+  const products = data?.products ?? [];
 
   return (
     <div className="min-h-[100dvh] bg-background pb-8">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
+      <SiteHeader />
+      <div className="sticky top-14 z-30 border-b border-border bg-background/95 backdrop-blur md:top-16">
         <div className="mx-auto flex max-w-[720px] items-center gap-3 px-4 py-3">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-[15px] font-extrabold text-foreground">Order now</h1>
-            <p className="text-[10.5px] text-muted-foreground">Tap a product to open its instant-order page</p>
+            <p className="truncate text-[10.5px] text-muted-foreground">Tap a product to open its instant-order page</p>
           </div>
-          <div className="ml-auto flex-1 max-w-[260px]">
-            <input
-              type="search"
-              defaultValue={q ?? ""}
-              onChange={(e) => {
-                const value = e.target.value.trim();
-                navigate({ search: (prev: { q?: string }) => ({ ...prev, q: value || undefined }), replace: true });
-              }}
-              placeholder="Search products…"
-              className="h-9 w-full rounded-full border border-border bg-muted/40 px-3 text-[13px] outline-none transition-colors focus:border-primary focus:bg-background"
-              aria-label="Search products"
-            />
+          <div className="ml-auto flex-1 max-w-[280px]">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+              <input
+                type="search"
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Search products…"
+                className="h-9 w-full rounded-full border border-border bg-muted/40 pl-9 pr-3 text-[13px] outline-none transition-colors focus:border-primary focus:bg-background"
+                aria-label="Search products"
+              />
+            </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {data.error && (
+      {data?.error && (
         <div className="mx-auto mt-3 max-w-[720px] px-4">
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
             {data.error}
@@ -102,11 +123,15 @@ function StepIndex() {
 
       {products.length === 0 ? (
         <div className="mx-auto mt-16 max-w-[420px] px-4 text-center">
-          <p className="text-sm font-semibold text-foreground">No products found</p>
+          <p className="text-sm font-semibold text-foreground">
+            {isFetching ? "Searching…" : "No products found"}
+          </p>
           <p className="mt-1 text-[12px] text-muted-foreground">Try a different search term.</p>
         </div>
       ) : (
-        <ul className="mx-auto mt-3 grid max-w-[720px] grid-cols-2 gap-3 px-3 sm:grid-cols-3">
+        <ul
+          className={`mx-auto mt-3 grid max-w-[720px] grid-cols-2 gap-3 px-3 sm:grid-cols-3 ${isFetching ? "opacity-60" : ""}`}
+        >
           {products.map((p) => (
             <li key={p.id}>
               <ProductCard product={p} />
