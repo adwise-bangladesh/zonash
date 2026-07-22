@@ -799,6 +799,19 @@ function StepLandingPage() {
                 buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
               />
             </Field>
+            <Field label="Email (optional)" error={errors.email}>
+              <input
+                name="email"
+                type="email"
+                value={form.email ?? ""}
+                onChange={(e) => update({ email: e.target.value })}
+                className={inputCls(errors.email)}
+                aria-invalid={!!errors.email || undefined}
+                autoComplete="email"
+                placeholder="name@example.com"
+              />
+            </Field>
+
 
             {/* Summary — collapsible to keep the form compact */}
             <div className="mt-2 overflow-hidden rounded-[6px] border border-dashed border-border bg-background">
