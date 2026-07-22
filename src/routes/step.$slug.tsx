@@ -164,6 +164,19 @@ function priceNum(v: string | undefined | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Integer discount percent (0 when not on sale). */
+function discountPercent(price: number, regular: number): number {
+  if (regular <= 0 || price <= 0 || price >= regular) return 0;
+  return Math.round(((regular - price) / regular) * 100);
+}
+
+/** Cryptographically-strong id with a safe fallback for older runtimes. */
+function genId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+
 // ---------- page ----------
 
 function StepLandingPage() {
