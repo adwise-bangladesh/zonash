@@ -521,14 +521,18 @@ function StepLandingPage() {
         </div>
       </section>
 
+      {/* Offer timer — simple card */}
+      <div className="px-4 -mt-1 mb-3">
+        <CountdownCard />
+      </div>
 
-      {/* Variation cards */}
+      {/* Variation cards — clean, roomy, single-focus */}
       {isVariable && variations.length > 0 && (
         <section className="px-4 pb-4">
           <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             {variationHeading}
           </h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {variations.map((v) => {
               const selected = v.id === selectedVarId;
               const p = priceNum(v.price);
@@ -543,50 +547,42 @@ function StepLandingPage() {
                   type="button"
                   disabled={oos}
                   onClick={() => setSelectedVarId(v.id)}
-                  className={`relative flex items-center gap-2.5 rounded-[6px] border px-2.5 py-2 text-left transition-colors duration-150 ${
+                  aria-pressed={selected}
+                  className={`relative flex flex-col items-center justify-center gap-1 rounded-[10px] border px-3 py-3 text-center transition-all duration-150 ${
                     selected
-                      ? "border-primary bg-primary/[0.04]"
-                      : "border-border bg-background hover:border-foreground/30"
+                      ? "border-primary bg-primary/[0.06] shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
+                      : "border-border bg-background hover:border-primary/40"
                   } ${oos ? "opacity-45" : ""}`}
                 >
-                  <span
-                    className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-colors ${
-                      selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
-                    }`}
-                    aria-hidden
-                  >
-                    {selected && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1">
-                      <span className="truncate text-[12.5px] font-semibold text-foreground">{optLabel}</span>
-                      {isBestSeller && !oos && (
-                        <Flame className="h-3 w-3 shrink-0 text-warning" aria-label="Most selling" />
-                      )}
+                  {isBestSeller && !oos && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-warning px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning-foreground shadow-sm">
+                      Bestseller
                     </span>
-                    <span className="mt-0.5 flex items-baseline gap-1.5">
-                      <span className="text-[13px] font-bold text-foreground tabular-nums">{formatBDT(p)}</span>
-                      {r > p && (
-                        <span className="text-[10px] text-muted-foreground line-through tabular-nums">
-                          {formatBDT(r)}
-                        </span>
-                      )}
-                      {save > 0 && (
-                        <span className="ml-auto text-[10px] font-semibold text-success tabular-nums">
-                          −{formatBDT(save)}
-                        </span>
-                      )}
-                    </span>
-                    {oos && (
-                      <span className="mt-0.5 block text-[10px] font-semibold text-destructive">Out of stock</span>
+                  )}
+                  <span className="truncate text-[13px] font-semibold text-foreground">{optLabel}</span>
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="text-[15px] font-extrabold text-foreground tabular-nums">{formatBDT(p)}</span>
+                    {r > p && (
+                      <span className="text-[10px] text-muted-foreground line-through tabular-nums">
+                        {formatBDT(r)}
+                      </span>
                     )}
                   </span>
+                  {save > 0 && !oos && (
+                    <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-success">
+                      Save {formatBDT(save)}
+                    </span>
+                  )}
+                  {oos && (
+                    <span className="text-[10px] font-semibold text-destructive">Out of stock</span>
+                  )}
                 </button>
               );
             })}
           </div>
         </section>
       )}
+
 
 
       {/* Primary CTA above the fold */}
