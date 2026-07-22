@@ -96,7 +96,28 @@ export const Route = createFileRoute("/step/$slug")({
   component: StepLandingPage,
   pendingComponent: StepSkeleton,
   pendingMs: 0,
+  errorComponent: ({ error, reset }) => {
+    const message =
+      error instanceof Error ? error.message : "Something went wrong loading this page.";
+    return (
+      <NotFoundView
+        variant="error"
+        title="Couldn't load offer"
+        description={message}
+        onRetry={() => reset()}
+      />
+    );
+  },
+  notFoundComponent: () => (
+    <NotFoundView
+      title="Offer not found"
+      description="This offer may have ended or the link is incorrect."
+      primaryLabel="Browse shop"
+      primaryTo="/products"
+    />
+  ),
 });
+
 
 // ---------- form validation (mirrors /checkout) ----------
 
