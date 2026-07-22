@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   ArrowRight,
   Check,
-  
+  Flame,
   Lock,
   Sparkles,
   ShieldCheck,
@@ -14,6 +14,7 @@ import {
   Truck,
   Undo2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
@@ -156,20 +157,42 @@ function StepLandingPage() {
     ...variationsQueryOptions(product.id),
     enabled: isVariable,
   });
-  const variations: WooVariation[] = variationsQ.data?.variations ?? [];
+  const variations: WooVariation[] = useMemo(() => {
+    const list = variationsQ.data?.variations ?? [];
+    // WooCommerce merchants order variations by `menu_order` — treat the
+    // lowest value as the merchant's featured / best-selling option.
+    return [...list].sort((a, b) => {
+      const am = a.menu_order ?? 9999;
+      const bm = b.menu_order ?? 9999;
+      if (am !== bm) return am - bm;
+      return a.id - b.id;
+    });
+  }, [variationsQ.data]);
 
-  // Selected variation: first in-stock by default.
+  // Bestseller = first in-stock variation in merchant-sorted order.
+  const bestSellerId = useMemo(
+    () => variations.find((v) => v.stock_status !== "outofstock")?.id ?? null,
+    [variations],
+  );
+
+  // Selected variation: bestseller by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
   useEffect(() => {
     if (!isVariable || variations.length === 0 || selectedVarId) return;
-    const firstInStock = variations.find((v) => v.stock_status !== "outofstock") ?? variations[0];
-    setSelectedVarId(firstInStock?.id ?? null);
-  }, [isVariable, variations, selectedVarId]);
+    setSelectedVarId(bestSellerId ?? variations[0]?.id ?? null);
+  }, [isVariable, variations, bestSellerId, selectedVarId]);
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
     [variations, selectedVarId],
   );
+
+  // Section title: use the variation attribute name (e.g. "Size", "Color").
+  const variationHeading = useMemo(() => {
+    const name = variations[0]?.attributes?.[0]?.name?.trim();
+    return name ? `Choose your ${name.toLowerCase()}` : "Choose your option";
+  }, [variations]);
+
 
   // Effective price / regular price / stock
   const effectivePrice = isVariable
@@ -499,8 +522,8 @@ function StepLandingPage() {
       {/* Variation cards */}
       {isVariable && variations.length > 0 && (
         <section className="px-4 pb-4">
-          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Choose your pack
+          <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            {variationHeading}
           </h2>
           <div className="grid grid-cols-2 gap-2.5">
             {variations.map((v) => {
@@ -510,18 +533,25 @@ function StepLandingPage() {
               const save = r > p ? r - p : 0;
               const optLabel = v.attributes?.map((a) => a.option).filter(Boolean).join(" · ") || `Option ${v.id}`;
               const oos = v.stock_status === "outofstock";
+              const isBestSeller = v.id === bestSellerId;
               return (
                 <button
                   key={v.id}
                   type="button"
                   disabled={oos}
                   onClick={() => setSelectedVarId(v.id)}
-                  className={`relative flex flex-col items-start rounded-[6px] border-2 p-2.5 text-left transition-all ${
+                  className={`relative flex flex-col items-start rounded-[6px] border-2 p-2.5 pt-3.5 text-left transition-all ${
                     selected
                       ? "border-primary bg-primary/[0.06] shadow-[var(--shadow-glow)]"
                       : "border-border bg-background hover:border-primary/60"
                   } ${oos ? "opacity-50" : ""}`}
                 >
+                  {isBestSeller && !oos && (
+                    <span className="absolute -top-2 left-2 flex items-center gap-0.5 rounded-full bg-gradient-to-r from-warning to-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-md">
+                      <Flame className="h-2.5 w-2.5" aria-hidden />
+                      Most selling
+                    </span>
+                  )}
                   {save > 0 && (
                     <span className="absolute -top-2 right-2 rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase text-destructive-foreground shadow">
                       Save {formatBDT(save)}
@@ -550,6 +580,7 @@ function StepLandingPage() {
           </div>
         </section>
       )}
+
 
       {/* Primary CTA above the fold */}
       <div className="px-4">
