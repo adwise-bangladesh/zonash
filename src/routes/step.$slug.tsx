@@ -595,7 +595,7 @@ function StepLandingPage() {
               const p = priceNum(v.price);
               const r = priceNum(v.regular_price);
               const save = r > p ? r - p : 0;
-              const pct = r > p ? Math.round((save / r) * 100) : 0;
+              const pct = discountPercent(p, r);
               const optLabel =
                 v.attributes?.map((a) => a.option).filter(Boolean).join(" · ") || `Option ${v.id}`;
               const oos = v.stock_status === "outofstock";
