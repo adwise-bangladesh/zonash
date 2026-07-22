@@ -499,8 +499,11 @@ function StepLandingPage() {
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
         <h1 className="text-[19px] font-bold leading-tight text-foreground">{product.name}</h1>
         {(selectedVar?.sku || product.sku) && (
-          <div className="mt-1 text-[11px] font-medium text-muted-foreground">
-            SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <div className="text-[11px] font-medium text-muted-foreground">
+              SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
+            </div>
+            <CountdownInline />
           </div>
         )}
 
@@ -534,10 +537,7 @@ function StepLandingPage() {
         </div>
       </section>
 
-      {/* Offer timer — simple card */}
-      <div className="px-4 -mt-1 mb-3">
-        <CountdownCard />
-      </div>
+
 
       {/* Variation cards — compact left-aligned, matches product page style */}
       {isVariable && variations.length > 0 && (
@@ -1024,7 +1024,7 @@ function StepSkeleton() {
 const COUNTDOWN_KEY = "zonash:step:offerEndsAt";
 const COUNTDOWN_MS = 4 * 60 * 60 * 1000;
 
-function CountdownCard() {
+function CountdownInline() {
   const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -1053,41 +1053,17 @@ function CountdownCard() {
   const s = Math.floor((ms % 60_000) / 1000);
   const pad = (n: number) => n.toString().padStart(2, "0");
 
-  const Cell = ({ v, label }: { v: string; label: string }) => (
-    <div className="flex flex-col items-center">
-      <span className="rounded-[6px] bg-foreground px-2 py-1 text-[15px] font-extrabold tabular-nums text-background shadow-sm min-w-[34px] text-center">
-        {v}
-      </span>
-      <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-    </div>
-  );
-
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[8px] border border-border bg-card px-3.5 py-2.5">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 2" />
-          </svg>
-        </span>
-        <div className="min-w-0">
-          <div className="text-[11px] font-bold text-foreground">Special offer ends in</div>
-          <div className="text-[10px] text-muted-foreground">Reserved for this session</div>
-        </div>
-      </div>
-      <div className="flex items-start gap-1.5 shrink-0">
-        <Cell v={pad(h)} label="Hrs" />
-        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
-        <Cell v={pad(m)} label="Min" />
-        <span className="text-foreground/40 font-bold text-base leading-[26px]">:</span>
-        <Cell v={pad(s)} label="Sec" />
-      </div>
-    </div>
+    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive tabular-nums">
+      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      {pad(h)}:{pad(m)}:{pad(s)}
+    </span>
   );
 }
+
 
 
 
