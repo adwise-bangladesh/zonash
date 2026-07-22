@@ -123,9 +123,11 @@ const formSchema = z.object({
   phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX)."),
   address: z.string().max(300).refine(isValidAddress, "Please enter a valid delivery address."),
   thana: z.string().trim().min(1, "Please select your thana / upazila.").max(80),
+  email: z.string().trim().max(120).email("Please enter a valid email address.").optional().or(z.literal("")),
 });
 type FormShape = z.infer<typeof formSchema>;
-const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "" };
+const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "", email: "" };
+
 const STORAGE_KEY = "zonash:step:form";
 const MAX_QTY = 10;
 
