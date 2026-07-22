@@ -611,23 +611,50 @@ function StepLandingPage() {
             </h2>
             <span className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
           </div>
-          <ul className="grid gap-2">
-            {highlights.map((h, i) => (
-              <li
-                key={i}
-                className="group flex items-start gap-3 rounded-[8px] border border-border/70 bg-gradient-to-br from-primary/[0.04] via-background to-background p-3 transition-colors hover:border-primary/40"
+          <div
+            className={`relative overflow-hidden transition-[max-height] duration-500 ease-out ${
+              showAllHighlights || highlights.length <= 3 ? "max-h-[999px]" : "max-h-[168px]"
+            }`}
+          >
+            <ul className="grid gap-2">
+              {highlights.map((h, i) => (
+                <li
+                  key={i}
+                  className="group flex items-start gap-3 rounded-[8px] border border-border/70 bg-gradient-to-br from-primary/[0.04] via-background to-background p-3 transition-colors hover:border-primary/40"
+                >
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+                  </span>
+                  <span className="text-[13.5px] font-medium leading-snug text-foreground">
+                    {h}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {highlights.length > 3 && !showAllHighlights && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/90 to-transparent" />
+            )}
+          </div>
+          {highlights.length > 3 && (
+            <div className="mt-2 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllHighlights((v) => !v)}
+                aria-expanded={showAllHighlights}
+                className="group grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-primary shadow-sm transition-all hover:border-primary/60 hover:shadow-md active:scale-95"
+                aria-label={showAllHighlights ? "Show less" : "Show more"}
               >
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
-                </span>
-                <span className="text-[13.5px] font-medium leading-snug text-foreground">
-                  {h}
-                </span>
-              </li>
-            ))}
-          </ul>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-300 ${showAllHighlights ? "rotate-180" : ""}`}
+                  strokeWidth={2.5}
+                  aria-hidden
+                />
+              </button>
+            </div>
+          )}
         </section>
       )}
+
 
       {/* Social proof */}
       <section className="mt-6 px-4">
