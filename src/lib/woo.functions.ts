@@ -107,7 +107,9 @@ export const suggestProducts = createServerFn({ method: "GET" })
       const query = {
         per_page: data.limit,
         status: "publish",
-        orderby: "relevance",
+        // No `orderby: relevance` — WooCommerce rejects it unless order=asc,
+        // and the rejection would silently empty the dropdown.
+
         _fields: "id,name,slug,sku,type,price,regular_price,sale_price,price_html,on_sale,images",
       } as Record<string, unknown>;
 
