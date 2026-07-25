@@ -48,21 +48,29 @@ export const requestCustomerLoginOtp = createServerFn({ method: "POST" })
       .eq("phone", phone)
       .maybeSingle();
 
+    // `send_count` is a rolling 24h counter. It used to accumulate forever, so
+    // a customer who had ever requested 8 codes was permanently locked out of
+    // sign-in ("try again later" that never cleared).
+    let sendCount = 0;
     if (existing) {
       const row = existing as { last_sent_at: string; send_count: number };
-      if (Date.now() - new Date(row.last_sent_at).getTime() < 60_000) {
+      const sinceLast = Date.now() - new Date(row.last_sent_at).getTime();
+      if (sinceLast < 60_000) {
         return {
           ok: false as const,
           error: "Please wait a minute before requesting another code.",
         };
       }
-      if (row.send_count >= 8) {
+      const windowOpen = sinceLast < 24 * 60 * 60_000;
+      sendCount = windowOpen ? (row.send_count ?? 0) : 0;
+      if (windowOpen && sendCount >= 8) {
         return {
           ok: false as const,
           error: "Too many code requests today. Try again later.",
         };
       }
     }
+
 
     const code = generateOtp();
     const codeHash = await sha256Hex(`${code}:${phone}`);
