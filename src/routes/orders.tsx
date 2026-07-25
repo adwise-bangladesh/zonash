@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,10 +20,11 @@ import {
   StickyNote,
   Sparkles,
   Truck,
+  TriangleAlert,
   X,
   XCircle,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
@@ -47,10 +48,43 @@ export const Route = createFileRoute("/orders")({
         content: "Sign in with your mobile number to view your Zonash orders.",
       },
       { name: "robots", content: "noindex" },
+      { property: "og:title", content: "My orders — Zonash" },
+      {
+        property: "og:description",
+        content: "Sign in with your mobile number to view your Zonash orders.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OrdersPage,
+  errorComponent: OrdersError,
 });
+
+function OrdersError({ reset }: { error: Error; reset: () => void }) {
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <CheckoutHeader title="My Orders" />
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pt-6">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="text-[14px] font-semibold">Something went wrong</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            We couldn't open your orders. Please try again.
+          </p>
+          <button
+            onClick={reset}
+            className={`mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
+          >
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function OrdersPage() {
   const { phone, ready, setPhone, logout } = useCustomerSession();
@@ -88,6 +122,8 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   const requestFn = useServerFn(requestCustomerLoginOtp);
   const verifyFn = useServerFn(verifyCustomerLoginOtp);
   const codeRef = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const valid = NATIONAL_RE.test(national);
   const fullPhone = `0${national}`;
@@ -95,14 +131,23 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
     ? `+880 ${national.slice(0, 4)} ${national.slice(4)}`.trim()
     : "your number";
 
+  const ticking = cooldown > 0;
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
+    if (!ticking) return;
+    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
     return () => clearInterval(t);
-  }, [cooldown]);
+  }, [ticking]);
 
-  const sendCode = async (resend = false) => {
-    if (busy || !valid) return;
+  useEffect(
+    () => () => {
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+    },
+    [],
+  );
+
+  const sendCode = useCallback(async (resend = false) => {
+    if (inFlight.current || !valid) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -114,18 +159,21 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       setStep("otp");
       setCooldown(60);
       setCode("");
-      setTimeout(() => codeRef.current?.focus(), 60);
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+      focusTimer.current = setTimeout(() => codeRef.current?.focus(), 60);
       if (resend) toast.success("New code sent");
     } catch {
       setError("Could not send code. Please try again.");
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
-  };
+  }, [valid, fullPhone, requestFn]);
 
   const verify = useCallback(
     async (full: string) => {
-      if (full.length !== 4 || busy) return;
+      if (full.length !== 4 || inFlight.current) return;
+      inFlight.current = true;
       setBusy(true);
       setError(null);
       try {
@@ -141,15 +189,16 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       } catch {
         setError("Verification failed. Please try again.");
       } finally {
+        inFlight.current = false;
         setBusy(false);
       }
     },
-    [busy, fullPhone, verifyFn, onSignedIn],
+    [fullPhone, verifyFn, onSignedIn],
   );
 
   useEffect(() => {
-    if (step === "otp" && code.length === 4 && !busy) void verify(code);
-  }, [code, step, busy, verify]);
+    if (step === "otp" && code.length === 4) void verify(code);
+  }, [code, step, verify]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -214,6 +263,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             <button
               onClick={() => sendCode(false)}
               disabled={busy || !valid}
+              type="button"
               className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
