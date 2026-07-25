@@ -302,24 +302,46 @@ function FilteredResults({
   featured: boolean | undefined;
   sort: SortKey;
 }) {
-  const { data, refetch, isFetching } = useSuspenseQuery(
-    searchProductsQuery(q ?? "", category, featured, sort),
-  );
-  const products = (data?.products ?? []) as WooProduct[];
-  const error = data?.error ?? null;
+  const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
+  const products = dedupeFeedPages(data?.pages) as WooProduct[];
+  const error = data?.pages?.[0]?.error ?? null;
+  const activeLabel = q
+    ? `“${q}”`
+    : category
+      ? category.replace(/-/g, " ")
+      : featured
+        ? "Featured"
+        : null;
 
   return (
     <Shell>
       <AppHeader />
+      {/* Keep taxonomy navigation available inside filtered views too. */}
+      <Suspense fallback={<CategoryStripSkeleton />}>
+        <PrimaryCategoryStrip />
+      </Suspense>
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="px-[5px] pb-24 pt-3">
           <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
-          {q && (
-            <p className="mb-3 text-xs text-muted-foreground" aria-live="polite">
-              {products.length} result{products.length === 1 ? "" : "s"}
+
+          <div className="mb-3 flex items-center justify-between gap-2">
+            {activeLabel && (
+              <Link
+                to="/products"
+                aria-label="Clear filters"
+                className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium capitalize text-ink"
+              >
+                {activeLabel}
+                <X className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            )}
+            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
+              {products.length}
+              {hasNextPage ? "+" : ""} result{products.length === 1 && !hasNextPage ? "" : "s"}
             </p>
-          )}
+          </div>
 
           {error && (
             <div
@@ -352,13 +374,28 @@ function FilteredResults({
               primaryTo="/products"
             />
           ) : (
-            <ProductGrid products={products} />
+            <>
+              <ProductGrid products={products} />
+              {hasNextPage && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => void fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
+                  >
+                    {isFetchingNextPage ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
     </Shell>
   );
 }
+
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
 // recomputing price parsing and the srcset for each card.
