@@ -250,6 +250,7 @@ function trimOrder(o: WooOrderLite): WooOrderLite {
       .map((sl) => ({ method_title: str(sl?.method_title) || undefined })),
     billing: {
       first_name: str(o.billing?.first_name),
+      email: str(o.billing?.email),
       last_name: str(o.billing?.last_name),
       phone: str(o.billing?.phone),
       address_1: str(o.billing?.address_1),
@@ -349,7 +350,7 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
     const phone = normalizePhone(data.phone);
     if (!isBdMobile(phone)) return { billing: null };
     try {
-      const orders = await fetchOrdersByPhone(phone);
+      const { orders } = await fetchOrdersByPhone(phone, 1, 10);
       if (orders.length === 0) return { billing: null };
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();
