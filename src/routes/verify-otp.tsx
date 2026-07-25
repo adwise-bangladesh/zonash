@@ -7,7 +7,7 @@ import { MessageSquareLock, Loader2, RefreshCw } from "lucide-react";
 import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
-import { FlowIcon } from "@/components/checkout/FlowIcon";
+
 import { useCustomerSession } from "@/lib/customer-session";
 
 const searchSchema = z.object({
