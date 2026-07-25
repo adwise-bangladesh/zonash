@@ -66,13 +66,13 @@ export function SortTabs({ active }: { active: SortKey }) {
                 isActive
                   ? `relative shrink-0 text-primary${opt.key === "new" ? " inline-flex items-center gap-1" : ""}`
                   : opt.key === "new"
-                    ? "inline-flex shrink-0 items-center gap-1 text-emerald-600"
+                    ? "inline-flex shrink-0 items-center gap-1 text-success"
                     : "shrink-0 text-muted-foreground hover:text-foreground"
               }
               aria-current={isActive ? "page" : undefined}
             >
               {opt.key === "new" && (
-                <Zap className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" aria-hidden="true" />
+                <Zap className="h-3.5 w-3.5 fill-success text-success" aria-hidden="true" />
               )}
               {opt.label}
               {isActive && (

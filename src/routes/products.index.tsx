@@ -34,12 +34,23 @@ const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "t
  */
 const searchSchema = z.object({
   sort: z.enum(SORT_KEYS).optional().catch(undefined),
-  q: z.string().trim().max(120).optional().catch(undefined),
+  // Clamp instead of reject: `.max(120)` threw for a long query, and the
+  // `.catch(undefined)` then dropped the search entirely, silently dumping the
+  // shopper into the unfiltered shop instead of searching the first 120 chars.
+  q: z
+    .string()
+    .trim()
+    .transform((v) => v.slice(0, 120))
+    .optional()
+    .catch(undefined),
   category: z
     .string()
     .trim()
-    .max(96)
-    .regex(/^[A-Za-z0-9,-]+$/)
+    // Woo term slugs are lower-case; an upper-case slug in a shared/hand-typed
+    // link passed validation but never matched the slug->id map, rendering an
+    // empty "no results" page for a category that exists.
+    .transform((v) => v.toLowerCase())
+    .pipe(z.string().max(96).regex(/^[a-z0-9,-]+$/))
     .optional()
     .catch(undefined),
   featured: z
@@ -47,6 +58,7 @@ const searchSchema = z.object({
     .optional()
     .catch(undefined),
 });
+
 
 const FILTER_PER_PAGE = 24;
 
@@ -220,10 +232,15 @@ function Shop({ sort }: { sort: SortKey }) {
       </Suspense>
       <SortTabs active={sort} />
       <main className="animate-fade-in">
+        {/* The unfiltered shop is the only indexable variant of this route and
+            it had no <h1> at all — the heading existed solely on the
+            noindex'd filtered branch. */}
+        <h1 className="sr-only">Shop all Zonash fine jewelry</h1>
         <div className="pt-2">
           <InfiniteFeedSection orderby={orderby} order={order} columns={2} />
         </div>
       </main>
+
     </Shell>
   );
 }
@@ -313,10 +330,19 @@ function FilteredResults({
   // Read the newest page's error, not page 1's: a "Load more" that failed
   // upstream returned an error the UI never surfaced (silent dead button).
   const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
-  const activeLabel = useMemo(
-    () => (q ? `“${q}”` : category ? category.replace(/-/g, " ") : featured ? "Featured" : null),
-    [q, category, featured],
-  );
+  // Previously a single chip with hard precedence (q > category > featured):
+  // with two filters active the second one was invisible, and clicking the chip
+  // wiped every filter AND the chosen sort. Each active filter now gets its own
+  // chip that removes only itself and keeps `sort`.
+  const chips = useMemo(() => {
+    const list: { key: "q" | "category" | "featured"; label: string; capitalize: boolean }[] = [];
+    if (q) list.push({ key: "q", label: `“${q}”`, capitalize: false });
+    if (category)
+      list.push({ key: "category", label: category.replace(/[,-]/g, " "), capitalize: true });
+    if (featured) list.push({ key: "featured", label: "Featured", capitalize: false });
+    return list;
+  }, [q, category, featured]);
+
   const loadMore = useCallback(() => {
     void fetchNextPage();
   }, [fetchNextPage]);
@@ -338,16 +364,28 @@ function FilteredResults({
           <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
 
           <div className="mb-3 flex items-center justify-between gap-2">
-            {activeLabel && (
-              <Link
-                to="/products"
-                aria-label="Clear filters"
-                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${q ? "" : "capitalize"}`}
-              >
-                {activeLabel}
-                <X className="h-3 w-3" aria-hidden="true" />
-              </Link>
+            {chips.length > 0 && (
+              <ul className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {chips.map((chip) => (
+                  <li key={chip.key}>
+                    <Link
+                      to="/products"
+                      search={(prev: Record<string, unknown>) => {
+                        const next = { ...prev };
+                        delete next[chip.key];
+                        return next as never;
+                      }}
+                      aria-label={`Remove filter ${chip.label}`}
+                      className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
+                    >
+                      <span className="truncate">{chip.label}</span>
+                      <X className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
+
             <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
               {products.length}
               {hasNextPage ? "+" : ""} result{products.length === 1 && !hasNextPage ? "" : "s"}
