@@ -329,7 +329,20 @@ export async function cachedDerived<T>(key: string, ttlMs: number, compute: () =
 
   const p = compute()
     .then((value) => {
-      if (derivedCache.size >= MAX_DERIVED_ENTRIES) derivedCache.clear();
+      // Evict the oldest entries only. A full `clear()` also dropped
+      // `categories:index` — the most expensive value in the map (up to 5
+      // paginated upstream calls) — forcing a taxonomy re-walk for the next
+      // request on this isolate.
+      if (derivedCache.size >= MAX_DERIVED_ENTRIES) {
+        const drop = Math.ceil(MAX_DERIVED_ENTRIES * 0.25);
+        let i = 0;
+        for (const k of derivedCache.keys()) {
+          if (i++ >= drop) break;
+          derivedCache.delete(k);
+        }
+      }
+      derivedCache.delete(key);
+
       derivedCache.set(key, { at: Date.now(), value });
       return value;
     })
