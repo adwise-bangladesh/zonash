@@ -5,9 +5,25 @@
 //   "৳500 – ৳900"                                     (not on sale)
 // We extract the minimum numeric value from each segment.
 
+/**
+ * Strip markup and character entities before digit extraction.
+ *
+ * WooCommerce renders the BDT sign as the numeric entity `&#2547;`, so a naive
+ * digit scan treats "2547" as a candidate price and reports it as the minimum
+ * for any product priced above ৳2,547. Tags are dropped too, since class names
+ * and attributes can carry digits.
+ */
+function sanitizeSegment(segment: string): string {
+  return segment
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#x[0-9a-f]+;?/gi, " ")
+    .replace(/&#\d+;?/g, " ")
+    .replace(/&[a-z][a-z0-9]*;/gi, " ");
+}
+
 function extractMin(segment: string): number | null {
   // Match numbers (allow decimals + thousands separators/commas).
-  const matches = segment.match(/[\d][\d,]*(?:\.\d+)?/g);
+  const matches = sanitizeSegment(segment).match(/[\d][\d,]*(?:\.\d+)?/g);
   if (!matches || matches.length === 0) return null;
   const nums = matches
     .map((m) => parseFloat(m.replace(/,/g, "")))
@@ -15,6 +31,7 @@ function extractMin(segment: string): number | null {
   if (nums.length === 0) return null;
   return Math.min(...nums);
 }
+
 
 function pickSegment(html: string, tag: "del" | "ins"): string | null {
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
