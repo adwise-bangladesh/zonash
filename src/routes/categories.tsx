@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import * as React from "react";
 import { z } from "zod";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -46,10 +46,10 @@ function CategoriesPage() {
   const { data } = useSuspenseQuery(categoriesQuery);
   const cats = data.categories;
 
-  const railRef = useRef<HTMLUListElement>(null);
+  const railRef = React.useRef<HTMLUListElement>(null);
   const activeSlug = parent ?? cats[0]?.slug;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const rail = railRef.current;
     if (!rail || !activeSlug) return;
     const el = rail.querySelector<HTMLElement>(`[data-slug="${activeSlug}"]`);
@@ -161,14 +161,9 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         {isLoading ? (
           <GridSkeleton />
         ) : subs.length === 0 ? (
-          <NotFoundView
-            bare
-            variant="empty"
-            code="Nothing here yet"
-            title="No sub categories"
-            description={`${name} has no sub categories yet. Browse the category directly or explore the full shop.`}
-            primaryLabel={`Shop ${name}`}
-            primaryTo={`/c/${slug}`}
+          <CompactEmpty
+            name={name}
+            slug={slug}
           />
         ) : (
           <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
@@ -208,6 +203,54 @@ function GridSkeleton() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function CompactEmpty({ name, slug }: { name: string; slug: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+      <div className="relative mb-3 grid h-16 w-16 place-items-center">
+        <div className="absolute inset-0 rounded-full bg-primary/10" />
+        <div className="absolute inset-1.5 rounded-full bg-background shadow-inner ring-1 ring-primary/10" />
+        <LayoutGrid className="relative h-7 w-7 text-primary" strokeWidth={1.75} />
+      </div>
+
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/70">
+        Nothing here yet
+      </p>
+      <h3 className="mt-1 text-base font-semibold tracking-tight text-ink">
+        No sub categories
+      </h3>
+      <p className="mx-auto mt-1 max-w-[220px] text-[11.5px] leading-relaxed text-muted-foreground">
+        {name} has no sub categories yet. Browse the category directly or explore the full shop.
+      </p>
+
+      <Link
+        to="/c/$slug"
+        params={{ slug }}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[11.5px] font-semibold text-primary-foreground shadow-sm transition active:scale-[0.98]"
+      >
+        Shop {name}
+        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} />
+      </Link>
+
+      <div className="mt-3 flex items-center gap-2">
+        <QuickChip to="/" icon={<Home className="h-3 w-3" strokeWidth={2} />} label="Home" />
+        <QuickChip to="/products" icon={<Search className="h-3 w-3" strokeWidth={2} />} label="Browse" />
+      </div>
+    </div>
+  );
+}
+
+function QuickChip({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-[10.5px] font-medium text-ink ring-1 ring-border/60 transition active:scale-[0.98]"
+    >
+      <span className="text-primary">{icon}</span>
+      {label}
+    </Link>
   );
 }
 
