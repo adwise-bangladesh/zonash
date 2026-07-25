@@ -605,8 +605,9 @@ const OrderCard = memo(function OrderCard({
 }) {
   const items = order.line_items ?? [];
   const first = items[0];
-  const image = first?.image?.src;
+  const thumb = buildThumbImage(first?.image?.src, 80);
   const rest = Math.max(0, items.length - 1);
+
   const itemCount = items.reduce((n, li) => n + (li.quantity ?? 1), 0);
   const city = order.shipping?.city || order.billing?.city;
 
