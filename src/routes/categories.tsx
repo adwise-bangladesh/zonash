@@ -112,8 +112,8 @@ function PagePending() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
-      <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           <aside className="border-r border-border bg-surface-muted">
             <ul className="pb-24">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -281,8 +281,8 @@ function CategoriesPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
-      <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           {/* Left rail: main parent categories */}
           <aside className="border-r border-border bg-surface-muted">
             <nav
