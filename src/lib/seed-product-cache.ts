@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
