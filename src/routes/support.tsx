@@ -95,13 +95,13 @@ function SupportError({ reset }: { error: Error; reset: () => void }) {
           <button
             type="button"
             onClick={reset}
-            className="rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground"
+            className={`inline-flex min-h-11 items-center rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
           >
             Try again
           </button>
           <a
             href={`tel:${SUPPORT_TEL}`}
-            className="rounded-full bg-secondary px-4 py-2 text-[13px] font-semibold text-secondary-foreground"
+            className={`inline-flex min-h-11 items-center rounded-full bg-secondary px-4 py-2 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
           >
             Call support
           </a>
