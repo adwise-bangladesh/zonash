@@ -355,6 +355,49 @@ export function trimCategories<T extends { id?: number; name?: string; slug?: st
 
 
 
+/**
+ * One shared, single-flighted snapshot of the WHOLE category taxonomy
+ * (id/parent/name/slug/count/image), memoized per isolate for 5 minutes.
+ *
+ * Both the category rail and every sub-category pane are derived from this one
+ * dataset, so a burst of visitors browsing N different parents costs 0 extra
+ * upstream WooCommerce calls instead of 2 sequential calls per parent.
+ */
+export type CategoryIndexRow = {
+  id: number;
+  name: string;
+  slug: string;
+  count: number;
+  parent: number;
+  image: { src: string; alt: string } | null;
+};
+
+export function categoryIndex(): Promise<CategoryIndexRow[]> {
+  return cachedDerived<CategoryIndexRow[]>("categories:index", 300_000, async () => {
+    const fetchPage = (page: number) =>
+      wooFetch<unknown>({
+        path: "/products/categories",
+        query: {
+          per_page: 100,
+          page,
+          hide_empty: false,
+          orderby: "name",
+          order: "asc",
+          _fields: "id,parent,name,slug,count,image",
+        },
+        timeoutMs: 10_000,
+      })
+        .then((b) => trimCategories(b))
+        .catch(() => [] as CategoryIndexRow[]);
+
+    const first = await fetchPage(1);
+    if (first.length < 100) return first;
+    // Bigger catalog: remaining pages in parallel, not sequentially.
+    const rest = await Promise.all([2, 3, 4, 5].map(fetchPage));
+    return first.concat(...rest);
+  });
+}
+
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
   id: number;

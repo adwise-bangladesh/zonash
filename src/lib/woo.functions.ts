@@ -211,37 +211,15 @@ export const listCategories = createServerFn({ method: "GET" })
 export const listPrimaryCategories = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
-      const { wooFetch, cachedDerived, trimCategories } = await import("./woo.server");
+      const { cachedDerived, categoryIndex } = await import("./woo.server");
 
-      // Derived result is memoized per isolate (5 min) and single-flighted, so a
-      // burst of visitors triggers one pagination pass instead of one per request.
+      // Derived from the shared taxonomy snapshot: memoized per isolate (5 min)
+      // and single-flighted, so a burst of visitors triggers one pagination pass
+      // instead of one per request.
       const categories = await cachedDerived<WooCategory[]>("categories:primary", 300_000, async () => {
-        const fetchPage = (page: number) =>
-          wooFetch<WooCategory[]>({
-            path: "/products/categories",
-            query: {
-              per_page: 100,
-              page,
-              hide_empty: false,
-              orderby: "name",
-              order: "asc",
-              _fields: "id,parent,name,slug,image",
-            },
-            timeoutMs: 10_000,
-          }).then((b) => asArray<WooCategory>(b));
-
-        // Page 1 first; if the catalog is bigger, fetch the remaining pages in
-        // parallel instead of 10 sequential round trips.
-        const first = await fetchPage(1);
-        let all = first;
-        if (first.length === 100) {
-          const rest = await Promise.all([2, 3, 4, 5].map((p) => fetchPage(p).catch(() => [] as WooCategory[])));
-          all = first.concat(...rest);
-        }
-
-        const trimmed = trimCategories(all);
-        const parents = trimmed.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
-        const withChildren = new Set(trimmed.filter((c) => c.parent > 0).map((c) => c.parent));
+        const all = await categoryIndex();
+        const parents = all.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
+        const withChildren = new Set(all.filter((c) => c.parent > 0).map((c) => c.parent));
         const nested = parents.filter((p) => withChildren.has(p.id));
         // Hide childless parents only while at least one parent has children.
         // A flat taxonomy (no subcategories anywhere) must still render a
@@ -250,8 +228,6 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
         // Only fields the browser actually renders leave the server.
         return visible.map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
       });
-
-
 
       return { categories, error: null as string | null };
     } catch (e) {
@@ -269,15 +245,32 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     type SubsResult = { parent: WooCategory | null; subs: WooCategory[]; error: string | null };
     try {
-      const { wooFetch, cachedDerived, trimCategories } = await import("./woo.server");
+      const { wooFetch, cachedDerived, trimCategories, categoryIndex } = await import("./woo.server");
       return await cachedDerived<SubsResult>(`categories:subs:${data.slug}`, 300_000, async () => {
-        const parents = trimCategories(
-          await wooFetch<WooCategory[]>({
-            path: "/products/categories",
-            query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
-            timeoutMs: 8000,
-          }),
-        );
+        // Fast path: resolve the parent AND its children out of the shared
+        // taxonomy snapshot — zero upstream calls once it is warm.
+        const all = await categoryIndex();
+        const indexed = all.find((c) => c.slug === data.slug) ?? null;
+        if (indexed) {
+          const subs = all
+            .filter((c) => c.parent === indexed.id)
+            .map((s) => ({ id: s.id, name: s.name, slug: s.slug, count: s.count, image: s.image }));
+          if (subs.length > 0) {
+            return { parent: indexed, subs, error: null };
+          }
+        }
+
+        // Slow path only for slugs beyond the snapshot's page window (or a
+        // parent whose children were truncated): resolve directly.
+        const parents = indexed
+          ? [indexed]
+          : trimCategories(
+              await wooFetch<WooCategory[]>({
+                path: "/products/categories",
+                query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
+                timeoutMs: 8000,
+              }),
+            );
         const parent = parents[0] ?? null;
         if (!parent) return { parent: null, subs: [], error: null };
         const subs = await wooFetch<WooCategory[]>({
@@ -298,6 +291,7 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
       return { parent: null, subs: [] as WooCategory[], error: "Category is temporarily unavailable." };
     }
   });
+
 
 
 // Fetch products by category slug (e.g. "mega-sale"). Resolves slug -> ID
