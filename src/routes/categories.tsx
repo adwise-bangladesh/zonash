@@ -6,6 +6,8 @@ import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { NotFoundView } from "@/components/NotFoundView";
+import { buildThumbImage } from "@/lib/product-image";
+
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -162,12 +164,39 @@ function CategoriesPage() {
   );
 
   // Warm the sub-category cache on hover/focus — served from cache on click.
+  // Throttled + de-duped: sweeping the mouse down the rail must not fire one
+  // server call per item (that multiplies origin load by ~N per visitor), and
+  // anything already cached/fresh is skipped entirely.
+  const prefetchTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefetched = React.useRef<Set<string>>(new Set());
+  React.useEffect(
+    () => () => {
+      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+    },
+    [],
+  );
+
   const prefetchSubs = React.useCallback(
     (slug: string) => {
-      void queryClient.prefetchQuery(subsQuery(slug)).catch(() => {});
+      if (prefetched.current.has(slug)) return;
+      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = setTimeout(() => {
+        prefetchTimer.current = null;
+        if (prefetched.current.has(slug)) return;
+        const opts = subsQuery(slug);
+        if (queryClient.getQueryState(opts.queryKey)?.data) {
+          prefetched.current.add(slug);
+          return;
+        }
+        prefetched.current.add(slug);
+        void queryClient.prefetchQuery(opts).catch(() => {
+          prefetched.current.delete(slug);
+        });
+      }, 140);
     },
     [queryClient],
   );
+
 
   const onRailKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {
@@ -295,7 +324,10 @@ function CategoriesPage() {
   );
 }
 
-/** Thumbnail that degrades to an icon when the upstream image 404s. */
+/**
+ * Thumbnail that serves a WordPress generated crop sized for its slot (the
+ * originals are multi-MB) and degrades to an icon when the upstream image 404s.
+ */
 const CategoryThumb = React.memo(function CategoryThumb({
   src,
   alt,
@@ -312,7 +344,9 @@ const CategoryThumb = React.memo(function CategoryThumb({
   const [broken, setBroken] = React.useState(false);
   React.useEffect(() => setBroken(false), [src]);
 
-  if (!src || broken) {
+  const thumb = React.useMemo(() => buildThumbImage(src, size), [src, size]);
+
+  if (!src || !thumb || broken) {
     return (
       <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground">
         <LayoutGrid className={iconClass} aria-hidden="true" />
@@ -321,17 +355,29 @@ const CategoryThumb = React.memo(function CategoryThumb({
   }
   return (
     <img
-      src={src}
+      src={thumb.src}
+      srcSet={thumb.srcSet || undefined}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
       decoding="async"
-      onError={() => setBroken(true)}
+      onError={(e) => {
+        // A missing generated crop falls back to the original once; a broken
+        // original then shows the icon instead of an empty tile.
+        const img = e.currentTarget;
+        if (img.srcset || img.src !== src) {
+          img.srcset = "";
+          img.src = src;
+          return;
+        }
+        setBroken(true);
+      }}
       className={`h-full w-full object-cover ${imgClass}`}
     />
   );
 });
+
 
 function SubCategories({ slug, name }: { slug: string; name: string }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery(subsQuery(slug));

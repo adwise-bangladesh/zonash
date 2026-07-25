@@ -288,6 +288,72 @@ export function trimProducts(list: unknown): WooProduct[] {
     : [];
 }
 
+/**
+ * Derived-result cache with single-flight.
+ *
+ * `wooFetch` caches raw upstream pages, but some endpoints (e.g. the category
+ * browser index) need N pages + local relationship math per request. Under a
+ * 100k-visitor burst that recomputation is repeated by every request that
+ * arrives on a cold isolate. This memoizes the *computed* result per isolate
+ * and coalesces concurrent computations into one.
+ */
+type DerivedEntry = { at: number; value: unknown };
+const derivedCache = new Map<string, DerivedEntry>();
+const derivedInflight = new Map<string, Promise<unknown>>();
+const MAX_DERIVED_ENTRIES = 100;
+
+export async function cachedDerived<T>(key: string, ttlMs: number, compute: () => Promise<T>): Promise<T> {
+  const hit = derivedCache.get(key);
+  if (hit && Date.now() - hit.at <= ttlMs) return hit.value as T;
+  if (hit) derivedCache.delete(key);
+
+  const pending = derivedInflight.get(key);
+  if (pending) return pending as Promise<T>;
+
+  const p = compute()
+    .then((value) => {
+      if (derivedCache.size >= MAX_DERIVED_ENTRIES) derivedCache.clear();
+      derivedCache.set(key, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => {
+      derivedInflight.delete(key);
+    });
+  p.catch(() => {});
+  derivedInflight.set(key, p);
+  return p;
+}
+
+/**
+ * Category projection: WooCommerce categories carry description HTML, yoast
+ * blobs and a fully expanded image object. The category browser reads only
+ * name/slug/image.src, so everything else is dropped before it is embedded in
+ * SSR HTML and the dehydrated Query cache.
+ */
+export function trimCategories<T extends { id?: number; name?: string; slug?: string; count?: number; parent?: number; image?: { src?: string; alt?: string } | null }>(
+  list: unknown,
+): { id: number; name: string; slug: string; count: number; parent: number; image: { src: string; alt: string } | null }[] {
+  if (!Array.isArray(list)) return [];
+  const out: { id: number; name: string; slug: string; count: number; parent: number; image: { src: string; alt: string } | null }[] = [];
+  for (const raw of list as T[]) {
+    if (!raw || typeof raw !== "object") continue;
+    const slug = typeof raw.slug === "string" ? raw.slug : "";
+    if (!slug) continue;
+    const src = typeof raw.image?.src === "string" ? raw.image.src : "";
+    out.push({
+      id: typeof raw.id === "number" ? raw.id : 0,
+      name: typeof raw.name === "string" ? raw.name : slug,
+      slug,
+      count: typeof raw.count === "number" ? raw.count : 0,
+      parent: typeof raw.parent === "number" ? raw.parent : 0,
+      image: src ? { src, alt: typeof raw.image?.alt === "string" ? raw.image.alt : "" } : null,
+    });
+  }
+  return out;
+}
+
+
+
 
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {

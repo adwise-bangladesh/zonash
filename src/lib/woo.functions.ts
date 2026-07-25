@@ -211,34 +211,43 @@ export const listCategories = createServerFn({ method: "GET" })
 export const listPrimaryCategories = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
-      const { wooFetch } = await import("./woo.server");
+      const { wooFetch, cachedDerived, trimCategories } = await import("./woo.server");
 
-      // Pull all categories (paginated) so we can check parent -> child relationships locally.
-      // Two small calls replace N+1 child requests and keep the response cache-friendly.
-      const all: WooCategory[] = [];
-      let page = 1;
-      while (page <= 10) {
-        const batch = await wooFetch<WooCategory[]>({
-          path: "/products/categories",
-          query: {
-            per_page: 100,
-            page,
-            hide_empty: false,
-            orderby: "name",
-            order: "asc",
-            _fields: "id,parent,name,slug,count,image",
-          },
-          timeoutMs: 10_000,
-        });
-        if (!batch.length) break;
-        all.push(...asArray<WooCategory>(batch));
-        if (batch.length < 100) break;
-        page++;
-      }
+      // Derived result is memoized per isolate (5 min) and single-flighted, so a
+      // burst of visitors triggers one pagination pass instead of one per request.
+      const categories = await cachedDerived<WooCategory[]>("categories:primary", 300_000, async () => {
+        const fetchPage = (page: number) =>
+          wooFetch<WooCategory[]>({
+            path: "/products/categories",
+            query: {
+              per_page: 100,
+              page,
+              hide_empty: false,
+              orderby: "name",
+              order: "asc",
+              _fields: "id,parent,name,slug,image",
+            },
+            timeoutMs: 10_000,
+          }).then((b) => asArray<WooCategory>(b));
 
-      const parents = all.filter((c) => c?.parent === 0 && c.slug && c.slug !== "uncategorized");
-      const parentIds = new Set(parents.map((c) => c.id));
-      const categories = parents.filter((p) => all.some((c) => c.parent && parentIds.has(c.parent) && c.parent === p.id));
+        // Page 1 first; if the catalog is bigger, fetch the remaining pages in
+        // parallel instead of 10 sequential round trips.
+        const first = await fetchPage(1);
+        let all = first;
+        if (first.length === 100) {
+          const rest = await Promise.all([2, 3, 4, 5].map((p) => fetchPage(p).catch(() => [] as WooCategory[])));
+          all = first.concat(...rest);
+        }
+
+        const trimmed = trimCategories(all);
+        const parents = trimmed.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
+        const withChildren = new Set(trimmed.filter((c) => c.parent > 0).map((c) => c.parent));
+        // Only fields the browser actually renders leave the server.
+        return parents
+          .filter((p) => withChildren.has(p.id))
+          .map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
+      });
+
 
       return { categories, error: null as string | null };
     } catch (e) {
@@ -254,21 +263,32 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
     z.object({ slug: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/) }).parse(raw),
   )
   .handler(async ({ data }) => {
+    type SubsResult = { parent: WooCategory | null; subs: WooCategory[]; error: string | null };
     try {
-      const { wooFetch } = await import("./woo.server");
-      const parents = await wooFetch<(WooCategory & { parent?: number })[]>({
-        path: "/products/categories",
-        query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
-        timeoutMs: 8000,
+      const { wooFetch, cachedDerived, trimCategories } = await import("./woo.server");
+      return await cachedDerived<SubsResult>(`categories:subs:${data.slug}`, 300_000, async () => {
+        const parents = trimCategories(
+          await wooFetch<WooCategory[]>({
+            path: "/products/categories",
+            query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
+            timeoutMs: 8000,
+          }),
+        );
+        const parent = parents[0] ?? null;
+        if (!parent) return { parent: null, subs: [], error: null };
+        const subs = await wooFetch<WooCategory[]>({
+          path: "/products/categories",
+          query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
+          timeoutMs: 8000,
+        }).catch(() => [] as WooCategory[]);
+        return {
+          parent,
+          // Only the fields the UI renders leave the server.
+          subs: trimCategories(subs).map((s) => ({ id: s.id, name: s.name, slug: s.slug, count: s.count, image: s.image })),
+          error: null,
+        };
       });
-      const parent = parents[0] ?? null;
-      if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
-      const subs = await wooFetch<WooCategory[]>({
-        path: "/products/categories",
-        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
-        timeoutMs: 8000,
-      }).catch(() => [] as WooCategory[]);
-      return { parent, subs, error: null as string | null };
+
     } catch (e) {
       console.error("getCategoryWithSubs failed", e);
       return { parent: null, subs: [] as WooCategory[], error: "Category is temporarily unavailable." };
