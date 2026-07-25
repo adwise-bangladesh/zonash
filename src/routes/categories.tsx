@@ -78,7 +78,7 @@ function CategoriesPage() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
       <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[88px_minmax(0,1fr)]">
+        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)]">
           {/* Left rail: main parent categories */}
           <aside className="border-r border-border bg-surface-muted">
             <nav aria-label="Parent categories" className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -91,23 +91,24 @@ function CategoriesPage() {
                         type="button"
                         onClick={() => selectCategory(c.slug)}
                         aria-pressed={isActive}
-                        className={`relative flex w-full flex-col items-center gap-1 px-1 py-3 text-center transition-colors ${
-                          isActive ? "bg-background text-primary" : "text-foreground hover:bg-background/60"
+                        className={`relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors ${
+                          isActive ? "bg-background" : "text-foreground active:bg-background/60"
                         }`}
                       >
                         {isActive && (
-                          <span aria-hidden="true" className="absolute left-0 top-1/2 h-6 w-[2px] -translate-y-1/2 rounded-r bg-primary" />
+                          <span aria-hidden="true" className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary" />
                         )}
-                        <span className={`block h-14 w-14 overflow-hidden rounded-[3px] ring-1 ${isActive ? "ring-primary/50" : "ring-border"}`}>
+                        <span className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${isActive ? "ring-primary/50" : "ring-border"}`}>
                           {c.image?.src ? (
                             <img src={c.image.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                           ) : (
-                            <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground"><LayoutGrid className="h-5 w-5" /></span>
+                            <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground"><LayoutGrid className="h-4 w-4" /></span>
                           )}
                         </span>
-                        <span className={`block w-full break-words px-0.5 text-[10px] font-medium leading-tight ${isActive ? "text-primary" : "text-foreground"}`}>
+                        <span className={`block w-full truncate text-[10px] font-semibold leading-tight ${isActive ? "text-primary" : "text-foreground"}`}>
                           {c.name}
                         </span>
+
                       </button>
                     </li>
                   );
@@ -135,54 +136,61 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
   const subs = data?.subs ?? [];
 
   return (
-    <div className="px-2 pb-24 pt-3">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="font-display text-lg">{name}</h2>
-        <Link to="/c/$slug" params={{ slug }} className="text-xs font-medium text-primary hover:underline">
-          View all →
+    <div className="pb-24">
+      <div className="sticky top-11 z-10 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-2.5 py-1.5 backdrop-blur md:top-14">
+        <h2 className="min-w-0 truncate text-[12.5px] font-bold tracking-tight">{name}</h2>
+        <Link
+          to="/c/$slug"
+          params={{ slug }}
+          className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary"
+        >
+          View all
         </Link>
       </div>
 
-      {isLoading ? (
-        <GridSkeleton />
-      ) : subs.length === 0 ? (
-        <EmptyState compact icon={LayoutGrid} title="No sub categories" description="Browse this category directly." primary={{ label: `Shop ${name}`, to: "/c/$slug", params: { slug } } as never} />
-      ) : (
-        <ul className="grid grid-cols-3 gap-2">
-          {subs.map((s) => (
-            <li key={s.slug}>
-              <Link
-                to="/c/$slug"
-                params={{ slug: s.slug }}
-                preload="intent"
-                className="group flex flex-col items-center rounded-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <span className="block aspect-square w-full overflow-hidden rounded-[3px] ring-1 ring-border transition-all group-hover:ring-primary/40">
-                  {s.image?.src ? (
-                    <img src={s.image.src} alt={s.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
-                  ) : (
-                    <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground"><LayoutGrid className="h-5 w-5" /></span>
-                  )}
-                </span>
-                <span className="mt-1.5 line-clamp-2 text-center text-[11px] font-medium leading-tight text-foreground">{s.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="px-1.5 pt-1.5">
+        {isLoading ? (
+          <GridSkeleton />
+        ) : subs.length === 0 ? (
+          <EmptyState compact icon={LayoutGrid} title="No sub categories" description="Browse this category directly." primary={{ label: `Shop ${name}`, to: "/c/$slug", params: { slug } } as never} />
+        ) : (
+          <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
+            {subs.map((s) => (
+              <li key={s.slug}>
+                <Link
+                  to="/c/$slug"
+                  params={{ slug: s.slug }}
+                  preload="intent"
+                  className="group flex flex-col items-center rounded-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span className="block aspect-square w-full overflow-hidden rounded-[3px] bg-surface-muted ring-1 ring-border transition-all group-hover:ring-primary/40">
+                    {s.image?.src ? (
+                      <img src={s.image.src} alt={s.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground"><LayoutGrid className="h-5 w-5" /></span>
+                    )}
+                  </span>
+                  <span className="mt-1 line-clamp-2 px-0.5 text-center text-[10px] font-medium leading-[1.2] text-foreground">{s.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
 
 function GridSkeleton() {
   return (
-    <ul className="grid grid-cols-3 gap-2">
-      {Array.from({ length: 9 }).map((_, i) => (
-        <li key={i} className="flex flex-col items-center gap-1.5">
+    <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <li key={i} className="flex flex-col items-center gap-1">
           <span className="block aspect-square w-full animate-pulse rounded-[3px] bg-surface-muted" />
-          <span className="h-3 w-3/4 animate-pulse rounded-[3px] bg-surface-muted" />
+          <span className="h-2.5 w-3/4 animate-pulse rounded-[3px] bg-surface-muted" />
         </li>
       ))}
     </ul>
   );
 }
+
