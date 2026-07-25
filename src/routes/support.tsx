@@ -147,6 +147,23 @@ function Support() {
           })}
         </div>
 
+        {/* WhatsApp CTA */}
+        <a
+          href={WA_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 flex items-center gap-3 rounded-2xl bg-[#25D366]/10 px-4 py-4 ring-1 ring-[#25D366]/25 active:scale-[0.99] transition-transform"
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
+            <WhatsAppIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-[#128C7E]">Chat on WhatsApp</div>
+            <div className="text-[12px] text-[#128C7E]/80">Replies within minutes · 10 AM – 10 PM</div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-[#128C7E]" aria-hidden="true" />
+        </a>
+
         {/* Contact list */}
         <h3 className="mt-6 px-1 text-[13px] font-semibold">Contact us</h3>
         <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
