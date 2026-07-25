@@ -1,12 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useInfiniteQuery, queryOptions } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Loader2, LayoutGrid } from "lucide-react";
 import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { NotFoundView } from "@/components/NotFoundView";
+import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import type { WooProduct } from "@/lib/woo.server";
+
+const SITE = "https://zonash.lovable.app";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
@@ -16,22 +19,47 @@ const categoryQuery = (slug: string) =>
   });
 
 export const Route = createFileRoute("/c/$slug")({
-  loader: ({ params, context }) => {
-    if (params.slug === "demo") return;
-    return context.queryClient.ensureQueryData(categoryQuery(params.slug));
+  loader: async ({ params, context }) => {
+    const res = await context.queryClient.ensureQueryData(categoryQuery(params.slug));
+    // Upstream failure must surface as an error boundary (retryable), and an
+    // unknown slug must be a real 404 — previously both silently rendered a
+    // 200 "collection unavailable" placeholder.
+    if (res.error) throw new Error(res.error);
+    if (!res.parent) throw notFound();
+    return {
+      title: res.parent.name,
+      count: res.parent.count ?? 0,
+      image: res.parent.image?.src ?? null,
+    };
   },
-  head: ({ params }) => {
-    const pretty = params.slug
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
+  head: ({ params, loaderData }) => {
+    const name =
+      loaderData?.title ??
+      params.slug
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    const title = `${name} — Zonash`;
+    const description = `Shop ${name} at Zonash. Cash on delivery across Bangladesh, 7-day returns.`;
+    const url = `${SITE}/c/${params.slug}`;
+    const img = loaderData?.image;
     return {
       meta: [
-        { title: `${pretty} — Zonash` },
-        { name: "description", content: `Shop ${pretty} at Zonash.` },
-        { property: "og:title", content: `${pretty} — Zonash` },
-        { property: "og:description", content: `Curated ${pretty} collection from Zonash.` },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { name: "twitter:card", content: img ? "summary_large_image" : "summary" },
+        ...(img && /^https:\/\//.test(img)
+          ? [
+              { property: "og:image", content: img },
+              { name: "twitter:image", content: img },
+            ]
+          : []),
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: CollectionPage,
@@ -56,7 +84,6 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CollectionPage() {
   const { slug } = Route.useParams();
-  if (slug === "demo") return <DemoCollection />;
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
@@ -65,6 +92,9 @@ function CollectionPage() {
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
       <main>
+        {/* Every indexable page needs exactly one h1; the visual design has no
+            title bar, so it is screen-reader/crawler only. */}
+        <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
         <div className="bg-background pt-2">
           {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
         </div>
@@ -74,6 +104,7 @@ function CollectionPage() {
     </div>
   );
 }
+
 
 function SubcategoryStrip({
   parentSlug,
@@ -121,6 +152,9 @@ function SubCard({
   parentSlug: string;
   sub: { id: number; name: string; slug: string; image: { src: string; alt: string } | null };
 }) {
+  // A sub tile is ~70–90 CSS px wide inside the 480px frame; without a sized
+  // srcSet the browser pulled the full-size WordPress original per tile.
+  const thumb = buildThumbImage(sub.image?.src, 96);
   return (
     <Link
       to="/c/$slug"
@@ -130,12 +164,17 @@ function SubCard({
       aria-label={`${sub.name} in ${parentSlug}`}
     >
       <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
-        {sub.image?.src ? (
+        {thumb ? (
           <img
-            src={sub.image.src}
-            alt={sub.image.alt || sub.name}
+            src={thumb.src}
+            srcSet={thumb.srcSet || undefined}
+            sizes="96px"
+            alt={sub.image?.alt || sub.name}
+            width={96}
+            height={96}
             loading="lazy"
             decoding="async"
+            onError={onImageSrcSetError}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -151,11 +190,12 @@ function SubCard({
   );
 }
 
+
 function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const enabled = !!categoryId;
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
     useInfiniteQuery({
       queryKey: ["collection", "feed", categoryId],
       enabled,
@@ -174,21 +214,55 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
       staleTime: 60_000,
     });
 
+  // The observer callback changes on every fetch/render; holding it in a ref
+  // keeps a single observer alive for the page's lifetime instead of
+  // disconnect/observe churn (which can re-fire while a page is in flight).
+  const onHit = useRef<() => void>(() => {});
+  onHit.current = () => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  };
+
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+        if (entries[0]?.isIntersecting) onHit.current();
       },
       { rootMargin: "600px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [enabled]);
 
-  const products: WooProduct[] =
-    data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [];
+  // Woo re-paginates live: a product published between page fetches shifts
+  // every later page down one, which repeats an item and throws a duplicate
+  // React key. De-dupe by id.
+  const products: WooProduct[] = useMemo(() => {
+    const seen = new Set<number>();
+    const out: WooProduct[] = [];
+    for (const page of data?.pages ?? []) {
+      for (const p of (page.products ?? []) as WooProduct[]) {
+        if (!p || seen.has(p.id)) continue;
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+    return out;
+  }, [data]);
+
+  if (isError && products.length === 0) {
+    return (
+      <NotFoundView
+        bare
+        variant="error"
+        title="Couldn't load these products"
+        description="The shop is taking longer than usual to respond. Try again in a moment."
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
 
   if (!enabled) {
     return (
@@ -236,22 +310,33 @@ function FeedSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-2 px-[5px] pt-3 md:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
+        // Mirrors the real card box model (square image + ~80px meta block).
+        // The old flat aspect-[3/4] block was ~19px shorter per row, so the
+        // whole feed jumped when data arrived.
         <div
           key={i}
-          className="skeleton-shimmer aspect-[3/4] rounded-2xl"
+          className="overflow-hidden rounded-2xl bg-white ring-1 ring-border/60"
           style={{ animationDelay: `${i * 40}ms` }}
-        />
+        >
+          <div className="skeleton-shimmer aspect-square w-full" />
+          <div className="flex flex-col gap-1.5 p-2.5">
+            <div className="skeleton-shimmer h-3 w-full rounded" />
+            <div className="skeleton-shimmer h-3 w-2/3 rounded" />
+            <div className="skeleton-shimmer h-[23px] w-1/2 rounded" />
+          </div>
+
+        </div>
       ))}
     </div>
   );
 }
 
+
 function CollectionSkeleton() {
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <div className="h-14 border-b border-border/60 bg-background" />
-      <div className="bg-background pt-3">
-        <div className="container-page mb-3 h-5 w-40 skeleton-shimmer rounded" />
+      <div className="bg-background pt-2">
         <div className="flex gap-2 overflow-hidden px-[5px] pb-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="basis-[18%] shrink-0">
@@ -262,80 +347,6 @@ function CollectionSkeleton() {
         </div>
       </div>
       <FeedSkeleton />
-    </div>
-  );
-}
-
-
-/* ------------------------------------------------------------------ */
-/* Demo collection with dummy data (open /c/demo to preview design)    */
-/* ------------------------------------------------------------------ */
-const DEMO_SUBS = [
-  { id: 1, name: "Necklaces", slug: "demo", image: { src: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&q=80", alt: "" } },
-  { id: 2, name: "Earrings", slug: "demo", image: { src: "https://images.unsplash.com/photo-1535632787350-4e68ef0ac584?w=400&q=80", alt: "" } },
-  { id: 3, name: "Rings", slug: "demo", image: { src: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=80", alt: "" } },
-  { id: 4, name: "Bracelets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=400&q=80", alt: "" } },
-  { id: 5, name: "Anklets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=400&q=80", alt: "" } },
-  { id: 6, name: "Sets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80", alt: "" } },
-  { id: 7, name: "Bridal", slug: "demo", image: { src: "https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=400&q=80", alt: "" } },
-];
-
-const DEMO_IMAGES = [
-  "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=80",
-  "https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=600&q=80",
-  "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=600&q=80",
-  "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=600&q=80",
-  "https://images.unsplash.com/photo-1633810542706-90e5ff7557be?w=600&q=80",
-  "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=600&q=80",
-  "https://images.unsplash.com/photo-1620619032909-1c8b76c85e50?w=600&q=80",
-  "https://images.unsplash.com/photo-1523251343397-9225e4cb6319?w=600&q=80",
-];
-
-function makeDemoProducts(): WooProduct[] {
-  const names = [
-    "Amara Pearl Drop",
-    "Zara Gold Hoop",
-    "Nova Stellar Ring",
-    "Luna Chain Bracelet",
-    "Iris Bloom Studs",
-    "Aria Choker",
-    "Selene Anklet",
-    "Celeste Bridal Set",
-  ];
-  return names.map((name, i) => ({
-    id: 10_000 + i,
-    name,
-    slug: `demo-${i}`,
-    price: String(1290 + i * 240),
-    regular_price: String(1690 + i * 260),
-    sale_price: String(1290 + i * 240),
-    on_sale: i % 2 === 0,
-    stock_status: i === 3 ? "onbackorder" : "instock",
-    images: [{ id: i, src: DEMO_IMAGES[i % DEMO_IMAGES.length], alt: name }],
-    categories: [{ id: 1, name: "Demo", slug: "demo" }],
-    permalink: "#",
-    short_description: "",
-    description: "",
-    average_rating: "4.8",
-    rating_count: 24 + i,
-    total_sales: 100 + i * 12,
-  } as unknown as WooProduct));
-}
-
-function DemoCollection() {
-  const products = makeDemoProducts();
-  return (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main>
-        <div className="bg-background pt-2">
-          <SubcategoryStrip parentSlug="demo" subs={DEMO_SUBS} />
-        </div>
-        <BigProductGrid products={products} />
-        <div className="flex items-center justify-center py-6">
-          <span className="text-xs text-muted-foreground/70">Demo preview — dummy data ✦</span>
-        </div>
-      </main>
     </div>
   );
 }
