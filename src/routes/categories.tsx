@@ -161,14 +161,9 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         {isLoading ? (
           <GridSkeleton />
         ) : subs.length === 0 ? (
-          <NotFoundView
-            bare
-            variant="empty"
-            code="Nothing here yet"
-            title="No sub categories"
-            description={`${name} has no sub categories yet. Browse the category directly or explore the full shop.`}
-            primaryLabel={`Shop ${name}`}
-            primaryTo={`/c/${slug}`}
+          <CompactEmpty
+            name={name}
+            slug={slug}
           />
         ) : (
           <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
