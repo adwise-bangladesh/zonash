@@ -7,7 +7,7 @@ import {
   dedupeFeedPages,
   getFeedNextPageParam,
   FEED_PER_PAGE,
-  feedQueryKey,
+  feedKeyFor,
 } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
@@ -65,15 +65,8 @@ export function InfiniteFeed({
   columns?: 2 | 3;
 } = {}) {
   const sentinel = useRef<HTMLDivElement>(null);
-  const isDefault = orderby === "date" && !order;
 
-  const queryKey = useMemo(
-    () =>
-      isDefault
-        ? ([...feedQueryKey] as const)
-        : (["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"] as const),
-    [isDefault, orderby, order],
-  );
+  const queryKey = useMemo(() => feedKeyFor(orderby, order), [orderby, order]);
 
   // Suspense (not `useInfiniteQuery`) so the server waits for the streamed
   // first page: rendering an empty feed on the server and a populated one on
