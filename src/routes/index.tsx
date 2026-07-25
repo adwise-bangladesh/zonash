@@ -8,6 +8,7 @@ import { DealsStrip } from "@/components/home/DealsStrip";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import { getFeedNextPageParam, FEED_PER_PAGE, feedQueryKey } from "@/lib/home-feed";
+import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
 /**
@@ -51,18 +52,56 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Shop authentic gold-plated jewelry, gift boxes and trending finds at Zonash. Cash on delivery, 7-day returns, fast shipping across Bangladesh.",
+          "Shop authentic gold-plated jewelry, gift boxes and trending finds at Zonash. Cash on delivery, instant returns, fast shipping across Bangladesh.",
       },
       { property: "og:title", content: "Zonash — Fine Jewelry & Gifts" },
       {
         property: "og:description",
         content:
-          "Authentic jewelry, gift boxes and trending finds. COD, 7-day returns, nationwide delivery.",
+          "Authentic jewelry, gift boxes and trending finds. COD, instant returns, nationwide delivery.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: canonicalUrl("/") },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    // One canonical origin: the same app also answers on the preview host and
+    // the stable project host, which would otherwise be indexed as duplicates.
+    links: [{ rel: "canonical", href: canonicalUrl("/") }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
+              name: "Zonash",
+              url: SITE_URL,
+              areaServed: "BD",
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
+              name: "Zonash",
+              url: SITE_URL,
+              inLanguage: "en-BD",
+              publisher: { "@id": `${SITE_URL}/#organization` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: `${SITE_URL}/products?search={search_term_string}`,
+                },
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   loader: async ({ context }) => {
     // Critical: block SSR/render on above-the-fold data, including the feed's
     // first page — an un-awaited prefetch made the SSR HTML (empty feed)
@@ -223,8 +262,18 @@ function Home() {
       <AppHeader />
       <CategoryTabs categories={categories} />
       <main className="animate-fade-in">
+        {/*
+          The visual design intentionally leads with the category bar rather
+          than a headline, so the document's single H1 is exposed to crawlers
+          and screen readers without altering the layout.
+        */}
+        <h1 className="sr-only">
+          Zonash — fine jewelry, gift boxes and trending finds delivered across Bangladesh
+        </h1>
+
         <div className="bg-background">
           <PromoIcons />
+
           <DealsStrip products={dealsProducts} />
         </div>
 

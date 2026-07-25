@@ -1,9 +1,10 @@
 import { Banknote, RotateCcw, Truck, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { RETURNS_LABEL } from "@/lib/site";
 
 const items: { title: string; icon: LucideIcon }[] = [
   { title: "Cash on Delivery", icon: Banknote },
-  { title: "7-Day Returns", icon: RotateCcw },
+  { title: RETURNS_LABEL, icon: RotateCcw },
   { title: "24h Delivery", icon: Truck },
   { title: "100% Authentic", icon: ShieldCheck },
 ];
