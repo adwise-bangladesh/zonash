@@ -346,6 +346,15 @@ const SYNC_TTL_MS = 15 * 60_000;
 const SYNC_PAGE_SIZE = 50;
 const SYNC_MAX_PAGES = 4; // caps a first-time sync at 200 orders / 4 upstream calls
 
+/**
+ * Single-flight guard for the Woo walk. Without it, a customer with three open
+ * tabs (or a fast double refresh) triggered three simultaneous 4-page Woo walks
+ * plus three cache backfills for the same phone. At 100k users that multiplies
+ * the only expensive upstream call on this screen.
+ */
+const syncInFlight = new Map<string, Promise<boolean>>();
+
+
 /** Is our mirror authoritative for this phone right now? */
 async function cacheIsFresh(phone: string): Promise<boolean> {
   try {
