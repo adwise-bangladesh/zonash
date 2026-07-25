@@ -377,7 +377,16 @@ async function cacheIsFresh(phone: string): Promise<boolean> {
  * Postgres read instead of a Woo `search` scan, which is what makes this screen
  * cheap at scale. Returns whether the mirror can be trusted.
  */
-async function syncPhoneOrders(phone: string): Promise<boolean> {
+function syncPhoneOrders(phone: string): Promise<boolean> {
+  const running = syncInFlight.get(phone);
+  if (running) return running;
+  const p = runSyncPhoneOrders(phone).finally(() => syncInFlight.delete(phone));
+  syncInFlight.set(phone, p);
+  return p;
+}
+
+async function runSyncPhoneOrders(phone: string): Promise<boolean> {
+
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { mapOrderToCacheRow } = await import("./woo.server");
