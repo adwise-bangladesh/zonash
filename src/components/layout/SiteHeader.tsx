@@ -339,58 +339,61 @@ export function SiteHeader() {
                   )}
                 </div>
               )}
-
-
-              <div className="mt-2 flex items-center gap-2">
-                <span
-                  id={`${panelId}-popular`}
-                  className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
-                >
-                  Popular
-                </span>
-                <div
-                  role="group"
-                  aria-labelledby={`${panelId}-popular`}
-                  className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {POPULAR.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => go(t)}
-                      className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
+              {!showList && (
+                <>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span
+                      id={`${panelId}-popular`}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
                     >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {recent.length > 0 && (
-                <div
-                  role="group"
-                  aria-labelledby={`${panelId}-recent`}
-                  className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1"
-                >
-                  <span
-                    id={`${panelId}-recent`}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
-                  >
-                    <Clock className="h-3 w-3" aria-hidden="true" />
-                    Recent
-                  </span>
-                  {recent.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => go(r)}
-                      className="text-[11.5px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+                      Popular
+                    </span>
+                    <div
+                      role="group"
+                      aria-labelledby={`${panelId}-popular`}
+                      className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
-                      {r}
-                    </button>
-                  ))}
-                </div>
+                      {POPULAR.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => go(t)}
+                          className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {recent.length > 0 && (
+                    <div
+                      role="group"
+                      aria-labelledby={`${panelId}-recent`}
+                      className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1"
+                    >
+                      <span
+                        id={`${panelId}-recent`}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                      >
+                        <Clock className="h-3 w-3" aria-hidden="true" />
+                        Recent
+                      </span>
+                      {recent.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => go(r)}
+                          className="text-[11.5px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
+
             </form>
           </div>
         </div>
