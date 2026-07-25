@@ -331,7 +331,7 @@ function FilteredResults({
               <Link
                 to="/products"
                 aria-label="Clear filters"
-                className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium capitalize text-ink"
+                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${q ? "" : "capitalize"}`}
               >
                 {activeLabel}
                 <X className="h-3 w-3" aria-hidden="true" />
