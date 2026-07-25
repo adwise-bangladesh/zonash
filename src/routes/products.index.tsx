@@ -545,10 +545,9 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               )}
             </>
           )}
-        </div>
-      </main>
-    </Shell>
+    </div>
   );
+
 }
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
