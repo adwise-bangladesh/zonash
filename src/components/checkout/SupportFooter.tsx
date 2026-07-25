@@ -42,7 +42,7 @@ export function SupportFooter({
           aria-label="Chat on WhatsApp"
         >
           <span className="grid h-6 w-6 place-items-center rounded-full bg-[#25D366]/12 text-[#128C7E]">
-            <WhatsAppGlyph />
+            <WhatsAppIcon className="h-3.5 w-3.5" />
           </span>
           WhatsApp
         </a>
