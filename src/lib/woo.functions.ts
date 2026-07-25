@@ -98,13 +98,21 @@ export const listProducts = createServerFn({ method: "GET" })
       // by the client de-dupe — making later pages look partially empty and
       // stalling the visible result count.
       const term = data.search?.trim();
+      // Only probe /products?sku= when the term could plausibly BE a SKU.
+      // Store SKUs are hyphenated alphanumerics with no whitespace (PL-4,
+      // BWG-01), so a natural-language query like "gold chain" can never match
+      // one — yet it still cost a second upstream WooCommerce round trip on
+      // every page-1 search. At scale that doubled origin load for the
+      // overwhelming majority of queries in exchange for guaranteed zero rows.
+      const skuCandidate =
+        !!term && !/\s/.test(term) && term.length <= 32 && /[\d-]/.test(term);
       const [byText, bySku] = await Promise.all([
         wooFetch<WooProduct[]>({
           path: "/products",
           query: { ...baseQuery, search: term || undefined },
           timeoutMs: 8000,
         }).catch(() => [] as WooProduct[]),
-        term && data.page === 1
+        skuCandidate && data.page === 1
           ? wooFetch<WooProduct[]>({
               path: "/products",
               query: { ...baseQuery, sku: term },
@@ -113,16 +121,22 @@ export const listProducts = createServerFn({ method: "GET" })
           : Promise.resolve([] as WooProduct[]),
       ]);
 
+      const textRows = trimProducts(byText);
       const seen = new Set<number>();
       const products: WooProduct[] = [];
       // Validate the upstream shape: Woo can return an object error payload.
       // SKU matches first — usually the more precise intent for staff.
-      for (const p of [...trimProducts(bySku), ...trimProducts(byText)]) {
+      for (const p of [...trimProducts(bySku), ...textRows]) {
         if (seen.has(p.id)) continue;
         seen.add(p.id);
         products.push(p);
       }
-      return { products, error: null as string | null };
+      // Pagination must be judged on the PAGINATED query alone. The merged
+      // length was used as the page-full signal, so a short text page topped up
+      // by SKU hits (e.g. 20 + 5 = 25 >= 24) advertised another page that only
+      // ever came back empty — a dead "Load more" button.
+      return { products, hasMore: textRows.length >= data.perPage, error: null as string | null };
+
     } catch (e) {
       console.error("listProducts failed", e);
       return { products: [] as WooProduct[], error: "Product catalog is temporarily unavailable." };
