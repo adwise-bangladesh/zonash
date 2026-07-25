@@ -16,8 +16,9 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
-const WA_HREF =
-  "https://wa.me/8801926644575?text=Hi%20Zonash%2C%20I%20need%20help%20with%20my%20order.";
+const WA_MESSAGE = "Hi Zonash, I need help with my order.";
+const WA_HREF = `https://wa.me/${SUPPORT_TEL.replace(/\D/g, "")}?text=${encodeURIComponent(WA_MESSAGE)}`;
+const MAIL_HREF = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Zonash order support")}`;
 const CANONICAL = "https://zonash.lovable.app/support";
 
 const FAQS: readonly { q: string; a: string }[] = [
@@ -94,13 +95,13 @@ function SupportError({ reset }: { error: Error; reset: () => void }) {
           <button
             type="button"
             onClick={reset}
-            className="rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground"
+            className={`inline-flex min-h-11 items-center rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
           >
             Try again
           </button>
           <a
             href={`tel:${SUPPORT_TEL}`}
-            className="rounded-full bg-secondary px-4 py-2 text-[13px] font-semibold text-secondary-foreground"
+            className={`inline-flex min-h-11 items-center rounded-full bg-secondary px-4 py-2 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
           >
             Call support
           </a>
@@ -125,7 +126,7 @@ function Support() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Help & Support" />
 
-      <main className="flex-1 px-3 pb-10 pt-3">
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
         {/* Hero */}
         <section
           aria-labelledby="support-hero"
@@ -143,7 +144,7 @@ function Support() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Chat with Zonash support on WhatsApp (opens in a new tab)"
-              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
             >
               <WhatsAppIcon className="h-4 w-4" />
               WhatsApp
@@ -151,7 +152,7 @@ function Support() {
             <a
               href={`tel:${SUPPORT_TEL}`}
               aria-label="Call Zonash support hotline"
-              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
             >
               <Phone className="h-4 w-4" aria-hidden="true" />
               Call now
@@ -189,7 +190,7 @@ function Support() {
                       aria-expanded={isOpen}
                       aria-controls={`faq-panel-${i}`}
                       id={`faq-trigger-${i}`}
-                      className={`flex w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
+                      className={`flex min-h-11 w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
                     >
                       <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug">
                         {f.q}
@@ -258,7 +259,7 @@ function Support() {
               external
             />
             <ContactRow
-              href={`mailto:${SUPPORT_EMAIL}`}
+              href={MAIL_HREF}
               icon={Mail}
               title="Email"
               value={SUPPORT_EMAIL}
