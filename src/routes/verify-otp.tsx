@@ -142,68 +142,26 @@ function VerifyOtpPage() {
       <CheckoutHeader title="Verify your number" />
 
       <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
-        {/* Hero */}
-        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-foreground/15">
-            <MessageSquareLock className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <h1 className="mt-3 font-display text-lg font-bold leading-tight">
-            Enter verification code
-          </h1>
-          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
-            We texted a {CODE_LEN}-digit code to{" "}
-            <span className="font-semibold text-primary-foreground">{phone ?? "your number"}</span>
-          </p>
-        </section>
+        <AuthHero
+          icon={MessageSquareLock}
+          title="Enter verification code"
+          subtitle={`We texted a ${CODE_LEN}-digit code to ${phone ?? "your number"}.`}
+          step={2}
+        />
 
         {/* Code card */}
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="relative">
-            <input
-              ref={hiddenRef}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="one-time-code"
-              enterKeyHint="done"
-              maxLength={CODE_LEN}
-              value={code}
-              onChange={(e) => {
-                const clean = e.target.value.replace(/\D/g, "").slice(0, CODE_LEN);
-                setCode(clean);
-                if (error) setError(null);
-              }}
-              disabled={submitting}
-              aria-label="One-time verification code"
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-            />
-            <div className="flex justify-center gap-2.5" onClick={() => hiddenRef.current?.focus()}>
-              {digits.map((d, i) => {
-                const active = code.length === i;
-                const filled = !!d;
-                return (
-                  <div
-                    key={i}
-                    className={[
-                      "grid h-14 w-12 place-items-center rounded-2xl border-2 bg-background text-2xl font-bold tabular-nums transition-all",
-                      error
-                        ? "border-destructive/70 text-destructive"
-                        : filled
-                          ? "border-primary text-foreground"
-                          : active
-                            ? "border-primary/60"
-                            : "border-border",
-                    ].join(" ")}
-                  >
-                    {d ||
-                      (active && !submitting ? (
-                        <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
-                      ) : null)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <OtpBoxes
+            inputRef={hiddenRef}
+            code={code}
+            busy={submitting}
+            error={!!error}
+            length={CODE_LEN}
+            onChange={(v) => {
+              setCode(v);
+              if (error) setError(null);
+            }}
+          />
 
           <div className="mt-3 min-h-[18px] text-center text-[12px]">
             {error ? (
@@ -227,7 +185,15 @@ function VerifyOtpPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} aria-hidden="true" />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
+
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2.5">
+            <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              Your order stays reserved while you verify. Never share this code with anyone.
+            </p>
+          </div>
         </section>
+
 
         <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
           <SupportFooter
