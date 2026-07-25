@@ -2,9 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useSuspenseInfiniteQuery,
+  useQueryClient,
   queryOptions,
   infiniteQueryOptions,
 } from "@tanstack/react-query";
+
 import { Suspense, memo, useMemo, useCallback } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";

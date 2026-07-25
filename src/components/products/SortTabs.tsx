@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
+
 
 export type SortKey = "recommended" | "new" | "price-asc" | "price-desc" | "rating" | "title";
 
