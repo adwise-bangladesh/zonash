@@ -185,6 +185,7 @@ export type WooCategory = {
   name: string;
   slug: string;
   count: number;
+  parent?: number;
   image: { src: string; alt: string } | null;
 };
 
