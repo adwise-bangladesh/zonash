@@ -762,6 +762,9 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
   const discount = num(order.discount_total);
   const total = num(order.total);
   const itemsSubtotal = items.reduce((sum, li) => sum + num(li.subtotal ?? li.total), 0);
+  // Tax / fees / rounding: without this the rows silently never summed to Total.
+  const adjustment = total - (itemsSubtotal - discount + shippingTotal);
+
   const shippingMethod = order.shipping_lines?.[0]?.method_title;
   const shipTo = order.shipping ?? order.billing ?? {};
   const addressLines = [
