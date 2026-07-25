@@ -124,9 +124,18 @@ function PagePending() {
               ))}
             </ul>
           </aside>
-          <section className="px-1.5 pt-8">
-            <GridSkeleton />
+          <section className="min-h-0">
+            {/* Mirror the loaded pane exactly (sticky title bar + px-2 pt-2) so
+                the skeleton→content swap shifts nothing. */}
+            <div className="flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5">
+              <span className="block h-4 w-24 animate-pulse rounded bg-muted" />
+              <span className="block h-[19px] w-14 animate-pulse rounded-full bg-muted" />
+            </div>
+            <div className="px-2 pt-2">
+              <GridSkeleton />
+            </div>
           </section>
+
         </div>
       </main>
     </div>
