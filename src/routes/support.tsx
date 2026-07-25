@@ -17,6 +17,10 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_WA = "8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
+const SUPPORT_WA_TEXT = encodeURIComponent(
+  "Hi Zonash team, I need help with my order. Could you please assist me?"
+);
+const WA_HREF = `https://wa.me/${SUPPORT_WA}?text=${SUPPORT_WA_TEXT}`;
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -85,7 +89,7 @@ function Support() {
           </p>
           <div className="mt-3 flex gap-2">
             <a
-              href={`https://wa.me/${SUPPORT_WA}`}
+              href={WA_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white active:scale-[0.98] transition-transform"
@@ -108,7 +112,7 @@ function Support() {
         <div className="mt-2 grid grid-cols-2 gap-2">
           <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
           <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
-          <InfoTile icon={RotateCcw} label="Easy exchange" hint="7 days on unworn items" />
+          <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days on unworn items" />
           <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
         </div>
 
@@ -153,7 +157,7 @@ function Support() {
             value="+880 1926 644575"
           />
           <ContactRow
-            href={`https://wa.me/${SUPPORT_WA}`}
+            href={WA_HREF}
             icon={WhatsAppIcon}
             title="WhatsApp"
             value="Chat with an agent"
