@@ -637,7 +637,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/25">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -661,7 +661,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
       <div className="flex-1 space-y-3 px-3 py-3">
         {/* Hero status */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="flex items-center justify-between">
             <StatusChip status={order.status} />
             <span className="text-[11.5px] text-muted-foreground">
@@ -680,7 +680,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Timeline */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Status timeline
           </div>
@@ -743,7 +743,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Items */}
-        <div className="overflow-hidden rounded-[6px] border border-border bg-background">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Items ({items.length})
           </div>
@@ -752,7 +752,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
               const lineTotal = Number(li.total ?? 0);
               return (
                 <li key={i} className="flex items-center gap-3 px-4 py-3">
-                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
                     {li.image?.src ? (
                       <img src={li.image.src} alt="" className="h-full w-full object-cover" />
                     ) : (
@@ -783,7 +783,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Totals */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Payment summary
           </div>
@@ -821,7 +821,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
         {/* Delivery address */}
         {addressLines.length > 0 && (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" /> Delivery address
             </div>
@@ -840,7 +840,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
         {/* Customer note */}
         {order.customer_note && (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <StickyNote className="h-3.5 w-3.5" /> Order note
             </div>
