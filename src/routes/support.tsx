@@ -17,10 +17,8 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_WA = "8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
-const SUPPORT_WA_TEXT = encodeURIComponent(
-  "Hi Zonash team, I need help with my order. Could you please assist me?"
-);
-const WA_HREF = `https://wa.me/${SUPPORT_WA}?text=${SUPPORT_WA_TEXT}`;
+const WA_HREF =
+  "https://wa.me/message/5KU5H7MSJ6DZH1?text=Hi%20Zonash%2C%20I%20need%20help%20with%20my%20order.";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
