@@ -330,10 +330,19 @@ function FilteredResults({
   // Read the newest page's error, not page 1's: a "Load more" that failed
   // upstream returned an error the UI never surfaced (silent dead button).
   const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
-  const activeLabel = useMemo(
-    () => (q ? `“${q}”` : category ? category.replace(/-/g, " ") : featured ? "Featured" : null),
-    [q, category, featured],
-  );
+  // Previously a single chip with hard precedence (q > category > featured):
+  // with two filters active the second one was invisible, and clicking the chip
+  // wiped every filter AND the chosen sort. Each active filter now gets its own
+  // chip that removes only itself and keeps `sort`.
+  const chips = useMemo(() => {
+    const list: { key: "q" | "category" | "featured"; label: string; capitalize: boolean }[] = [];
+    if (q) list.push({ key: "q", label: `“${q}”`, capitalize: false });
+    if (category)
+      list.push({ key: "category", label: category.replace(/[,-]/g, " "), capitalize: true });
+    if (featured) list.push({ key: "featured", label: "Featured", capitalize: false });
+    return list;
+  }, [q, category, featured]);
+
   const loadMore = useCallback(() => {
     void fetchNextPage();
   }, [fetchNextPage]);
