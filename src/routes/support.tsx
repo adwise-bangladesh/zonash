@@ -16,8 +16,9 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
-const WA_HREF =
-  "https://wa.me/8801926644575?text=Hi%20Zonash%2C%20I%20need%20help%20with%20my%20order.";
+const WA_MESSAGE = "Hi Zonash, I need help with my order.";
+const WA_HREF = `https://wa.me/${SUPPORT_TEL.replace(/\D/g, "")}?text=${encodeURIComponent(WA_MESSAGE)}`;
+const MAIL_HREF = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Zonash order support")}`;
 const CANONICAL = "https://zonash.lovable.app/support";
 
 const FAQS: readonly { q: string; a: string }[] = [
