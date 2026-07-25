@@ -79,6 +79,21 @@ function cacheSet(key: string, value: unknown) {
   getCache.set(key, { at: Date.now(), value });
 }
 
+function errorGet(key: string): unknown | undefined {
+  const e = errorCache.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.at > ERROR_TTL_MS) {
+    errorCache.delete(key);
+    return undefined;
+  }
+  return e.error;
+}
+function errorSet(key: string, error: unknown) {
+  if (errorCache.size >= MAX_ERROR_ENTRIES) errorCache.clear();
+  errorCache.set(key, { at: Date.now(), error });
+}
+
+
 
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   const lovableKey = process.env.LOVABLE_API_KEY;
