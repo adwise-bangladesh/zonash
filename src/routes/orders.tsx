@@ -33,6 +33,9 @@ import {
 } from "@/lib/customer-auth.functions";
 import { formatBDT } from "@/lib/format";
 
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
