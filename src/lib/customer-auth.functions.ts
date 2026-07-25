@@ -472,13 +472,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
         error: "Please sign in again to view your orders.",
       };
 
-      return {
-        orders: [] as WooOrderLite[],
-        page,
-        source: "cache" as const,
-        hasMore: false,
-        error: "Invalid phone.",
-      };
+
     try {
       // Mirror is authoritative once synced; only the first read per TTL touches Woo.
       let trusted = await cacheIsFresh(phone);
