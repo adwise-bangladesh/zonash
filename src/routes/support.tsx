@@ -190,7 +190,7 @@ function Support() {
                       aria-expanded={isOpen}
                       aria-controls={`faq-panel-${i}`}
                       id={`faq-trigger-${i}`}
-                      className={`flex w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
+                      className={`flex min-h-11 w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
                     >
                       <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug">
                         {f.q}
