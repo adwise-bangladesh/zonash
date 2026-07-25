@@ -562,25 +562,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
         }
       }
 
-        cacheIsFresh(phone),
-        fetchOrdersFromCache(phone, page, perPage),
-      ]);
-      let trusted = fresh;
-      let result = optimistic;
-      if (!trusted) {
-        trusted = await syncPhoneOrders(phone);
-        if (trusted) result = await fetchOrdersFromCache(phone, page, perPage);
-      }
 
-      if (trusted) {
-        return {
-          orders: result.orders.map(redact),
-          page,
-          source: "cache" as const,
-          hasMore: result.hasMore,
-          error: null as string | null,
-        };
-      }
 
 
       // Woo fallback keeps the screen working if the mirror write failed.
