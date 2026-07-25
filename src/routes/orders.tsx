@@ -952,6 +952,16 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
               </dt>
               <dd className="font-medium tabular-nums">{formatBDT(shippingTotal)}</dd>
             </div>
+            {Math.abs(adjustment) >= 1 && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Tax &amp; other charges</dt>
+                <dd className="font-medium tabular-nums">
+                  {adjustment < 0 ? "− " : ""}
+                  {formatBDT(Math.abs(adjustment))}
+                </dd>
+              </div>
+            )}
+
             <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-2">
               <dt className="text-[13px] font-semibold">Total</dt>
               <dd className="font-display text-[18px] font-bold text-primary tabular-nums">
