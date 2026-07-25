@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useSuspenseInfiniteQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { Suspense, memo } from "react";
 import { z } from "zod";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, X } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
@@ -12,8 +12,9 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
-import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
+import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 const SITE_URL = "https://zonash.lovable.app";
 
@@ -47,6 +48,12 @@ const searchSchema = z.object({
     .catch(undefined),
 });
 
+const FILTER_PER_PAGE = 24;
+
+/**
+ * Filtered views used to be a single 30-item fetch, silently truncating any
+ * category or search with more matches. They now paginate like the main feed.
+ */
 const searchProductsQuery = (
   search: string,
   category: string | undefined,
@@ -54,13 +61,14 @@ const searchProductsQuery = (
   sort: SortKey,
 ) => {
   const { orderby, order } = sortToWoo(sort);
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: ["products", "search", search, category ?? "", featured ?? false, sort],
-    queryFn: () =>
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
       listProducts({
         data: {
-          page: 1,
-          perPage: 30,
+          page: pageParam as number,
+          perPage: FILTER_PER_PAGE,
           search: search || undefined,
           category,
           featured,
@@ -68,9 +76,12 @@ const searchProductsQuery = (
           order,
         },
       }),
+    getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
+      getFeedNextPageParam(last, all, FILTER_PER_PAGE),
     staleTime: 60_000,
   });
 };
+
 
 /** A filtered view (search / featured / category) is never the canonical shop page. */
 const isFiltered = (s: { q?: string; featured?: boolean; category?: string }) =>
@@ -115,8 +126,11 @@ export const Route = createFileRoute("/products/")({
     void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => undefined);
     if (deps.q || deps.featured || deps.category) {
       await context.queryClient
-        .ensureQueryData(searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort))
+        .ensureInfiniteQueryData(
+          searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
+        )
         .catch(() => undefined);
+
       return;
     }
     const { orderby, order } = sortToWoo(sort);
@@ -246,7 +260,7 @@ function PrimaryCategoryStrip() {
                 preload="intent"
                 className="group flex flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
               >
-                <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
+                <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
                   {thumb ? (
                     <img
                       src={thumb.src}
@@ -288,24 +302,46 @@ function FilteredResults({
   featured: boolean | undefined;
   sort: SortKey;
 }) {
-  const { data, refetch, isFetching } = useSuspenseQuery(
-    searchProductsQuery(q ?? "", category, featured, sort),
-  );
-  const products = (data?.products ?? []) as WooProduct[];
-  const error = data?.error ?? null;
+  const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
+  const products = dedupeFeedPages(data?.pages) as WooProduct[];
+  const error = data?.pages?.[0]?.error ?? null;
+  const activeLabel = q
+    ? `“${q}”`
+    : category
+      ? category.replace(/-/g, " ")
+      : featured
+        ? "Featured"
+        : null;
 
   return (
     <Shell>
       <AppHeader />
+      {/* Keep taxonomy navigation available inside filtered views too. */}
+      <Suspense fallback={<CategoryStripSkeleton />}>
+        <PrimaryCategoryStrip />
+      </Suspense>
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="px-[5px] pb-24 pt-3">
           <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
-          {q && (
-            <p className="mb-3 text-xs text-muted-foreground" aria-live="polite">
-              {products.length} result{products.length === 1 ? "" : "s"}
+
+          <div className="mb-3 flex items-center justify-between gap-2">
+            {activeLabel && (
+              <Link
+                to="/products"
+                aria-label="Clear filters"
+                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${q ? "" : "capitalize"}`}
+              >
+                {activeLabel}
+                <X className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            )}
+            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
+              {products.length}
+              {hasNextPage ? "+" : ""} result{products.length === 1 && !hasNextPage ? "" : "s"}
             </p>
-          )}
+          </div>
 
           {error && (
             <div
@@ -338,13 +374,28 @@ function FilteredResults({
               primaryTo="/products"
             />
           ) : (
-            <ProductGrid products={products} />
+            <>
+              <ProductGrid products={products} />
+              {hasNextPage && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => void fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
+                  >
+                    {isFetchingNextPage ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
     </Shell>
   );
 }
+
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
 // recomputing price parsing and the srcset for each card.
@@ -362,7 +413,7 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
         to="/products/$slug"
         params={{ slug: p.slug }}
         preload="intent"
-        className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="block aspect-square w-full overflow-hidden bg-surface-muted">
           {responsive ? (
