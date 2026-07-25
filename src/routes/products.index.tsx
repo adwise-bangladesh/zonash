@@ -304,15 +304,21 @@ function FilteredResults({
 }) {
   const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
-  const products = dedupeFeedPages(data?.pages) as WooProduct[];
+  // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
+  // on every fetch-state tick (isFetching flips) as the list grows.
+  const products = useMemo(() => dedupeFeedPages(data?.pages) as WooProduct[], [data?.pages]);
   const error = data?.pages?.[0]?.error ?? null;
-  const activeLabel = q
-    ? `“${q}”`
-    : category
-      ? category.replace(/-/g, " ")
-      : featured
-        ? "Featured"
-        : null;
+  const activeLabel = useMemo(
+    () => (q ? `“${q}”` : category ? category.replace(/-/g, " ") : featured ? "Featured" : null),
+    [q, category, featured],
+  );
+  const loadMore = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
 
   return (
     <Shell>
