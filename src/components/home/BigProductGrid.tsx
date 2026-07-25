@@ -110,7 +110,7 @@ export function BigProductGrid({
     <section aria-label="Products" className="pb-6">
       <div className={gridClass}>
         {list.map((p, i) => (
-          <BigCard key={p.id} p={p} priority={i < 2} onSeed={seedProduct} />
+          <BigCard key={p.id} p={p} priority={i < 2} columns={columns} onSeed={seedProduct} />
         ))}
       </div>
     </section>
