@@ -153,8 +153,21 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
       .delete()
       .eq("phone", phone);
 
+    // Bind the verified phone to an httpOnly, HMAC-signed cookie so later
+    // reads never have to trust a client-supplied phone number.
+    const { issueCustomerSession } = await import("./customer-token.server");
+    await issueCustomerSession(phone);
+
     return { ok: true as const, phone };
   });
+
+/** Drops the signed session cookie (httpOnly — the client can't clear it). */
+export const endCustomerSession = createServerFn({ method: "POST" }).handler(async () => {
+  const { clearCustomerSession } = await import("./customer-token.server");
+  clearCustomerSession();
+  return { ok: true as const };
+});
+
 
 // -------------------- Public: list orders for a phone --------------------
 
@@ -269,6 +282,12 @@ function trimOrder(o: WooOrderLite): WooOrderLite {
       state: str(o.shipping?.state),
     },
   };
+}
+
+/** Strip fields the customer UI never renders (PII minimisation on the wire). */
+function redact(o: WooOrderLite): WooOrderLite {
+  if (!o.billing?.email) return o;
+  return { ...o, billing: { ...o.billing, email: undefined } };
 }
 
 /**
@@ -442,7 +461,12 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       .parse(raw),
   )
   .handler(async ({ data }) => {
-    const phone = normalizePhone(data.phone);
+    // Authorisation: the phone comes from the signed session cookie, never from
+    // the request body — otherwise anyone could enumerate another customer's
+    // order history (names, addresses, totals) by guessing a mobile number.
+    const { readCustomerSession } = await import("./customer-token.server");
+    const sessionPhone = await readCustomerSession();
+    const phone = sessionPhone ?? "";
     const page = data.page ?? 1;
     const perPage = data.perPage ?? 20;
     if (!isBdMobile(phone))
@@ -451,8 +475,10 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
         page,
         source: "cache" as const,
         hasMore: false,
-        error: "Invalid phone.",
+        error: "Please sign in again to view your orders.",
       };
+
+
     try {
       // Mirror is authoritative once synced; only the first read per TTL touches Woo.
       let trusted = await cacheIsFresh(phone);
@@ -461,7 +487,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       if (trusted) {
         const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
         return {
-          orders,
+          orders: orders.map(redact),
           page,
           source: "cache" as const,
           hasMore: page * perPage < total,
@@ -472,12 +498,13 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       // Woo fallback keeps the screen working if the mirror write failed.
       const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
       return {
-        orders,
+        orders: orders.map(redact),
         page,
         source: "woo" as const,
         hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
+
     } catch (e) {
       console.error("listOrdersByPhone failed", e);
       return {
@@ -495,11 +522,14 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 export const getLastOrderByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
-    z.object({ phone: z.string().trim().min(6).max(20) }).parse(raw),
+    z.object({ phone: z.string().trim().max(20).optional() }).parse(raw),
   )
-  .handler(async ({ data }) => {
-    const phone = normalizePhone(data.phone);
+  .handler(async () => {
+    // Autofill exposes a saved name/address, so it is session-gated too.
+    const { readCustomerSession } = await import("./customer-token.server");
+    const phone = (await readCustomerSession()) ?? "";
     if (!isBdMobile(phone)) return { billing: null };
+
     try {
       let { orders } = await fetchOrdersFromCache(phone, 1, 1);
       if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));

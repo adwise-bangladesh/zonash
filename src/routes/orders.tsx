@@ -28,13 +28,17 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
+import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
+  endCustomerSession,
   listOrdersByPhone,
   requestCustomerLoginOtp,
   verifyCustomerLoginOtp,
 } from "@/lib/customer-auth.functions";
 import { formatBDT } from "@/lib/format";
+
 
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
@@ -217,7 +221,13 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
         />
 
         {step === "phone" ? (
-          <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <form
+            className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!busy && valid) void sendCode(false);
+            }}
+          >
             <label
               htmlFor="orders-phone"
               className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -241,9 +251,6 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                   setNational(toNational(e.target.value));
                   if (error) setError(null);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void sendCode(false);
-                }}
                 placeholder="1926644575"
                 autoComplete="tel-national"
                 aria-label="Mobile number without country code"
@@ -261,9 +268,8 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             </p>
             {error && <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>}
             <button
-              onClick={() => sendCode(false)}
               disabled={busy || !valid}
-              type="button"
+              type="submit"
               className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
@@ -280,7 +286,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 We only use your number to look up your orders. No password, no spam.
               </p>
             </div>
-          </section>
+          </form>
         ) : (
           <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <OtpBoxes
@@ -417,11 +423,14 @@ function formatDate(iso: string | null | undefined) {
 
 function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => void }) {
   const listFn = useServerFn(listOrdersByPhone);
+  const endSessionFn = useServerFn(endCustomerSession);
+  const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const queryKey = useMemo(() => ["customer-orders-infinite", phone] as const, [phone]);
 
   const query = useInfiniteQuery({
-    queryKey: ["customer-orders-infinite", phone],
+    queryKey,
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) =>
       listFn({ data: { phone, page: pageParam as number, perPage: 15 }, signal }),
@@ -432,6 +441,35 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+
+  /**
+   * `refetch()` on an infinite query re-fetches every loaded page, so a customer
+   * who scrolled 6 pages deep fired 6 server calls (and 6 Woo/Postgres reads)
+   * per tap. Collapse to page 1 first, then refetch → always exactly 1 call.
+   */
+  const refresh = useCallback(() => {
+    queryClient.setQueryData(
+      queryKey,
+      (prev: { pages: unknown[]; pageParams: unknown[] } | undefined) =>
+        prev && prev.pages.length > 1
+          ? { pages: prev.pages.slice(0, 1), pageParams: prev.pageParams.slice(0, 1) }
+          : prev,
+    );
+    void query.refetch();
+  }, [queryClient, queryKey, query]);
+
+  /** Clear the httpOnly server cookie too — client storage alone left it live. */
+  const signOut = useCallback(async () => {
+    try {
+      await endSessionFn({});
+    } catch {
+      /* cookie may already be gone */
+    }
+    await queryClient.cancelQueries({ queryKey });
+    queryClient.removeQueries({ queryKey });
+    onLogout();
+  }, [endSessionFn, queryClient, queryKey, onLogout]);
+
 
   const orders = useMemo(
     () => query.data?.pages.flatMap((p) => p?.orders ?? []) ?? [],
@@ -495,7 +533,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
           </div>
 
           <button
-            onClick={() => void query.refetch()}
+            onClick={refresh}
             disabled={query.isFetching}
             aria-label="Refresh orders"
             className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 ${focusRing}`}
@@ -506,7 +544,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
             />
           </button>
           <button
-            onClick={onLogout}
+            onClick={() => void signOut()}
             aria-label="Sign out"
             className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 ${focusRing}`}
           >
@@ -540,7 +578,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
                 {firstError ?? "Could not load your orders."}
               </p>
               <button
-                onClick={() => void query.refetch()}
+                onClick={refresh}
                 className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
@@ -601,8 +639,9 @@ const OrderCard = memo(function OrderCard({
 }) {
   const items = order.line_items ?? [];
   const first = items[0];
-  const image = first?.image?.src;
+  const thumb = buildThumbImage(first?.image?.src, 80);
   const rest = Math.max(0, items.length - 1);
+
   const itemCount = items.reduce((n, li) => n + (li.quantity ?? 1), 0);
   const city = order.shipping?.city || order.billing?.city;
 
@@ -615,20 +654,24 @@ const OrderCard = memo(function OrderCard({
         className={`group flex w-full items-stretch gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-transform active:scale-[0.99] ${focusRing}`}
       >
         <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
-          {image ? (
+          {thumb ? (
             <img
-              src={image}
+              src={thumb.src}
+              srcSet={thumb.srcSet}
+              sizes="80px"
               alt=""
               width={80}
               height={80}
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"
+              onError={onImageSrcSetError}
             />
           ) : (
             <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
+
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
@@ -721,6 +764,9 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
   const discount = num(order.discount_total);
   const total = num(order.total);
   const itemsSubtotal = items.reduce((sum, li) => sum + num(li.subtotal ?? li.total), 0);
+  // Tax / fees / rounding: without this the rows silently never summed to Total.
+  const adjustment = total - (itemsSubtotal - discount + shippingTotal);
+
   const shippingMethod = order.shipping_lines?.[0]?.method_title;
   const shipTo = order.shipping ?? order.billing ?? {};
   const addressLines = [
@@ -844,23 +890,28 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
           <ul className="divide-y divide-border">
             {items.map((li, i) => {
               const lineTotal = num(li.total);
+              const liThumb = buildThumbImage(li.image?.src, 56);
               return (
                 <li key={li.id ?? `${li.sku ?? li.name}-${i}`} className="flex items-center gap-3 px-4 py-3">
                   <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
-                    {li.image?.src ? (
+                    {liThumb ? (
                       <img
-                        src={li.image.src}
+                        src={liThumb.src}
+                        srcSet={liThumb.srcSet}
+                        sizes="56px"
                         alt=""
                         width={56}
                         height={56}
                         className="h-full w-full object-cover"
                         loading="lazy"
                         decoding="async"
+                        onError={onImageSrcSetError}
                       />
                     ) : (
                       <Package className="h-5 w-5 text-muted-foreground" />
                     )}
                   </div>
+
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-[13px] font-medium">{li.name}</p>
                     <p className="mt-0.5 text-[11.5px] text-muted-foreground">
@@ -906,6 +957,16 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
               </dt>
               <dd className="font-medium tabular-nums">{formatBDT(shippingTotal)}</dd>
             </div>
+            {Math.abs(adjustment) >= 1 && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Tax &amp; other charges</dt>
+                <dd className="font-medium tabular-nums">
+                  {adjustment < 0 ? "− " : ""}
+                  {formatBDT(Math.abs(adjustment))}
+                </dd>
+              </div>
+            )}
+
             <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-2">
               <dt className="text-[13px] font-semibold">Total</dt>
               <dd className="font-display text-[18px] font-bold text-primary tabular-nums">
