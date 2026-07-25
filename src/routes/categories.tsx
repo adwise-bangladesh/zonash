@@ -120,11 +120,20 @@ function CategoriesPage() {
           {/* Right pane: sub categories of the active parent */}
           <section className="min-h-0 overflow-y-auto">
             {parentMissing ? (
-              <EmptyState icon={LayoutGrid} title="Category not found" description={`"${parent}" doesn't exist. Pick a category from the list.`} />
+              <div className="flex min-h-[60vh] items-center justify-center">
+                <EmptyState
+                  compact
+                  icon={LayoutGrid}
+                  title="Category not found"
+                  description={`"${parent}" doesn't exist anymore. Pick a category from the list.`}
+                  primary={{ label: "Browse all products", to: "/products" }}
+                />
+              </div>
             ) : (
               <SubCategories slug={active.slug} name={active.name} />
             )}
           </section>
+
         </div>
       </main>
     </div>
@@ -137,7 +146,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
 
   return (
     <div className="pb-24">
-      <div className="sticky top-11 z-10 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-2.5 py-1.5 backdrop-blur md:top-14">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-2.5 py-1.5 backdrop-blur">
         <h2 className="min-w-0 truncate text-[12.5px] font-bold tracking-tight">{name}</h2>
         <Link
           to="/c/$slug"
