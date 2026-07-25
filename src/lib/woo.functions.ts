@@ -27,20 +27,21 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS, categoryIndex } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, categorySlugMap } = await import("./woo.server");
       // Woo's `category` filter takes a term ID, not a slug: passing a slug
-      // silently returned zero products. Resolve slugs off the cached taxonomy
-      // snapshot (no extra upstream call once warm).
+      // silently returned zero products. Resolve slugs off a cached slug->id
+      // Map (O(1) per slug, no extra upstream call once warm).
       let categoryId = data.category;
       if (categoryId && !/^\d+(,\d+)*$/.test(categoryId)) {
-        const all = await categoryIndex().catch(() => []);
+        const bySlug = await categorySlugMap().catch(() => new Map<string, number>());
         const ids = categoryId
           .split(",")
-          .map((slug) => all.find((c) => c.slug === slug)?.id)
+          .map((slug) => bySlug.get(slug))
           .filter((id): id is number => typeof id === "number");
         if (!ids.length) return { products: [] as WooProduct[], error: null as string | null };
         categoryId = ids.join(",");
       }
+
       const baseQuery = {
         page: data.page,
         per_page: data.perPage,
