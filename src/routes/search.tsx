@@ -276,16 +276,16 @@ function SearchPage() {
                     Clear
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
                   {recent.map((r) => (
                     <button
                       key={r}
                       type="button"
                       onClick={() => runTerm(r)}
-                      className="inline-flex max-w-[46%] items-center gap-1 rounded-full border border-border/70 bg-surface-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition-colors hover:border-primary/50 hover:text-primary"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-surface-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition-colors hover:border-primary/50 hover:text-primary"
                     >
                       <Clock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                      <span className="truncate">{r}</span>
+                      <span className="truncate max-w-[120px]">{r}</span>
                     </button>
                   ))}
                 </div>
