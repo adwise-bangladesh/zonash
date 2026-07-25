@@ -531,7 +531,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
           </div>
 
           <button
-            onClick={() => void query.refetch()}
+            onClick={refresh}
             disabled={query.isFetching}
             aria-label="Refresh orders"
             className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 ${focusRing}`}
@@ -542,7 +542,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
             />
           </button>
           <button
-            onClick={onLogout}
+            onClick={() => void signOut()}
             aria-label="Sign out"
             className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 ${focusRing}`}
           >
@@ -576,7 +576,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
                 {firstError ?? "Could not load your orders."}
               </p>
               <button
-                onClick={() => void query.refetch()}
+                onClick={refresh}
                 className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
