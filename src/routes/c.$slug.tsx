@@ -319,11 +319,12 @@ function FeedSkeleton() {
           style={{ animationDelay: `${i * 40}ms` }}
         >
           <div className="skeleton-shimmer aspect-square w-full" />
-          <div className="space-y-2 p-2">
+          <div className="flex flex-col gap-1.5 p-2.5">
             <div className="skeleton-shimmer h-3 w-full rounded" />
             <div className="skeleton-shimmer h-3 w-2/3 rounded" />
-            <div className="skeleton-shimmer h-4 w-1/2 rounded" />
+            <div className="skeleton-shimmer h-[23px] w-1/2 rounded" />
           </div>
+
         </div>
       ))}
     </div>
