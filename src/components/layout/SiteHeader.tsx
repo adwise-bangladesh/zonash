@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, X, Clock } from "lucide-react";
+import { Search, ShoppingBag, X, Clock, Loader2, ImageOff } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
+import { formatBDT } from "@/lib/format";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
+import { MIN_CHARS, useSearchSuggest } from "./useSearchSuggest";
 
 const POPULAR = ["Rings", "Earrings", "Necklaces", "Bridal", "Bangles", "Under 2000 Tk"] as const;
 const RECENT_KEY = "zonash.recent-searches";
 const RECENT_MAX = 4;
 /** Upper bound for a search term — matches the server-side query validators. */
 const TERM_MAX = 120;
+
 
 /**
  * Normalises raw input before it ever reaches the URL or localStorage:
