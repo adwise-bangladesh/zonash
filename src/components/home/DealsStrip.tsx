@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
