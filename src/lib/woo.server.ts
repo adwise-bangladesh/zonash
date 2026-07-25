@@ -67,6 +67,11 @@ function cacheGet(key: string): unknown | undefined {
   return e.value;
 }
 function cacheSet(key: string, value: unknown) {
+  // Delete-then-set so the Map's insertion order is a true recency order.
+  // Without this, refreshing an existing hot key kept its original (oldest)
+  // position, so the "drop oldest" sweep below evicted the *most requested*
+  // entries first — exactly the ones a 100k-visitor burst re-reads.
+  getCache.delete(key);
   if (getCache.size >= MAX_CACHE_ENTRIES) {
     // Drop oldest ~10% to keep memory bounded.
     const drop = Math.ceil(MAX_CACHE_ENTRIES * 0.1);
@@ -89,9 +94,21 @@ function errorGet(key: string): unknown | undefined {
   return e.error;
 }
 function errorSet(key: string, error: unknown) {
-  if (errorCache.size >= MAX_ERROR_ENTRIES) errorCache.clear();
+  errorCache.delete(key);
+  if (errorCache.size >= MAX_ERROR_ENTRIES) {
+    // Drop the oldest quarter instead of wiping the whole map: a full clear
+    // during an outage removes every active circuit-breaker entry at once and
+    // lets the next wave of requests stampede the failing origin again.
+    const drop = Math.ceil(MAX_ERROR_ENTRIES * 0.25);
+    let i = 0;
+    for (const k of errorCache.keys()) {
+      if (i++ >= drop) break;
+      errorCache.delete(k);
+    }
+  }
   errorCache.set(key, { at: Date.now(), error });
 }
+
 
 
 
@@ -312,7 +329,20 @@ export async function cachedDerived<T>(key: string, ttlMs: number, compute: () =
 
   const p = compute()
     .then((value) => {
-      if (derivedCache.size >= MAX_DERIVED_ENTRIES) derivedCache.clear();
+      // Evict the oldest entries only. A full `clear()` also dropped
+      // `categories:index` — the most expensive value in the map (up to 5
+      // paginated upstream calls) — forcing a taxonomy re-walk for the next
+      // request on this isolate.
+      if (derivedCache.size >= MAX_DERIVED_ENTRIES) {
+        const drop = Math.ceil(MAX_DERIVED_ENTRIES * 0.25);
+        let i = 0;
+        for (const k of derivedCache.keys()) {
+          if (i++ >= drop) break;
+          derivedCache.delete(k);
+        }
+      }
+      derivedCache.delete(key);
+
       derivedCache.set(key, { at: Date.now(), value });
       return value;
     })

@@ -13,6 +13,19 @@ function asArray<T>(value: unknown): T[] {
 
 // -------------------- Products (public) --------------------
 
+/**
+ * Card-only projection.
+ *
+ * `PRODUCT_FIELDS` carries `description` + `short_description` because the home
+ * feed seeds the product-detail query straight off the list payload ("instant
+ * open"). Grids that do NOT seed (the /products filtered results) pay for those
+ * HTML blobs twice per visitor — once in the SSR HTML, once in the dehydrated
+ * Query cache — for markup they never render. `fields: "card"` asks WooCommerce
+ * for the render set only.
+ */
+const CARD_PRODUCT_FIELDS =
+  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images";
+
 const listProductsSchema = z.object({
   page: z.number().int().min(1).max(500).default(1),
   perPage: z.number().int().min(1).max(50).default(12),
@@ -21,7 +34,9 @@ const listProductsSchema = z.object({
   featured: z.boolean().optional(),
   orderby: z.enum(["date", "price", "popularity", "rating", "title"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  fields: z.enum(["full", "card"]).optional(),
 });
+
 
 export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
@@ -52,7 +67,8 @@ export const listProducts = createServerFn({ method: "GET" })
         status: "publish",
         // Ask WooCommerce for storefront fields only — the untrimmed payload is
         // ~3x larger and is embedded in SSR HTML for every visitor.
-        _fields: PRODUCT_FIELDS,
+        _fields: data.fields === "card" ? CARD_PRODUCT_FIELDS : PRODUCT_FIELDS,
+
       } as Record<string, unknown>;
 
 
