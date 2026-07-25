@@ -45,11 +45,6 @@ function VerifyOtpPage() {
   const resendFn = useServerFn(resendOrderOtp);
   const { setPhone } = useCustomerSession();
 
-  const digits = useMemo(() => {
-    const arr = code.split("");
-    while (arr.length < CODE_LEN) arr.push("");
-    return arr.slice(0, CODE_LEN);
-  }, [code]);
 
   useEffect(() => {
     hiddenRef.current?.focus();
