@@ -31,7 +31,7 @@ const subsQuery = (slug: string) =>
   });
 
 /** Defensive: never trust the shape of an upstream WooCommerce payload. */
-type SafeCategory = { id: number; slug: string; name: string; imageSrc: string | null };
+type SafeCategory = { slug: string; name: string; imageSrc: string | null };
 
 function normalizeCategories(input: unknown): SafeCategory[] {
   if (!Array.isArray(input)) return [];
@@ -39,17 +39,16 @@ function normalizeCategories(input: unknown): SafeCategory[] {
   const out: SafeCategory[] = [];
   for (const raw of input) {
     if (!raw || typeof raw !== "object") continue;
-    const c = raw as { id?: unknown; slug?: unknown; name?: unknown; image?: { src?: unknown } | null };
+    const c = raw as { slug?: unknown; name?: unknown; image?: { src?: unknown } | null };
     const slug = typeof c.slug === "string" ? c.slug.trim() : "";
     if (!slug || !SLUG_RE.test(slug) || seen.has(slug)) continue;
     const name = typeof c.name === "string" && c.name.trim() ? c.name.trim() : slug;
     const src = c.image && typeof c.image === "object" && typeof c.image.src === "string" ? c.image.src : "";
     seen.add(slug);
     out.push({
-      id: typeof c.id === "number" ? c.id : out.length,
       slug,
       name,
-      imageSrc: src.startsWith("http") || src.startsWith("/") ? src : null,
+      imageSrc: src.startsWith("https://") ? src : null,
     });
   }
   return out;
@@ -93,7 +92,7 @@ function PagePending() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
       <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)]">
+        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
           <aside className="border-r border-border bg-surface-muted">
             <ul className="pb-24">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -223,9 +222,8 @@ function CategoriesPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
-      <h1 className="sr-only">Shop jewelry by category</h1>
       <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)]">
+        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
           {/* Left rail: main parent categories */}
           <aside className="border-r border-border bg-surface-muted">
             <nav
