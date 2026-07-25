@@ -364,16 +364,28 @@ function FilteredResults({
           <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
 
           <div className="mb-3 flex items-center justify-between gap-2">
-            {activeLabel && (
-              <Link
-                to="/products"
-                aria-label="Clear filters"
-                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${q ? "" : "capitalize"}`}
-              >
-                {activeLabel}
-                <X className="h-3 w-3" aria-hidden="true" />
-              </Link>
+            {chips.length > 0 && (
+              <ul className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {chips.map((chip) => (
+                  <li key={chip.key}>
+                    <Link
+                      to="/products"
+                      search={(prev: Record<string, unknown>) => {
+                        const next = { ...prev };
+                        delete next[chip.key];
+                        return next as never;
+                      }}
+                      aria-label={`Remove filter ${chip.label}`}
+                      className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
+                    >
+                      <span className="truncate">{chip.label}</span>
+                      <X className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
+
             <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
               {products.length}
               {hasNextPage ? "+" : ""} result{products.length === 1 && !hasNextPage ? "" : "s"}
