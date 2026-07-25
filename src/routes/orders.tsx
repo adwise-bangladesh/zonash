@@ -853,23 +853,28 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
           <ul className="divide-y divide-border">
             {items.map((li, i) => {
               const lineTotal = num(li.total);
+              const liThumb = buildThumbImage(li.image?.src, 56);
               return (
                 <li key={li.id ?? `${li.sku ?? li.name}-${i}`} className="flex items-center gap-3 px-4 py-3">
                   <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
-                    {li.image?.src ? (
+                    {liThumb ? (
                       <img
-                        src={li.image.src}
+                        src={liThumb.src}
+                        srcSet={liThumb.srcSet}
+                        sizes="56px"
                         alt=""
                         width={56}
                         height={56}
                         className="h-full w-full object-cover"
                         loading="lazy"
                         decoding="async"
+                        onError={onImageSrcSetError}
                       />
                     ) : (
                       <Package className="h-5 w-5 text-muted-foreground" />
                     )}
                   </div>
+
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-[13px] font-medium">{li.name}</p>
                     <p className="mt-0.5 text-[11.5px] text-muted-foreground">
