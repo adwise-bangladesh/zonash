@@ -411,7 +411,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         </Link>
       </div>
 
-      <div className="px-1.5 pt-1.5">
+      <div className="px-2 pt-2">
         {isPending ? (
           <GridSkeleton />
         ) : failed ? (
