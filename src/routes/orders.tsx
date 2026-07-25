@@ -529,15 +529,17 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
     <li>
       <button
         onClick={onOpen}
-        className="group flex w-full items-stretch gap-3 rounded-[6px] border border-border bg-background p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm active:scale-[0.997]"
+        aria-label={`Order ${order.number}`}
+        className={`group flex w-full items-stretch gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-transform active:scale-[0.99] ${focusRing}`}
       >
-        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
+        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
           {image ? (
             <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
-            <Package className="h-6 w-6 text-muted-foreground" />
+            <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
+
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11.5px] font-semibold text-muted-foreground">
