@@ -5,7 +5,6 @@ import { z } from "zod";
 import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NotFoundView } from "@/components/NotFoundView";
 
 const searchSchema = z.object({
@@ -61,7 +60,16 @@ function CategoriesPage() {
       <div className="flex min-h-[100dvh] flex-col bg-background">
         <CheckoutHeader title="Categories" />
         <main className="flex flex-1 items-center justify-center">
-          <EmptyState icon={LayoutGrid} title="No categories with subcategories" description="Add subcategories in WooCommerce to see them here." primary={{ label: "Continue shopping", to: "/products" }} />
+          <NotFoundView
+            bare
+            variant="empty"
+            code="No categories"
+            title="No categories with subcategories"
+            description="Add subcategories in WooCommerce to see them here."
+            primaryLabel="Continue shopping"
+            primaryTo="/products"
+            icon={LayoutGrid}
+          />
         </main>
       </div>
     );
