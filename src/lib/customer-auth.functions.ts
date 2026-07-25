@@ -481,7 +481,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       if (trusted) {
         const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
         return {
-          orders,
+          orders: orders.map(redact),
           page,
           source: "cache" as const,
           hasMore: page * perPage < total,
@@ -492,12 +492,13 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       // Woo fallback keeps the screen working if the mirror write failed.
       const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
       return {
-        orders,
+        orders: orders.map(redact),
         page,
         source: "woo" as const,
         hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
+
     } catch (e) {
       console.error("listOrdersByPhone failed", e);
       return {
