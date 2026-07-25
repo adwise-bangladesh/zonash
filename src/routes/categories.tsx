@@ -8,7 +8,6 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { NotFoundView } from "@/components/NotFoundView";
 import { buildThumbImage } from "@/lib/product-image";
 
-
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 const searchSchema = z.object({
@@ -60,14 +59,18 @@ export const Route = createFileRoute("/categories")({
   validateSearch: (s) => searchSchema.parse(s),
   loaderDeps: ({ search }) => ({ parent: search.parent }),
   // Warm BOTH panes on the server so a deep link (?parent=slug) ships real
-  // sub-category markup in the SSR HTML instead of a skeleton plus a
-  // post-hydration round trip.
+  // sub-category markup in the SSR HTML. On the client the sub fetch is fired
+  // but NOT awaited, so switching rail tabs paints instantly instead of
+  // blocking navigation on a round trip.
   loader: async ({ context, deps }) => {
     const primary = await context.queryClient.ensureQueryData(categoriesQuery);
     const first = normalizeCategories(primary?.categories)[0]?.slug;
     const slug = deps.parent ?? first;
     if (slug) {
-      await context.queryClient.ensureQueryData(subsQuery(slug)).catch(() => undefined);
+      const warm = context.queryClient
+        .ensureQueryData(subsQuery(slug))
+        .catch(() => undefined);
+      if (typeof document === "undefined") await warm;
     }
     return primary;
   },
@@ -201,6 +204,8 @@ function CategoriesPage() {
           prefetched.current.add(slug);
           return;
         }
+        // Bound the de-dupe set so a long session can't grow it without limit.
+        if (prefetched.current.size > 64) prefetched.current.clear();
         prefetched.current.add(slug);
         void queryClient.prefetchQuery(opts).catch(() => {
           prefetched.current.delete(slug);
@@ -209,7 +214,6 @@ function CategoriesPage() {
     },
     [queryClient],
   );
-
 
   const onRailKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {
@@ -391,11 +395,13 @@ const CategoryThumb = React.memo(function CategoryThumb({
   );
 });
 
-
-function SubCategories({ slug, name }: { slug: string; name: string }) {
+const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: string; name: string }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery(subsQuery(slug));
   const subs = React.useMemo(() => normalizeCategories(data?.subs), [data?.subs]);
   const failed = isError || (!isPending && typeof data?.error === "string" && !!data.error);
+  const retry = React.useCallback(() => {
+    if (!isFetching) void refetch();
+  }, [isFetching, refetch]);
 
   return (
     <div className="pb-24">
@@ -422,9 +428,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
             </p>
             <button
               type="button"
-              onClick={() => {
-                if (!isFetching) void refetch();
-              }}
+              onClick={retry}
               disabled={isFetching}
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[11.5px] font-semibold text-primary-foreground shadow-sm transition active:scale-[0.98] disabled:opacity-60"
             >
@@ -443,7 +447,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
                   preload="intent"
                   className="group flex flex-col items-center gap-1.5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
+                  <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
                     <CategoryThumb
                       src={s.imageSrc}
                       alt={s.name}
@@ -459,12 +463,11 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
               </li>
             ))}
           </ul>
-
         )}
       </div>
     </div>
   );
-}
+});
 
 function GridSkeleton() {
   return (
