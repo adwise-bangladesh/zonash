@@ -33,8 +33,15 @@ type CacheEntry = { at: number; value: unknown };
 const GET_TTL_MS = 30_000;
 const EDGE_TTL_SECONDS = 60; // Cloudflare Cache API TTL (edge-shared)
 const MAX_CACHE_ENTRIES = 500;
+// Negative cache: an upstream failure is remembered briefly so a WooCommerce
+// outage cannot be amplified into 1 000 origin requests per minute (each of
+// which would also retry). Short enough that recovery is near-instant.
+const ERROR_TTL_MS = 5_000;
+const MAX_ERROR_ENTRIES = 200;
 const getCache = new Map<string, CacheEntry>();
+const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
+
 
 // Synthetic origin for Cache API keys. Must be a valid absolute URL; the
 // hostname is arbitrary and never resolved — Cache API only uses it as a key.
