@@ -397,29 +397,40 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+/**
+ * `Intl` formatters are expensive to construct. These used to be built inside
+ * `toLocaleString` on every card and every timeline row (≈10 constructions per
+ * order), which dominated list render time on long histories. Built once, lazily.
+ */
+let dateTimeFmt: Intl.DateTimeFormat | null = null;
+let dateFmt: Intl.DateTimeFormat | null = null;
+
 function formatDateTime(iso: string | null | undefined) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
+  dateTimeFmt ??= new Intl.DateTimeFormat(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+  return dateTimeFmt.format(d);
 }
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, {
+  dateFmt ??= new Intl.DateTimeFormat(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+  return dateFmt.format(d);
 }
+
 
 function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => void }) {
   const listFn = useServerFn(listOrdersByPhone);
