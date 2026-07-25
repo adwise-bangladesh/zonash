@@ -515,11 +515,14 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 export const getLastOrderByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
-    z.object({ phone: z.string().trim().min(6).max(20) }).parse(raw),
+    z.object({ phone: z.string().trim().max(20).optional() }).parse(raw),
   )
-  .handler(async ({ data }) => {
-    const phone = normalizePhone(data.phone);
+  .handler(async () => {
+    // Autofill exposes a saved name/address, so it is session-gated too.
+    const { readCustomerSession } = await import("./customer-token.server");
+    const phone = (await readCustomerSession()) ?? "";
     if (!isBdMobile(phone)) return { billing: null };
+
     try {
       let { orders } = await fetchOrdersFromCache(phone, 1, 1);
       if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
