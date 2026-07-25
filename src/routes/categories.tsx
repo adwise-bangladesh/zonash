@@ -177,8 +177,9 @@ function CategoriesPage() {
     const el = rail.querySelector<HTMLElement>(`[data-slug="${escaped}"]`);
     el?.scrollIntoView({
       behavior: didScrollRef.current ? "smooth" : "auto",
+      // Vertical rail: never pass `inline`, it can scroll the whole document
+      // sideways on first paint.
       block: "nearest",
-      inline: "center",
     });
     didScrollRef.current = true;
   }, [activeSlug]);
