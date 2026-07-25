@@ -434,7 +434,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         ) : subs.length === 0 ? (
           <CompactEmpty name={name} slug={slug} />
         ) : (
-          <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
+          <ul className="grid grid-cols-5 gap-x-1 gap-y-1.5">
             {subs.map((s) => (
               <li key={s.slug}>
                 <Link
@@ -447,12 +447,13 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
                     <CategoryThumb
                       src={s.imageSrc}
                       alt={s.name}
-                      size={160}
-                      iconClass="h-5 w-5"
+                      size={120}
+                      iconClass="h-4 w-4"
                       imgClass="transition-transform duration-200 group-hover:scale-105"
+
                     />
                   </span>
-                  <span className="mt-1 line-clamp-2 px-0.5 text-center text-[10px] font-medium leading-[1.2] text-foreground">
+                  <span className="mt-1 line-clamp-2 px-0.5 text-center text-[9px] font-medium leading-[1.2] text-foreground">
                     {s.name}
                   </span>
                 </Link>
@@ -467,8 +468,9 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
 
 function GridSkeleton() {
   return (
-    <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5" aria-hidden="true">
-      {Array.from({ length: 12 }).map((_, i) => (
+    <ul className="grid grid-cols-5 gap-x-1 gap-y-1.5" aria-hidden="true">
+      {Array.from({ length: 15 }).map((_, i) => (
+
         <li key={i} className="flex flex-col items-center gap-1">
           <span className="block aspect-square w-full animate-pulse rounded-[3px] bg-surface-muted" />
           <span className="h-2.5 w-3/4 animate-pulse rounded-[3px] bg-surface-muted" />
