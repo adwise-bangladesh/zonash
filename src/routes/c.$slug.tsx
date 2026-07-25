@@ -324,8 +324,7 @@ function CollectionSkeleton() {
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <div className="h-14 border-b border-border/60 bg-background" />
-      <div className="bg-background pt-3">
-        <div className="container-page mb-3 h-5 w-40 skeleton-shimmer rounded" />
+      <div className="bg-background pt-2">
         <div className="flex gap-2 overflow-hidden px-[5px] pb-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="basis-[18%] shrink-0">
@@ -336,80 +335,6 @@ function CollectionSkeleton() {
         </div>
       </div>
       <FeedSkeleton />
-    </div>
-  );
-}
-
-
-/* ------------------------------------------------------------------ */
-/* Demo collection with dummy data (open /c/demo to preview design)    */
-/* ------------------------------------------------------------------ */
-const DEMO_SUBS = [
-  { id: 1, name: "Necklaces", slug: "demo", image: { src: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&q=80", alt: "" } },
-  { id: 2, name: "Earrings", slug: "demo", image: { src: "https://images.unsplash.com/photo-1535632787350-4e68ef0ac584?w=400&q=80", alt: "" } },
-  { id: 3, name: "Rings", slug: "demo", image: { src: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=80", alt: "" } },
-  { id: 4, name: "Bracelets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=400&q=80", alt: "" } },
-  { id: 5, name: "Anklets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=400&q=80", alt: "" } },
-  { id: 6, name: "Sets", slug: "demo", image: { src: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80", alt: "" } },
-  { id: 7, name: "Bridal", slug: "demo", image: { src: "https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=400&q=80", alt: "" } },
-];
-
-const DEMO_IMAGES = [
-  "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=80",
-  "https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=600&q=80",
-  "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=600&q=80",
-  "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=600&q=80",
-  "https://images.unsplash.com/photo-1633810542706-90e5ff7557be?w=600&q=80",
-  "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=600&q=80",
-  "https://images.unsplash.com/photo-1620619032909-1c8b76c85e50?w=600&q=80",
-  "https://images.unsplash.com/photo-1523251343397-9225e4cb6319?w=600&q=80",
-];
-
-function makeDemoProducts(): WooProduct[] {
-  const names = [
-    "Amara Pearl Drop",
-    "Zara Gold Hoop",
-    "Nova Stellar Ring",
-    "Luna Chain Bracelet",
-    "Iris Bloom Studs",
-    "Aria Choker",
-    "Selene Anklet",
-    "Celeste Bridal Set",
-  ];
-  return names.map((name, i) => ({
-    id: 10_000 + i,
-    name,
-    slug: `demo-${i}`,
-    price: String(1290 + i * 240),
-    regular_price: String(1690 + i * 260),
-    sale_price: String(1290 + i * 240),
-    on_sale: i % 2 === 0,
-    stock_status: i === 3 ? "onbackorder" : "instock",
-    images: [{ id: i, src: DEMO_IMAGES[i % DEMO_IMAGES.length], alt: name }],
-    categories: [{ id: 1, name: "Demo", slug: "demo" }],
-    permalink: "#",
-    short_description: "",
-    description: "",
-    average_rating: "4.8",
-    rating_count: 24 + i,
-    total_sales: 100 + i * 12,
-  } as unknown as WooProduct));
-}
-
-function DemoCollection() {
-  const products = makeDemoProducts();
-  return (
-    <div className="min-h-screen bg-surface-muted/40">
-      <AppHeader />
-      <main>
-        <div className="bg-background pt-2">
-          <SubcategoryStrip parentSlug="demo" subs={DEMO_SUBS} />
-        </div>
-        <BigProductGrid products={products} />
-        <div className="flex items-center justify-center py-6">
-          <span className="text-xs text-muted-foreground/70">Demo preview — dummy data ✦</span>
-        </div>
-      </main>
     </div>
   );
 }
