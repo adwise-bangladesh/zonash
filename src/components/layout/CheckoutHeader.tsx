@@ -40,7 +40,7 @@ export function CheckoutHeader({
         )}
       </h1>
       <div className="flex shrink-0 items-center gap-0.5">
-        <Link to="/products" aria-label="Search" className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
+        <Link to="/search" aria-label="Search products" preload="intent" className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
           <Search className="h-5 w-5" aria-hidden="true" />
         </Link>
         <Link to="/cart" aria-label="Cart" className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-muted">

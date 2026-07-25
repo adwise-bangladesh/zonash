@@ -6,6 +6,7 @@ import { LayoutGrid } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NotFoundView } from "@/components/NotFoundView";
 
 const searchSchema = z.object({
   parent: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/).optional().catch(undefined),
@@ -120,15 +121,14 @@ function CategoriesPage() {
           {/* Right pane: sub categories of the active parent */}
           <section className="min-h-0 overflow-y-auto">
             {parentMissing ? (
-              <div className="flex min-h-[60vh] items-center justify-center">
-                <EmptyState
-                  compact
-                  icon={LayoutGrid}
-                  title="Category not found"
-                  description={`"${parent}" doesn't exist anymore. Pick a category from the list.`}
-                  primary={{ label: "Browse all products", to: "/products" }}
-                />
-              </div>
+              <NotFoundView
+                bare
+                variant="not-found"
+                title="Category not found"
+                description={`"${parent}" doesn't exist anymore. Pick a category from the list or browse the full shop.`}
+                primaryLabel="Browse all products"
+                primaryTo="/products"
+              />
             ) : (
               <SubCategories slug={active.slug} name={active.name} />
             )}
@@ -161,7 +161,15 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         {isLoading ? (
           <GridSkeleton />
         ) : subs.length === 0 ? (
-          <EmptyState compact icon={LayoutGrid} title="No sub categories" description="Browse this category directly." primary={{ label: `Shop ${name}`, to: "/c/$slug", params: { slug } } as never} />
+          <NotFoundView
+            bare
+            variant="empty"
+            code="Nothing here yet"
+            title="No sub categories"
+            description={`${name} has no sub categories yet. Browse the category directly or explore the full shop.`}
+            primaryLabel={`Shop ${name}`}
+            primaryTo={`/c/${slug}`}
+          />
         ) : (
           <ul className="grid grid-cols-3 gap-x-1 gap-y-1.5">
             {subs.map((s) => (
