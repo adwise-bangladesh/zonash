@@ -33,6 +33,9 @@ import {
 } from "@/lib/customer-auth.functions";
 import { formatBDT } from "@/lib/format";
 
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
@@ -138,36 +141,39 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   }, [code]);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/30">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title={step === "phone" ? "Sign in" : "Verify code"} />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-[6px] bg-primary/10 text-primary">
-            <Package className="h-5 w-5" strokeWidth={1.8} />
-          </div>
-          <div>
-            <h1 className="text-[16px] font-semibold leading-tight">
-              {step === "phone" ? "View your orders" : `Sent to +880 ${phone}`}
-            </h1>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {step === "phone"
-                ? "Sign in with your mobile number."
-                : "Enter the 4-digit code we just sent."}
-            </p>
-          </div>
-        </div>
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+        {/* Hero */}
+        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-foreground/15">
+            <Package className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+          </span>
+          <h1 className="mt-3 font-display text-lg font-bold leading-tight">
+            {step === "phone" ? "Track your orders" : "Enter verification code"}
+          </h1>
+          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
+            {step === "phone"
+              ? "Sign in with your mobile number — no password needed."
+              : `We texted a 4-digit code to +880 ${phone}.`}
+          </p>
+        </section>
 
         {step === "phone" ? (
-          <div className="rounded-[6px] border border-border bg-background p-4">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <label
+              htmlFor="orders-phone"
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >
               Mobile number
             </label>
             <div className="relative mt-1.5">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
                 +880
               </span>
               <input
+                id="orders-phone"
                 type="tel"
                 inputMode="numeric"
                 value={phone}
@@ -178,7 +184,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 placeholder="1XXXXXXXXX"
                 autoComplete="tel-national"
                 aria-label="Mobile number"
-                className="h-11 w-full rounded-[4px] border border-border bg-background pl-14 pr-3 text-[15px] font-medium outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={`h-12 w-full rounded-2xl border border-border bg-background pl-[58px] pr-3.5 text-[15px] font-medium outline-none transition-colors focus:border-primary ${focusRing}`}
               />
             </div>
             {error && (
@@ -187,23 +193,23 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             <button
               onClick={() => sendCode(false)}
               disabled={busy || !/^01[3-9]\d{8}$/.test(phone)}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[4px] bg-primary text-[13px] font-bold uppercase tracking-[0.08em] text-primary-foreground transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+              className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Send code <ArrowRight className="h-4 w-4" />
+                  Send code <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </button>
-            <p className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" />
+            <p className="mt-3 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               We only use your number to look up your orders.
             </p>
-          </div>
+          </section>
         ) : (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="relative">
               <input
                 ref={codeRef}
@@ -231,7 +237,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                     <div
                       key={i}
                       className={[
-                        "grid h-14 w-12 place-items-center rounded-[4px] border-2 bg-background text-2xl font-bold tabular-nums transition-all",
+                        "grid h-14 w-12 place-items-center rounded-2xl border-2 bg-background text-2xl font-bold tabular-nums transition-all",
                         error
                           ? "border-destructive/70 text-destructive"
                           : filled
@@ -243,7 +249,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                     >
                       {d ||
                         (active && !busy ? (
-                          <span className="h-5 w-[2px] animate-pulse rounded-full bg-primary" />
+                          <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
                         ) : null)}
                     </div>
                   );
@@ -259,12 +265,12 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <Sparkles className="h-3 w-3 text-primary" />
+                  <Sparkles className="h-3 w-3 text-primary" aria-hidden="true" />
                   Auto-detects when SMS arrives
                 </span>
               )}
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-dashed border-border pt-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -272,26 +278,35 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                   setCode("");
                   setError(null);
                 }}
-                className="text-[12px] font-medium text-muted-foreground hover:text-foreground"
+                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
               >
-                ← Change number
+                Change number
               </button>
               <button
                 type="button"
                 onClick={() => sendCode(true)}
                 disabled={cooldown > 0 || busy}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary disabled:text-muted-foreground"
+                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-primary/10 text-[13px] font-semibold text-primary transition-transform active:scale-[0.99] disabled:bg-muted disabled:text-muted-foreground ${focusRing}`}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend"}
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {cooldown > 0 ? `${cooldown}s` : "Resend"}
               </button>
             </div>
-          </div>
+          </section>
         )}
+
+        <Link
+          to="/products"
+          preload="intent"
+          className={`mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
+        >
+          Continue shopping
+        </Link>
       </main>
     </div>
   );
 }
+
 
 // ============================================================
 // Orders list — cart-style header + real data + real timeline
@@ -394,93 +409,108 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
   const firstError = query.data?.pages[0]?.error;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-20">
+    <div className="flex min-h-[100dvh] flex-col bg-background pb-20">
       <CheckoutHeader title="My Orders" count={orders.length} />
 
-      {/* Slim account strip */}
-      <div className="border-b border-border bg-background">
-        <div className="mx-auto flex w-full max-w-md items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-2 text-[12px]">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Signed in as</span>
-            <span className="font-semibold text-foreground">+880 {phone}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => query.refetch()}
-              disabled={query.isFetching}
-              aria-label="Refresh"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              onClick={onLogout}
-              aria-label="Sign out"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <main className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
-        {query.isLoading ? (
-          <ul className="space-y-2.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="h-[112px] animate-pulse rounded-[6px] border border-border bg-background" />
-            ))}
-          </ul>
-        ) : firstError || query.isError ? (
-          <div className="rounded-[6px] border border-dashed border-border bg-background p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {firstError ?? "Could not load your orders."}
-            </p>
-            <button
-              onClick={() => query.refetch()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Try again
-            </button>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="rounded-[6px] border border-dashed border-border bg-background p-12 text-center">
-            <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-muted">
-              <Inbox className="h-7 w-7 text-muted-foreground" />
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-6 pt-3">
+        {/* Account card */}
+        <section className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <Phone className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Signed in as
             </div>
-            <p className="font-semibold">No orders yet</p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              When you place an order, it will appear here.
-            </p>
-            <Link
-              to="/products"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-bold text-primary-foreground"
-            >
-              Start shopping <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="truncate text-[13px] font-semibold">+880 {phone}</div>
           </div>
-        ) : (
-          <>
-            <ul className="space-y-2.5">
-              {orders.map((o) => (
-                <OrderCard key={o.id} order={o} onOpen={() => setOpenOrder(o)} />
+          <button
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
+            aria-label="Refresh orders"
+            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-50 ${focusRing}`}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          <button
+            onClick={onLogout}
+            aria-label="Sign out"
+            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-destructive/10 active:text-destructive ${focusRing}`}
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </section>
+
+        <h2 className="mt-5 px-1 text-[13px] font-semibold">Order history</h2>
+
+        <div className="mt-2">
+          {query.isLoading ? (
+            <ul className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <li
+                  key={i}
+                  className="h-[116px] animate-pulse rounded-2xl border border-border bg-card"
+                />
               ))}
             </ul>
-            <div ref={sentinelRef} className="h-10" />
-            {query.isFetchingNextPage && (
-              <div className="flex justify-center py-4 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            )}
-            {!query.hasNextPage && orders.length > 6 && (
-              <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-                You're all caught up · {orders.length} orders
+          ) : firstError || query.isError ? (
+            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+              <p className="text-[13px] text-muted-foreground">
+                {firstError ?? "Could not load your orders."}
               </p>
-            )}
-          </>
-        )}
+              <button
+                onClick={() => query.refetch()}
+                className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
+              </button>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
+              <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary">
+                <Inbox className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <p className="text-[14px] font-semibold">No orders yet</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                When you place an order, it will appear here.
+              </p>
+              <Link
+                to="/products"
+                preload="intent"
+                className={`mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
+              >
+                Start shopping <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {orders.map((o) => (
+                  <OrderCard key={o.id} order={o} onOpen={() => setOpenOrder(o)} />
+                ))}
+              </ul>
+              <div ref={sentinelRef} className="h-10" />
+              {query.isFetchingNextPage && (
+                <div className="flex justify-center py-4 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              )}
+              {!query.hasNextPage && orders.length > 6 && (
+                <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
+                  You're all caught up · {orders.length} orders
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </main>
+
 
       <OrderDetailSheet order={openOrder} onClose={() => setOpenOrder(null)} />
     </div>
@@ -499,15 +529,17 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
     <li>
       <button
         onClick={onOpen}
-        className="group flex w-full items-stretch gap-3 rounded-[6px] border border-border bg-background p-3 text-left transition-all hover:border-primary/40 hover:shadow-sm active:scale-[0.997]"
+        aria-label={`Order ${order.number}`}
+        className={`group flex w-full items-stretch gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-transform active:scale-[0.99] ${focusRing}`}
       >
-        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
+        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
           {image ? (
             <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
-            <Package className="h-6 w-6 text-muted-foreground" />
+            <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
+
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11.5px] font-semibold text-muted-foreground">
@@ -605,7 +637,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/25">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -629,7 +661,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
       <div className="flex-1 space-y-3 px-3 py-3">
         {/* Hero status */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="flex items-center justify-between">
             <StatusChip status={order.status} />
             <span className="text-[11.5px] text-muted-foreground">
@@ -648,7 +680,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Timeline */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Status timeline
           </div>
@@ -711,7 +743,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Items */}
-        <div className="overflow-hidden rounded-[6px] border border-border bg-background">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Items ({items.length})
           </div>
@@ -720,7 +752,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
               const lineTotal = Number(li.total ?? 0);
               return (
                 <li key={i} className="flex items-center gap-3 px-4 py-3">
-                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[4px] bg-muted">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
                     {li.image?.src ? (
                       <img src={li.image.src} alt="" className="h-full w-full object-cover" />
                     ) : (
@@ -751,7 +783,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
         </div>
 
         {/* Totals */}
-        <div className="rounded-[6px] border border-border bg-background p-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Payment summary
           </div>
@@ -789,7 +821,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
         {/* Delivery address */}
         {addressLines.length > 0 && (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" /> Delivery address
             </div>
@@ -808,7 +840,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
 
         {/* Customer note */}
         {order.customer_note && (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <StickyNote className="h-3.5 w-3.5" /> Order note
             </div>
