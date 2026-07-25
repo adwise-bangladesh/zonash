@@ -165,12 +165,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
       }
     };
 
-    // Retry once on 429/5xx with backoff.
+    // Retry once on 429/5xx with jittered backoff. Fixed backoff makes every
+    // isolate in a burst retry in lockstep, re-creating the spike that caused
+    // the 5xx; the jitter spreads the second wave over ~200-600ms.
     let res = await attempt();
     if (!res.ok && (res.status === 429 || res.status >= 500)) {
-      await new Promise((r) => setTimeout(r, 400));
+      // Release the discarded body so the connection is not held open.
+      try {
+        await res.body?.cancel();
+      } catch {
+        /* already consumed */
+      }
+      await new Promise((r) => setTimeout(r, 200 + Math.floor(Math.random() * 400)));
       res = await attempt();
     }
+
 
     const text = await res.text();
     if (!res.ok) {
