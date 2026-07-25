@@ -125,7 +125,7 @@ function Support() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Help & Support" />
 
-      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+      <main className="flex-1 px-3 pb-10 pt-3">
         {/* Hero */}
         <section
           aria-labelledby="support-hero"
@@ -204,7 +204,8 @@ function Support() {
                     id={`faq-panel-${i}`}
                     role="region"
                     aria-labelledby={`faq-trigger-${i}`}
-                    hidden={!isOpen}
+                    inert={!isOpen}
+                    aria-hidden={!isOpen}
                     className={`grid transition-all duration-200 ease-out motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
                   >
                     <p className="overflow-hidden px-3.5 pb-3 text-[12px] leading-relaxed text-muted-foreground">
