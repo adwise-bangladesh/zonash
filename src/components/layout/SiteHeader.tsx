@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, X, Clock } from "lucide-react";
+import { Search, ShoppingBag, X, Clock, Loader2, ImageOff } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
+import { formatBDT } from "@/lib/format";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
+import { MIN_CHARS, useSearchSuggest } from "./useSearchSuggest";
 
 const POPULAR = ["Rings", "Earrings", "Necklaces", "Bridal", "Bangles", "Under 2000 Tk"] as const;
 const RECENT_KEY = "zonash.recent-searches";
 const RECENT_MAX = 4;
 /** Upper bound for a search term — matches the server-side query validators. */
 const TERM_MAX = 120;
+
 
 /**
  * Normalises raw input before it ever reaches the URL or localStorage:
@@ -58,10 +62,17 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
+  const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
   const panelId = useId();
+  const listId = `${panelId}-list`;
+
+  const term = q.trim();
+  const { items, loading, error, settled } = useSearchSuggest(q, open);
+  const showList = open && term.length >= MIN_CHARS;
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +80,9 @@ export function SiteHeader() {
     const raf = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(raf);
   }, [open]);
+
+  // Reset the highlighted row whenever the result set changes.
+  useEffect(() => setActive(-1), [term, items]);
 
   // Escape closes the panel from anywhere inside it (input, chips, submit).
   useEffect(() => {
@@ -80,16 +94,69 @@ export function SiteHeader() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Outside click / tap closes the panel.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!panelRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setQ("");
+    setActive(-1);
+  }, []);
+
   const go = useCallback(
-    (term: string) => {
-      const t = sanitizeTerm(term);
+    (raw: string) => {
+      const t = sanitizeTerm(raw);
       if (t) saveRecent(t);
-      setOpen(false);
-      setQ("");
+      close();
       navigate({ to: "/products", search: t ? { q: t } : {} });
     },
-    [navigate],
+    [close, navigate],
   );
+
+  const openProduct = useCallback(
+    (slug: string, name: string) => {
+      saveRecent(name);
+      close();
+      navigate({ to: "/products/$slug", params: { slug } });
+    },
+    [close, navigate],
+  );
+
+  const onInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!showList || items.length === 0) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive((i) => (i + 1) % items.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((i) => (i <= 0 ? items.length - 1 : i - 1));
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        const hit = items[active];
+        if (hit) openProduct(hit.slug, hit.name);
+      }
+    },
+    [showList, items, active, openProduct],
+  );
+
+  const rows = useMemo(
+    () =>
+      items.map((p) => ({
+        ...p,
+        img: buildResponsiveImage(p.image, { sizes: "48px" }),
+      })),
+    [items],
+  );
+
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
@@ -135,6 +202,7 @@ export function SiteHeader() {
       {open && (
         <div
           id={panelId}
+          ref={panelRef}
           className="border-t border-border/70 bg-background animate-in slide-in-from-top-2 fade-in duration-150"
         >
           <div className="container-page py-2.5">
@@ -151,6 +219,7 @@ export function SiteHeader() {
                   ref={inputRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value.slice(0, TERM_MAX))}
+                  onKeyDown={onInputKeyDown}
                   type="search"
                   inputMode="search"
                   enterKeyHint="search"
@@ -160,9 +229,20 @@ export function SiteHeader() {
                   spellCheck={false}
                   maxLength={TERM_MAX}
                   aria-label="Search products"
+                  role="combobox"
+                  aria-expanded={showList}
+                  aria-controls={listId}
+                  aria-autocomplete="list"
+                  aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
                   placeholder="Search rings, necklaces, 22k gold…"
                   className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[13.5px] outline-none placeholder:text-muted-foreground/60"
                 />
+                {loading && (
+                  <Loader2
+                    className="mr-1 h-4 w-4 shrink-0 animate-spin text-primary/70"
+                    aria-hidden="true"
+                  />
+                )}
                 <button
                   type="submit"
                   className="inline-flex h-8 shrink-0 items-center rounded-full bg-primary px-4 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary-foreground transition hover:brightness-110 active:scale-[0.98]"
@@ -171,56 +251,164 @@ export function SiteHeader() {
                 </button>
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <span
-                  id={`${panelId}-popular`}
-                  className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
-                >
-                  Popular
-                </span>
-                <div
-                  role="group"
-                  aria-labelledby={`${panelId}-popular`}
-                  className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {POPULAR.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => go(t)}
-                      className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {recent.length > 0 && (
-                <div
-                  role="group"
-                  aria-labelledby={`${panelId}-recent`}
-                  className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1"
-                >
-                  <span
-                    id={`${panelId}-recent`}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
-                  >
-                    <Clock className="h-3 w-3" aria-hidden="true" />
-                    Recent
+              {/* Live suggestions */}
+              {showList && (
+                <div className="mt-2 overflow-hidden rounded-2xl border border-border/80 bg-background shadow-lg">
+                  <span aria-live="polite" className="sr-only">
+                    {loading
+                      ? "Searching products"
+                      : error
+                        ? error
+                        : `${rows.length} suggestion${rows.length === 1 ? "" : "s"}`}
                   </span>
-                  {recent.map((r) => (
+                  <ul id={listId} role="listbox" aria-label="Product suggestions" className="max-h-[60vh] overflow-y-auto">
+                    {rows.map((p, i) => (
+                      <li
+                        key={p.id}
+                        id={`${listId}-${i}`}
+                        role="option"
+                        aria-selected={i === active}
+                        className="border-b border-border/50 last:border-b-0"
+                      >
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActive(i)}
+                          onClick={() => openProduct(p.slug, p.name)}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
+                            i === active ? "bg-primary/[0.06]" : "hover:bg-primary/[0.04]"
+                          }`}
+                        >
+                          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-muted">
+                            {p.img ? (
+                              <img
+                                src={p.img.src}
+                                srcSet={p.img.srcSet || undefined}
+                                sizes={p.img.srcSet ? p.img.sizes : undefined}
+                                onError={onImageSrcSetError}
+                                alt={p.name}
+                                width={44}
+                                height={44}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <ImageOff className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-medium text-foreground">
+                              {p.name}
+                            </span>
+                            {p.sku && (
+                              <span className="block truncate text-[10.5px] uppercase tracking-wide text-muted-foreground">
+                                {p.sku}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block text-[13px] font-bold text-primary">
+                              {formatBDT(p.sell ?? undefined)}
+                            </span>
+                            {p.regular != null && (
+                              <span className="block text-[10.5px] text-muted-foreground line-through">
+                                {formatBDT(p.regular)}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {loading && rows.length === 0 && (
+                    <div aria-hidden="true" className="divide-y divide-border/50">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2">
+                          <div className="h-11 w-11 shrink-0 animate-pulse rounded-lg bg-surface-muted" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-3/5 animate-pulse rounded bg-surface-muted" />
+                            <div className="h-2.5 w-1/4 animate-pulse rounded bg-surface-muted" />
+                          </div>
+                          <div className="h-3 w-12 animate-pulse rounded bg-surface-muted" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!loading && error && (
+                    <p className="px-3 py-3 text-[12.5px] text-muted-foreground">{error}</p>
+                  )}
+                  {!loading && !error && settled && rows.length === 0 && (
+                    <p className="px-3 py-3 text-[12.5px] text-muted-foreground">
+                      No products found for “{term}”.
+                    </p>
+                  )}
+                  {rows.length > 0 && (
                     <button
-                      key={r}
-                      type="button"
-                      onClick={() => go(r)}
-                      className="text-[11.5px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+                      type="submit"
+                      className="w-full border-t border-border/60 bg-surface-muted/40 px-3 py-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/[0.06]"
                     >
-                      {r}
+                      See all results
                     </button>
-                  ))}
+                  )}
                 </div>
               )}
+              {!showList && (
+                <>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span
+                      id={`${panelId}-popular`}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                    >
+                      Popular
+                    </span>
+                    <div
+                      role="group"
+                      aria-labelledby={`${panelId}-popular`}
+                      className="flex flex-1 gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {POPULAR.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => go(t)}
+                          className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1 text-[11.5px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {recent.length > 0 && (
+                    <div
+                      role="group"
+                      aria-labelledby={`${panelId}-recent`}
+                      className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1"
+                    >
+                      <span
+                        id={`${panelId}-recent`}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                      >
+                        <Clock className="h-3 w-3" aria-hidden="true" />
+                        Recent
+                      </span>
+                      {recent.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => go(r)}
+                          className="text-[11.5px] font-medium text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/60"
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
             </form>
           </div>
         </div>
