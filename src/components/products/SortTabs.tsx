@@ -56,8 +56,8 @@ export function SortTabs({ active }: { active: SortKey }) {
               // replaced the whole search object, silently dropping `q`,
               // `category` and `featured` and dumping the shopper back into the
               // unfiltered shop.
-              search={(prev) => {
-                const next = { ...(prev as Record<string, unknown>) };
+              search={(prev: Record<string, unknown>) => {
+                const next = { ...prev };
                 if (opt.key === "recommended") delete next.sort;
                 else next.sort = opt.key;
                 return next as never;
