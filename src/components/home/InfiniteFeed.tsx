@@ -3,12 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import {
-  dedupeFeedPages,
-  getFeedNextPageParam,
-  FEED_PER_PAGE,
-  feedKeyFor,
-} from "@/lib/home-feed";
+import { dedupeFeedPages, getFeedNextPageParam, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
 type Orderby = "date" | "price" | "popularity" | "rating" | "title";

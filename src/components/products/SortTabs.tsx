@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 
-export type SortKey =
-  | "recommended"
-  | "new"
-  | "price-asc"
-  | "price-desc"
-  | "rating"
-  | "title";
+export type SortKey = "recommended" | "new" | "price-asc" | "price-desc" | "rating" | "title";
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "recommended", label: "Recommended" },

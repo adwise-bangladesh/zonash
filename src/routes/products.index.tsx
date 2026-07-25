@@ -1,5 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useSuspenseInfiniteQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
+import {
+  useSuspenseQuery,
+  useSuspenseInfiniteQuery,
+  queryOptions,
+  infiniteQueryOptions,
+} from "@tanstack/react-query";
 import { Suspense, memo, useMemo, useCallback } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
@@ -14,7 +19,6 @@ import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
-
 
 const SITE_URL = "https://zonash.lovable.app";
 
@@ -50,7 +54,12 @@ const searchSchema = z.object({
     // link passed validation but never matched the slug->id map, rendering an
     // empty "no results" page for a category that exists.
     .transform((v) => v.toLowerCase())
-    .pipe(z.string().max(96).regex(/^[a-z0-9,-]+$/))
+    .pipe(
+      z
+        .string()
+        .max(96)
+        .regex(/^[a-z0-9,-]+$/),
+    )
     .optional()
     .catch(undefined),
   featured: z
@@ -58,7 +67,6 @@ const searchSchema = z.object({
     .optional()
     .catch(undefined),
 });
-
 
 const FILTER_PER_PAGE = 24;
 
@@ -99,10 +107,7 @@ const searchProductsQuery = (
     getNextPageParam: (
       last: { products: WooProduct[]; hasMore?: boolean },
       all: { products: WooProduct[] }[],
-    ) =>
-      last?.hasMore === false
-        ? undefined
-        : getFeedNextPageParam(last, all, FILTER_PER_PAGE),
+    ) => (last?.hasMore === false ? undefined : getFeedNextPageParam(last, all, FILTER_PER_PAGE)),
 
     staleTime: 60_000,
     // Every distinct search term creates a cache entry; without a bounded
@@ -110,7 +115,6 @@ const searchProductsQuery = (
     gcTime: 5 * 60_000,
   });
 };
-
 
 /** A filtered view (search / featured / category) is never the canonical shop page. */
 const isFiltered = (s: { q?: string; featured?: boolean; category?: string }) =>
@@ -290,7 +294,6 @@ function Shop({ sort }: { sort: SortKey }) {
           <InfiniteFeedSection orderby={orderby} order={order} columns={2} />
         </div>
       </main>
-
     </Shell>
   );
 }
@@ -407,7 +410,6 @@ function FilteredResults({
     void refetch();
   }, [refetch]);
 
-
   return (
     <Shell>
       <AppHeader />
@@ -487,7 +489,6 @@ function FilteredResults({
               primaryTo="/products"
             />
           ) : (
-
             <>
               <ProductGrid products={products} />
               {hasNextPage && (
@@ -510,7 +511,6 @@ function FilteredResults({
     </Shell>
   );
 }
-
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
 // recomputing price parsing and the srcset for each card.
@@ -579,4 +579,3 @@ const ProductGrid = memo(function ProductGrid({ products }: { products: WooProdu
     </ul>
   );
 });
-
