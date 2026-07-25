@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useSuspenseInfiniteQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
-import { Suspense, memo } from "react";
+import { Suspense, memo, useMemo, useCallback } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
 
@@ -79,6 +79,9 @@ const searchProductsQuery = (
     getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
       getFeedNextPageParam(last, all, FILTER_PER_PAGE),
     staleTime: 60_000,
+    // Every distinct search term creates a cache entry; without a bounded
+    // gcTime a long browsing session retains every result set it ever saw.
+    gcTime: 5 * 60_000,
   });
 };
 
@@ -304,15 +307,21 @@ function FilteredResults({
 }) {
   const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
-  const products = dedupeFeedPages(data?.pages) as WooProduct[];
+  // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
+  // on every fetch-state tick (isFetching flips) as the list grows.
+  const products = useMemo(() => dedupeFeedPages(data?.pages) as WooProduct[], [data?.pages]);
   const error = data?.pages?.[0]?.error ?? null;
-  const activeLabel = q
-    ? `“${q}”`
-    : category
-      ? category.replace(/-/g, " ")
-      : featured
-        ? "Featured"
-        : null;
+  const activeLabel = useMemo(
+    () => (q ? `“${q}”` : category ? category.replace(/-/g, " ") : featured ? "Featured" : null),
+    [q, category, featured],
+  );
+  const loadMore = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
 
   return (
     <Shell>
@@ -351,7 +360,7 @@ function FilteredResults({
               <span>{error}</span>
               <button
                 type="button"
-                onClick={() => void refetch()}
+                onClick={retry}
                 disabled={isFetching}
                 className="rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60"
               >
@@ -380,7 +389,7 @@ function FilteredResults({
                 <div className="mt-4 flex justify-center">
                   <button
                     type="button"
-                    onClick={() => void fetchNextPage()}
+                    onClick={loadMore}
                     disabled={isFetchingNextPage}
                     className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
                   >

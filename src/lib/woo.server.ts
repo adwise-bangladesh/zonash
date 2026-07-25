@@ -398,6 +398,24 @@ export function categoryIndex(): Promise<CategoryIndexRow[]> {
   });
 }
 
+/**
+ * Slug -> term-id lookup derived from the same taxonomy snapshot.
+ *
+ * Resolving `?category=<slug>` used to run `Array.prototype.find` over the
+ * whole category list on every request (O(categories) per slug, per request).
+ * At 100k visitors that is pure wasted CPU on the hot path — the Map is built
+ * once per snapshot window and shared by every request on the isolate.
+ */
+export function categorySlugMap(): Promise<Map<string, number>> {
+  return cachedDerived<Map<string, number>>("categories:slugmap", 300_000, async () => {
+    const rows = await categoryIndex();
+    const m = new Map<string, number>();
+    for (const c of rows) if (c.slug) m.set(c.slug, c.id);
+    return m;
+  });
+}
+
+
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
   id: number;
