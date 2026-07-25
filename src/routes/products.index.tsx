@@ -260,7 +260,7 @@ function PrimaryCategoryStrip() {
                 preload="intent"
                 className="group flex flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
               >
-                <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
+                <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
                   {thumb ? (
                     <img
                       src={thumb.src}
@@ -413,7 +413,7 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
         to="/products/$slug"
         params={{ slug: p.slug }}
         preload="intent"
-        className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="block aspect-square w-full overflow-hidden bg-surface-muted">
           {responsive ? (
