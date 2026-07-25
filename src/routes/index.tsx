@@ -232,7 +232,9 @@ function Home() {
           Zonash — fine jewelry, gift boxes and trending finds delivered across Bangladesh
         </h1>
 
+        <div className="bg-background">
           <PromoIcons />
+
           <DealsStrip products={dealsProducts} />
         </div>
 
