@@ -1,5 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useSuspenseInfiniteQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
+import {
+  useSuspenseQuery,
+  useSuspenseInfiniteQuery,
+  queryOptions,
+  infiniteQueryOptions,
+} from "@tanstack/react-query";
 import { Suspense, memo, useMemo, useCallback } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
@@ -12,9 +17,8 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
-import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE } from "@/lib/home-feed";
+import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
-
 
 const SITE_URL = "https://zonash.lovable.app";
 
@@ -50,7 +54,12 @@ const searchSchema = z.object({
     // link passed validation but never matched the slug->id map, rendering an
     // empty "no results" page for a category that exists.
     .transform((v) => v.toLowerCase())
-    .pipe(z.string().max(96).regex(/^[a-z0-9,-]+$/))
+    .pipe(
+      z
+        .string()
+        .max(96)
+        .regex(/^[a-z0-9,-]+$/),
+    )
     .optional()
     .catch(undefined),
   featured: z
@@ -58,7 +67,6 @@ const searchSchema = z.object({
     .optional()
     .catch(undefined),
 });
-
 
 const FILTER_PER_PAGE = 24;
 
@@ -99,10 +107,7 @@ const searchProductsQuery = (
     getNextPageParam: (
       last: { products: WooProduct[]; hasMore?: boolean },
       all: { products: WooProduct[] }[],
-    ) =>
-      last?.hasMore === false
-        ? undefined
-        : getFeedNextPageParam(last, all, FILTER_PER_PAGE),
+    ) => (last?.hasMore === false ? undefined : getFeedNextPageParam(last, all, FILTER_PER_PAGE)),
 
     staleTime: 60_000,
     // Every distinct search term creates a cache entry; without a bounded
@@ -110,7 +115,6 @@ const searchProductsQuery = (
     gcTime: 5 * 60_000,
   });
 };
-
 
 /** A filtered view (search / featured / category) is never the canonical shop page. */
 const isFiltered = (s: { q?: string; featured?: boolean; category?: string }) =>
@@ -148,6 +152,42 @@ export const Route = createFileRoute("/products/")({
         { name: "twitter:description", content: description },
       ],
       links: filtered ? [] : [{ rel: "canonical", href: `${SITE_URL}/products` }],
+      // The canonical shop page was the only indexable variant of this route
+      // and shipped no structured data at all, so search engines had no
+      // breadcrumb or collection signal for it. Filtered views stay clean —
+      // they are noindex.
+      scripts: filtered
+        ? []
+        : [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@graph": [
+                  {
+                    "@type": "CollectionPage",
+                    "@id": `${SITE_URL}/products`,
+                    url: `${SITE_URL}/products`,
+                    name: title,
+                    description,
+                    isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/`, name: "Zonash" },
+                  },
+                  {
+                    "@type": "BreadcrumbList",
+                    itemListElement: [
+                      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+                      {
+                        "@type": "ListItem",
+                        position: 2,
+                        name: "Shop",
+                        item: `${SITE_URL}/products`,
+                      },
+                    ],
+                  },
+                ],
+              }),
+            },
+          ],
     };
   },
   loader: async ({ context, deps }) => {
@@ -163,10 +203,10 @@ export const Route = createFileRoute("/products/")({
       return;
     }
     const { orderby, order } = sortToWoo(sort);
-    const isDefault = orderby === "date" && !order;
-    const key = isDefault
-      ? ["home", "feed", FEED_PER_PAGE]
-      : ["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"];
+    // Shared key builder: the loader and the feed component each derived this
+    // key independently, so any drift made the awaited prefetch prime a cache
+    // entry the component never read (skeleton + duplicate upstream call).
+    const key = feedKeyFor(orderby, order);
     // Awaited: the feed reads through suspense, so an un-awaited prefetch made
     // the server suspend mid-stream and fall back to client rendering.
     await context.queryClient
@@ -254,7 +294,6 @@ function Shop({ sort }: { sort: SortKey }) {
           <InfiniteFeedSection orderby={orderby} order={order} columns={2} />
         </div>
       </main>
-
     </Shell>
   );
 }
@@ -371,7 +410,6 @@ function FilteredResults({
     void refetch();
   }, [refetch]);
 
-
   return (
     <Shell>
       <AppHeader />
@@ -444,11 +482,13 @@ function FilteredResults({
                   ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
                   : "Try another filter or browse the full shop."
               }
-              primaryLabel="Clear search"
+              // The CTA said "Clear search" even when no search term existed
+              // (e.g. `?category=rings` with zero published products), offering
+              // to clear something the shopper never typed.
+              primaryLabel={q ? "Clear search" : "Browse shop"}
               primaryTo="/products"
             />
           ) : (
-
             <>
               <ProductGrid products={products} />
               {hasNextPage && (
@@ -457,6 +497,7 @@ function FilteredResults({
                     type="button"
                     onClick={loadMore}
                     disabled={isFetchingNextPage}
+                    aria-busy={isFetchingNextPage}
                     className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
                   >
                     {isFetchingNextPage ? "Loading…" : "Load more"}
@@ -470,7 +511,6 @@ function FilteredResults({
     </Shell>
   );
 }
-
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
 // recomputing price parsing and the srcset for each card.
@@ -539,4 +579,3 @@ const ProductGrid = memo(function ProductGrid({ products }: { products: WooProdu
     </ul>
   );
 });
-

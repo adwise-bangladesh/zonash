@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 
-export type SortKey =
-  | "recommended"
-  | "new"
-  | "price-asc"
-  | "price-desc"
-  | "rating"
-  | "title";
+export type SortKey = "recommended" | "new" | "price-asc" | "price-desc" | "rating" | "title";
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "recommended", label: "Recommended" },
@@ -43,7 +37,10 @@ export function SortTabs({ active }: { active: SortKey }) {
   return (
     <nav
       aria-label="Sort products"
-      className="sticky top-14 z-30 border-b border-border bg-background/95 backdrop-blur md:top-16"
+      // The site header measures 57px (56px + 1px bottom border), so `top-14`
+      // (56px) parked the tab strip 1px underneath it: the active tab's text
+      // top edge and the strip's own border were clipped while scrolling.
+      className="sticky top-[57px] z-30 border-b border-border bg-background/95 backdrop-blur"
     >
       <div className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4">
         {SORT_OPTIONS.map((opt) => {

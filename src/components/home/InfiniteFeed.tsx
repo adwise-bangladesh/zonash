@@ -3,12 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import {
-  dedupeFeedPages,
-  getFeedNextPageParam,
-  FEED_PER_PAGE,
-  feedQueryKey,
-} from "@/lib/home-feed";
+import { dedupeFeedPages, getFeedNextPageParam, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
 type Orderby = "date" | "price" | "popularity" | "rating" | "title";
@@ -65,15 +60,8 @@ export function InfiniteFeed({
   columns?: 2 | 3;
 } = {}) {
   const sentinel = useRef<HTMLDivElement>(null);
-  const isDefault = orderby === "date" && !order;
 
-  const queryKey = useMemo(
-    () =>
-      isDefault
-        ? ([...feedQueryKey] as const)
-        : (["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"] as const),
-    [isDefault, orderby, order],
-  );
+  const queryKey = useMemo(() => feedKeyFor(orderby, order), [orderby, order]);
 
   // Suspense (not `useInfiniteQuery`) so the server waits for the streamed
   // first page: rendering an empty feed on the server and a populated one on
