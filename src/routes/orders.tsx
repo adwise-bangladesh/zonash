@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
-import { buildThumbImage } from "@/lib/product-image";
+import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
