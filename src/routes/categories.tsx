@@ -91,23 +91,24 @@ function CategoriesPage() {
                         type="button"
                         onClick={() => selectCategory(c.slug)}
                         aria-pressed={isActive}
-                        className={`relative flex w-full items-center gap-1.5 px-1.5 py-2 text-left transition-colors ${
+                        className={`relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors ${
                           isActive ? "bg-background" : "text-foreground active:bg-background/60"
                         }`}
                       >
                         {isActive && (
                           <span aria-hidden="true" className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary" />
                         )}
-                        <span className={`block h-9 w-9 shrink-0 overflow-hidden rounded-[3px] ring-1 ${isActive ? "ring-primary/50" : "ring-border"}`}>
+                        <span className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${isActive ? "ring-primary/50" : "ring-border"}`}>
                           {c.image?.src ? (
                             <img src={c.image.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                           ) : (
                             <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground"><LayoutGrid className="h-4 w-4" /></span>
                           )}
                         </span>
-                        <span className={`min-w-0 flex-1 break-words text-[10px] font-semibold leading-[1.15] ${isActive ? "text-primary" : "text-foreground"}`}>
+                        <span className={`block w-full truncate text-[10px] font-semibold leading-tight ${isActive ? "text-primary" : "text-foreground"}`}>
                           {c.name}
                         </span>
+
                       </button>
                     </li>
                   );
