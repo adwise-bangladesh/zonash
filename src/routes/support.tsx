@@ -221,7 +221,7 @@ function ContactRow({
   external,
 }: {
   href: string;
-  icon: typeof Phone;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   value: string;
   external?: boolean;
@@ -233,7 +233,7 @@ function ContactRow({
       className="flex items-center gap-3 border-t border-border px-3.5 py-3 first:border-t-0 active:bg-muted/60"
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-        <Icon className="h-4 w-4" aria-hidden="true" />
+        <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-medium">{title}</div>
