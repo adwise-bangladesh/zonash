@@ -607,7 +607,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 <div key={i} data-slide data-idx={i} className="relative aspect-square w-full shrink-0 snap-center">
                   {responsive ? (
                     <picture>
-                      <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
                       <img
                         src={responsive.src}
                         srcSet={responsive.srcSet}
