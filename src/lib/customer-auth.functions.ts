@@ -590,6 +590,32 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 // -------------------- Public: last order billing (for checkout autofill) --------------------
 
+/**
+ * Negative cache for autofill lookups. Bounded so it can never grow unbounded
+ * in a long-lived isolate.
+ */
+const AUTOFILL_MISS_TTL_MS = 5 * 60_000;
+const AUTOFILL_MISS_MAX = 2000;
+const autofillMisses = new Map<string, number>();
+function autofillMissRecently(phone: string): boolean {
+  const at = autofillMisses.get(phone);
+  if (at == null) return false;
+  if (Date.now() - at > AUTOFILL_MISS_TTL_MS) {
+    autofillMisses.delete(phone);
+    return false;
+  }
+  return true;
+}
+function rememberAutofillMiss(phone: string): void {
+  if (autofillMisses.size >= AUTOFILL_MISS_MAX) {
+    const cutoff = Date.now() - AUTOFILL_MISS_TTL_MS;
+    for (const [k, v] of autofillMisses) if (v < cutoff) autofillMisses.delete(k);
+    if (autofillMisses.size >= AUTOFILL_MISS_MAX) autofillMisses.clear();
+  }
+  autofillMisses.set(phone, Date.now());
+}
+
+
 export const getLastOrderByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
     z.object({ phone: z.string().trim().max(20).optional() }).parse(raw),
