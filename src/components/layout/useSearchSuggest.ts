@@ -51,7 +51,7 @@ const IDLE: SuggestState = { items: [], loading: false, error: null, settled: fa
  *   the state produced by a newer one.
  * - Cache hits render synchronously with no network request at all.
  */
-export function useSearchSuggest(term: string, enabled: boolean): SuggestState {
+export function useSearchSuggest(term: string, enabled: boolean, limit = 6): SuggestState {
   const [state, setState] = useState<SuggestState>(IDLE);
   const seqRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
