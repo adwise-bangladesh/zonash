@@ -663,10 +663,20 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
       decision_reason: string | null;
     };
 
+    // The code is checked FIRST, even for an already-verified order: the old
+    // short-circuit returned ok:true (and the decision) to anyone who knew or
+    // guessed an order id, with no proof of phone ownership.
+    const codeHash = await sha256Hex(`${data.code}:${row.phone}`);
+    const codeOk = codeHash === row.code_hash;
+
     if (row.verified_at) {
+      if (!codeOk) return { ok: false as const, error: "Incorrect code. Please try again." };
+      const { issueCustomerSession } = await import("./customer-token.server");
+      await issueCustomerSession(row.phone);
       return {
         ok: true as const,
         already: true,
+        phone: row.phone,
         decision: (row.decision as "confirmed" | "review") ?? "confirmed",
         reason: row.decision_reason ?? "",
         duplicates: [] as Duplicate[],
@@ -679,14 +689,15 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Too many wrong attempts. Please request a new code." };
     }
 
-    const codeHash = await sha256Hex(`${data.code}:${row.phone}`);
-    if (codeHash !== row.code_hash) {
+    if (!codeOk) {
       await supabaseAdmin
         .from("order_otps" as never)
         .update({ attempts: row.attempts + 1 } as never)
         .eq("wc_order_id", data.order_id);
       return { ok: false as const, error: "Incorrect code. Please try again." };
     }
+
+
 
     // ===== OTP is correct. Run rating + duplicate detection. =====
     const { wooFetch } = await import("./woo.server");
