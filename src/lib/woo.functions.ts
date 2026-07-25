@@ -77,11 +77,13 @@ export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
   .handler(async ({ data }) => {
     try {
-      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
+      const products = await wooFetch<WooProduct[]>({
         path: "/products",
-        query: { slug: data.slug },
+        query: { slug: data.slug, _fields: PRODUCT_FIELDS },
       });
-      return { product: products[0] ?? null, error: null as string | null };
+      return { product: trimProducts(products)[0] ?? null, error: null as string | null };
+
     } catch (e) {
       console.error("getProductBySlug failed", e);
       return { product: null, error: "Product is temporarily unavailable." };
