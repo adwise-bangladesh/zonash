@@ -5,7 +5,6 @@ import { z } from "zod";
 import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NotFoundView } from "@/components/NotFoundView";
 
 const searchSchema = z.object({
