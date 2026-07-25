@@ -845,12 +845,20 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
       } as never)
       .eq("wc_order_id", data.order_id);
 
+    // Verified checkout doubles as a login: bind the phone to a signed,
+    // httpOnly session cookie so /orders works without a second OTP round.
+    const { issueCustomerSession } = await import("./customer-token.server");
+    await issueCustomerSession(row.phone);
+
     return {
       ok: true as const,
+      already: false,
+      phone: row.phone,
       decision,
       reason: decisionReason,
       duplicates,
     };
+
   });
 
 // ---------- finalizeOrderChoice ----------
