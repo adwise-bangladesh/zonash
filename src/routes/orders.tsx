@@ -221,7 +221,13 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
         />
 
         {step === "phone" ? (
-          <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <form
+            className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!busy && valid) void sendCode(false);
+            }}
+          >
             <label
               htmlFor="orders-phone"
               className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -245,9 +251,6 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                   setNational(toNational(e.target.value));
                   if (error) setError(null);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void sendCode(false);
-                }}
                 placeholder="1926644575"
                 autoComplete="tel-national"
                 aria-label="Mobile number without country code"
@@ -265,9 +268,8 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             </p>
             {error && <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>}
             <button
-              onClick={() => sendCode(false)}
               disabled={busy || !valid}
-              type="button"
+              type="submit"
               className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
@@ -284,7 +286,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 We only use your number to look up your orders. No password, no spam.
               </p>
             </div>
-          </section>
+          </form>
         ) : (
           <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <OtpBoxes
