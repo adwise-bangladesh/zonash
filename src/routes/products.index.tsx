@@ -126,8 +126,11 @@ export const Route = createFileRoute("/products/")({
     void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => undefined);
     if (deps.q || deps.featured || deps.category) {
       await context.queryClient
-        .ensureQueryData(searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort))
+        .ensureInfiniteQueryData(
+          searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
+        )
         .catch(() => undefined);
+
       return;
     }
     const { orderby, order } = sortToWoo(sort);
