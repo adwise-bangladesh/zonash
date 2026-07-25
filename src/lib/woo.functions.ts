@@ -211,7 +211,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
     try {
       const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
+        query: { per_page: 50, hide_empty: false, parent: 0, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
       });
       return {
         categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
