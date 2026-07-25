@@ -454,16 +454,27 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
         error: "Invalid phone.",
       };
     try {
-      let { orders, fetched } = await fetchOrdersFromCache(phone, page, perPage);
-      let source: "cache" | "woo" = "cache";
-      if (fetched === 0) {
-        ({ orders, fetched } = await fetchOrdersByPhone(phone, page, perPage));
-        source = "woo";
+      // Mirror is authoritative once synced; only the first read per TTL touches Woo.
+      let trusted = await cacheIsFresh(phone);
+      if (!trusted) trusted = await syncPhoneOrders(phone);
+
+      if (trusted) {
+        const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
+        return {
+          orders,
+          page,
+          source: "cache" as const,
+          hasMore: page * perPage < total,
+          error: null as string | null,
+        };
       }
+
+      // Woo fallback keeps the screen working if the mirror write failed.
+      const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
       return {
         orders,
         page,
-        source,
+        source: "woo" as const,
         hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
