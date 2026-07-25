@@ -51,7 +51,7 @@ const IDLE: SuggestState = { items: [], loading: false, error: null, settled: fa
  *   the state produced by a newer one.
  * - Cache hits render synchronously with no network request at all.
  */
-export function useSearchSuggest(term: string, enabled: boolean): SuggestState {
+export function useSearchSuggest(term: string, enabled: boolean, limit = 6): SuggestState {
   const [state, setState] = useState<SuggestState>(IDLE);
   const seqRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -70,7 +70,7 @@ export function useSearchSuggest(term: string, enabled: boolean): SuggestState {
       return;
     }
 
-    const key = q.toLowerCase();
+    const key = `${limit}:${q.toLowerCase()}`;
     const cached = readCache(key);
     if (cached) {
       seqRef.current += 1;
@@ -88,7 +88,7 @@ export function useSearchSuggest(term: string, enabled: boolean): SuggestState {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      suggestProducts({ data: { q, limit: 6 }, signal: controller.signal })
+      suggestProducts({ data: { q, limit }, signal: controller.signal })
         .then((res) => {
           if (seq !== seqRef.current) return; // stale response — drop it
           if (!res.error) writeCache(key, res.items);
@@ -110,7 +110,7 @@ export function useSearchSuggest(term: string, enabled: boolean): SuggestState {
       window.clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [term, enabled, reset]);
+  }, [term, enabled, limit, reset]);
 
   // Abort anything in flight when the consumer unmounts.
   useEffect(() => () => abortRef.current?.abort(), []);
