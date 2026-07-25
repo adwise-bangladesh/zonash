@@ -8,7 +8,6 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { NotFoundView } from "@/components/NotFoundView";
 import { buildThumbImage } from "@/lib/product-image";
 
-
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 const searchSchema = z.object({
@@ -75,7 +74,6 @@ export const Route = createFileRoute("/categories")({
     }
     return primary;
   },
-
 
   head: () => ({
     meta: [
@@ -214,7 +212,6 @@ function CategoriesPage() {
     },
     [queryClient],
   );
-
 
   const onRailKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {
@@ -396,7 +393,6 @@ const CategoryThumb = React.memo(function CategoryThumb({
   );
 });
 
-
 const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: string; name: string }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery(subsQuery(slug));
   const subs = React.useMemo(() => normalizeCategories(data?.subs), [data?.subs]);
@@ -404,7 +400,6 @@ const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: 
   const retry = React.useCallback(() => {
     if (!isFetching) void refetch();
   }, [isFetching, refetch]);
-
 
   return (
     <div className="pb-24">
@@ -471,7 +466,6 @@ const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: 
     </div>
   );
 });
-
 
 function GridSkeleton() {
   return (
