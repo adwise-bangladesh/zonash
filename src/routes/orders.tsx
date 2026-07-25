@@ -426,7 +426,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
             onClick={() => query.refetch()}
             disabled={query.isFetching}
             aria-label="Refresh orders"
-            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-50 ${focusRing}`}
+            className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 ${focusRing}`}
           >
             <RefreshCw
               className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`}
@@ -436,13 +436,21 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
           <button
             onClick={onLogout}
             aria-label="Sign out"
-            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-destructive/10 active:text-destructive ${focusRing}`}
+            className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 ${focusRing}`}
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </section>
 
-        <h2 className="mt-5 px-1 text-[13px] font-semibold">Order history</h2>
+        <div className="mt-5 flex items-center justify-between px-1">
+          <h2 className="text-[13px] font-semibold">Order history</h2>
+          {orders.length > 0 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums">
+              {orders.length}
+            </span>
+          )}
+        </div>
+
 
         <div className="mt-2">
           {query.isLoading ? (
