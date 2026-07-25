@@ -402,19 +402,26 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
 
       <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-6 pt-3">
         {/* Account card */}
-        <section className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
+        <section className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-primary px-3.5 py-3.5 text-primary-foreground shadow-sm ring-1 ring-inset ring-primary-foreground/10">
           <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-primary-foreground/10"
+          />
+          <span
+            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-foreground/15 ring-1 ring-inset ring-primary-foreground/20"
             aria-hidden="true"
           >
             <Phone className="h-4 w-4" />
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <div className="relative min-w-0 flex-1">
+            <div className="text-[10.5px] font-semibold uppercase tracking-wide text-primary-foreground/70">
               Signed in as
             </div>
-            <div className="truncate text-[13px] font-semibold">+880 {phone}</div>
+            <div className="truncate font-display text-[15px] font-bold tabular-nums">
+              +880 {phone.replace(/^0/, "")}
+            </div>
           </div>
+
           <button
             onClick={() => query.refetch()}
             disabled={query.isFetching}
