@@ -138,36 +138,39 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   }, [code]);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/30">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title={step === "phone" ? "Sign in" : "Verify code"} />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pt-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-[6px] bg-primary/10 text-primary">
-            <Package className="h-5 w-5" strokeWidth={1.8} />
-          </div>
-          <div>
-            <h1 className="text-[16px] font-semibold leading-tight">
-              {step === "phone" ? "View your orders" : `Sent to +880 ${phone}`}
-            </h1>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {step === "phone"
-                ? "Sign in with your mobile number."
-                : "Enter the 4-digit code we just sent."}
-            </p>
-          </div>
-        </div>
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+        {/* Hero */}
+        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-foreground/15">
+            <Package className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+          </span>
+          <h1 className="mt-3 font-display text-lg font-bold leading-tight">
+            {step === "phone" ? "Track your orders" : "Enter verification code"}
+          </h1>
+          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
+            {step === "phone"
+              ? "Sign in with your mobile number — no password needed."
+              : `We texted a 4-digit code to +880 ${phone}.`}
+          </p>
+        </section>
 
         {step === "phone" ? (
-          <div className="rounded-[6px] border border-border bg-background p-4">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <label
+              htmlFor="orders-phone"
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >
               Mobile number
             </label>
             <div className="relative mt-1.5">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
                 +880
               </span>
               <input
+                id="orders-phone"
                 type="tel"
                 inputMode="numeric"
                 value={phone}
@@ -178,7 +181,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 placeholder="1XXXXXXXXX"
                 autoComplete="tel-national"
                 aria-label="Mobile number"
-                className="h-11 w-full rounded-[4px] border border-border bg-background pl-14 pr-3 text-[15px] font-medium outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={`h-12 w-full rounded-2xl border border-border bg-background pl-[58px] pr-3.5 text-[15px] font-medium outline-none transition-colors focus:border-primary ${focusRing}`}
               />
             </div>
             {error && (
@@ -187,23 +190,23 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             <button
               onClick={() => sendCode(false)}
               disabled={busy || !/^01[3-9]\d{8}$/.test(phone)}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[4px] bg-primary text-[13px] font-bold uppercase tracking-[0.08em] text-primary-foreground transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+              className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Send code <ArrowRight className="h-4 w-4" />
+                  Send code <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </button>
-            <p className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5" />
+            <p className="mt-3 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               We only use your number to look up your orders.
             </p>
-          </div>
+          </section>
         ) : (
-          <div className="rounded-[6px] border border-border bg-background p-4">
+          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="relative">
               <input
                 ref={codeRef}
@@ -231,7 +234,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                     <div
                       key={i}
                       className={[
-                        "grid h-14 w-12 place-items-center rounded-[4px] border-2 bg-background text-2xl font-bold tabular-nums transition-all",
+                        "grid h-14 w-12 place-items-center rounded-2xl border-2 bg-background text-2xl font-bold tabular-nums transition-all",
                         error
                           ? "border-destructive/70 text-destructive"
                           : filled
@@ -243,7 +246,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                     >
                       {d ||
                         (active && !busy ? (
-                          <span className="h-5 w-[2px] animate-pulse rounded-full bg-primary" />
+                          <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
                         ) : null)}
                     </div>
                   );
@@ -259,12 +262,12 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <Sparkles className="h-3 w-3 text-primary" />
+                  <Sparkles className="h-3 w-3 text-primary" aria-hidden="true" />
                   Auto-detects when SMS arrives
                 </span>
               )}
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-dashed border-border pt-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -272,26 +275,35 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                   setCode("");
                   setError(null);
                 }}
-                className="text-[12px] font-medium text-muted-foreground hover:text-foreground"
+                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
               >
-                ← Change number
+                Change number
               </button>
               <button
                 type="button"
                 onClick={() => sendCode(true)}
                 disabled={cooldown > 0 || busy}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary disabled:text-muted-foreground"
+                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-primary/10 text-[13px] font-semibold text-primary transition-transform active:scale-[0.99] disabled:bg-muted disabled:text-muted-foreground ${focusRing}`}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend"}
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {cooldown > 0 ? `${cooldown}s` : "Resend"}
               </button>
             </div>
-          </div>
+          </section>
         )}
+
+        <Link
+          to="/products"
+          preload="intent"
+          className={`mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
+        >
+          Continue shopping
+        </Link>
       </main>
     </div>
   );
 }
+
 
 // ============================================================
 // Orders list — cart-style header + real data + real timeline
