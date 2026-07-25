@@ -46,10 +46,10 @@ function CategoriesPage() {
   const { data } = useSuspenseQuery(categoriesQuery);
   const cats = data.categories;
 
-  const railRef = useRef<HTMLUListElement>(null);
+  const railRef = React.useRef<HTMLUListElement>(null);
   const activeSlug = parent ?? cats[0]?.slug;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const rail = railRef.current;
     if (!rail || !activeSlug) return;
     const el = rail.querySelector<HTMLElement>(`[data-slug="${activeSlug}"]`);
