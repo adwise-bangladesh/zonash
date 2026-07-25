@@ -439,21 +439,27 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   const loadMore = useCallback(() => {
     void fetchNextPage();
   }, [fetchNextPage]);
+  // Retry ONLY the failed trailing page. `refetch()` on an infinite query
+  // re-runs every page it holds, so a "Load more" that failed on page 5 fired
+  // five upstream WooCommerce requests to recover one — and briefly blanked
+  // already-rendered results. Dropping the errored tail page and calling
+  // `fetchNextPage()` re-requests exactly that page.
   const retry = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+    queryClient.setQueryData(
+      options.queryKey,
+      (prev: { pages: { error?: string | null }[]; pageParams: unknown[] } | undefined) => {
+        if (!prev || prev.pages.length <= 1) return prev;
+        if (!prev.pages[prev.pages.length - 1]?.error) return prev;
+        return { pages: prev.pages.slice(0, -1), pageParams: prev.pageParams.slice(0, -1) };
+      },
+    );
+    void fetchNextPage();
+  }, [queryClient, options.queryKey, fetchNextPage]);
 
   return (
-    <Shell>
-      <AppHeader />
-      {/* Keep taxonomy navigation available inside filtered views too. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
-      <SortTabs active={sort} />
-      <main className="animate-fade-in">
-        <div className="px-[5px] pb-24 pt-3">
-          <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
+    <div className="px-[5px] pb-24 pt-3">
+      <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
+
 
           <div className="mb-3 flex items-center justify-between gap-2">
             {chips.length > 0 && (
