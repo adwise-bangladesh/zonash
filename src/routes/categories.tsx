@@ -60,17 +60,22 @@ export const Route = createFileRoute("/categories")({
   validateSearch: (s) => searchSchema.parse(s),
   loaderDeps: ({ search }) => ({ parent: search.parent }),
   // Warm BOTH panes on the server so a deep link (?parent=slug) ships real
-  // sub-category markup in the SSR HTML instead of a skeleton plus a
-  // post-hydration round trip.
+  // sub-category markup in the SSR HTML. On the client the sub fetch is fired
+  // but NOT awaited, so switching rail tabs paints instantly instead of
+  // blocking navigation on a round trip.
   loader: async ({ context, deps }) => {
     const primary = await context.queryClient.ensureQueryData(categoriesQuery);
     const first = normalizeCategories(primary?.categories)[0]?.slug;
     const slug = deps.parent ?? first;
     if (slug) {
-      await context.queryClient.ensureQueryData(subsQuery(slug)).catch(() => undefined);
+      const warm = context.queryClient
+        .ensureQueryData(subsQuery(slug))
+        .catch(() => undefined);
+      if (typeof document === "undefined") await warm;
     }
     return primary;
   },
+
 
   head: () => ({
     meta: [
@@ -392,10 +397,14 @@ const CategoryThumb = React.memo(function CategoryThumb({
 });
 
 
-function SubCategories({ slug, name }: { slug: string; name: string }) {
+const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: string; name: string }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery(subsQuery(slug));
   const subs = React.useMemo(() => normalizeCategories(data?.subs), [data?.subs]);
   const failed = isError || (!isPending && typeof data?.error === "string" && !!data.error);
+  const retry = React.useCallback(() => {
+    if (!isFetching) void refetch();
+  }, [isFetching, refetch]);
+
 
   return (
     <div className="pb-24">
