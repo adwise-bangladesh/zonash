@@ -372,17 +372,22 @@ function FilteredResults({
           {products.length === 0 && !error ? (
             <NotFoundView
               bare
-              variant={q ? "not-found" : "empty"}
+              variant="empty"
+              // A zero-result search is NOT an HTTP 404 — the previous
+              // "not-found" variant printed an "Error 404" eyebrow above a
+              // successful 200 response, which reads as a site fault.
+              code={q ? "No results" : "Nothing here yet"}
               title={q ? "No matches found" : "Nothing here yet"}
               description={
                 q
                   ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
                   : "Try another filter or browse the full shop."
               }
-              primaryLabel="Browse shop"
+              primaryLabel="Clear search"
               primaryTo="/products"
             />
           ) : (
+
             <>
               <ProductGrid products={products} />
               {hasNextPage && (
