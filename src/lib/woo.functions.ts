@@ -262,9 +262,10 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
     z.object({ slug: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/) }).parse(raw),
   )
   .handler(async ({ data }) => {
+    type SubsResult = { parent: WooCategory | null; subs: WooCategory[]; error: string | null };
     try {
       const { wooFetch, cachedDerived, trimCategories } = await import("./woo.server");
-      return await cachedDerived(`categories:subs:${data.slug}`, 300_000, async () => {
+      return await cachedDerived<SubsResult>(`categories:subs:${data.slug}`, 300_000, async () => {
         const parents = trimCategories(
           await wooFetch<WooCategory[]>({
             path: "/products/categories",
@@ -273,20 +274,20 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
           }),
         );
         const parent = parents[0] ?? null;
-        if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
+        if (!parent) return { parent: null, subs: [], error: null };
         const subs = await wooFetch<WooCategory[]>({
           path: "/products/categories",
           query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
           timeoutMs: 8000,
         }).catch(() => [] as WooCategory[]);
         return {
-          parent: { name: parent.name, slug: parent.slug, image: parent.image } as WooCategory,
-          subs: trimCategories(subs).map((s) => ({ name: s.name, slug: s.slug, image: s.image })) as WooCategory[],
-          error: null as string | null,
+          parent,
+          // Only the fields the UI renders leave the server.
+          subs: trimCategories(subs).map((s) => ({ id: s.id, name: s.name, slug: s.slug, count: s.count, image: s.image })),
+          error: null,
         };
       });
 
-      return { parent, subs, error: null as string | null };
     } catch (e) {
       console.error("getCategoryWithSubs failed", e);
       return { parent: null, subs: [] as WooCategory[], error: "Category is temporarily unavailable." };
