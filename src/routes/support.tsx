@@ -1,86 +1,245 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppHeader } from "@/components/AppHeader";
-import { SiteFooter } from "@/components/layout/SiteFooter";
-import { Phone, Mail, MessageCircle, Clock } from "lucide-react";
+import { useState } from "react";
+import {
+  ChevronDown,
+  Package,
+  RotateCcw,
+  Truck,
+  ShieldCheck,
+  MessageCircle,
+  Phone,
+  Mail,
+  Clock,
+  ChevronRight,
+} from "lucide-react";
+import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
+
+const SUPPORT_TEL = "+8801926644575";
+const SUPPORT_WA = "8801926644575";
+const SUPPORT_EMAIL = "support@zonash.com";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
     meta: [
-      { title: "Support · Zonash" },
-      { name: "description", content: "Get help with your Zonash order — contact our team by phone, email, or WhatsApp." },
+      { title: "Help & Support · Zonash" },
+      {
+        name: "description",
+        content:
+          "Track an order, check delivery times, returns and exchange rules, or talk to the Zonash team on WhatsApp, phone or email.",
+      },
+      { property: "og:title", content: "Help & Support · Zonash" },
+      {
+        property: "og:description",
+        content: "Order tracking, delivery, returns and direct contact with the Zonash team.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://zonash.lovable.app/support" }],
   }),
   component: Support,
 });
 
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: "How long does delivery take?",
+    a: "Inside Dhaka: 1–2 working days. Outside Dhaka: 3–5 working days. You get an SMS with the tracking (consignment) number once your parcel is handed to the courier.",
+  },
+  {
+    q: "What are the delivery charges?",
+    a: "Inside Dhaka ৳80. Anywhere outside Dhaka ৳130. The exact charge is always shown on the checkout page before you place the order.",
+  },
+  {
+    q: "Can I return or exchange a product?",
+    a: "Yes — 7-day exchange on unworn pieces in their original packaging. Open the parcel in front of the delivery person; if anything is damaged or wrong, refuse it or call us the same day.",
+  },
+  {
+    q: "How do I confirm my order?",
+    a: "After you place an order we send a 4-digit code by SMS. Enter it on the verification screen and your order moves from pending to confirmed automatically.",
+  },
+  {
+    q: "Is the jewelry skin-safe?",
+    a: "Yes. Every piece is hypoallergenic, nickel-free and water resistant for daily wear.",
+  },
+  {
+    q: "Can I pay online?",
+    a: "Cash on delivery is available across Bangladesh. For advance payment (bKash/Nagad), just message us on WhatsApp and we will share the details.",
+  },
+];
+
 function Support() {
+  const [open, setOpen] = useState<number | null>(0);
+
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <main className="container-page py-10 md:py-14">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">We're here to help</p>
-          <h1 className="mt-1 font-display text-3xl md:text-4xl">Support</h1>
-          <p className="mt-3 text-muted-foreground">
-            Questions about an order, shipping, or a piece you're eyeing? Reach out — we typically reply within a few hours.
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <CheckoutHeader title="Help & Support" />
+
+      <main className="flex-1 px-3 pb-10 pt-3">
+        {/* Hero */}
+        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
+          <h2 className="font-display text-lg font-bold leading-tight">
+            How can we help you?
+          </h2>
+          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
+            Our team replies within minutes — daily 10:00 AM to 10:00 PM.
           </p>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <a href="tel:+8809610000000" className="flex items-start gap-3 rounded-[3px] border border-border bg-card p-4 hover:border-primary">
-              <Phone className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <div className="font-semibold">Call us</div>
-                <div className="text-sm text-muted-foreground">+880 9610 000 000</div>
-              </div>
+          <div className="mt-3 flex gap-2">
+            <a
+              href={`https://wa.me/${SUPPORT_WA}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white active:scale-[0.98] transition-transform"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              WhatsApp
             </a>
-            <a href="https://wa.me/8809610000000" className="flex items-start gap-3 rounded-[3px] border border-border bg-card p-4 hover:border-primary">
-              <MessageCircle className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <div className="font-semibold">WhatsApp</div>
-                <div className="text-sm text-muted-foreground">Chat with our team</div>
-              </div>
+            <a
+              href={`tel:${SUPPORT_TEL}`}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary active:scale-[0.98] transition-transform"
+            >
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              Call now
             </a>
-            <a href="mailto:support@zonash.com" className="flex items-start gap-3 rounded-[3px] border border-border bg-card p-4 hover:border-primary">
-              <Mail className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <div className="font-semibold">Email</div>
-                <div className="text-sm text-muted-foreground">support@zonash.com</div>
-              </div>
-            </a>
-            <div className="flex items-start gap-3 rounded-[3px] border border-border bg-card p-4">
-              <Clock className="mt-0.5 h-5 w-5 text-primary" />
-              <div>
-                <div className="font-semibold">Hours</div>
-                <div className="text-sm text-muted-foreground">Sat–Thu · 10:00–20:00 (GMT+6)</div>
-              </div>
-            </div>
           </div>
+        </section>
 
-          <div className="mt-10">
-            <h2 className="font-display text-2xl">Common questions</h2>
-            <div className="mt-4 space-y-4 text-sm">
-              <div>
-                <div className="font-semibold">How long does delivery take?</div>
-                <p className="text-muted-foreground">Inside Dhaka: 1–2 days. Outside Dhaka: 3–5 days.</p>
+        {/* Quick actions */}
+        <h3 className="mt-5 px-1 text-[13px] font-semibold">Quick actions</h3>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <QuickTile to="/orders" icon={Package} label="Track my order" hint="Order status & courier" />
+          <QuickTile to="/orders" icon={RotateCcw} label="Return / exchange" hint="Within 7 days" />
+          <QuickTile to="/products" icon={Truck} label="Delivery info" hint="৳80 Dhaka · ৳130 outside" />
+          <QuickTile to="/products" icon={ShieldCheck} label="Product care" hint="Waterproof & safe" />
+        </div>
+
+        {/* FAQ */}
+        <h3 className="mt-6 px-1 text-[13px] font-semibold">Frequently asked</h3>
+        <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
+          {FAQS.map((f, i) => {
+            const isOpen = open === i;
+            return (
+              <div key={f.q} className={i > 0 ? "border-t border-border" : undefined}>
+                <button
+                  type="button"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-2 px-3.5 py-3 text-left"
+                >
+                  <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug">{f.q}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+                <div
+                  className={`grid transition-all duration-200 ease-out ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                >
+                  <p className="overflow-hidden px-3.5 pb-3 text-[12px] leading-relaxed text-muted-foreground">
+                    {f.a}
+                  </p>
+                </div>
               </div>
-              <div>
-                <div className="font-semibold">What's your return policy?</div>
-                <p className="text-muted-foreground">7-day exchange on unworn pieces in original packaging.</p>
-              </div>
-              <div>
-                <div className="font-semibold">Is the jewelry skin-safe?</div>
-                <p className="text-muted-foreground">Yes — hypoallergenic, waterproof, and nickel-free.</p>
-              </div>
-            </div>
-            <div className="mt-6">
-              <Link to="/products" className="text-sm font-medium text-primary hover:underline">
-                Continue shopping →
-              </Link>
+            );
+          })}
+        </div>
+
+        {/* Contact list */}
+        <h3 className="mt-6 px-1 text-[13px] font-semibold">Contact us</h3>
+        <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
+          <ContactRow
+            href={`tel:${SUPPORT_TEL}`}
+            icon={Phone}
+            title="Hotline"
+            value="+880 1926 644575"
+          />
+          <ContactRow
+            href={`https://wa.me/${SUPPORT_WA}`}
+            icon={MessageCircle}
+            title="WhatsApp"
+            value="Chat with an agent"
+            external
+          />
+          <ContactRow
+            href={`mailto:${SUPPORT_EMAIL}`}
+            icon={Mail}
+            title="Email"
+            value={SUPPORT_EMAIL}
+          />
+          <div className="flex items-center gap-3 border-t border-border px-3.5 py-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+              <Clock className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium">Support hours</div>
+              <div className="text-[12px] text-muted-foreground">Every day · 10:00 AM – 10:00 PM</div>
             </div>
           </div>
         </div>
+
+        <Link
+          to="/products"
+          className="mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground active:scale-[0.99] transition-transform"
+        >
+          Continue shopping
+        </Link>
       </main>
-      <SiteFooter />
     </div>
+  );
+}
+
+function QuickTile({
+  to,
+  icon: Icon,
+  label,
+  hint,
+}: {
+  to: "/orders" | "/products";
+  icon: typeof Package;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <Link
+      to={to}
+      preload="intent"
+      className="rounded-2xl border border-border bg-card p-3 shadow-sm active:scale-[0.98] transition-transform"
+    >
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
+        <Icon className="h-4.5 w-4.5" aria-hidden="true" />
+      </span>
+      <div className="mt-2 text-[13px] font-semibold leading-snug">{label}</div>
+      <div className="text-[11px] leading-snug text-muted-foreground">{hint}</div>
+    </Link>
+  );
+}
+
+function ContactRow({
+  href,
+  icon: Icon,
+  title,
+  value,
+  external,
+}: {
+  href: string;
+  icon: typeof Phone;
+  title: string;
+  value: string;
+  external?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className="flex items-center gap-3 border-t border-border px-3.5 py-3 first:border-t-0 active:bg-muted/60"
+    >
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-medium">{title}</div>
+        <div className="truncate text-[12px] text-muted-foreground">{value}</div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </a>
   );
 }
