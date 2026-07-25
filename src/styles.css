@@ -177,6 +177,12 @@
   &::-webkit-scrollbar { display: none; }
 }
 
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
 @keyframes logo-rainbow {
   0%   { color: hsl(330 85% 55%); transform: translateY(0) rotate(0deg); }
   15%  { color: hsl(20 90% 55%);  transform: translateY(-2px) rotate(-1.5deg); }
