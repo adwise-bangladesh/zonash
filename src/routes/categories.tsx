@@ -322,7 +322,10 @@ function CategoriesPage() {
   );
 }
 
-/** Thumbnail that degrades to an icon when the upstream image 404s. */
+/**
+ * Thumbnail that serves a WordPress generated crop sized for its slot (the
+ * originals are multi-MB) and degrades to an icon when the upstream image 404s.
+ */
 const CategoryThumb = React.memo(function CategoryThumb({
   src,
   alt,
@@ -339,7 +342,9 @@ const CategoryThumb = React.memo(function CategoryThumb({
   const [broken, setBroken] = React.useState(false);
   React.useEffect(() => setBroken(false), [src]);
 
-  if (!src || broken) {
+  const thumb = React.useMemo(() => buildThumbImage(src, size), [src, size]);
+
+  if (!src || !thumb || broken) {
     return (
       <span className="grid h-full w-full place-items-center bg-muted text-muted-foreground">
         <LayoutGrid className={iconClass} aria-hidden="true" />
@@ -348,17 +353,29 @@ const CategoryThumb = React.memo(function CategoryThumb({
   }
   return (
     <img
-      src={src}
+      src={thumb.src}
+      srcSet={thumb.srcSet || undefined}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
       decoding="async"
-      onError={() => setBroken(true)}
+      onError={(e) => {
+        // A missing generated crop falls back to the original once; a broken
+        // original then shows the icon instead of an empty tile.
+        const img = e.currentTarget;
+        if (img.srcset || img.src !== src) {
+          img.srcset = "";
+          img.src = src;
+          return;
+        }
+        setBroken(true);
+      }}
       className={`h-full w-full object-cover ${imgClass}`}
     />
   );
 });
+
 
 function SubCategories({ slug, name }: { slug: string; name: string }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery(subsQuery(slug));
