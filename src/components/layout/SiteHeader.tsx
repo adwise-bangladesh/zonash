@@ -62,10 +62,17 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
+  const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { count: cartCount } = useCart();
   const panelId = useId();
+  const listId = `${panelId}-list`;
+
+  const term = q.trim();
+  const { items, loading, error, settled } = useSearchSuggest(q, open);
+  const showList = open && term.length >= MIN_CHARS;
 
   useEffect(() => {
     if (!open) return;
@@ -73,6 +80,9 @@ export function SiteHeader() {
     const raf = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(raf);
   }, [open]);
+
+  // Reset the highlighted row whenever the result set changes.
+  useEffect(() => setActive(-1), [term, items]);
 
   // Escape closes the panel from anywhere inside it (input, chips, submit).
   useEffect(() => {
@@ -84,16 +94,69 @@ export function SiteHeader() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Outside click / tap closes the panel.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!panelRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setQ("");
+    setActive(-1);
+  }, []);
+
   const go = useCallback(
-    (term: string) => {
-      const t = sanitizeTerm(term);
+    (raw: string) => {
+      const t = sanitizeTerm(raw);
       if (t) saveRecent(t);
-      setOpen(false);
-      setQ("");
+      close();
       navigate({ to: "/products", search: t ? { q: t } : {} });
     },
-    [navigate],
+    [close, navigate],
   );
+
+  const openProduct = useCallback(
+    (slug: string, name: string) => {
+      saveRecent(name);
+      close();
+      navigate({ to: "/products/$slug", params: { slug } });
+    },
+    [close, navigate],
+  );
+
+  const onInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!showList || items.length === 0) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive((i) => (i + 1) % items.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((i) => (i <= 0 ? items.length - 1 : i - 1));
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        const hit = items[active];
+        if (hit) openProduct(hit.slug, hit.name);
+      }
+    },
+    [showList, items, active, openProduct],
+  );
+
+  const rows = useMemo(
+    () =>
+      items.map((p) => ({
+        ...p,
+        img: buildResponsiveImage(p.image, { sizes: "48px" }),
+      })),
+    [items],
+  );
+
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
