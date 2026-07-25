@@ -521,20 +521,43 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 
     try {
-      // Mirror is authoritative once synced; only the first read per TTL touches Woo.
-      let trusted = await cacheIsFresh(phone);
-      if (!trusted) trusted = await syncPhoneOrders(phone);
-
-      if (trusted) {
-        const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
+      // Only the first page needs to consider a re-sync. Infinite-scroll pages
+      // used to re-run the freshness lookup (an extra round trip each) even
+      // though page 1 had already guaranteed the mirror. Deep pages now read
+      // the mirror directly, and the optimistic read runs in parallel with the
+      // freshness check so a warm request costs a single round trip.
+      if (page > 1) {
+        const { orders, hasMore } = await fetchOrdersFromCache(phone, page, perPage);
         return {
           orders: orders.map(redact),
           page,
           source: "cache" as const,
-          hasMore: page * perPage < total,
+          hasMore,
           error: null as string | null,
         };
       }
+
+      const [fresh, optimistic] = await Promise.all([
+        cacheIsFresh(phone),
+        fetchOrdersFromCache(phone, page, perPage),
+      ]);
+      let trusted = fresh;
+      let result = optimistic;
+      if (!trusted) {
+        trusted = await syncPhoneOrders(phone);
+        if (trusted) result = await fetchOrdersFromCache(phone, page, perPage);
+      }
+
+      if (trusted) {
+        return {
+          orders: result.orders.map(redact),
+          page,
+          source: "cache" as const,
+          hasMore: result.hasMore,
+          error: null as string | null,
+        };
+      }
+
 
       // Woo fallback keeps the screen working if the mirror write failed.
       const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
