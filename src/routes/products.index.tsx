@@ -364,19 +364,52 @@ function PrimaryCategoryStrip() {
   );
 }
 
-function FilteredResults({
-  q,
-  category,
-  featured,
-  sort,
-}: {
+type FilterProps = {
   q: string | undefined;
   category: string | undefined;
   featured: boolean | undefined;
   sort: SortKey;
-}) {
-  const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
+};
+
+/**
+ * Chrome is rendered outside the suspending results body.
+ *
+ * `FilteredResults` suspends on every key change (new search term, new sort,
+ * chip removal). With no boundary between it and the route, that suspension
+ * bubbled to the route-level `pendingComponent`: the header, category strip and
+ * sort tabs were torn down and re-mounted on every filter tweak — a full-page
+ * white flash, a lost header scroll position, and a re-mounted search input.
+ */
+function FilteredResults(props: FilterProps) {
+  return (
+    <Shell>
+      <AppHeader />
+      {/* Keep taxonomy navigation available inside filtered views too. */}
+      <Suspense fallback={<CategoryStripSkeleton />}>
+        <PrimaryCategoryStrip />
+      </Suspense>
+      <SortTabs active={props.sort} />
+      <main className="animate-fade-in">
+        <Suspense
+          fallback={
+            <div className="pt-3">
+              <FeedGridSkeleton columns={2} />
+            </div>
+          }
+        >
+          <FilteredResultsBody {...props} />
+        </Suspense>
+      </main>
+    </Shell>
+  );
+}
+
+function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
+  const queryClient = useQueryClient();
+  const options = searchProductsQuery(q ?? "", category, featured, sort);
+  const { data, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(options);
+
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows. The
   // validity filter is folded in here too — it used to run inside the grid on
