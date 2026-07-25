@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
@@ -5,7 +6,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { InfiniteFeed } from "@/components/home/InfiniteFeed";
+import { InfiniteFeed, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
 import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
@@ -17,7 +18,6 @@ const primaryCategoriesQuery = queryOptions({
   queryFn: () => listPrimaryCategories(),
   staleTime: 5 * 60_000,
 });
-
 
 const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "title"] as const;
 
@@ -39,7 +39,15 @@ const searchProductsQuery = (
     queryKey: ["products", "search", search, category ?? "", featured ?? false, sort],
     queryFn: () =>
       listProducts({
-        data: { page: 1, perPage: 30, search: search || undefined, category, featured, orderby, order },
+        data: {
+          page: 1,
+          perPage: 30,
+          search: search || undefined,
+          category,
+          featured,
+          orderby,
+          order,
+        },
       }),
     staleTime: 60_000,
   });
@@ -109,7 +117,9 @@ function Shop({ sort }: { sort: SortKey }) {
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="pt-2">
-          <InfiniteFeed orderby={orderby} order={order} columns={2} />
+          <Suspense fallback={<FeedGridSkeleton columns={2} />}>
+            <InfiniteFeed orderby={orderby} order={order} columns={2} />
+          </Suspense>
         </div>
       </main>
     </div>
@@ -124,10 +134,7 @@ function PrimaryCategoryStrip() {
     <nav aria-label="Shop categories" className="bg-background pt-3 pb-3">
       <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {cats.map((c) => (
-          <li
-            key={c.id}
-            className="shrink-0 basis-[22%] snap-start md:basis-[14%] lg:basis-[10%]"
-          >
+          <li key={c.id} className="shrink-0 basis-[22%] snap-start md:basis-[14%] lg:basis-[10%]">
             <Link
               to="/c/$slug"
               params={{ slug: c.slug }}
@@ -160,7 +167,6 @@ function PrimaryCategoryStrip() {
     </nav>
   );
 }
-
 
 function FilteredResults({
   q,
@@ -247,7 +253,9 @@ function ProductGrid({ products }: { products: WooProduct[] }) {
                 <span className="line-clamp-2 text-[12px] font-medium leading-tight text-foreground">
                   {p.name}
                 </span>
-                <span className="mt-0.5 text-[13px] font-bold text-primary">{formatBDT(priceNum)}</span>
+                <span className="mt-0.5 text-[13px] font-bold text-primary">
+                  {formatBDT(priceNum)}
+                </span>
               </span>
             </Link>
           </li>

@@ -3,6 +3,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { WooOrder, WooProduct, WooVariation } from "./woo.server";
 
+/** Guard every WooCommerce list response — upstream may return an error object. */
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 // -------------------- Products (public) --------------------
 
 const listProductsSchema = z.object({
@@ -49,9 +54,10 @@ export const listProducts = createServerFn({ method: "GET" })
 
       const seen = new Set<number>();
       const products: WooProduct[] = [];
+      // Validate the upstream shape: Woo can return an object error payload.
       // SKU matches first — usually the more precise intent for staff.
-      for (const p of [...bySku, ...byText]) {
-        if (seen.has(p.id)) continue;
+      for (const p of [...asArray<WooProduct>(bySku), ...asArray<WooProduct>(byText)]) {
+        if (!p || typeof p.id !== "number" || seen.has(p.id)) continue;
         seen.add(p.id);
         products.push(p);
       }
@@ -109,7 +115,10 @@ export const listCategories = createServerFn({ method: "GET" })
         path: "/products/categories",
         query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc" },
       });
-      return { categories: cats.filter((c) => c.slug !== "uncategorized"), error: null as string | null };
+      return {
+        categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
+        error: null as string | null,
+      };
     } catch (e) {
       console.error("listCategories failed", e);
       return { categories: [] as WooCategory[], error: "Categories are temporarily unavailable." };
@@ -125,7 +134,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
         query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc" },
       });
       return {
-        categories: cats.filter((c) => c.slug !== "uncategorized"),
+        categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
         error: null as string | null,
       };
     } catch (e) {
@@ -183,7 +192,7 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
         query: { slug: data.slug, per_page: 1 },
         timeoutMs: 8000,
       });
-      const catId = cats[0]?.id;
+      const catId = asArray<{ id: number }>(cats)[0]?.id;
       if (!catId) return { products: [] as WooProduct[], error: null as string | null };
       const products = await wooFetch<WooProduct[]>({
         path: "/products",
@@ -196,7 +205,7 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
         },
         timeoutMs: 8000,
       });
-      return { products, error: null as string | null };
+      return { products: asArray<WooProduct>(products), error: null as string | null };
     } catch (e) {
       console.error("listProductsByCategorySlug failed", e);
       return { products: [] as WooProduct[], error: "Products are temporarily unavailable." };

@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 import type { WooCategory } from "@/lib/woo.functions";
 
-export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
+export function CategoryTabs({ categories }: { categories: WooCategory[] | undefined }) {
+  const list = (categories ?? []).filter((c) => c?.slug).slice(0, 8);
   return (
     <nav
       aria-label="Category tabs"
@@ -24,7 +25,7 @@ export function CategoryTabs({ categories }: { categories: WooCategory[] }) {
         <Link to="/c/$slug" params={{ slug: "bestsellers" }} className="shrink-0 text-emerald-700">
           Bestsellers
         </Link>
-        {categories.slice(0, 8).map((c) => (
+        {list.map((c) => (
           <Link
             key={c.slug}
             to="/c/$slug"

@@ -1,33 +1,41 @@
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { resolveCardPrices } from "@/lib/price-range";
+import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
 
-function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
-  const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
-  const rating = parseFloat(p.average_rating as unknown as string);
+function BigCard({
+  p,
+  priority,
+  onSeed,
+}: {
+  p: WooProduct;
+  priority: boolean;
+  onSeed: (p: WooProduct) => void;
+}) {
+  const { sell, regular } = resolveCardPrices(p);
+  const rating = Number.parseFloat(String(p.average_rating ?? ""));
   const soldish = p.rating_count ?? 0;
-  const queryClient = useQueryClient();
-  const seedProductCache = () => {
-    queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
-  };
+  const image = p.images?.[0];
+  const seed = () => onSeed(p);
+
   return (
     <Link
       to="/products/$slug"
       params={{ slug: p.slug }}
       preload="intent"
       onPointerDown={(e) => {
-        if (e.button === 0) seedProductCache();
+        if (e.button === 0) seed();
       }}
-      onFocus={seedProductCache}
+      onFocus={seed}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md"
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
-        {p.images[0] ? (
+        {image?.src ? (
           <img
-            src={p.images[0].src}
-            alt={p.images[0].alt || p.name}
+            src={image.src}
+            alt={image.alt || p.name || "Product"}
             width={600}
             height={600}
             loading={priority ? "eager" : "lazy"}
@@ -38,7 +46,7 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-            <Gem className="h-10 w-10" />
+            <Gem className="h-10 w-10" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -46,7 +54,7 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
       <div className="flex flex-col gap-1.5 p-2.5">
         {p.stock_status !== "instock" && p.backorders_allowed && (
           <span className="inline-flex w-fit items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-            <Truck className="h-2.5 w-2.5" /> Slower delivery
+            <Truck className="h-2.5 w-2.5" aria-hidden="true" /> Slower delivery
           </span>
         )}
         <p className="line-clamp-2 min-h-[2.4rem] text-[13px] font-medium leading-snug text-ink">
@@ -61,11 +69,11 @@ function BigCard({ p, priority }: { p: WooProduct; priority: boolean }) {
         )}
         <div className="mt-0.5 flex items-baseline gap-1.5">
           <span className="text-[13px] font-extrabold leading-none text-primary md:text-[15px]">
-            {formatBDT(price)}
+            {formatBDT(sell)}
           </span>
-          {p.on_sale && p.regular_price && (
+          {regular != null && (
             <span className="text-[10px] text-muted-foreground line-through">
-              {formatBDT(p.regular_price)}
+              {formatBDT(regular)}
             </span>
           )}
         </div>
@@ -78,17 +86,19 @@ export function BigProductGrid({
   products,
   columns = 2,
 }: {
-  products: WooProduct[];
+  products: WooProduct[] | undefined;
   columns?: 2 | 3;
 }) {
-  if (!products.length) return null;
+  const seedProduct = useSeedProductCache();
+  const list = (products ?? []).filter((p) => p && p.slug);
+  if (!list.length) return null;
   const gridClass =
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
     <section aria-label="Products" className="pb-6">
       <div className={gridClass}>
-        {products.map((p, i) => (
-          <BigCard key={p.id} p={p} priority={i < 2} />
+        {list.map((p, i) => (
+          <BigCard key={p.id} p={p} priority={i < 2} onSeed={seedProduct} />
         ))}
       </div>
     </section>
