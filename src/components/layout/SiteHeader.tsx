@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, X, Clock } from "lucide-react";
+import { Search, ShoppingBag, X, Clock } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useCart } from "@/lib/cart";
 
@@ -68,13 +68,10 @@ export function SiteHeader() {
           >
             {open ? <X className="h-[18px] w-[18px]" /> : <Search className="h-[18px] w-[18px]" />}
           </button>
-          <Link
-            to="/auth"
-            aria-label="Account"
-            className="hidden h-10 w-10 place-items-center rounded-full text-foreground/80 transition-colors hover:bg-primary/[0.06] hover:text-primary md:grid"
-          >
-            <User className="h-[18px] w-[18px]" />
-          </Link>
+          {/* Account entry point intentionally omitted from the storefront
+              header — customers reach their orders through the checkout /
+              order-lookup flow instead. */}
+
           <Link
             to="/cart"
             aria-label="Cart"
