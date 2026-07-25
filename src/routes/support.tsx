@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useState, type ComponentType } from "react";
+import { memo, useCallback, useState, type ComponentType } from "react";
 import {
   ChevronDown,
   RotateCcw,
@@ -18,6 +18,7 @@ const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
 const WA_MESSAGE = "Hi Zonash, I need help with my order.";
 const WA_HREF = `https://wa.me/${SUPPORT_TEL.replace(/\D/g, "")}?text=${encodeURIComponent(WA_MESSAGE)}`;
+const TEL_HREF = `tel:${SUPPORT_TEL}`;
 const MAIL_HREF = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Zonash order support")}`;
 const CANONICAL = "https://zonash.lovable.app/support";
 
@@ -83,6 +84,9 @@ export const Route = createFileRoute("/support")({
   errorComponent: SupportError,
 });
 
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+
 function SupportError({ reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -100,7 +104,7 @@ function SupportError({ reset }: { error: Error; reset: () => void }) {
             Try again
           </button>
           <a
-            href={`tel:${SUPPORT_TEL}`}
+            href={TEL_HREF}
             className={`inline-flex min-h-11 items-center rounded-full bg-secondary px-4 py-2 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
           >
             Call support
@@ -111,8 +115,121 @@ function SupportError({ reset }: { error: Error; reset: () => void }) {
   );
 }
 
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+/* ------------------------------------------------------------------ *
+ * Static subtrees are created once at module scope. Their element
+ * identity never changes, so React skips re-rendering them entirely
+ * when the FAQ accordion state updates.
+ * ------------------------------------------------------------------ */
+
+const HERO = (
+  <section
+    aria-labelledby="support-hero"
+    className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm"
+  >
+    <h2 id="support-hero" className="font-display text-lg font-bold leading-tight">
+      How can we help you?
+    </h2>
+    <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
+      Our team replies within minutes — daily 10:00 AM to 10:00 PM.
+    </p>
+    <div className="mt-3 flex gap-2">
+      <a
+        href={WA_HREF}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat with Zonash support on WhatsApp (opens in a new tab)"
+        className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
+      >
+        <WhatsAppIcon className="h-4 w-4" />
+        WhatsApp
+      </a>
+      <a
+        href={TEL_HREF}
+        aria-label="Call Zonash support hotline"
+        className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
+      >
+        <Phone className="h-4 w-4" aria-hidden="true" />
+        Call now
+      </a>
+    </div>
+  </section>
+);
+
+const PROMISE = (
+  <section aria-labelledby="support-promise">
+    <h3 id="support-promise" className="mt-5 px-1 text-[13px] font-semibold">
+      Shop with confidence
+    </h3>
+    <ul className="mt-2 grid grid-cols-2 gap-2">
+      <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
+      <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
+      <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days on unworn items" />
+      <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
+    </ul>
+  </section>
+);
+
+const WA_CTA = (
+  <a
+    href={WA_HREF}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Chat on WhatsApp with Zonash support (opens in a new tab)"
+    className={`mt-6 flex items-center gap-3 rounded-2xl bg-[#25D366]/10 px-4 py-4 ring-1 ring-[#25D366]/25 transition-transform active:scale-[0.99] ${focusRing}`}
+  >
+    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
+      <WhatsAppIcon className="h-5 w-5" />
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-[13px] font-semibold text-[#128C7E]">Chat on WhatsApp</span>
+      <span className="block text-[12px] text-[#128C7E]/80">
+        Replies within minutes · 10 AM – 10 PM
+      </span>
+    </span>
+    <ChevronRight className="h-5 w-5 shrink-0 text-[#128C7E]" aria-hidden="true" />
+  </a>
+);
+
+const CONTACT = (
+  <section aria-labelledby="support-contact">
+    <h3 id="support-contact" className="mt-6 px-1 text-[13px] font-semibold">
+      Contact us
+    </h3>
+    <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
+      <ContactRow href={TEL_HREF} icon={Phone} title="Hotline" value="+880 1926 644575" />
+      <ContactRow
+        href={WA_HREF}
+        icon={WhatsAppIcon}
+        title="WhatsApp"
+        value="Chat with an agent"
+        external
+      />
+      <ContactRow href={MAIL_HREF} icon={Mail} title="Email" value={SUPPORT_EMAIL} />
+      <div className="flex items-center gap-3 border-t border-border px-3.5 py-3">
+        <span
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
+          aria-hidden="true"
+        >
+          <Clock className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">Support hours</div>
+          <div className="text-[12px] text-muted-foreground">Every day · 10:00 AM – 10:00 PM</div>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+const KEEP_SHOPPING = (
+  <Link
+    to="/products"
+    preload="intent"
+    className={`mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
+  >
+    Continue shopping
+  </Link>
+);
 
 function Support() {
   const [open, setOpen] = useState<number | null>(0);
@@ -127,171 +244,83 @@ function Support() {
       <CheckoutHeader title="Help & Support" />
 
       <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
-        {/* Hero */}
-        <section
-          aria-labelledby="support-hero"
-          className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm"
-        >
-          <h2 id="support-hero" className="font-display text-lg font-bold leading-tight">
-            How can we help you?
-          </h2>
-          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
-            Our team replies within minutes — daily 10:00 AM to 10:00 PM.
-          </p>
-          <div className="mt-3 flex gap-2">
-            <a
-              href={WA_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Chat with Zonash support on WhatsApp (opens in a new tab)"
-              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
-            >
-              <WhatsAppIcon className="h-4 w-4" />
-              WhatsApp
-            </a>
-            <a
-              href={`tel:${SUPPORT_TEL}`}
-              aria-label="Call Zonash support hotline"
-              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
-            >
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              Call now
-            </a>
-          </div>
-        </section>
+        {HERO}
+        {PROMISE}
 
-        {/* Shop promise */}
-        <section aria-labelledby="support-promise">
-          <h3 id="support-promise" className="mt-5 px-1 text-[13px] font-semibold">
-            Shop with confidence
-          </h3>
-          <ul className="mt-2 grid grid-cols-2 gap-2">
-            <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
-            <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
-            <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days on unworn items" />
-            <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
-          </ul>
-        </section>
-
-        {/* FAQ */}
         <section aria-labelledby="support-faq">
           <h3 id="support-faq" className="mt-6 px-1 text-[13px] font-semibold">
             Frequently asked
           </h3>
           <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
-            {FAQS.map((f, i) => {
-              const isOpen = open === i;
-              return (
-                <div key={f.q} className={i > 0 ? "border-t border-border" : undefined}>
-                  <h4>
-                    <button
-                      type="button"
-                      onClick={() => toggle(i)}
-                      aria-expanded={isOpen}
-                      aria-controls={`faq-panel-${i}`}
-                      id={`faq-trigger-${i}`}
-                      className={`flex min-h-11 w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
-                    >
-                      <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug">
-                        {f.q}
-                      </span>
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </h4>
-                  <div
-                    id={`faq-panel-${i}`}
-                    role="region"
-                    aria-labelledby={`faq-trigger-${i}`}
-                    inert={!isOpen}
-                    aria-hidden={!isOpen}
-                    className={`grid transition-all duration-200 ease-out motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
-                  >
-                    <p className="overflow-hidden px-3.5 pb-3 text-[12px] leading-relaxed text-muted-foreground">
-                      {f.a}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+            {FAQS.map((f, i) => (
+              <FaqRow
+                key={f.q}
+                index={i}
+                q={f.q}
+                a={f.a}
+                isOpen={open === i}
+                onToggle={toggle}
+              />
+            ))}
           </div>
         </section>
 
-        {/* WhatsApp CTA */}
-        <a
-          href={WA_HREF}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Chat on WhatsApp with Zonash support (opens in a new tab)"
-          className={`mt-6 flex items-center gap-3 rounded-2xl bg-[#25D366]/10 px-4 py-4 ring-1 ring-[#25D366]/25 transition-transform active:scale-[0.99] ${focusRing}`}
-        >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
-            <WhatsAppIcon className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold text-[#128C7E]">Chat on WhatsApp</span>
-            <span className="block text-[12px] text-[#128C7E]/80">
-              Replies within minutes · 10 AM – 10 PM
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-[#128C7E]" aria-hidden="true" />
-        </a>
-
-        {/* Contact list */}
-        <section aria-labelledby="support-contact">
-          <h3 id="support-contact" className="mt-6 px-1 text-[13px] font-semibold">
-            Contact us
-          </h3>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
-            <ContactRow
-              href={`tel:${SUPPORT_TEL}`}
-              icon={Phone}
-              title="Hotline"
-              value="+880 1926 644575"
-            />
-            <ContactRow
-              href={WA_HREF}
-              icon={WhatsAppIcon}
-              title="WhatsApp"
-              value="Chat with an agent"
-              external
-            />
-            <ContactRow
-              href={MAIL_HREF}
-              icon={Mail}
-              title="Email"
-              value={SUPPORT_EMAIL}
-            />
-            <div className="flex items-center gap-3 border-t border-border px-3.5 py-3">
-              <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
-                aria-hidden="true"
-              >
-                <Clock className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <div className="text-[13px] font-medium">Support hours</div>
-                <div className="text-[12px] text-muted-foreground">
-                  Every day · 10:00 AM – 10:00 PM
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <Link
-          to="/products"
-          preload="intent"
-          className={`mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
-        >
-          Continue shopping
-        </Link>
+        {WA_CTA}
+        {CONTACT}
+        {KEEP_SHOPPING}
       </main>
     </div>
   );
 }
+
+const FaqRow = memo(function FaqRow({
+  index,
+  q,
+  a,
+  isOpen,
+  onToggle,
+}: {
+  index: number;
+  q: string;
+  a: string;
+  isOpen: boolean;
+  onToggle: (i: number) => void;
+}) {
+  const handleClick = useCallback(() => onToggle(index), [index, onToggle]);
+
+  return (
+    <div className={index > 0 ? "border-t border-border" : undefined}>
+      <h4>
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-expanded={isOpen}
+          aria-controls={`faq-panel-${index}`}
+          id={`faq-trigger-${index}`}
+          className={`flex min-h-11 w-full items-center gap-2 px-3.5 py-3 text-left ${focusRing}`}
+        >
+          <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug">{q}</span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+      </h4>
+      <div
+        id={`faq-panel-${index}`}
+        role="region"
+        aria-labelledby={`faq-trigger-${index}`}
+        inert={!isOpen}
+        aria-hidden={!isOpen}
+        className={`grid transition-all duration-200 ease-out motion-reduce:transition-none ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+      >
+        <p className="overflow-hidden px-3.5 pb-3 text-[12px] leading-relaxed text-muted-foreground">
+          {a}
+        </p>
+      </div>
+    </div>
+  );
+});
 
 function InfoTile({
   icon: Icon,
