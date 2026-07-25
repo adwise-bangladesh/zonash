@@ -61,7 +61,7 @@ function CategoriesPage() {
       <div className="flex min-h-[100dvh] flex-col bg-background">
         <CheckoutHeader title="Categories" />
         <main className="flex flex-1 items-center justify-center">
-          <EmptyState icon={LayoutGrid} title="No categories yet" description="Check back soon — we're stocking the shelves." primary={{ label: "Continue shopping", to: "/products" }} />
+          <EmptyState icon={LayoutGrid} title="No categories with subcategories" description="Add subcategories in WooCommerce to see them here." primary={{ label: "Continue shopping", to: "/products" }} />
         </main>
       </div>
     );
