@@ -72,3 +72,31 @@ export function onImageSrcSetError(event: React.SyntheticEvent<HTMLImageElement>
   img.sizes = "";
   img.src = original;
 }
+
+/**
+ * Small fixed-size thumbnail (category tiles, avatars).
+ *
+ * WooCommerce returns the full-size original — often 1–2 MB — which is wasteful
+ * for a 40–160 px slot. WordPress already stores generated square crops next to
+ * it, so we point at the nearest one and offer a 2× candidate for retina.
+ * Pair with `onImageSrcSetError` so a missing crop falls back to the original.
+ */
+export function buildThumbImage(
+  originalSrc: string | undefined | null,
+  slotPx: number,
+): { src: string; srcSet: string } | null {
+  if (!originalSrc) return null;
+  const src = toOriginal(originalSrc);
+  const isWpUpload = /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png|webp)$/i.test(src);
+  if (!isWpUpload) return { src: originalSrc, srcSet: "" };
+
+  const pick = (target: number) =>
+    WP_SIZES.find((w) => w >= target) ?? WP_SIZES[WP_SIZES.length - 1];
+  const base = pick(slotPx);
+  const retina = pick(slotPx * 2);
+  const srcSet =
+    retina === base
+      ? `${withSize(src, base)} 1x`
+      : `${withSize(src, base)} 1x, ${withSize(src, retina)} 2x`;
+  return { src: withSize(src, base), srcSet };
+}
