@@ -13,17 +13,23 @@ import type { WooProduct } from "@/lib/woo.server";
 export function useSeedProductCache() {
   const queryClient = useQueryClient();
 
-  return (p: WooProduct) => {
-    if (!p?.slug) return;
-    queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
-    if (p.type === "variable" && (p.variations?.length ?? 0) > 0) {
-      void queryClient
-        .prefetchQuery({
-          queryKey: ["product-variations", p.id],
-          queryFn: () => getProductVariations({ data: { productId: p.id } }),
-          staleTime: 5 * 60 * 1000,
-        })
-        .catch(() => {});
-    }
-  };
+  // Stable identity: card components are memoized, so an unstable callback
+  // would defeat memo and re-render the entire feed on every parent render.
+  return useCallback(
+    (p: WooProduct) => {
+      if (!p?.slug) return;
+      queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
+      if (p.type === "variable" && (p.variations?.length ?? 0) > 0) {
+        void queryClient
+          .prefetchQuery({
+            queryKey: ["product-variations", p.id],
+            queryFn: () => getProductVariations({ data: { productId: p.id } }),
+            staleTime: 5 * 60 * 1000,
+          })
+          .catch(() => {});
+      }
+    },
+    [queryClient],
+  );
 }
+
