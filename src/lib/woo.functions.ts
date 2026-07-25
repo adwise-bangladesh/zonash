@@ -206,18 +206,41 @@ export const listCategories = createServerFn({ method: "GET" })
     }
   });
 
-// Fetch top-level (parent=0) categories for the shop landing.
+// Fetch top-level (parent=0) categories that actually have subcategories.
+// Parents with no children are hidden so the category browser never lands on an empty pane.
 export const listPrimaryCategories = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
-      const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
-        path: "/products/categories",
-        query: { per_page: 50, hide_empty: false, parent: 0, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
-      });
-      return {
-        categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
-        error: null as string | null,
-      };
+      const { wooFetch } = await import("./woo.server");
+
+      // Pull all categories (paginated) so we can check parent -> child relationships locally.
+      // Two small calls replace N+1 child requests and keep the response cache-friendly.
+      const all: WooCategory[] = [];
+      let page = 1;
+      while (page <= 10) {
+        const batch = await wooFetch<WooCategory[]>({
+          path: "/products/categories",
+          query: {
+            per_page: 100,
+            page,
+            hide_empty: false,
+            orderby: "name",
+            order: "asc",
+            _fields: "id,parent,name,slug,count,image",
+          },
+          timeoutMs: 10_000,
+        });
+        if (!batch.length) break;
+        all.push(...asArray<WooCategory>(batch));
+        if (batch.length < 100) break;
+        page++;
+      }
+
+      const parents = all.filter((c) => c?.parent === 0 && c.slug && c.slug !== "uncategorized");
+      const parentIds = new Set(parents.map((c) => c.id));
+      const categories = parents.filter((p) => all.some((c) => c.parent && parentIds.has(c.parent) && c.parent === p.id));
+
+      return { categories, error: null as string | null };
     } catch (e) {
       console.error("listPrimaryCategories failed", e);
       return { categories: [] as WooCategory[], error: "Categories are temporarily unavailable." };
