@@ -33,7 +33,7 @@ export const AuthHero = memo(function AuthHero({
           <Icon className="h-5 w-5" strokeWidth={1.9} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-lg font-bold leading-tight">{title}</h1>
+          <h2 className="font-display text-lg font-bold leading-tight">{title}</h2>
           <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">{subtitle}</p>
         </div>
       </div>
@@ -90,7 +90,11 @@ export const OtpBoxes = memo(function OtpBoxes({
         aria-invalid={!!error}
         className={`absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 ${focusRing}`}
       />
-      <div className="flex justify-center gap-2.5" onClick={() => inputRef.current?.focus()}>
+      <div
+        className="flex justify-center gap-2.5"
+        aria-hidden="true"
+        onClick={() => inputRef.current?.focus()}
+      >
         {slots.map((d, i) => {
           const active = code.length === i;
           const filled = !!d;
