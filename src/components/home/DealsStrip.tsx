@@ -48,10 +48,91 @@ function useResetCountdown() {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-export function DealsStrip({ products }: { products: WooProduct[] | undefined }) {
+/**
+ * Timer is isolated in its own component so its 1 Hz state update re-renders
+ * ~30 DOM nodes instead of the whole strip (banner + 12 product cards + 12
+ * images), which is 60x less reconciliation work per second per open tab.
+ */
+function DealTimer() {
   const timer = useResetCountdown();
+  return (
+    <p
+      role="timer"
+      aria-live="off"
+      aria-label={`Offer resets in ${timer}`}
+      className="mt-0.5 rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]"
+    >
+      {timer}
+    </p>
+  );
+}
+
+const DealCard = memo(function DealCard({
+  p,
+  idx,
+  onSeed,
+}: {
+  p: WooProduct;
+  idx: number;
+  onSeed: (p: WooProduct) => void;
+}) {
+  const { sell } = resolveCardPrices(p);
+  const image = p.images?.[0];
+  const seed = () => onSeed(p);
+  // 58–84px thumbnails were previously served as the full-size
+  // WordPress original — up to 12 of them on first paint.
+  const responsive = buildResponsiveImage(image?.src, {
+    sizes: "(min-width: 768px) 84px, 58px",
+  });
+  return (
+    <Link
+      to="/products/$slug"
+      params={{ slug: p.slug }}
+      preload="intent"
+      aria-label={p.name}
+      onPointerDown={(e) => {
+        if (e.button === 0) seed();
+      }}
+      onFocus={seed}
+      className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
+    >
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
+        {responsive ? (
+          <img
+            src={responsive.src}
+            srcSet={responsive.srcSet}
+            sizes={responsive.sizes}
+            alt={image?.alt || p.name || "Product"}
+            width={168}
+            height={168}
+            loading={idx < 4 ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={idx === 0 ? "high" : "auto"}
+            onError={onImageSrcSetError}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-muted-foreground/40">
+            <Gem className="h-4 w-4" aria-hidden="true" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 items-center justify-center bg-white px-1 py-1.5">
+        <p className="text-center text-[11px] font-extrabold leading-none text-primary md:text-[13px]">
+          {formatBDT(sell)}
+        </p>
+      </div>
+    </Link>
+  );
+});
+
+export function DealsStrip({ products }: { products: WooProduct[] | undefined }) {
   const seedProduct = useSeedProductCache();
-  const list = (products ?? []).filter((p) => p && p.slug).slice(0, 12);
+  const list = useMemo(
+    () => (products ?? []).filter((p) => p && p.slug).slice(0, 12),
+    [products],
+  );
   if (!list.length) return null;
 
   return (
@@ -76,75 +157,19 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
               <p className="text-center font-display font-semibold italic leading-none tracking-wide text-white/85 text-[9px] md:text-[11px]">
                 Sale
               </p>
-              <p
-                role="timer"
-                aria-live="off"
-                aria-label={`Offer resets in ${timer}`}
-                className="mt-0.5 rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]"
-              >
-                {timer}
-              </p>
+              <DealTimer />
             </Link>
           </div>
 
           {/* Horizontal product scroll */}
           <div className="scroll-snap-x -mr-2.5 flex min-w-0 flex-1 gap-2 overflow-x-auto pr-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mr-3 md:pr-3">
-            {list.map((p, idx) => {
-              const { sell } = resolveCardPrices(p);
-              const image = p.images?.[0];
-              const seed = () => seedProduct(p);
-              // 58–84px thumbnails were previously served as the full-size
-              // WordPress original — up to 12 of them on first paint.
-              const responsive = buildResponsiveImage(image?.src, {
-                sizes: "(min-width: 768px) 84px, 58px",
-              });
-              return (
-                <Link
-                  key={p.id}
-                  to="/products/$slug"
-                  params={{ slug: p.slug }}
-                  preload="intent"
-                  aria-label={p.name}
-                  onPointerDown={(e) => {
-                    if (e.button === 0) seed();
-                  }}
-                  onFocus={seed}
-                  className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
-                >
-                  <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
-                    {responsive ? (
-                      <img
-                        src={responsive.src}
-                        srcSet={responsive.srcSet}
-                        sizes={responsive.sizes}
-                        alt={image?.alt || p.name || "Product"}
-                        width={168}
-                        height={168}
-                        loading={idx < 4 ? "eager" : "lazy"}
-                        decoding="async"
-                        fetchPriority={idx === 0 ? "high" : "auto"}
-                        onError={onImageSrcSetError}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-
-                    ) : (
-                      <div className="absolute inset-0 grid place-items-center text-muted-foreground/40">
-                        <Gem className="h-4 w-4" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-1 items-center justify-center bg-white px-1 py-1.5">
-                    <p className="text-center text-[11px] font-extrabold leading-none text-primary md:text-[13px]">
-                      {formatBDT(sell)}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+            {list.map((p, idx) => (
+              <DealCard key={p.id} p={p} idx={idx} onSeed={seedProduct} />
+            ))}
           </div>
         </div>
       </div>
     </section>
   );
 }
+
