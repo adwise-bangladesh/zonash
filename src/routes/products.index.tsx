@@ -480,7 +480,10 @@ function FilteredResults({
                   ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
                   : "Try another filter or browse the full shop."
               }
-              primaryLabel="Clear search"
+              // The CTA said "Clear search" even when no search term existed
+              // (e.g. `?category=rings` with zero published products), offering
+              // to clear something the shopper never typed.
+              primaryLabel={q ? "Clear search" : "Browse shop"}
               primaryTo="/products"
             />
           ) : (
@@ -493,6 +496,7 @@ function FilteredResults({
                     type="button"
                     onClick={loadMore}
                     disabled={isFetchingNextPage}
+                    aria-busy={isFetchingNextPage}
                     className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
                   >
                     {isFetchingNextPage ? "Loading…" : "Load more"}
