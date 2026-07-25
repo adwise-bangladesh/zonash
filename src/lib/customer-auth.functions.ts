@@ -284,6 +284,12 @@ function trimOrder(o: WooOrderLite): WooOrderLite {
   };
 }
 
+/** Strip fields the customer UI never renders (PII minimisation on the wire). */
+function redact(o: WooOrderLite): WooOrderLite {
+  if (!o.billing?.email) return o;
+  return { ...o, billing: { ...o.billing, email: undefined } };
+}
+
 /**
  * Woo has no "phone" filter, so we search and then verify the billing phone.
  * `fetched` is the unfiltered page size — pagination must be driven by that,
