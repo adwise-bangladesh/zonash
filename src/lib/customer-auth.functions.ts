@@ -147,12 +147,17 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
     }
     const hash = await sha256Hex(`${data.code}:${phone}`);
     if (hash !== row.code_hash) {
+      // Compare-and-swap on `attempts`: a plain read-modify-write let an
+      // attacker fire N parallel guesses that all wrote `attempts + 1`, so the
+      // 5-attempt cap could be bypassed with concurrency.
       await supabaseAdmin
         .from("customer_login_otps" as never)
         .update({ attempts: row.attempts + 1 } as never)
-        .eq("phone", phone);
+        .eq("phone", phone)
+        .eq("attempts", row.attempts);
       return { ok: false as const, error: "Incorrect code. Please try again." };
     }
+
 
     // Consume the OTP so it can't be reused.
     await supabaseAdmin
