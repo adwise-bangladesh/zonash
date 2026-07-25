@@ -70,7 +70,7 @@ export function useSearchSuggest(term: string, enabled: boolean, limit = 6): Sug
       return;
     }
 
-    const key = q.toLowerCase();
+    const key = `${limit}:${q.toLowerCase()}`;
     const cached = readCache(key);
     if (cached) {
       seqRef.current += 1;
@@ -88,7 +88,7 @@ export function useSearchSuggest(term: string, enabled: boolean, limit = 6): Sug
       const controller = new AbortController();
       abortRef.current = controller;
 
-      suggestProducts({ data: { q, limit: 6 }, signal: controller.signal })
+      suggestProducts({ data: { q, limit }, signal: controller.signal })
         .then((res) => {
           if (seq !== seqRef.current) return; // stale response — drop it
           if (!res.error) writeCache(key, res.items);
@@ -110,7 +110,7 @@ export function useSearchSuggest(term: string, enabled: boolean, limit = 6): Sug
       window.clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [term, enabled, reset]);
+  }, [term, enabled, limit, reset]);
 
   // Abort anything in flight when the consumer unmounts.
   useEffect(() => () => abortRef.current?.abort(), []);
