@@ -72,8 +72,11 @@ export const Route = createFileRoute("/categories")({
         .catch(() => undefined);
       if (typeof document === "undefined") await warm;
     }
-    return primary;
+    // Return nothing: the component reads via useSuspenseQuery, so returning
+    // the payload here would serialize the whole category list a SECOND time
+    // into the SSR HTML (router match dehydration + query dehydration).
   },
+
 
   head: () => ({
     meta: [
@@ -109,8 +112,8 @@ function PagePending() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
-      <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           <aside className="border-r border-border bg-surface-muted">
             <ul className="pb-24">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -121,9 +124,18 @@ function PagePending() {
               ))}
             </ul>
           </aside>
-          <section className="px-1.5 pt-8">
-            <GridSkeleton />
+          <section className="min-h-0">
+            {/* Mirror the loaded pane exactly (sticky title bar + px-2 pt-2) so
+                the skeleton→content swap shifts nothing. */}
+            <div className="flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5">
+              <span className="block h-4 w-24 animate-pulse rounded bg-muted" />
+              <span className="block h-[19px] w-14 animate-pulse rounded-full bg-muted" />
+            </div>
+            <div className="px-2 pt-2">
+              <GridSkeleton />
+            </div>
           </section>
+
         </div>
       </main>
     </div>
@@ -165,8 +177,9 @@ function CategoriesPage() {
     const el = rail.querySelector<HTMLElement>(`[data-slug="${escaped}"]`);
     el?.scrollIntoView({
       behavior: didScrollRef.current ? "smooth" : "auto",
+      // Vertical rail: never pass `inline`, it can scroll the whole document
+      // sideways on first paint.
       block: "nearest",
-      inline: "center",
     });
     didScrollRef.current = true;
   }, [activeSlug]);
@@ -268,8 +281,8 @@ function CategoriesPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Categories" showBack={false} />
-      <main className="min-h-0 flex-1">
-        <div className="grid min-h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] md:min-h-[calc(100dvh-56px)]">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           {/* Left rail: main parent categories */}
           <aside className="border-r border-border bg-surface-muted">
             <nav
