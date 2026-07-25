@@ -51,18 +51,56 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Shop authentic gold-plated jewelry, gift boxes and trending finds at Zonash. Cash on delivery, 7-day returns, fast shipping across Bangladesh.",
+          "Shop authentic gold-plated jewelry, gift boxes and trending finds at Zonash. Cash on delivery, instant returns, fast shipping across Bangladesh.",
       },
       { property: "og:title", content: "Zonash — Fine Jewelry & Gifts" },
       {
         property: "og:description",
         content:
-          "Authentic jewelry, gift boxes and trending finds. COD, 7-day returns, nationwide delivery.",
+          "Authentic jewelry, gift boxes and trending finds. COD, instant returns, nationwide delivery.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: canonicalUrl("/") },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    // One canonical origin: the same app also answers on the preview host and
+    // the stable project host, which would otherwise be indexed as duplicates.
+    links: [{ rel: "canonical", href: canonicalUrl("/") }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
+              name: "Zonash",
+              url: SITE_URL,
+              areaServed: "BD",
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
+              name: "Zonash",
+              url: SITE_URL,
+              inLanguage: "en-BD",
+              publisher: { "@id": `${SITE_URL}/#organization` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: `${SITE_URL}/products?search={search_term_string}`,
+                },
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   loader: async ({ context }) => {
     // Critical: block SSR/render on above-the-fold data, including the feed's
     // first page — an un-awaited prefetch made the SSR HTML (empty feed)
