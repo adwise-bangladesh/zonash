@@ -421,11 +421,14 @@ function formatDate(iso: string | null | undefined) {
 
 function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => void }) {
   const listFn = useServerFn(listOrdersByPhone);
+  const endSessionFn = useServerFn(endCustomerSession);
+  const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const queryKey = useMemo(() => ["customer-orders-infinite", phone] as const, [phone]);
 
   const query = useInfiniteQuery({
-    queryKey: ["customer-orders-infinite", phone],
+    queryKey,
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) =>
       listFn({ data: { phone, page: pageParam as number, perPage: 15 }, signal }),
@@ -436,6 +439,35 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+
+  /**
+   * `refetch()` on an infinite query re-fetches every loaded page, so a customer
+   * who scrolled 6 pages deep fired 6 server calls (and 6 Woo/Postgres reads)
+   * per tap. Collapse to page 1 first, then refetch → always exactly 1 call.
+   */
+  const refresh = useCallback(() => {
+    queryClient.setQueryData(
+      queryKey,
+      (prev: { pages: unknown[]; pageParams: unknown[] } | undefined) =>
+        prev && prev.pages.length > 1
+          ? { pages: prev.pages.slice(0, 1), pageParams: prev.pageParams.slice(0, 1) }
+          : prev,
+    );
+    void query.refetch();
+  }, [queryClient, queryKey, query]);
+
+  /** Clear the httpOnly server cookie too — client storage alone left it live. */
+  const signOut = useCallback(async () => {
+    try {
+      await endSessionFn({});
+    } catch {
+      /* cookie may already be gone */
+    }
+    await queryClient.cancelQueries({ queryKey });
+    queryClient.removeQueries({ queryKey });
+    onLogout();
+  }, [endSessionFn, queryClient, queryKey, onLogout]);
+
 
   const orders = useMemo(
     () => query.data?.pages.flatMap((p) => p?.orders ?? []) ?? [],
