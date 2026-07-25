@@ -422,27 +422,31 @@ async function runSyncPhoneOrders(phone: string): Promise<boolean> {
 }
 
 /**
- * Reads the mirror. `total` lets pagination be exact instead of guessed from the
- * page size.
+ * Reads the mirror. Fetches one row more than the page size instead of asking
+ * Postgres for an exact `count` — the count was a separate aggregate over every
+ * order of that phone on *every* page request, and all the UI needs is
+ * "is there another page?".
  */
 async function fetchOrdersFromCache(
   phone: string,
   page: number,
   perPage: number,
-): Promise<{ orders: WooOrderLite[]; total: number }> {
+): Promise<{ orders: WooOrderLite[]; hasMore: boolean }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const from = (page - 1) * perPage;
-  const { data, error, count } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("orders_cache")
-    .select("wc_order_id, raw", { count: "exact" })
+    .select("wc_order_id, raw")
     .eq("customer_phone", phone)
     .order("date_created", { ascending: false })
-    .range(from, from + perPage - 1);
+    .range(from, from + perPage); // perPage + 1 rows: the extra row is the probe
   if (error || !Array.isArray(data)) {
     if (error) console.error("orders_cache read failed", error.message);
-    return { orders: [], total: 0 };
+    return { orders: [], hasMore: false };
   }
+  const hasMore = data.length > perPage;
   const orders = data
+    .slice(0, perPage)
     .map((r) => (r as { raw: unknown }).raw)
     .filter(
       (raw): raw is WooOrderLite =>
@@ -453,6 +457,7 @@ async function fetchOrdersFromCache(
   for (const o of orders) {
     const ev = events.get(o.id);
     if (ev) o.status_events = ev;
+
   }
   return { orders, total: count ?? orders.length };
 }
