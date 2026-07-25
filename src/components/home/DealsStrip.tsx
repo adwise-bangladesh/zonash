@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 
 import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
@@ -97,7 +97,6 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
               // WordPress original — up to 12 of them on first paint.
               const responsive = buildResponsiveImage(image?.src, {
                 sizes: "(min-width: 768px) 84px, 58px",
-                quality: 72,
               });
               return (
                 <Link
@@ -124,6 +123,7 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
                         loading={idx < 4 ? "eager" : "lazy"}
                         decoding="async"
                         fetchPriority={idx === 0 ? "high" : "auto"}
+                        onError={onImageSrcSetError}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
 

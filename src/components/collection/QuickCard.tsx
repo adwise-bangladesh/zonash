@@ -202,7 +202,6 @@ function QuickCardImpl({
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {cardImage && responsive ? (
           <picture>
-            <source type="image/webp" srcSet={responsive.srcSetWebp} sizes={responsive.sizes} />
             <img
               key={cardImageKey}
               src={responsive.src}

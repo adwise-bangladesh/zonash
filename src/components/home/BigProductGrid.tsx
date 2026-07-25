@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -27,7 +27,6 @@ function BigCard({
   // original (often 1000px+) for every card in the feed.
   const responsive = buildResponsiveImage(image?.src, {
     sizes: columns === 3 ? "(min-width: 480px) 160px, 33vw" : "(min-width: 480px) 240px, 50vw",
-    quality: 78,
   });
 
   return (
@@ -53,6 +52,7 @@ function BigCard({
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
+            onError={onImageSrcSetError}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
