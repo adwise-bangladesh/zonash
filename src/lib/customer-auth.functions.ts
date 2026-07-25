@@ -602,8 +602,14 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
 
     try {
       let { orders } = await fetchOrdersFromCache(phone, 1, 1);
-      if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
+      // First-time customers have nothing in the mirror, so this used to hit
+      // Woo on *every* checkout/landing page view. Remember the miss briefly.
+      if (orders.length === 0 && !autofillMissRecently(phone)) {
+        ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
+        if (orders.length === 0) rememberAutofillMiss(phone);
+      }
       if (orders.length === 0) return { billing: null };
+
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();
       const last = (b.last_name ?? "").trim();
