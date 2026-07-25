@@ -43,11 +43,11 @@ export function buildResponsiveImage(
 ): ResponsiveImage | null {
   if (!originalSrc) return null;
   const src = toOriginal(originalSrc);
-  const isWpUpload = /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png)$/i.test(src);
+  const isWpUpload = /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png|webp)$/i.test(src);
   const sizes = opts.sizes ?? DEFAULT_SIZES;
 
   if (!isWpUpload) {
-    // Unknown host/format (e.g. .webp originals): serve as-is, no guessing.
+    // Unknown host/format (e.g. SVG, external CDN): serve as-is, no guessing.
     return { src: originalSrc, srcSet: "", sizes };
   }
 
