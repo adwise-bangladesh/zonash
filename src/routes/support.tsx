@@ -154,7 +154,7 @@ function Support() {
           />
           <ContactRow
             href={`https://wa.me/${SUPPORT_WA}`}
-            icon={MessageCircle}
+            icon={WhatsAppIcon}
             title="WhatsApp"
             value="Chat with an agent"
             external
