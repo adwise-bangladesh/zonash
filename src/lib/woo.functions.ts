@@ -48,14 +48,34 @@ export const listProducts = createServerFn({ method: "GET" })
       // Map (O(1) per slug, no extra upstream call once warm).
       let categoryId = data.category;
       if (categoryId && !/^\d+(,\d+)*$/.test(categoryId)) {
-        const bySlug = await categorySlugMap().catch(() => new Map<string, number>());
+        // A taxonomy outage used to be indistinguishable from "slug does not
+        // exist": both produced an empty Map and the handler returned zero
+        // products with `error: null`, so the page rendered a confident "No
+        // matches found" for a category that does exist. Under load the
+        // negative cache pins that state for the whole error window, so a
+        // blip is shown to every visitor as an empty catalog. Surface the
+        // failure instead so the UI shows its retry affordance.
+        let taxonomyFailed = false;
+        const bySlug = await categorySlugMap().catch(() => {
+          taxonomyFailed = true;
+          return new Map<string, number>();
+        });
+        if (taxonomyFailed) {
+          return {
+            products: [] as WooProduct[],
+            hasMore: false,
+            error: "Product catalog is temporarily unavailable.",
+          };
+        }
         const ids = categoryId
           .split(",")
           .map((slug) => bySlug.get(slug))
           .filter((id): id is number => typeof id === "number");
-        if (!ids.length) return { products: [] as WooProduct[], error: null as string | null };
+        if (!ids.length)
+          return { products: [] as WooProduct[], hasMore: false, error: null as string | null };
         categoryId = ids.join(",");
       }
+
 
       const baseQuery = {
         page: data.page,
