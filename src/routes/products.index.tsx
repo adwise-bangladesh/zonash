@@ -117,9 +117,7 @@ function Shop({ sort }: { sort: SortKey }) {
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="pt-2">
-          <Suspense fallback={null}>
-            <InfiniteFeed orderby={orderby} order={order} columns={2} />
-          </Suspense>
+          <InfiniteFeed orderby={orderby} order={order} columns={2} />
         </div>
       </main>
     </div>
