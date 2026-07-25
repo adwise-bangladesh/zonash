@@ -321,6 +321,21 @@ export function SiteHeader() {
                     ))}
                   </ul>
 
+                  {loading && rows.length === 0 && (
+                    <div aria-hidden="true" className="divide-y divide-border/50">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2">
+                          <div className="h-11 w-11 shrink-0 animate-pulse rounded-lg bg-surface-muted" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-3/5 animate-pulse rounded bg-surface-muted" />
+                            <div className="h-2.5 w-1/4 animate-pulse rounded bg-surface-muted" />
+                          </div>
+                          <div className="h-3 w-12 animate-pulse rounded bg-surface-muted" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {!loading && error && (
                     <p className="px-3 py-3 text-[12.5px] text-muted-foreground">{error}</p>
                   )}
