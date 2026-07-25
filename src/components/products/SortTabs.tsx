@@ -36,6 +36,21 @@ export function sortToWoo(sort: SortKey): {
 }
 
 export function SortTabs({ active }: { active: SortKey }) {
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // The strip scrolls horizontally and always starts at offset 0, so landing on
+  // (or sharing) a link sorted by "Top Rated" / "A–Z" showed "Recommended" with
+  // the active tab and its underline entirely off-screen — the shopper had no
+  // visible signal that a sort was applied. Bring the active tab into view
+  // after paint, without scrolling the page itself.
+  useEffect(() => {
+    const el = scroller.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    const box = scroller.current;
+    if (!el || !box) return;
+    const target = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
+    box.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [active]);
+
   return (
     <nav
       aria-label="Sort products"
@@ -44,7 +59,11 @@ export function SortTabs({ active }: { active: SortKey }) {
       // top edge and the strip's own border were clipped while scrolling.
       className="sticky top-[57px] z-30 border-b border-border bg-background/95 backdrop-blur"
     >
-      <div className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4">
+      <div
+        ref={scroller}
+        className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4"
+      >
+
         {SORT_OPTIONS.map((opt) => {
           const isActive = opt.key === active;
           return (
