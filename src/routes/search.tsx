@@ -67,13 +67,18 @@ function SearchPage() {
     queryKey: ["products", "trending", 6],
     queryFn: async () => {
       // Featured products first; stores without a featured flag fall back to
-      // the newest arrivals so this block is never empty.
+      // best sellers, then to the newest arrivals so this block is never empty.
       const featured = await listProducts({ data: { page: 1, perPage: 6, featured: true } });
       if (featured.products.length > 0) return featured;
+      const popular = await listProducts({
+        data: { page: 1, perPage: 6, orderby: "popularity", order: "desc" },
+      });
+      if (popular.products.length > 0) return popular;
       return listProducts({ data: { page: 1, perPage: 6 } });
     },
     staleTime: 5 * 60_000,
   });
+
 
   useEffect(() => {
     setRecent(loadRecent());
