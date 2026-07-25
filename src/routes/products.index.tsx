@@ -34,12 +34,23 @@ const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "t
  */
 const searchSchema = z.object({
   sort: z.enum(SORT_KEYS).optional().catch(undefined),
-  q: z.string().trim().max(120).optional().catch(undefined),
+  // Clamp instead of reject: `.max(120)` threw for a long query, and the
+  // `.catch(undefined)` then dropped the search entirely, silently dumping the
+  // shopper into the unfiltered shop instead of searching the first 120 chars.
+  q: z
+    .string()
+    .trim()
+    .transform((v) => v.slice(0, 120))
+    .optional()
+    .catch(undefined),
   category: z
     .string()
     .trim()
-    .max(96)
-    .regex(/^[A-Za-z0-9,-]+$/)
+    // Woo term slugs are lower-case; an upper-case slug in a shared/hand-typed
+    // link passed validation but never matched the slug->id map, rendering an
+    // empty "no results" page for a category that exists.
+    .transform((v) => v.toLowerCase())
+    .pipe(z.string().max(96).regex(/^[a-z0-9,-]+$/))
     .optional()
     .catch(undefined),
   featured: z
@@ -47,6 +58,7 @@ const searchSchema = z.object({
     .optional()
     .catch(undefined),
 });
+
 
 const FILTER_PER_PAGE = 24;
 
