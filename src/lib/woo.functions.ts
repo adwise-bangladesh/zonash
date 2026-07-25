@@ -27,11 +27,24 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, categoryIndex } = await import("./woo.server");
+      // Woo's `category` filter takes a term ID, not a slug: passing a slug
+      // silently returned zero products. Resolve slugs off the cached taxonomy
+      // snapshot (no extra upstream call once warm).
+      let categoryId = data.category;
+      if (categoryId && !/^\d+(,\d+)*$/.test(categoryId)) {
+        const all = await categoryIndex().catch(() => []);
+        const ids = categoryId
+          .split(",")
+          .map((slug) => all.find((c) => c.slug === slug)?.id)
+          .filter((id): id is number => typeof id === "number");
+        if (!ids.length) return { products: [] as WooProduct[], error: null as string | null };
+        categoryId = ids.join(",");
+      }
       const baseQuery = {
         page: data.page,
         per_page: data.perPage,
-        category: data.category,
+        category: categoryId,
         featured: data.featured,
         orderby: data.orderby,
         order: data.order,
@@ -40,6 +53,7 @@ export const listProducts = createServerFn({ method: "GET" })
         // ~3x larger and is embedded in SSR HTML for every visitor.
         _fields: PRODUCT_FIELDS,
       } as Record<string, unknown>;
+
 
       // Run name/description search AND SKU search in parallel, then merge unique.
       const term = data.search?.trim();
