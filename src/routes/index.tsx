@@ -8,6 +8,7 @@ import { DealsStrip } from "@/components/home/DealsStrip";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
 import { getFeedNextPageParam, FEED_PER_PAGE, feedQueryKey } from "@/lib/home-feed";
+import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
 /**
