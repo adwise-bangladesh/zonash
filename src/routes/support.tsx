@@ -126,7 +126,7 @@ function Support() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Help & Support" />
 
-      <main className="flex-1 px-3 pb-10 pt-3">
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
         {/* Hero */}
         <section
           aria-labelledby="support-hero"
