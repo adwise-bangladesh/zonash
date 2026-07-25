@@ -310,7 +310,9 @@ function FilteredResults({
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows.
   const products = useMemo(() => dedupeFeedPages(data?.pages) as WooProduct[], [data?.pages]);
-  const error = data?.pages?.[0]?.error ?? null;
+  // Read the newest page's error, not page 1's: a "Load more" that failed
+  // upstream returned an error the UI never surfaced (silent dead button).
+  const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
   const activeLabel = useMemo(
     () => (q ? `“${q}”` : category ? category.replace(/-/g, " ") : featured ? "Featured" : null),
     [q, category, featured],
