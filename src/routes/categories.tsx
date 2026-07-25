@@ -431,9 +431,7 @@ const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: 
             </p>
             <button
               type="button"
-              onClick={() => {
-                if (!isFetching) void refetch();
-              }}
+              onClick={retry}
               disabled={isFetching}
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[11.5px] font-semibold text-primary-foreground shadow-sm transition active:scale-[0.98] disabled:opacity-60"
             >
@@ -452,7 +450,7 @@ const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: 
                   preload="intent"
                   className="group flex flex-col items-center gap-1.5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
+                  <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
                     <CategoryThumb
                       src={s.imageSrc}
                       alt={s.name}
@@ -468,12 +466,12 @@ const SubCategories = React.memo(function SubCategories({ slug, name }: { slug: 
               </li>
             ))}
           </ul>
-
         )}
       </div>
     </div>
   );
-}
+});
+
 
 function GridSkeleton() {
   return (
