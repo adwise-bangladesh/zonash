@@ -127,9 +127,17 @@ function VerifyOtpPage() {
         inFlight.current = false;
         return;
       }
-      // Persist customer session (phone) for future visits — cookie + localStorage.
-      const verifiedPhone = phone && /^01[3-9]\d{8}$/.test(phone) ? phone : null;
+      // Persist the customer session. The phone comes from the server (the row
+      // the OTP was issued for) and only falls back to the URL param — a
+      // missing/edited `phone` search param used to silently skip login.
+      const verifiedPhone =
+        res.phone && /^01[3-9]\d{8}$/.test(res.phone)
+          ? res.phone
+          : phone && /^01[3-9]\d{8}$/.test(phone)
+            ? phone
+            : null;
       if (verifiedPhone) setPhone(verifiedPhone);
+
 
       if (res.decision === "confirmed") {
         navigate({ to: "/order-callback-choice", search: { order, number: number ?? String(order) } as never });
