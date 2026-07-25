@@ -192,10 +192,10 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     try {
-      const { wooFetch } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
       const cats = await wooFetch<{ id: number }[]>({
         path: "/products/categories",
-        query: { slug: data.slug, per_page: 1 },
+        query: { slug: data.slug, per_page: 1, _fields: "id" },
         timeoutMs: 8000,
       });
       const catId = asArray<{ id: number }>(cats)[0]?.id;
@@ -208,10 +208,12 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
           orderby: data.orderby,
           order: "desc",
           status: "publish",
+          _fields: PRODUCT_FIELDS,
         },
         timeoutMs: 8000,
       });
-      return { products: asArray<WooProduct>(products), error: null as string | null };
+      return { products: trimProducts(products), error: null as string | null };
+
     } catch (e) {
       console.error("listProductsByCategorySlug failed", e);
       return { products: [] as WooProduct[], error: "Products are temporarily unavailable." };
