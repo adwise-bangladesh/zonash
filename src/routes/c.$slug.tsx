@@ -195,7 +195,7 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   const sentinel = useRef<HTMLDivElement>(null);
   const enabled = !!categoryId;
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
     useInfiniteQuery({
       queryKey: ["collection", "feed", categoryId],
       enabled,
@@ -214,21 +214,55 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
       staleTime: 60_000,
     });
 
+  // The observer callback changes on every fetch/render; holding it in a ref
+  // keeps a single observer alive for the page's lifetime instead of
+  // disconnect/observe churn (which can re-fire while a page is in flight).
+  const onHit = useRef<() => void>(() => {});
+  onHit.current = () => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  };
+
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+        if (entries[0]?.isIntersecting) onHit.current();
       },
       { rootMargin: "600px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [enabled]);
 
-  const products: WooProduct[] =
-    data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [];
+  // Woo re-paginates live: a product published between page fetches shifts
+  // every later page down one, which repeats an item and throws a duplicate
+  // React key. De-dupe by id.
+  const products: WooProduct[] = useMemo(() => {
+    const seen = new Set<number>();
+    const out: WooProduct[] = [];
+    for (const page of data?.pages ?? []) {
+      for (const p of (page.products ?? []) as WooProduct[]) {
+        if (!p || seen.has(p.id)) continue;
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+    return out;
+  }, [data]);
+
+  if (isError && products.length === 0) {
+    return (
+      <NotFoundView
+        bare
+        variant="error"
+        title="Couldn't load these products"
+        description="The shop is taking longer than usual to respond. Try again in a moment."
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
 
   if (!enabled) {
     return (
