@@ -242,11 +242,15 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
         const trimmed = trimCategories(all);
         const parents = trimmed.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
         const withChildren = new Set(trimmed.filter((c) => c.parent > 0).map((c) => c.parent));
+        const nested = parents.filter((p) => withChildren.has(p.id));
+        // Hide childless parents only while at least one parent has children.
+        // A flat taxonomy (no subcategories anywhere) must still render a
+        // usable browser instead of a permanently empty page.
+        const visible = nested.length > 0 ? nested : parents;
         // Only fields the browser actually renders leave the server.
-        return parents
-          .filter((p) => withChildren.has(p.id))
-          .map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
+        return visible.map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
       });
+
 
 
       return { categories, error: null as string | null };
