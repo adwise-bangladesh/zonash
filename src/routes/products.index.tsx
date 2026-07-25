@@ -48,6 +48,12 @@ const searchSchema = z.object({
     .catch(undefined),
 });
 
+const FILTER_PER_PAGE = 24;
+
+/**
+ * Filtered views used to be a single 30-item fetch, silently truncating any
+ * category or search with more matches. They now paginate like the main feed.
+ */
 const searchProductsQuery = (
   search: string,
   category: string | undefined,
@@ -55,13 +61,14 @@ const searchProductsQuery = (
   sort: SortKey,
 ) => {
   const { orderby, order } = sortToWoo(sort);
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: ["products", "search", search, category ?? "", featured ?? false, sort],
-    queryFn: () =>
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
       listProducts({
         data: {
-          page: 1,
-          perPage: 30,
+          page: pageParam as number,
+          perPage: FILTER_PER_PAGE,
           search: search || undefined,
           category,
           featured,
@@ -69,9 +76,12 @@ const searchProductsQuery = (
           order,
         },
       }),
+    getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
+      getFeedNextPageParam(last, all, FILTER_PER_PAGE),
     staleTime: 60_000,
   });
 };
+
 
 /** A filtered view (search / featured / category) is never the canonical shop page. */
 const isFiltered = (s: { q?: string; featured?: boolean; category?: string }) =>
