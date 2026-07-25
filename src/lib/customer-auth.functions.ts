@@ -207,13 +207,80 @@ type WooOrderLite = {
   };
 };
 
+const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+const money = (v: unknown) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : "0";
+};
+
+/** Keep only the fields the customer UI renders — Woo order payloads are huge. */
+function trimOrder(o: WooOrderLite): WooOrderLite {
+  return {
+    id: Number(o.id) || 0,
+    number: str(o.number) || String(o.id ?? ""),
+    status: str(o.status) || "pending",
+    date_created: str(o.date_created),
+    date_modified: o.date_modified ?? null,
+    date_paid: o.date_paid ?? null,
+    date_completed: o.date_completed ?? null,
+    total: money(o.total),
+    shipping_total: money(o.shipping_total),
+    discount_total: money(o.discount_total),
+    currency: str(o.currency) || "BDT",
+    payment_method_title: str(o.payment_method_title) || undefined,
+    customer_note: str(o.customer_note) || undefined,
+    line_items: (Array.isArray(o.line_items) ? o.line_items : []).map((li) => ({
+      id: li?.id,
+      name: str(li?.name) || "Item",
+      quantity: Number(li?.quantity) > 0 ? Number(li.quantity) : 1,
+      sku: str(li?.sku) || undefined,
+      subtotal: money(li?.subtotal),
+      total: money(li?.total),
+      image: li?.image?.src ? { src: str(li.image.src) } : undefined,
+      meta_data: (Array.isArray(li?.meta_data) ? li.meta_data : [])
+        .filter((md) => md?.display_key && md?.display_value)
+        .slice(0, 6)
+        .map((md) => ({
+          display_key: str(md.display_key),
+          display_value: str(md.display_value),
+        })),
+    })),
+    shipping_lines: (Array.isArray(o.shipping_lines) ? o.shipping_lines : [])
+      .slice(0, 1)
+      .map((sl) => ({ method_title: str(sl?.method_title) || undefined })),
+    billing: {
+      first_name: str(o.billing?.first_name),
+      email: str(o.billing?.email),
+      last_name: str(o.billing?.last_name),
+      phone: str(o.billing?.phone),
+      address_1: str(o.billing?.address_1),
+      address_2: str(o.billing?.address_2),
+      city: str(o.billing?.city),
+      state: str(o.billing?.state),
+    },
+    shipping: {
+      first_name: str(o.shipping?.first_name),
+      last_name: str(o.shipping?.last_name),
+      address_1: str(o.shipping?.address_1),
+      address_2: str(o.shipping?.address_2),
+      city: str(o.shipping?.city),
+      state: str(o.shipping?.state),
+    },
+  };
+}
+
+/**
+ * Woo has no "phone" filter, so we search and then verify the billing phone.
+ * `fetched` is the unfiltered page size — pagination must be driven by that,
+ * otherwise a page where some hits are false positives ends the list early.
+ */
 async function fetchOrdersByPhone(
   phone: string,
   page = 1,
   perPage = 20,
-): Promise<WooOrderLite[]> {
+): Promise<{ orders: WooOrderLite[]; fetched: number }> {
   const { wooFetch } = await import("./woo.server");
-  const orders = await wooFetch<WooOrderLite[]>({
+  const raw = await wooFetch<unknown>({
     path: "/orders",
     query: {
       search: phone,
@@ -225,11 +292,16 @@ async function fetchOrdersByPhone(
     },
     timeoutMs: 15_000,
   });
+  if (!Array.isArray(raw)) return { orders: [], fetched: 0 };
   const tail = phone.slice(-10);
-  return orders.filter((o) => {
-    const p = (o.billing?.phone ?? "").replace(/\D/g, "");
-    return p.endsWith(tail);
-  });
+  const orders = (raw as WooOrderLite[])
+    .filter((o) => {
+      if (!o || typeof o !== "object" || !o.id) return false;
+      const p = str(o.billing?.phone).replace(/\D/g, "");
+      return p.endsWith(tail);
+    })
+    .map(trimOrder);
+  return { orders, fetched: raw.length };
 }
 
 export const listOrdersByPhone = createServerFn({ method: "GET" })
@@ -249,11 +321,11 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
     if (!isBdMobile(phone))
       return { orders: [] as WooOrderLite[], page, hasMore: false, error: "Invalid phone." };
     try {
-      const orders = await fetchOrdersByPhone(phone, page, perPage);
+      const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
       return {
         orders,
         page,
-        hasMore: orders.length >= perPage,
+        hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
     } catch (e) {
@@ -267,6 +339,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
     }
   });
 
+
 // -------------------- Public: last order billing (for checkout autofill) --------------------
 
 export const getLastOrderByPhone = createServerFn({ method: "GET" })
@@ -277,7 +350,7 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
     const phone = normalizePhone(data.phone);
     if (!isBdMobile(phone)) return { billing: null };
     try {
-      const orders = await fetchOrdersByPhone(phone);
+      const { orders } = await fetchOrdersByPhone(phone, 1, 10);
       if (orders.length === 0) return { billing: null };
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();

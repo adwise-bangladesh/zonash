@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,10 +20,11 @@ import {
   StickyNote,
   Sparkles,
   Truck,
+  TriangleAlert,
   X,
   XCircle,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
@@ -47,10 +48,43 @@ export const Route = createFileRoute("/orders")({
         content: "Sign in with your mobile number to view your Zonash orders.",
       },
       { name: "robots", content: "noindex" },
+      { property: "og:title", content: "My orders — Zonash" },
+      {
+        property: "og:description",
+        content: "Sign in with your mobile number to view your Zonash orders.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OrdersPage,
+  errorComponent: OrdersError,
 });
+
+function OrdersError({ reset }: { error: Error; reset: () => void }) {
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <CheckoutHeader title="My Orders" />
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pt-6">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="text-[14px] font-semibold">Something went wrong</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            We couldn't open your orders. Please try again.
+          </p>
+          <button
+            onClick={reset}
+            className={`mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
+          >
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function OrdersPage() {
   const { phone, ready, setPhone, logout } = useCustomerSession();
@@ -88,6 +122,8 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   const requestFn = useServerFn(requestCustomerLoginOtp);
   const verifyFn = useServerFn(verifyCustomerLoginOtp);
   const codeRef = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const valid = NATIONAL_RE.test(national);
   const fullPhone = `0${national}`;
@@ -95,14 +131,23 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
     ? `+880 ${national.slice(0, 4)} ${national.slice(4)}`.trim()
     : "your number";
 
+  const ticking = cooldown > 0;
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
+    if (!ticking) return;
+    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
     return () => clearInterval(t);
-  }, [cooldown]);
+  }, [ticking]);
 
-  const sendCode = async (resend = false) => {
-    if (busy || !valid) return;
+  useEffect(
+    () => () => {
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+    },
+    [],
+  );
+
+  const sendCode = useCallback(async (resend = false) => {
+    if (inFlight.current || !valid) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -114,18 +159,21 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       setStep("otp");
       setCooldown(60);
       setCode("");
-      setTimeout(() => codeRef.current?.focus(), 60);
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+      focusTimer.current = setTimeout(() => codeRef.current?.focus(), 60);
       if (resend) toast.success("New code sent");
     } catch {
       setError("Could not send code. Please try again.");
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
-  };
+  }, [valid, fullPhone, requestFn]);
 
   const verify = useCallback(
     async (full: string) => {
-      if (full.length !== 4 || busy) return;
+      if (full.length !== 4 || inFlight.current) return;
+      inFlight.current = true;
       setBusy(true);
       setError(null);
       try {
@@ -141,15 +189,16 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       } catch {
         setError("Verification failed. Please try again.");
       } finally {
+        inFlight.current = false;
         setBusy(false);
       }
     },
-    [busy, fullPhone, verifyFn, onSignedIn],
+    [fullPhone, verifyFn, onSignedIn],
   );
 
   useEffect(() => {
-    if (step === "otp" && code.length === 4 && !busy) void verify(code);
-  }, [code, step, busy, verify]);
+    if (step === "otp" && code.length === 4) void verify(code);
+  }, [code, step, verify]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -214,6 +263,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
             <button
               onClick={() => sendCode(false)}
               disabled={busy || !valid}
+              type="button"
               className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
@@ -314,6 +364,11 @@ const STATUS_STYLES: Record<string, { label: string; chip: string; dot: string }
   failed: { label: "Failed", chip: "bg-rose-500/10 text-rose-700 border-rose-500/20", dot: "bg-rose-500" },
 };
 
+function num(v: unknown) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function statusMeta(s: string) {
   return (
     STATUS_STYLES[s] ?? {
@@ -362,39 +417,56 @@ function formatDate(iso: string | null | undefined) {
 
 function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => void }) {
   const listFn = useServerFn(listOrdersByPhone);
-  const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const query = useInfiniteQuery({
     queryKey: ["customer-orders-infinite", phone],
     initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      listFn({ data: { phone, page: pageParam as number, perPage: 15 } }),
-    getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
-    staleTime: 30_000,
+    queryFn: ({ pageParam, signal }) =>
+      listFn({ data: { phone, page: pageParam as number, perPage: 15 }, signal }),
+    getNextPageParam: (last) => (last?.hasMore ? last.page + 1 : undefined),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const orders = useMemo(
-    () => query.data?.pages.flatMap((p) => p.orders) ?? [],
+    () => query.data?.pages.flatMap((p) => p?.orders ?? []) ?? [],
     [query.data],
   );
 
+  // Keep the sheet bound to fresh data (and avoid retaining a detached order object).
+  const openOrder = useMemo(
+    () => (openId == null ? null : orders.find((o) => o.id === openId) ?? null),
+    [openId, orders],
+  );
+
+  // Refs keep the observer stable across renders — re-creating it every render
+  // caused a fetch storm while scrolling.
+  const loadMore = useRef<() => void>(() => {});
+  loadMore.current = () => {
+    if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+  };
+
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
-          void query.fetchNextPage();
-        }
+        if (entries.some((e) => e.isIntersecting)) loadMore.current();
       },
       { rootMargin: "600px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [query]);
+  }, [orders.length === 0]);
 
   const firstError = query.data?.pages[0]?.error;
+  const openDetail = useCallback((id: number) => setOpenId(id), []);
+  const closeDetail = useCallback(() => setOpenId(null), []);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background pb-20">
@@ -423,7 +495,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
           </div>
 
           <button
-            onClick={() => query.refetch()}
+            onClick={() => void query.refetch()}
             disabled={query.isFetching}
             aria-label="Refresh orders"
             className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 ${focusRing}`}
@@ -468,7 +540,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
                 {firstError ?? "Could not load your orders."}
               </p>
               <button
-                onClick={() => query.refetch()}
+                onClick={() => void query.refetch()}
                 className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
@@ -495,7 +567,7 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
             <>
               <ul className="space-y-2">
                 {orders.map((o) => (
-                  <OrderCard key={o.id} order={o} onOpen={() => setOpenOrder(o)} />
+                  <OrderCard key={o.id} order={o} onOpen={openDetail} />
                 ))}
               </ul>
               <div ref={sentinelRef} className="h-10" />
@@ -515,12 +587,18 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
       </main>
 
 
-      <OrderDetailSheet order={openOrder} onClose={() => setOpenOrder(null)} />
+      <OrderDetailSheet order={openOrder} onClose={closeDetail} />
     </div>
   );
 }
 
-function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
+const OrderCard = memo(function OrderCard({
+  order,
+  onOpen,
+}: {
+  order: OrderRow;
+  onOpen: (id: number) => void;
+}) {
   const items = order.line_items ?? [];
   const first = items[0];
   const image = first?.image?.src;
@@ -531,13 +609,22 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
   return (
     <li>
       <button
-        onClick={onOpen}
+        type="button"
+        onClick={() => onOpen(order.id)}
         aria-label={`Order ${order.number}`}
         className={`group flex w-full items-stretch gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-transform active:scale-[0.99] ${focusRing}`}
       >
         <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
           {image ? (
-            <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={image}
+              alt=""
+              width={80}
+              height={80}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
           ) : (
             <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           )}
@@ -567,7 +654,7 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
               {city ? ` · ${city}` : ""}
             </span>
             <span className="inline-flex items-center gap-1 text-[14px] font-bold text-primary">
-              {formatBDT(Number(order.total))}
+              {formatBDT(num(order.total))}
               <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
@@ -575,7 +662,7 @@ function OrderCard({ order, onOpen }: { order: OrderRow; onOpen: () => void }) {
       </button>
     </li>
   );
-}
+});
 
 // ============================================================
 // Order detail sheet with real-data timeline
@@ -585,6 +672,9 @@ function OrderDetailSheet({ order, onClose }: { order: OrderRow | null; onClose:
   return (
     <Sheet open={!!order} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">
+        <SheetTitle className="sr-only">
+          {order ? `Order #${order.number}` : "Order details"}
+        </SheetTitle>
         {order && <OrderDetailBody order={order} onClose={onClose} />}
       </SheetContent>
     </Sheet>
@@ -610,7 +700,7 @@ function buildTimeline(order: OrderRow): { steps: TimelineStep[]; activeIndex: n
     shipped: 3,
     completed: 4,
   };
-  const idx = order_of[order.status] ?? (cancelled ? 0 : 0);
+  const idx = order_of[order.status] ?? 0;
 
   const steps: TimelineStep[] = [
     { key: "placed", label: "Order placed", hint: "We received your order", at: created, icon: CheckCircle2 },
@@ -626,10 +716,10 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
   const m = statusMeta(order.status);
   const { steps, activeIndex, cancelled } = buildTimeline(order);
   const items = order.line_items ?? [];
-  const shippingTotal = Number(order.shipping_total ?? 0);
-  const discount = Number(order.discount_total ?? 0);
-  const total = Number(order.total ?? 0);
-  const itemsSubtotal = items.reduce((n, li) => n + Number(li.subtotal ?? li.total ?? 0), 0);
+  const shippingTotal = num(order.shipping_total);
+  const discount = num(order.discount_total);
+  const total = num(order.total);
+  const itemsSubtotal = items.reduce((sum, li) => sum + num(li.subtotal ?? li.total), 0);
   const shippingMethod = order.shipping_lines?.[0]?.method_title;
   const shipTo = order.shipping ?? order.billing ?? {};
   const addressLines = [
@@ -752,12 +842,20 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
           </div>
           <ul className="divide-y divide-border">
             {items.map((li, i) => {
-              const lineTotal = Number(li.total ?? 0);
+              const lineTotal = num(li.total);
               return (
-                <li key={i} className="flex items-center gap-3 px-4 py-3">
+                <li key={li.id ?? `${li.sku ?? li.name}-${i}`} className="flex items-center gap-3 px-4 py-3">
                   <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
                     {li.image?.src ? (
-                      <img src={li.image.src} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={li.image.src}
+                        alt=""
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : (
                       <Package className="h-5 w-5 text-muted-foreground" />
                     )}
