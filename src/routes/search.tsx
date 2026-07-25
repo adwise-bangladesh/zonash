@@ -296,13 +296,13 @@ function SearchPage() {
               <h2 className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
                 Popular
               </h2>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
                 {POPULAR_TERMS.map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => runTerm(t)}
-                    className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
+                    className="shrink-0 rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
                   >
                     {t}
                   </button>
