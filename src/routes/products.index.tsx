@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
@@ -6,7 +5,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
-import { InfiniteFeed, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
+import { InfiniteFeedSection } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
 import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
@@ -117,7 +116,7 @@ function Shop({ sort }: { sort: SortKey }) {
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         <div className="pt-2">
-          <InfiniteFeed orderby={orderby} order={order} columns={2} />
+          <InfiniteFeedSection orderby={orderby} order={order} columns={2} />
         </div>
       </main>
     </div>
