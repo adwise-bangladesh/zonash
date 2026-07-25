@@ -139,7 +139,12 @@ export const listProducts = createServerFn({ method: "GET" })
 
     } catch (e) {
       console.error("listProducts failed", e);
-      return { products: [] as WooProduct[], error: "Product catalog is temporarily unavailable." };
+      return {
+        products: [] as WooProduct[],
+        hasMore: false,
+        error: "Product catalog is temporarily unavailable.",
+      };
+
     }
   });
 
