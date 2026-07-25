@@ -215,7 +215,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
 
       // Derived result is memoized per isolate (5 min) and single-flighted, so a
       // burst of visitors triggers one pagination pass instead of one per request.
-      const categories = await cachedDerived("categories:primary", 300_000, async () => {
+      const categories = await cachedDerived<WooCategory[]>("categories:primary", 300_000, async () => {
         const fetchPage = (page: number) =>
           wooFetch<WooCategory[]>({
             path: "/products/categories",
@@ -225,7 +225,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
               hide_empty: false,
               orderby: "name",
               order: "asc",
-              _fields: "id,parent,name,slug,count,image",
+              _fields: "id,parent,name,slug,image",
             },
             timeoutMs: 10_000,
           }).then((b) => asArray<WooCategory>(b));
@@ -245,8 +245,9 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
         // Only fields the browser actually renders leave the server.
         return parents
           .filter((p) => withChildren.has(p.id))
-          .map((p) => ({ name: p.name, slug: p.slug, image: p.image })) as WooCategory[];
+          .map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
       });
+
 
       return { categories, error: null as string | null };
     } catch (e) {
