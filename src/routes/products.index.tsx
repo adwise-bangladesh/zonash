@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useSuspenseInfiniteQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { Suspense, memo } from "react";
 import { z } from "zod";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, X } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
@@ -12,8 +12,9 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
-import { getFeedNextPageParam, FEED_PER_PAGE } from "@/lib/home-feed";
+import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 const SITE_URL = "https://zonash.lovable.app";
 
