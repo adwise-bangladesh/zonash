@@ -6,12 +6,12 @@ import {
   RotateCcw,
   Truck,
   ShieldCheck,
-  MessageCircle,
   Phone,
   Mail,
   Clock,
   ChevronRight,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
 const SUPPORT_TEL = "+8801926644575";
