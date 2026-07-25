@@ -91,6 +91,12 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
               const { sell } = resolveCardPrices(p);
               const image = p.images?.[0];
               const seed = () => seedProduct(p);
+              // 58–84px thumbnails were previously served as the full-size
+              // WordPress original — up to 12 of them on first paint.
+              const responsive = buildResponsiveImage(image?.src, {
+                sizes: "(min-width: 768px) 84px, 58px",
+                quality: 72,
+              });
               return (
                 <Link
                   key={p.id}
@@ -105,18 +111,20 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
                   className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
                 >
                   <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
-                    {image?.src ? (
+                    {responsive ? (
                       <img
-                        src={image.src}
-                        alt={image.alt || p.name || "Product"}
+                        src={responsive.src}
+                        srcSet={responsive.srcSet}
+                        sizes={responsive.sizes}
+                        alt={image?.alt || p.name || "Product"}
                         width={168}
                         height={168}
                         loading={idx < 4 ? "eager" : "lazy"}
                         decoding="async"
                         fetchPriority={idx === 0 ? "high" : "auto"}
-                        sizes="(min-width: 768px) 84px, 58px"
                         className="absolute inset-0 h-full w-full object-cover"
                       />
+
                     ) : (
                       <div className="absolute inset-0 grid place-items-center text-muted-foreground/40">
                         <Gem className="h-4 w-4" aria-hidden="true" />
