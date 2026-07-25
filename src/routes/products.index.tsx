@@ -12,7 +12,7 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
-import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE } from "@/lib/home-feed";
+import { getFeedNextPageParam, dedupeFeedPages, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
 
 
@@ -163,10 +163,10 @@ export const Route = createFileRoute("/products/")({
       return;
     }
     const { orderby, order } = sortToWoo(sort);
-    const isDefault = orderby === "date" && !order;
-    const key = isDefault
-      ? ["home", "feed", FEED_PER_PAGE]
-      : ["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"];
+    // Shared key builder: the loader and the feed component each derived this
+    // key independently, so any drift made the awaited prefetch prime a cache
+    // entry the component never read (skeleton + duplicate upstream call).
+    const key = feedKeyFor(orderby, order);
     // Awaited: the feed reads through suspense, so an un-awaited prefetch made
     // the server suspend mid-stream and fall back to client rendering.
     await context.queryClient
