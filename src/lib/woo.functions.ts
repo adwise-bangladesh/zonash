@@ -241,7 +241,7 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
       if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
       const subs = await wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
+        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
         timeoutMs: 8000,
       }).catch(() => [] as WooCategory[]);
       return { parent, subs, error: null as string | null };
