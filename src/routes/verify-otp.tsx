@@ -25,6 +25,13 @@ export const Route = createFileRoute("/verify-otp")({
       { title: "Verify your number — Zonash" },
       { name: "description", content: "Enter the 4-digit code we texted you to confirm your Zonash order." },
       { name: "robots", content: "noindex" },
+      { property: "og:title", content: "Verify your number — Zonash" },
+      {
+        property: "og:description",
+        content: "Enter the 4-digit code we texted you to confirm your Zonash order.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: VerifyOtpPage,
