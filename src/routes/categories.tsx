@@ -6,6 +6,8 @@ import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { NotFoundView } from "@/components/NotFoundView";
+import { buildThumbImage } from "@/lib/product-image";
+
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
