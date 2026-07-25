@@ -68,7 +68,7 @@ export const Route = createFileRoute("/products/")({
   }),
   loader: async ({ context, deps }) => {
     const sort = deps.sort as SortKey;
-    void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => {});
+    void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => undefined);
     if (deps.q || deps.featured) {
       await context.queryClient.ensureQueryData(
         searchProductsQuery(deps.q ?? "", deps.category, deps.featured, sort),
@@ -80,7 +80,9 @@ export const Route = createFileRoute("/products/")({
     const key = isDefault
       ? ["home", "feed", FEED_PER_PAGE]
       : ["home", "feed", FEED_PER_PAGE, orderby, order ?? "desc"];
-    void context.queryClient
+    // Awaited: the feed reads through suspense, so an un-awaited prefetch made
+    // the server suspend mid-stream and fall back to client rendering.
+    await context.queryClient
       .prefetchInfiniteQuery({
         queryKey: key,
         initialPageParam: 1,
@@ -92,7 +94,7 @@ export const Route = createFileRoute("/products/")({
           getFeedNextPageParam(last, all, FEED_PER_PAGE),
         staleTime: 60_000,
       })
-      .catch(() => {});
+      .catch(() => undefined);
   },
 
   component: Products,
