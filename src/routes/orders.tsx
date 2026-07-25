@@ -25,7 +25,9 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
+import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
+
 import {
   listOrdersByPhone,
   requestCustomerLoginOtp,
@@ -64,12 +66,21 @@ function OrdersPage() {
 }
 
 // ============================================================
-// Login gate — clean, simple, cart-style header
+// Login gate — app-style, matches the /support design language
 // ============================================================
+
+/** Digits only, drop a leading 880 / 0 so we always keep the 10-digit national part. */
+function toNational(raw: string) {
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("880")) d = d.slice(3);
+  while (d.startsWith("0")) d = d.slice(1);
+  return d.slice(0, 10);
+}
+const NATIONAL_RE = /^1[3-9]\d{8}$/;
 
 function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [phone, setPhoneInput] = useState("");
+  const [national, setNational] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +89,12 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   const verifyFn = useServerFn(verifyCustomerLoginOtp);
   const codeRef = useRef<HTMLInputElement>(null);
 
+  const valid = NATIONAL_RE.test(national);
+  const fullPhone = `0${national}`;
+  const prettyPhone = national
+    ? `+880 ${national.slice(0, 4)} ${national.slice(4)}`.trim()
+    : "your number";
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setInterval(() => setCooldown((c) => c - 1), 1000);
@@ -85,11 +102,11 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
   }, [cooldown]);
 
   const sendCode = async (resend = false) => {
-    if (busy) return;
+    if (busy || !valid) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await requestFn({ data: { phone } });
+      const res = await requestFn({ data: { phone: fullPhone } });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -112,7 +129,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       setBusy(true);
       setError(null);
       try {
-        const res = await verifyFn({ data: { phone, code: full } });
+        const res = await verifyFn({ data: { phone: fullPhone, code: full } });
         if (!res.ok) {
           setError(res.error);
           setCode("");
@@ -127,73 +144,77 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
         setBusy(false);
       }
     },
-    [busy, phone, verifyFn, onSignedIn],
+    [busy, fullPhone, verifyFn, onSignedIn],
   );
 
   useEffect(() => {
     if (step === "otp" && code.length === 4 && !busy) void verify(code);
   }, [code, step, busy, verify]);
 
-  const boxes = useMemo(() => {
-    const arr = code.split("");
-    while (arr.length < 4) arr.push("");
-    return arr.slice(0, 4);
-  }, [code]);
-
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title={step === "phone" ? "Sign in" : "Verify code"} />
 
       <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
-        {/* Hero */}
-        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-foreground/15">
-            <Package className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
-          </span>
-          <h1 className="mt-3 font-display text-lg font-bold leading-tight">
-            {step === "phone" ? "Track your orders" : "Enter verification code"}
-          </h1>
-          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
-            {step === "phone"
+        <AuthHero
+          icon={step === "phone" ? Package : ShieldCheck}
+          title={step === "phone" ? "Track your orders" : "Enter verification code"}
+          subtitle={
+            step === "phone"
               ? "Sign in with your mobile number — no password needed."
-              : `We texted a 4-digit code to +880 ${phone}.`}
-          </p>
-        </section>
+              : `We texted a 4-digit code to ${prettyPhone}.`
+          }
+          step={step === "phone" ? 1 : 2}
+        />
 
         {step === "phone" ? (
-          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <label
               htmlFor="orders-phone"
               className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
               Mobile number
             </label>
-            <div className="relative mt-1.5">
-              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 select-none text-[14px] font-semibold text-muted-foreground">
+            <div
+              className={`mt-1.5 flex items-stretch overflow-hidden rounded-2xl border transition-colors ${
+                error ? "border-destructive/60" : "border-border focus-within:border-primary"
+              } bg-background`}
+            >
+              <span className="grid select-none place-items-center border-r border-border bg-muted/60 px-3 text-[14px] font-semibold text-muted-foreground">
                 +880
               </span>
               <input
                 id="orders-phone"
                 type="tel"
                 inputMode="numeric"
-                value={phone}
+                value={national}
                 onChange={(e) => {
-                  setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 11));
+                  setNational(toNational(e.target.value));
                   if (error) setError(null);
                 }}
-                placeholder="1XXXXXXXXX"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void sendCode(false);
+                }}
+                placeholder="1926644575"
                 autoComplete="tel-national"
-                aria-label="Mobile number"
-                className={`h-12 w-full rounded-2xl border border-border bg-background pl-[58px] pr-3.5 text-[15px] font-medium outline-none transition-colors focus:border-primary ${focusRing}`}
+                aria-label="Mobile number without country code"
+                aria-invalid={!!error}
+                className="h-12 min-w-0 flex-1 bg-transparent px-3.5 text-[15px] font-medium tracking-[0.02em] tabular-nums outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60"
               />
+              {valid && (
+                <span className="grid place-items-center pr-3 text-primary" aria-hidden="true">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
+                </span>
+              )}
             </div>
-            {error && (
-              <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>
-            )}
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              10 digits after +880 — a leading 0 is removed automatically.
+            </p>
+            {error && <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>}
             <button
               onClick={() => sendCode(false)}
-              disabled={busy || !/^01[3-9]\d{8}$/.test(phone)}
-              className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+              disabled={busy || !valid}
+              className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -203,59 +224,25 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 </>
               )}
             </button>
-            <p className="mt-3 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              We only use your number to look up your orders.
-            </p>
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2.5">
+              <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                We only use your number to look up your orders. No password, no spam.
+              </p>
+            </div>
           </section>
         ) : (
-          <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="relative">
-              <input
-                ref={codeRef}
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]*"
-                maxLength={4}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
-                  if (error) setError(null);
-                }}
-                aria-label="One-time verification code"
-                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              />
-              <div
-                className="flex justify-center gap-2.5"
-                onClick={() => codeRef.current?.focus()}
-              >
-                {boxes.map((d, i) => {
-                  const active = code.length === i;
-                  const filled = !!d;
-                  return (
-                    <div
-                      key={i}
-                      className={[
-                        "grid h-14 w-12 place-items-center rounded-2xl border-2 bg-background text-2xl font-bold tabular-nums transition-all",
-                        error
-                          ? "border-destructive/70 text-destructive"
-                          : filled
-                            ? "border-primary text-foreground"
-                            : active
-                              ? "border-primary/60"
-                              : "border-border",
-                      ].join(" ")}
-                    >
-                      {d ||
-                        (active && !busy ? (
-                          <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
-                        ) : null)}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+          <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <OtpBoxes
+              inputRef={codeRef}
+              code={code}
+              busy={busy}
+              error={!!error}
+              onChange={(v) => {
+                setCode(v);
+                if (error) setError(null);
+              }}
+            />
             <div className="mt-3 min-h-[18px] text-center text-[12px]">
               {error ? (
                 <span className="font-medium text-destructive">{error}</span>
@@ -306,6 +293,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
     </div>
   );
 }
+
 
 
 // ============================================================
@@ -414,24 +402,31 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
 
       <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-6 pt-3">
         {/* Account card */}
-        <section className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
+        <section className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-primary px-3.5 py-3.5 text-primary-foreground shadow-sm ring-1 ring-inset ring-primary-foreground/10">
           <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-primary-foreground/10"
+          />
+          <span
+            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-foreground/15 ring-1 ring-inset ring-primary-foreground/20"
             aria-hidden="true"
           >
             <Phone className="h-4 w-4" />
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <div className="relative min-w-0 flex-1">
+            <div className="text-[10.5px] font-semibold uppercase tracking-wide text-primary-foreground/70">
               Signed in as
             </div>
-            <div className="truncate text-[13px] font-semibold">+880 {phone}</div>
+            <div className="truncate font-display text-[15px] font-bold tabular-nums">
+              +880 {phone.replace(/^0/, "")}
+            </div>
           </div>
+
           <button
             onClick={() => query.refetch()}
             disabled={query.isFetching}
             aria-label="Refresh orders"
-            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-50 ${focusRing}`}
+            className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 ${focusRing}`}
           >
             <RefreshCw
               className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`}
@@ -441,13 +436,21 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
           <button
             onClick={onLogout}
             aria-label="Sign out"
-            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-destructive/10 active:text-destructive ${focusRing}`}
+            className={`relative grid h-10 w-10 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-transform active:scale-95 ${focusRing}`}
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </section>
 
-        <h2 className="mt-5 px-1 text-[13px] font-semibold">Order history</h2>
+        <div className="mt-5 flex items-center justify-between px-1">
+          <h2 className="text-[13px] font-semibold">Order history</h2>
+          {orders.length > 0 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground tabular-nums">
+              {orders.length}
+            </span>
+          )}
+        </div>
+
 
         <div className="mt-2">
           {query.isLoading ? (
