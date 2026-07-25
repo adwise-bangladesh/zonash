@@ -152,6 +152,9 @@ function SubCard({
   parentSlug: string;
   sub: { id: number; name: string; slug: string; image: { src: string; alt: string } | null };
 }) {
+  // A sub tile is ~70–90 CSS px wide inside the 480px frame; without a sized
+  // srcSet the browser pulled the full-size WordPress original per tile.
+  const thumb = buildThumbImage(sub.image?.src, 96);
   return (
     <Link
       to="/c/$slug"
@@ -161,12 +164,17 @@ function SubCard({
       aria-label={`${sub.name} in ${parentSlug}`}
     >
       <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
-        {sub.image?.src ? (
+        {thumb ? (
           <img
-            src={sub.image.src}
-            alt={sub.image.alt || sub.name}
+            src={thumb.src}
+            srcSet={thumb.srcSet || undefined}
+            sizes="96px"
+            alt={sub.image?.alt || sub.name}
+            width={96}
+            height={96}
             loading="lazy"
             decoding="async"
+            onError={onImageSrcSetError}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -181,6 +189,7 @@ function SubCard({
     </Link>
   );
 }
+
 
 function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
   const sentinel = useRef<HTMLDivElement>(null);
