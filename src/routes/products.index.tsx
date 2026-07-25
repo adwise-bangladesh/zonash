@@ -232,10 +232,15 @@ function Shop({ sort }: { sort: SortKey }) {
       </Suspense>
       <SortTabs active={sort} />
       <main className="animate-fade-in">
+        {/* The unfiltered shop is the only indexable variant of this route and
+            it had no <h1> at all — the heading existed solely on the
+            noindex'd filtered branch. */}
+        <h1 className="sr-only">Shop all Zonash fine jewelry</h1>
         <div className="pt-2">
           <InfiniteFeedSection orderby={orderby} order={order} columns={2} />
         </div>
       </main>
+
     </Shell>
   );
 }
