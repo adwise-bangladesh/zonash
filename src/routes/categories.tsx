@@ -66,7 +66,7 @@ export const Route = createFileRoute("/categories")({
     const primary = await context.queryClient.ensureQueryData(categoriesQuery);
     const first = normalizeCategories(primary?.categories)[0]?.slug;
     const slug = deps.parent ?? first;
-    if (slug && false) {
+    if (slug) {
       await context.queryClient.ensureQueryData(subsQuery(slug)).catch(() => undefined);
     }
     return primary;
