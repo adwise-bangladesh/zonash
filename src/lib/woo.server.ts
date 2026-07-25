@@ -234,6 +234,59 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
 
 }
 
+/**
+ * Storefront product projection.
+ *
+ * WooCommerce returns ~60 fields per product, and every image carries a
+ * `srcset` string, a `sizes` string, a `thumbnail` URL and four timestamps.
+ * At 18 products per feed page that is tens of kilobytes of JSON that is
+ * embedded twice (SSR HTML + dehydrated Query cache) and shipped to every
+ * visitor. `_fields` trims it at the origin; `trimProducts` trims what
+ * `_fields` cannot reach (nested image/category objects).
+ */
+export const PRODUCT_FIELDS = [
+  "id",
+  "name",
+  "slug",
+  "permalink",
+  "type",
+  "sku",
+  "price",
+  "regular_price",
+  "sale_price",
+  "price_html",
+  "on_sale",
+  "stock_status",
+  "backorders",
+  "backorders_allowed",
+  "short_description",
+  "description",
+  "images",
+  "categories",
+  "tags",
+  "weight",
+  "dimensions",
+  "variations",
+  "attributes",
+  "default_attributes",
+  "average_rating",
+  "rating_count",
+].join(",");
+
+export function trimProduct(p: WooProduct): WooProduct {
+  return {
+    ...p,
+    images: (p.images ?? []).slice(0, 8).map((i) => ({ id: i.id, src: i.src, alt: i.alt ?? "" })),
+    categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+    tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
+  };
+}
+
+export function trimProducts(list: unknown): WooProduct[] {
+  return Array.isArray(list)
+    ? (list as WooProduct[]).filter((p) => p && typeof p.id === "number").map(trimProduct)
+    : [];
+}
 
 
 // ---------- Types (partial, only what we use) ----------
