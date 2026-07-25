@@ -2,9 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useSuspenseInfiniteQuery,
+  useQueryClient,
   queryOptions,
   infiniteQueryOptions,
 } from "@tanstack/react-query";
+
 import { Suspense, memo, useMemo, useCallback } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
@@ -364,19 +366,52 @@ function PrimaryCategoryStrip() {
   );
 }
 
-function FilteredResults({
-  q,
-  category,
-  featured,
-  sort,
-}: {
+type FilterProps = {
   q: string | undefined;
   category: string | undefined;
   featured: boolean | undefined;
   sort: SortKey;
-}) {
-  const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
+};
+
+/**
+ * Chrome is rendered outside the suspending results body.
+ *
+ * `FilteredResults` suspends on every key change (new search term, new sort,
+ * chip removal). With no boundary between it and the route, that suspension
+ * bubbled to the route-level `pendingComponent`: the header, category strip and
+ * sort tabs were torn down and re-mounted on every filter tweak — a full-page
+ * white flash, a lost header scroll position, and a re-mounted search input.
+ */
+function FilteredResults(props: FilterProps) {
+  return (
+    <Shell>
+      <AppHeader />
+      {/* Keep taxonomy navigation available inside filtered views too. */}
+      <Suspense fallback={<CategoryStripSkeleton />}>
+        <PrimaryCategoryStrip />
+      </Suspense>
+      <SortTabs active={props.sort} />
+      <main className="animate-fade-in">
+        <Suspense
+          fallback={
+            <div className="pt-3">
+              <FeedGridSkeleton columns={2} />
+            </div>
+          }
+        >
+          <FilteredResultsBody {...props} />
+        </Suspense>
+      </main>
+    </Shell>
+  );
+}
+
+function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
+  const queryClient = useQueryClient();
+  const options = searchProductsQuery(q ?? "", category, featured, sort);
+  const { data, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(options);
+
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows. The
   // validity filter is folded in here too — it used to run inside the grid on
@@ -406,21 +441,25 @@ function FilteredResults({
   const loadMore = useCallback(() => {
     void fetchNextPage();
   }, [fetchNextPage]);
+  // Retry ONLY the failed trailing page. `refetch()` on an infinite query
+  // re-runs every page it holds, so a "Load more" that failed on page 5 fired
+  // five upstream WooCommerce requests to recover one — and briefly blanked
+  // already-rendered results. Dropping the errored tail page and calling
+  // `fetchNextPage()` re-requests exactly that page.
   const retry = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+    queryClient.setQueryData(options.queryKey, (prev) => {
+      if (!prev || prev.pages.length <= 1) return prev;
+      if (!prev.pages[prev.pages.length - 1]?.error) return prev;
+      return { pages: prev.pages.slice(0, -1), pageParams: prev.pageParams.slice(0, -1) };
+    });
+
+    void fetchNextPage();
+  }, [queryClient, options.queryKey, fetchNextPage]);
 
   return (
-    <Shell>
-      <AppHeader />
-      {/* Keep taxonomy navigation available inside filtered views too. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
-      <SortTabs active={sort} />
-      <main className="animate-fade-in">
-        <div className="px-[5px] pb-24 pt-3">
-          <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
+    <div className="px-[5px] pb-24 pt-3">
+      <h1 className="sr-only">{q ? `Search results for ${q}` : "Shop"}</h1>
+
 
           <div className="mb-3 flex items-center justify-between gap-2">
             {chips.length > 0 && (
@@ -506,10 +545,9 @@ function FilteredResults({
               )}
             </>
           )}
-        </div>
-      </main>
-    </Shell>
+    </div>
   );
+
 }
 
 // Memoized: the result grid re-renders on every parent state change otherwise,
