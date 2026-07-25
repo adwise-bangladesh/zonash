@@ -205,6 +205,8 @@ type WooOrderLite = {
     city?: string;
     state?: string;
   };
+  /** Real per-status timestamps from our own audit log (Woo stores none). */
+  status_events?: Record<string, string>;
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
@@ -304,6 +306,70 @@ async function fetchOrdersByPhone(
   return { orders, fetched: raw.length };
 }
 
+/**
+ * Cache-first read: our webhook-synced `orders_cache` mirror holds the full Woo
+ * order payload, so a customer's history is one indexed Postgres query instead of
+ * a Woo `search` scan (which costs one upstream call per page and can't filter by
+ * phone). Woo remains the fallback for orders placed before the mirror existed.
+ */
+async function fetchOrdersFromCache(
+  phone: string,
+  page: number,
+  perPage: number,
+): Promise<{ orders: WooOrderLite[]; fetched: number }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const from = (page - 1) * perPage;
+  const { data, error } = await supabaseAdmin
+    .from("orders_cache")
+    .select("wc_order_id, raw")
+    .eq("customer_phone", phone)
+    .order("date_created", { ascending: false })
+    .range(from, from + perPage - 1);
+  if (error || !Array.isArray(data) || data.length === 0) {
+    if (error) console.error("orders_cache read failed", error.message);
+    return { orders: [], fetched: 0 };
+  }
+  const orders = data
+    .map((r) => (r as { raw: unknown }).raw)
+    .filter((raw): raw is WooOrderLite => !!raw && typeof raw === "object" && !!(raw as WooOrderLite).id)
+    .map(trimOrder);
+  const events = await fetchStatusEvents(orders.map((o) => o.id));
+  for (const o of orders) {
+    const ev = events.get(o.id);
+    if (ev) o.status_events = ev;
+  }
+  return { orders, fetched: data.length };
+}
+
+/** Real milestone timestamps: first time each status was recorded for the order. */
+async function fetchStatusEvents(ids: number[]): Promise<Map<number, Record<string, string>>> {
+  const out = new Map<number, Record<string, string>>();
+  if (ids.length === 0) return out;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("order_audit_log")
+      .select("wc_order_id, after, created_at")
+      .in("wc_order_id", ids)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    for (const row of (data ?? []) as {
+      wc_order_id: number;
+      after: unknown;
+      created_at: string;
+    }[]) {
+      const status = str((row.after as { status?: unknown } | null)?.status);
+      if (!status) continue;
+      const bucket = out.get(row.wc_order_id) ?? {};
+      if (!bucket[status]) bucket[status] = row.created_at;
+      out.set(row.wc_order_id, bucket);
+    }
+  } catch (e) {
+    console.error("status events read failed", e);
+  }
+  return out;
+}
+
 export const listOrdersByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
     z
@@ -319,12 +385,24 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
     const page = data.page ?? 1;
     const perPage = data.perPage ?? 20;
     if (!isBdMobile(phone))
-      return { orders: [] as WooOrderLite[], page, hasMore: false, error: "Invalid phone." };
+      return {
+        orders: [] as WooOrderLite[],
+        page,
+        source: "cache" as const,
+        hasMore: false,
+        error: "Invalid phone.",
+      };
     try {
-      const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
+      let { orders, fetched } = await fetchOrdersFromCache(phone, page, perPage);
+      let source: "cache" | "woo" = "cache";
+      if (fetched === 0) {
+        ({ orders, fetched } = await fetchOrdersByPhone(phone, page, perPage));
+        source = "woo";
+      }
       return {
         orders,
         page,
+        source,
         hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
@@ -333,6 +411,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       return {
         orders: [] as WooOrderLite[],
         page,
+        source: "woo" as const,
         hasMore: false,
         error: "Could not load your orders.",
       };
@@ -350,7 +429,8 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
     const phone = normalizePhone(data.phone);
     if (!isBdMobile(phone)) return { billing: null };
     try {
-      const { orders } = await fetchOrdersByPhone(phone, 1, 10);
+      let { orders } = await fetchOrdersFromCache(phone, 1, 1);
+      if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
       if (orders.length === 0) return { billing: null };
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();
