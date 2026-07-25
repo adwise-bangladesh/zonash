@@ -310,15 +310,26 @@ function FeedSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-2 px-[5px] pt-3 md:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
+        // Mirrors the real card box model (square image + ~80px meta block).
+        // The old flat aspect-[3/4] block was ~19px shorter per row, so the
+        // whole feed jumped when data arrived.
         <div
           key={i}
-          className="skeleton-shimmer aspect-[3/4] rounded-2xl"
+          className="overflow-hidden rounded-2xl bg-white ring-1 ring-border/60"
           style={{ animationDelay: `${i * 40}ms` }}
-        />
+        >
+          <div className="skeleton-shimmer aspect-square w-full" />
+          <div className="space-y-2 p-2">
+            <div className="skeleton-shimmer h-3 w-full rounded" />
+            <div className="skeleton-shimmer h-3 w-2/3 rounded" />
+            <div className="skeleton-shimmer h-4 w-1/2 rounded" />
+          </div>
+        </div>
       ))}
     </div>
   );
 }
+
 
 function CollectionSkeleton() {
   return (
