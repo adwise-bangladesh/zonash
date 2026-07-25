@@ -275,7 +275,7 @@ function CategoriesPage() {
           </aside>
 
           {/* Right pane: sub categories of the active parent */}
-          <section className="min-h-0 overflow-y-auto" aria-live="polite">
+          <section className="min-h-0 overflow-y-auto">
             {parentMissing ? (
               <NotFoundView
                 bare
