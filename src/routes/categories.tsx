@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { z } from "zod";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, ArrowRight, Home, Search } from "lucide-react";
 import { listPrimaryCategories, getCategoryWithSubs } from "@/lib/woo.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
