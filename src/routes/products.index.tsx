@@ -331,10 +331,18 @@ function FilteredResults({
     useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows.
-  const products = useMemo(() => dedupeFeedPages(data?.pages) as WooProduct[], [data?.pages]);
+  // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
+  // on every fetch-state tick (isFetching flips) as the list grows. The
+  // validity filter is folded in here too — it used to run inside the grid on
+  // every parent render, walking the whole (growing) list for nothing.
+  const products = useMemo(
+    () => (dedupeFeedPages(data?.pages) as WooProduct[]).filter((p) => p && p.slug),
+    [data?.pages],
+  );
   // Read the newest page's error, not page 1's: a "Load more" that failed
   // upstream returned an error the UI never surfaced (silent dead button).
   const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
+
   // Previously a single chip with hard precedence (q > category > featured):
   // with two filters active the second one was invisible, and clicking the chip
   // wiped every filter AND the chosen sort. Each active filter now gets its own
@@ -511,14 +519,16 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
   );
 });
 
-function ProductGrid({ products }: { products: WooProduct[] }) {
+// Memoized: `FilteredResults` re-renders on every fetch-state tick (isFetching,
+// isFetchingNextPage). Without this the whole <ul> reconciled each time; now a
+// tick that leaves `products` identical skips the grid subtree entirely.
+const ProductGrid = memo(function ProductGrid({ products }: { products: WooProduct[] }) {
   return (
     <ul className="grid grid-cols-2 gap-2">
-      {products
-        .filter((p) => p && p.slug)
-        .map((p, i) => (
-          <ResultCard key={p.id} p={p} priority={i < 2} />
-        ))}
+      {products.map((p, i) => (
+        <ResultCard key={p.id} p={p} priority={i < 2} />
+      ))}
     </ul>
   );
-}
+});
+
