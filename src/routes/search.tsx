@@ -65,7 +65,13 @@ function SearchPage() {
   // Trending products render before the shopper types anything.
   const trending = useQuery({
     queryKey: ["products", "trending", 6],
-    queryFn: () => listProducts({ data: { page: 1, perPage: 6, featured: true } }),
+    queryFn: async () => {
+      // Featured products first; stores without a featured flag fall back to
+      // the newest arrivals so this block is never empty.
+      const featured = await listProducts({ data: { page: 1, perPage: 6, featured: true } });
+      if (featured.products.length > 0) return featured;
+      return listProducts({ data: { page: 1, perPage: 6 } });
+    },
     staleTime: 5 * 60_000,
   });
 
@@ -303,7 +309,7 @@ function SearchPage() {
         )}
 
         {/* Trending heading when idle */}
-        {!searching && (
+        {!searching && (trending.isLoading || trendingRows.length > 0) && (
           <h2 className="mb-2 mt-6 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
             <TrendingUp className="h-3 w-3" aria-hidden="true" />
             Trending now
