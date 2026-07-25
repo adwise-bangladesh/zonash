@@ -17,6 +17,8 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_WA = "8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
+const WA_HREF =
+  "https://wa.me/8801926644575?text=Hi%20Zonash%2C%20I%20need%20help%20with%20my%20order.";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -85,7 +87,7 @@ function Support() {
           </p>
           <div className="mt-3 flex gap-2">
             <a
-              href={`https://wa.me/${SUPPORT_WA}`}
+              href={WA_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white active:scale-[0.98] transition-transform"
@@ -108,7 +110,7 @@ function Support() {
         <div className="mt-2 grid grid-cols-2 gap-2">
           <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
           <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
-          <InfoTile icon={RotateCcw} label="Easy exchange" hint="7 days on unworn items" />
+          <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days on unworn items" />
           <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
         </div>
 
@@ -143,6 +145,23 @@ function Support() {
           })}
         </div>
 
+        {/* WhatsApp CTA */}
+        <a
+          href={WA_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 flex items-center gap-3 rounded-2xl bg-[#25D366]/10 px-4 py-4 ring-1 ring-[#25D366]/25 active:scale-[0.99] transition-transform"
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
+            <WhatsAppIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-[#128C7E]">Chat on WhatsApp</div>
+            <div className="text-[12px] text-[#128C7E]/80">Replies within minutes · 10 AM – 10 PM</div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-[#128C7E]" aria-hidden="true" />
+        </a>
+
         {/* Contact list */}
         <h3 className="mt-6 px-1 text-[13px] font-semibold">Contact us</h3>
         <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card">
@@ -153,7 +172,7 @@ function Support() {
             value="+880 1926 644575"
           />
           <ContactRow
-            href={`https://wa.me/${SUPPORT_WA}`}
+            href={WA_HREF}
             icon={WhatsAppIcon}
             title="WhatsApp"
             value="Chat with an agent"
