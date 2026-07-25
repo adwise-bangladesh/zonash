@@ -447,14 +447,12 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   // already-rendered results. Dropping the errored tail page and calling
   // `fetchNextPage()` re-requests exactly that page.
   const retry = useCallback(() => {
-    queryClient.setQueryData(
-      options.queryKey,
-      (prev: { pages: { error?: string | null }[]; pageParams: unknown[] } | undefined) => {
-        if (!prev || prev.pages.length <= 1) return prev;
-        if (!prev.pages[prev.pages.length - 1]?.error) return prev;
-        return { pages: prev.pages.slice(0, -1), pageParams: prev.pageParams.slice(0, -1) };
-      },
-    );
+    queryClient.setQueryData(options.queryKey, (prev) => {
+      if (!prev || prev.pages.length <= 1) return prev;
+      if (!prev.pages[prev.pages.length - 1]?.error) return prev;
+      return { pages: prev.pages.slice(0, -1), pageParams: prev.pageParams.slice(0, -1) };
+    });
+
     void fetchNextPage();
   }, [queryClient, options.queryKey, fetchNextPage]);
 
