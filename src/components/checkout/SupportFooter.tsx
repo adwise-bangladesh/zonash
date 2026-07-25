@@ -1,3 +1,5 @@
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_WA_NUMBER = "8801926644575";
 
