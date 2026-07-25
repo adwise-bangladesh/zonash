@@ -28,13 +28,17 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { useCustomerSession } from "@/lib/customer-session";
+import { buildThumbImage } from "@/lib/product-image";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
+  endCustomerSession,
   listOrdersByPhone,
   requestCustomerLoginOtp,
   verifyCustomerLoginOtp,
 } from "@/lib/customer-auth.functions";
 import { formatBDT } from "@/lib/format";
+
 
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
