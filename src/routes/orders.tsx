@@ -409,93 +409,108 @@ function SignedInOrders({ phone, onLogout }: { phone: string; onLogout: () => vo
   const firstError = query.data?.pages[0]?.error;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-muted/30 pb-20">
+    <div className="flex min-h-[100dvh] flex-col bg-background pb-20">
       <CheckoutHeader title="My Orders" count={orders.length} />
 
-      {/* Slim account strip */}
-      <div className="border-b border-border bg-background">
-        <div className="mx-auto flex w-full max-w-md items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-2 text-[12px]">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Signed in as</span>
-            <span className="font-semibold text-foreground">+880 {phone}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => query.refetch()}
-              disabled={query.isFetching}
-              aria-label="Refresh"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              onClick={onLogout}
-              aria-label="Sign out"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <main className="mx-auto w-full max-w-md flex-1 px-3 pt-3">
-        {query.isLoading ? (
-          <ul className="space-y-2.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="h-[112px] animate-pulse rounded-[6px] border border-border bg-background" />
-            ))}
-          </ul>
-        ) : firstError || query.isError ? (
-          <div className="rounded-[6px] border border-dashed border-border bg-background p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {firstError ?? "Could not load your orders."}
-            </p>
-            <button
-              onClick={() => query.refetch()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Try again
-            </button>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="rounded-[6px] border border-dashed border-border bg-background p-12 text-center">
-            <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-muted">
-              <Inbox className="h-7 w-7 text-muted-foreground" />
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-6 pt-3">
+        {/* Account card */}
+        <section className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <Phone className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Signed in as
             </div>
-            <p className="font-semibold">No orders yet</p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              When you place an order, it will appear here.
-            </p>
-            <Link
-              to="/products"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-bold text-primary-foreground"
-            >
-              Start shopping <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="truncate text-[13px] font-semibold">+880 {phone}</div>
           </div>
-        ) : (
-          <>
-            <ul className="space-y-2.5">
-              {orders.map((o) => (
-                <OrderCard key={o.id} order={o} onOpen={() => setOpenOrder(o)} />
+          <button
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
+            aria-label="Refresh orders"
+            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-50 ${focusRing}`}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          <button
+            onClick={onLogout}
+            aria-label="Sign out"
+            className={`grid h-11 w-11 place-items-center rounded-full text-muted-foreground active:bg-destructive/10 active:text-destructive ${focusRing}`}
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </section>
+
+        <h2 className="mt-5 px-1 text-[13px] font-semibold">Order history</h2>
+
+        <div className="mt-2">
+          {query.isLoading ? (
+            <ul className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <li
+                  key={i}
+                  className="h-[116px] animate-pulse rounded-2xl border border-border bg-card"
+                />
               ))}
             </ul>
-            <div ref={sentinelRef} className="h-10" />
-            {query.isFetchingNextPage && (
-              <div className="flex justify-center py-4 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            )}
-            {!query.hasNextPage && orders.length > 6 && (
-              <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-                You're all caught up · {orders.length} orders
+          ) : firstError || query.isError ? (
+            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+              <p className="text-[13px] text-muted-foreground">
+                {firstError ?? "Could not load your orders."}
               </p>
-            )}
-          </>
-        )}
+              <button
+                onClick={() => query.refetch()}
+                className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-secondary px-4 text-[13px] font-semibold text-secondary-foreground ${focusRing}`}
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
+              </button>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
+              <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary">
+                <Inbox className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <p className="text-[14px] font-semibold">No orders yet</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                When you place an order, it will appear here.
+              </p>
+              <Link
+                to="/products"
+                preload="intent"
+                className={`mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground ${focusRing}`}
+              >
+                Start shopping <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {orders.map((o) => (
+                  <OrderCard key={o.id} order={o} onOpen={() => setOpenOrder(o)} />
+                ))}
+              </ul>
+              <div ref={sentinelRef} className="h-10" />
+              {query.isFetchingNextPage && (
+                <div className="flex justify-center py-4 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              )}
+              {!query.hasNextPage && orders.length > 6 && (
+                <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
+                  You're all caught up · {orders.length} orders
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </main>
+
 
       <OrderDetailSheet order={openOrder} onClose={() => setOpenOrder(null)} />
     </div>
