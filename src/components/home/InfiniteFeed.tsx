@@ -47,11 +47,7 @@ export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
  * Feed + suspense boundary. Keeps sort switches inside a local skeleton instead
  * of bubbling to the route-level pending component.
  */
-export function InfiniteFeedSection(props: {
-  orderby?: Orderby;
-  order?: Order;
-  columns?: 2 | 3;
-}) {
+export function InfiniteFeedSection(props: { orderby?: Orderby; order?: Order; columns?: 2 | 3 }) {
   return (
     <Suspense fallback={<FeedGridSkeleton columns={props.columns ?? 3} />}>
       <InfiniteFeed {...props} />
