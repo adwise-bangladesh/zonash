@@ -528,16 +528,40 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       // freshness check so a warm request costs a single round trip.
       if (page > 1) {
         const { orders, hasMore } = await fetchOrdersFromCache(phone, page, perPage);
-        return {
-          orders: orders.map(redact),
-          page,
-          source: "cache" as const,
-          hasMore,
-          error: null as string | null,
-        };
+        // A deep page can only be requested after page 1 succeeded; if the
+        // mirror is empty here that request came from the Woo fallback path, so
+        // fall through to Woo rather than truncating the list.
+        if (orders.length > 0) {
+          return {
+            orders: orders.map(redact),
+            page,
+            source: "cache" as const,
+            hasMore,
+            error: null as string | null,
+          };
+        }
+      } else {
+        const [fresh, optimistic] = await Promise.all([
+          cacheIsFresh(phone),
+          fetchOrdersFromCache(phone, page, perPage),
+        ]);
+        let trusted = fresh;
+        let result = optimistic;
+        if (!trusted) {
+          trusted = await syncPhoneOrders(phone);
+          if (trusted) result = await fetchOrdersFromCache(phone, page, perPage);
+        }
+        if (trusted) {
+          return {
+            orders: result.orders.map(redact),
+            page,
+            source: "cache" as const,
+            hasMore: result.hasMore,
+            error: null as string | null,
+          };
+        }
       }
 
-      const [fresh, optimistic] = await Promise.all([
         cacheIsFresh(phone),
         fetchOrdersFromCache(phone, page, perPage),
       ]);
