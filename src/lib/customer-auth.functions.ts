@@ -153,8 +153,21 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
       .delete()
       .eq("phone", phone);
 
+    // Bind the verified phone to an httpOnly, HMAC-signed cookie so later
+    // reads never have to trust a client-supplied phone number.
+    const { issueCustomerSession } = await import("./customer-token.server");
+    await issueCustomerSession(phone);
+
     return { ok: true as const, phone };
   });
+
+/** Drops the signed session cookie (httpOnly — the client can't clear it). */
+export const endCustomerSession = createServerFn({ method: "POST" }).handler(async () => {
+  const { clearCustomerSession } = await import("./customer-token.server");
+  clearCustomerSession();
+  return { ok: true as const };
+});
+
 
 // -------------------- Public: list orders for a phone --------------------
 
