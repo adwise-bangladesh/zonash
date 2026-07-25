@@ -223,7 +223,15 @@ function Home() {
       <AppHeader />
       <CategoryTabs categories={categories} />
       <main className="animate-fade-in">
-        <div className="bg-background">
+        {/*
+          The visual design intentionally leads with the category bar rather
+          than a headline, so the document's single H1 is exposed to crawlers
+          and screen readers without altering the layout.
+        */}
+        <h1 className="sr-only">
+          Zonash — fine jewelry, gift boxes and trending finds delivered across Bangladesh
+        </h1>
+
           <PromoIcons />
           <DealsStrip products={dealsProducts} />
         </div>
