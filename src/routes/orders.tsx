@@ -199,7 +199,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 autoComplete="tel-national"
                 aria-label="Mobile number without country code"
                 aria-invalid={!!error}
-                className={`h-12 min-w-0 flex-1 bg-transparent px-3.5 text-[15px] font-medium tracking-[0.02em] tabular-nums outline-none placeholder:font-normal placeholder:tracking-normal ${focusRing}`}
+                className="h-12 min-w-0 flex-1 bg-transparent px-3.5 text-[15px] font-medium tracking-[0.02em] tabular-nums outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60"
               />
               {valid && (
                 <span className="grid place-items-center pr-3 text-primary" aria-hidden="true">
