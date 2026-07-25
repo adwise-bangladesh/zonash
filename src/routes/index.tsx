@@ -277,7 +277,7 @@ function Home() {
           <DealsStrip products={dealsProducts} />
         </div>
 
-        <InfiniteFeed />
+        <InfiniteFeed columns={2} />
 
         <TrustRow />
 
