@@ -149,14 +149,20 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
     if (hash !== row.code_hash) {
       // Compare-and-swap on `attempts`: a plain read-modify-write let an
       // attacker fire N parallel guesses that all wrote `attempts + 1`, so the
-      // 5-attempt cap could be bypassed with concurrency.
-      await supabaseAdmin
+      // 5-attempt cap could be bypassed with concurrency. If the CAS loses, a
+      // concurrent guess already consumed this slot — refuse rather than retry.
+      const { data: bumped } = await supabaseAdmin
         .from("customer_login_otps" as never)
         .update({ attempts: row.attempts + 1 } as never)
         .eq("phone", phone)
-        .eq("attempts", row.attempts);
+        .eq("attempts", row.attempts)
+        .select("attempts");
+      if (!bumped || bumped.length === 0) {
+        return { ok: false as const, error: "Too many attempts. Please request a new code." };
+      }
       return { ok: false as const, error: "Incorrect code. Please try again." };
     }
+
 
 
     // Consume the OTP so it can't be reused.
