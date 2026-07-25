@@ -9,6 +9,24 @@
 export const FEED_PER_PAGE = 18;
 export const feedQueryKey = ["home", "feed", FEED_PER_PAGE] as const;
 
+/**
+ * Single source of truth for the feed cache key.
+ *
+ * The key was built independently in the feed component and in the /products
+ * route loader. Any drift between the two (a changed default, a missing
+ * `order` fallback) silently turns the awaited SSR prefetch into a different
+ * cache entry, so the page streams a skeleton and refetches the same page on
+ * the client — an invisible duplicate WooCommerce call per visitor.
+ */
+export function feedKeyFor(
+  orderby: string | undefined,
+  order: string | undefined,
+): readonly unknown[] {
+  const by = orderby ?? "date";
+  if (by === "date" && !order) return feedQueryKey;
+  return ["home", "feed", FEED_PER_PAGE, by, order ?? "desc"] as const;
+}
+
 export type FeedProduct = { id: number };
 
 export type FeedPage<P extends FeedProduct = FeedProduct> = {
