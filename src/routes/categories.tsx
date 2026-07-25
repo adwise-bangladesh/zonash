@@ -72,8 +72,11 @@ export const Route = createFileRoute("/categories")({
         .catch(() => undefined);
       if (typeof document === "undefined") await warm;
     }
-    return primary;
+    // Return nothing: the component reads via useSuspenseQuery, so returning
+    // the payload here would serialize the whole category list a SECOND time
+    // into the SSR HTML (router match dehydration + query dehydration).
   },
+
 
   head: () => ({
     meta: [
