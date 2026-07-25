@@ -187,29 +187,23 @@ function Support() {
   );
 }
 
-function QuickTile({
-  to,
+function InfoTile({
   icon: Icon,
   label,
   hint,
 }: {
-  to: "/orders" | "/products";
-  icon: typeof Package;
+  icon: typeof Banknote;
   label: string;
   hint: string;
 }) {
   return (
-    <Link
-      to={to}
-      preload="intent"
-      className="rounded-2xl border border-border bg-card p-3 shadow-sm active:scale-[0.98] transition-transform"
-    >
+    <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
       <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
         <Icon className="h-4.5 w-4.5" aria-hidden="true" />
       </span>
       <div className="mt-2 text-[13px] font-semibold leading-snug">{label}</div>
       <div className="text-[11px] leading-snug text-muted-foreground">{hint}</div>
-    </Link>
+    </div>
   );
 }
 
