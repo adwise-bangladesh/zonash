@@ -2,10 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ChevronDown,
-  Package,
   RotateCcw,
   Truck,
   ShieldCheck,
+  Banknote,
   Phone,
   Mail,
   Clock,
@@ -103,13 +103,13 @@ function Support() {
           </div>
         </section>
 
-        {/* Quick actions */}
-        <h3 className="mt-5 px-1 text-[13px] font-semibold">Quick actions</h3>
+        {/* Shop promise */}
+        <h3 className="mt-5 px-1 text-[13px] font-semibold">Shop with confidence</h3>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <QuickTile to="/orders" icon={Package} label="Track my order" hint="Order status & courier" />
-          <QuickTile to="/orders" icon={RotateCcw} label="Return / exchange" hint="Within 7 days" />
-          <QuickTile to="/products" icon={Truck} label="Delivery info" hint="৳80 Dhaka · ৳130 outside" />
-          <QuickTile to="/products" icon={ShieldCheck} label="Product care" hint="Waterproof & safe" />
+          <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
+          <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
+          <InfoTile icon={RotateCcw} label="Easy exchange" hint="7 days on unworn items" />
+          <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
         </div>
 
         {/* FAQ */}
