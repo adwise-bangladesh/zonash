@@ -144,7 +144,7 @@ function Support() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Chat with Zonash support on WhatsApp (opens in a new tab)"
-              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-2 text-[13px] font-semibold text-white transition-transform active:scale-[0.98] ${focusRing}`}
             >
               <WhatsAppIcon className="h-4 w-4" />
               WhatsApp
