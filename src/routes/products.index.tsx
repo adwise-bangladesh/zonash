@@ -148,6 +148,42 @@ export const Route = createFileRoute("/products/")({
         { name: "twitter:description", content: description },
       ],
       links: filtered ? [] : [{ rel: "canonical", href: `${SITE_URL}/products` }],
+      // The canonical shop page was the only indexable variant of this route
+      // and shipped no structured data at all, so search engines had no
+      // breadcrumb or collection signal for it. Filtered views stay clean —
+      // they are noindex.
+      scripts: filtered
+        ? []
+        : [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@graph": [
+                  {
+                    "@type": "CollectionPage",
+                    "@id": `${SITE_URL}/products`,
+                    url: `${SITE_URL}/products`,
+                    name: title,
+                    description,
+                    isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/`, name: "Zonash" },
+                  },
+                  {
+                    "@type": "BreadcrumbList",
+                    itemListElement: [
+                      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+                      {
+                        "@type": "ListItem",
+                        position: 2,
+                        name: "Shop",
+                        item: `${SITE_URL}/products`,
+                      },
+                    ],
+                  },
+                ],
+              }),
+            },
+          ],
     };
   },
   loader: async ({ context, deps }) => {
