@@ -117,7 +117,7 @@ function CheckoutPage() {
     } catch { /* ignore */ }
     window.scrollTo(0, 0);
     // Warm the next screen so navigation after submit is instant.
-    router.preloadRoute({ to: "/verify-otp" }).catch(() => {});
+    router.preloadRoute({ to: "/verify-otp", search: { order: 0 } }).catch(() => {});
   }, [router]);
   useEffect(() => {
     const t = setTimeout(() => {

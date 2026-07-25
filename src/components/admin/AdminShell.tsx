@@ -274,7 +274,7 @@ export function AdminShell({
           <div className="ml-auto flex items-center gap-1.5">
             <Clock />
             <FullscreenToggle />
-            <IssuesBell count={issuesCount} onClick={() => navigate({ to: "/admin/returns" })} />
+            <IssuesBell count={issuesCount} onClick={() => navigate({ to: "/admin/orders" })} />
             <NewOrderMenu />
           </div>
         </header>
