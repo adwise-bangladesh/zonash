@@ -133,7 +133,7 @@ function PrimaryCategoryStrip() {
     <nav aria-label="Shop categories" className="bg-background pt-3 pb-3">
       <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {cats.map((c) => (
-          <li key={c.id} className="shrink-0 basis-[22%] snap-start md:basis-[14%] lg:basis-[10%]">
+          <li key={c.id} className="shrink-0 basis-[18%] snap-start">
             <Link
               to="/c/$slug"
               params={{ slug: c.slug }}
@@ -156,7 +156,7 @@ function PrimaryCategoryStrip() {
                   </span>
                 )}
               </span>
-              <span className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-ink md:text-[12px]">
+              <span className="line-clamp-2 text-center text-[11px] font-medium leading-tight text-ink">
                 {c.name}
               </span>
             </Link>
