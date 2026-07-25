@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_orders_cache_phone_date ON public.orders_cache (customer_phone, date_created DESC);
+CREATE INDEX IF NOT EXISTS idx_order_audit_log_order_created ON public.order_audit_log (wc_order_id, created_at);
