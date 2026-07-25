@@ -458,10 +458,8 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
                 </Link>
               </li>
             ))}
-
-              </li>
-            ))}
           </ul>
+
         )}
       </div>
     </div>
@@ -470,13 +468,13 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
 
 function GridSkeleton() {
   return (
-    <ul className="grid grid-cols-5 gap-x-1 gap-y-1.5" aria-hidden="true">
-      {Array.from({ length: 15 }).map((_, i) => (
-
-        <li key={i} className="flex flex-col items-center gap-1">
-          <span className="block aspect-square w-full animate-pulse rounded-[3px] bg-surface-muted" />
-          <span className="h-2.5 w-3/4 animate-pulse rounded-[3px] bg-surface-muted" />
+    <ul className="grid grid-cols-4 gap-2 px-0.5 pt-0.5" aria-hidden="true">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <li key={i} className="flex flex-col items-center gap-1.5">
+          <span className="block aspect-square w-full animate-pulse rounded-2xl bg-surface-muted" />
+          <span className="h-2.5 w-3/4 animate-pulse rounded-full bg-surface-muted" />
         </li>
+
       ))}
     </ul>
   );
