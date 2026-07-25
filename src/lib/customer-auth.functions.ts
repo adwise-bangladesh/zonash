@@ -455,10 +455,23 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       .parse(raw),
   )
   .handler(async ({ data }) => {
-    const phone = normalizePhone(data.phone);
+    // Authorisation: the phone comes from the signed session cookie, never from
+    // the request body — otherwise anyone could enumerate another customer's
+    // order history (names, addresses, totals) by guessing a mobile number.
+    const { readCustomerSession } = await import("./customer-token.server");
+    const sessionPhone = await readCustomerSession();
+    const phone = sessionPhone ?? "";
     const page = data.page ?? 1;
     const perPage = data.perPage ?? 20;
     if (!isBdMobile(phone))
+      return {
+        orders: [] as WooOrderLite[],
+        page,
+        source: "cache" as const,
+        hasMore: false,
+        error: "Please sign in again to view your orders.",
+      };
+
       return {
         orders: [] as WooOrderLite[],
         page,
