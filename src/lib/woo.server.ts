@@ -123,7 +123,11 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     if (hit !== undefined) return hit as T;
     const pending = inflight.get(cacheKey);
     if (pending) return pending as Promise<T>;
+    // Replay a very recent failure instead of hammering a struggling origin.
+    const recentError = errorGet(cacheKey);
+    if (recentError !== undefined) throw recentError;
   }
+
 
   const run = async (): Promise<T> => {
     // Layer 2: try Cloudflare Cache API before hitting origin.
