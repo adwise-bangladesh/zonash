@@ -343,7 +343,7 @@ function StepLandingPage() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setForm({ ...EMPTY, ...JSON.parse(raw) });
     } catch { /* ignore */ }
-    router.preloadRoute({ to: "/verify-otp", search: { order: 0 } }).catch(() => {});
+    router.preloadRoute({ to: "/verify-otp", search: { order: 1 } }).catch(() => {});
   }, [router]);
   useEffect(() => {
     const t = setTimeout(() => {
