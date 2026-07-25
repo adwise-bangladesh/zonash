@@ -106,9 +106,14 @@ export function InfiniteFeed({
     return () => io.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const products = dedupeFeedPages<WooProduct>(
-    data?.pages as { products: WooProduct[] }[] | undefined,
+  // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
+  // every render (scroll, hover, focus). Memoize on the page array identity so
+  // it only runs when a new page actually lands.
+  const products = useMemo(
+    () => dedupeFeedPages<WooProduct>(data?.pages as { products: WooProduct[] }[] | undefined),
+    [data?.pages],
   );
+
   // Server functions resolve with `{ products, error }` instead of throwing.
   const softError = data?.pages?.some((p) => (p as { error?: string | null })?.error) ?? false;
   const failed = isError || (softError && products.length === 0);
