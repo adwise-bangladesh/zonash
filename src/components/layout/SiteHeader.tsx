@@ -202,6 +202,7 @@ export function SiteHeader() {
       {open && (
         <div
           id={panelId}
+          ref={panelRef}
           className="border-t border-border/70 bg-background animate-in slide-in-from-top-2 fade-in duration-150"
         >
           <div className="container-page py-2.5">
@@ -218,6 +219,7 @@ export function SiteHeader() {
                   ref={inputRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value.slice(0, TERM_MAX))}
+                  onKeyDown={onInputKeyDown}
                   type="search"
                   inputMode="search"
                   enterKeyHint="search"
@@ -227,9 +229,20 @@ export function SiteHeader() {
                   spellCheck={false}
                   maxLength={TERM_MAX}
                   aria-label="Search products"
+                  role="combobox"
+                  aria-expanded={showList}
+                  aria-controls={listId}
+                  aria-autocomplete="list"
+                  aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
                   placeholder="Search rings, necklaces, 22k gold…"
                   className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-[13.5px] outline-none placeholder:text-muted-foreground/60"
                 />
+                {loading && (
+                  <Loader2
+                    className="mr-1 h-4 w-4 shrink-0 animate-spin text-primary/70"
+                    aria-hidden="true"
+                  />
+                )}
                 <button
                   type="submit"
                   className="inline-flex h-8 shrink-0 items-center rounded-full bg-primary px-4 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary-foreground transition hover:brightness-110 active:scale-[0.98]"
@@ -237,6 +250,96 @@ export function SiteHeader() {
                   Search
                 </button>
               </div>
+
+              {/* Live suggestions */}
+              {showList && (
+                <div className="mt-2 overflow-hidden rounded-2xl border border-border/80 bg-background shadow-lg">
+                  <span aria-live="polite" className="sr-only">
+                    {loading
+                      ? "Searching products"
+                      : error
+                        ? error
+                        : `${rows.length} suggestion${rows.length === 1 ? "" : "s"}`}
+                  </span>
+                  <ul id={listId} role="listbox" aria-label="Product suggestions" className="max-h-[60vh] overflow-y-auto">
+                    {rows.map((p, i) => (
+                      <li
+                        key={p.id}
+                        id={`${listId}-${i}`}
+                        role="option"
+                        aria-selected={i === active}
+                        className="border-b border-border/50 last:border-b-0"
+                      >
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActive(i)}
+                          onClick={() => openProduct(p.slug, p.name)}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
+                            i === active ? "bg-primary/[0.06]" : "hover:bg-primary/[0.04]"
+                          }`}
+                        >
+                          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-muted">
+                            {p.img ? (
+                              <img
+                                src={p.img.src}
+                                srcSet={p.img.srcSet || undefined}
+                                sizes={p.img.srcSet ? p.img.sizes : undefined}
+                                onError={onImageSrcSetError}
+                                alt={p.name}
+                                width={44}
+                                height={44}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <ImageOff className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-medium text-foreground">
+                              {p.name}
+                            </span>
+                            {p.sku && (
+                              <span className="block truncate text-[10.5px] uppercase tracking-wide text-muted-foreground">
+                                {p.sku}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block text-[13px] font-bold text-primary">
+                              {formatBDT(p.sell ?? undefined)}
+                            </span>
+                            {p.regular != null && (
+                              <span className="block text-[10.5px] text-muted-foreground line-through">
+                                {formatBDT(p.regular)}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {!loading && error && (
+                    <p className="px-3 py-3 text-[12.5px] text-muted-foreground">{error}</p>
+                  )}
+                  {!loading && !error && settled && rows.length === 0 && (
+                    <p className="px-3 py-3 text-[12.5px] text-muted-foreground">
+                      No products found for “{term}”.
+                    </p>
+                  )}
+                  {rows.length > 0 && (
+                    <button
+                      type="submit"
+                      className="w-full border-t border-border/60 bg-surface-muted/40 px-3 py-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/[0.06]"
+                    >
+                      See all results
+                    </button>
+                  )}
+                </div>
+              )}
+
 
               <div className="mt-2 flex items-center gap-2">
                 <span
