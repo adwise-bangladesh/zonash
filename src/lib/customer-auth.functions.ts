@@ -205,6 +205,8 @@ type WooOrderLite = {
     city?: string;
     state?: string;
   };
+  /** Real per-status timestamps from our own audit log (Woo stores none). */
+  status_events?: Record<string, string>;
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
@@ -273,12 +275,13 @@ function trimOrder(o: WooOrderLite): WooOrderLite {
  * Woo has no "phone" filter, so we search and then verify the billing phone.
  * `fetched` is the unfiltered page size — pagination must be driven by that,
  * otherwise a page where some hits are false positives ends the list early.
+ * `matched` keeps the untrimmed payloads so we can backfill our mirror.
  */
 async function fetchOrdersByPhone(
   phone: string,
   page = 1,
   perPage = 20,
-): Promise<{ orders: WooOrderLite[]; fetched: number }> {
+): Promise<{ orders: WooOrderLite[]; fetched: number; matched: unknown[] }> {
   const { wooFetch } = await import("./woo.server");
   const raw = await wooFetch<unknown>({
     path: "/orders",
@@ -292,16 +295,140 @@ async function fetchOrdersByPhone(
     },
     timeoutMs: 15_000,
   });
-  if (!Array.isArray(raw)) return { orders: [], fetched: 0 };
+  if (!Array.isArray(raw)) return { orders: [], fetched: 0, matched: [] };
   const tail = phone.slice(-10);
-  const orders = (raw as WooOrderLite[])
-    .filter((o) => {
-      if (!o || typeof o !== "object" || !o.id) return false;
-      const p = str(o.billing?.phone).replace(/\D/g, "");
-      return p.endsWith(tail);
-    })
+  const matched = (raw as WooOrderLite[]).filter((o) => {
+    if (!o || typeof o !== "object" || !o.id) return false;
+    const p = str(o.billing?.phone).replace(/\D/g, "");
+    return p.endsWith(tail);
+  });
+  return { orders: matched.map(trimOrder), fetched: raw.length, matched };
+}
+
+const SYNC_TTL_MS = 15 * 60_000;
+const SYNC_PAGE_SIZE = 50;
+const SYNC_MAX_PAGES = 4; // caps a first-time sync at 200 orders / 4 upstream calls
+
+/** Is our mirror authoritative for this phone right now? */
+async function cacheIsFresh(phone: string): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("customer_history")
+      .select("data")
+      .eq("phone", phone)
+      .maybeSingle();
+    const at = (data?.data as { orders_synced_at?: unknown } | null)?.orders_synced_at;
+    return typeof at === "string" && Date.now() - new Date(at).getTime() < SYNC_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One bounded Woo walk per phone per TTL, mirrored into `orders_cache`. After it
+ * completes, every list page (including infinite scroll) is a single indexed
+ * Postgres read instead of a Woo `search` scan, which is what makes this screen
+ * cheap at scale. Returns whether the mirror can be trusted.
+ */
+async function syncPhoneOrders(phone: string): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { mapOrderToCacheRow } = await import("./woo.server");
+    const all: unknown[] = [];
+    for (let page = 1; page <= SYNC_MAX_PAGES; page++) {
+      const { fetched, matched } = await fetchOrdersByPhone(phone, page, SYNC_PAGE_SIZE);
+      all.push(...matched);
+      if (fetched < SYNC_PAGE_SIZE) break;
+    }
+    if (all.length > 0) {
+      const rows = all.map((o) => mapOrderToCacheRow(o as never));
+      const { error } = await supabaseAdmin
+        .from("orders_cache")
+        .upsert(rows as never, { onConflict: "wc_order_id" });
+      if (error) {
+        console.error("orders_cache backfill failed", error.message);
+        return false;
+      }
+    }
+    await supabaseAdmin.from("customer_history").upsert(
+      {
+        phone,
+        data: { orders_synced_at: new Date().toISOString(), orders_count: all.length },
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "phone" },
+    );
+    return true;
+  } catch (e) {
+    console.error("syncPhoneOrders failed", e);
+    return false;
+  }
+}
+
+/**
+ * Reads the mirror. `total` lets pagination be exact instead of guessed from the
+ * page size.
+ */
+async function fetchOrdersFromCache(
+  phone: string,
+  page: number,
+  perPage: number,
+): Promise<{ orders: WooOrderLite[]; total: number }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const from = (page - 1) * perPage;
+  const { data, error, count } = await supabaseAdmin
+    .from("orders_cache")
+    .select("wc_order_id, raw", { count: "exact" })
+    .eq("customer_phone", phone)
+    .order("date_created", { ascending: false })
+    .range(from, from + perPage - 1);
+  if (error || !Array.isArray(data)) {
+    if (error) console.error("orders_cache read failed", error.message);
+    return { orders: [], total: 0 };
+  }
+  const orders = data
+    .map((r) => (r as { raw: unknown }).raw)
+    .filter(
+      (raw): raw is WooOrderLite =>
+        !!raw && typeof raw === "object" && !!(raw as WooOrderLite).id,
+    )
     .map(trimOrder);
-  return { orders, fetched: raw.length };
+  const events = await fetchStatusEvents(orders.map((o) => o.id));
+  for (const o of orders) {
+    const ev = events.get(o.id);
+    if (ev) o.status_events = ev;
+  }
+  return { orders, total: count ?? orders.length };
+}
+
+/** Real milestone timestamps: first time each status was recorded for the order. */
+async function fetchStatusEvents(ids: number[]): Promise<Map<number, Record<string, string>>> {
+  const out = new Map<number, Record<string, string>>();
+  if (ids.length === 0) return out;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("order_audit_log")
+      .select("wc_order_id, after, created_at")
+      .in("wc_order_id", ids)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    for (const row of (data ?? []) as {
+      wc_order_id: number;
+      after: unknown;
+      created_at: string;
+    }[]) {
+      const status = str((row.after as { status?: unknown } | null)?.status);
+      if (!status) continue;
+      const bucket = out.get(row.wc_order_id) ?? {};
+      if (!bucket[status]) bucket[status] = row.created_at;
+      out.set(row.wc_order_id, bucket);
+    }
+  } catch (e) {
+    console.error("status events read failed", e);
+  }
+  return out;
 }
 
 export const listOrdersByPhone = createServerFn({ method: "GET" })
@@ -319,12 +446,35 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
     const page = data.page ?? 1;
     const perPage = data.perPage ?? 20;
     if (!isBdMobile(phone))
-      return { orders: [] as WooOrderLite[], page, hasMore: false, error: "Invalid phone." };
+      return {
+        orders: [] as WooOrderLite[],
+        page,
+        source: "cache" as const,
+        hasMore: false,
+        error: "Invalid phone.",
+      };
     try {
+      // Mirror is authoritative once synced; only the first read per TTL touches Woo.
+      let trusted = await cacheIsFresh(phone);
+      if (!trusted) trusted = await syncPhoneOrders(phone);
+
+      if (trusted) {
+        const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
+        return {
+          orders,
+          page,
+          source: "cache" as const,
+          hasMore: page * perPage < total,
+          error: null as string | null,
+        };
+      }
+
+      // Woo fallback keeps the screen working if the mirror write failed.
       const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
       return {
         orders,
         page,
+        source: "woo" as const,
         hasMore: fetched >= perPage && page < 50,
         error: null as string | null,
       };
@@ -333,6 +483,7 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
       return {
         orders: [] as WooOrderLite[],
         page,
+        source: "woo" as const,
         hasMore: false,
         error: "Could not load your orders.",
       };
@@ -350,7 +501,8 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
     const phone = normalizePhone(data.phone);
     if (!isBdMobile(phone)) return { billing: null };
     try {
-      const { orders } = await fetchOrdersByPhone(phone, 1, 10);
+      let { orders } = await fetchOrdersFromCache(phone, 1, 1);
+      if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
       if (orders.length === 0) return { billing: null };
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();

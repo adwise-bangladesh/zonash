@@ -689,9 +689,10 @@ function buildTimeline(order: OrderRow): { steps: TimelineStep[]; activeIndex: n
   const modified = order.date_modified ?? null;
   const paid = order.date_paid ?? null;
   const completed = order.date_completed ?? null;
+  // Real per-status timestamps come from our own audit log (Woo stores none);
+  // anything missing falls back to the best available order-level timestamp.
+  const ev = (order as { status_events?: Record<string, string> }).status_events ?? {};
 
-  // Milestone reached if status has passed it. Woo doesn't store per-step timestamps,
-  // so we mark reached steps with the best available timestamp (paid / modified / completed).
   const order_of: Record<string, number> = {
     pending: 0,
     "on-hold": 0,
@@ -704,10 +705,10 @@ function buildTimeline(order: OrderRow): { steps: TimelineStep[]; activeIndex: n
 
   const steps: TimelineStep[] = [
     { key: "placed", label: "Order placed", hint: "We received your order", at: created, icon: CheckCircle2 },
-    { key: "confirmed", label: "Confirmed", hint: "Verified & ready to pack", at: idx >= 1 ? (paid ?? modified) : null, icon: ShieldCheck },
-    { key: "processing", label: "Processing", hint: "Packing your items", at: idx >= 2 ? modified : null, icon: Package },
-    { key: "shipped", label: "Shipped", hint: "Handed to courier", at: idx >= 3 ? modified : null, icon: Truck },
-    { key: "completed", label: "Delivered", hint: "Enjoy your order", at: completed, icon: Sparkles },
+    { key: "confirmed", label: "Confirmed", hint: "Verified & ready to pack", at: idx >= 1 ? (ev.confirmed ?? paid ?? modified) : null, icon: ShieldCheck },
+    { key: "processing", label: "Processing", hint: "Packing your items", at: idx >= 2 ? (ev.processing ?? modified) : null, icon: Package },
+    { key: "shipped", label: "Shipped", hint: "Handed to courier", at: idx >= 3 ? (ev.shipped ?? modified) : null, icon: Truck },
+    { key: "completed", label: "Delivered", hint: "Enjoy your order", at: completed ?? ev.completed ?? null, icon: Sparkles },
   ];
   return { steps, activeIndex: idx, cancelled };
 }
