@@ -48,63 +48,32 @@ export function SortTabs({ active }: { active: SortKey }) {
       <div className="flex gap-4 overflow-x-auto py-2 pl-[5px] pr-4 text-[12.5px] font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:pl-4">
         {SORT_OPTIONS.map((opt) => {
           const isActive = opt.key === active;
-          const search = opt.key === "recommended" ? {} : { sort: opt.key };
-
-          if (opt.key === "recommended") {
-            return (
-              <Link
-                key={opt.key}
-                to="/products"
-                search={search}
-                className={
-                  isActive
-                    ? "relative shrink-0 text-primary"
-                    : "shrink-0 text-muted-foreground hover:text-foreground"
-                }
-                aria-current={isActive ? "page" : undefined}
-              >
-                {opt.label}
-                {isActive && (
-                  <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
-                )}
-              </Link>
-            );
-          }
-
-          if (opt.key === "new") {
-            return (
-              <Link
-                key={opt.key}
-                to="/products"
-                search={search}
-                className={
-                  isActive
-                    ? "relative inline-flex shrink-0 items-center gap-1 text-primary"
-                    : "inline-flex shrink-0 items-center gap-1 text-emerald-600"
-                }
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Zap className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
-                {opt.label}
-                {isActive && (
-                  <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />
-                )}
-              </Link>
-            );
-          }
-
           return (
             <Link
               key={opt.key}
               to="/products"
-              search={search}
+              // Function form: sorting inside a search/category view previously
+              // replaced the whole search object, silently dropping `q`,
+              // `category` and `featured` and dumping the shopper back into the
+              // unfiltered shop.
+              search={(prev) => {
+                const next = { ...(prev as Record<string, unknown>) };
+                if (opt.key === "recommended") delete next.sort;
+                else next.sort = opt.key;
+                return next as never;
+              }}
               className={
                 isActive
-                  ? "relative shrink-0 text-primary"
-                  : "shrink-0 text-muted-foreground hover:text-foreground"
+                  ? `relative shrink-0 text-primary${opt.key === "new" ? " inline-flex items-center gap-1" : ""}`
+                  : opt.key === "new"
+                    ? "inline-flex shrink-0 items-center gap-1 text-emerald-600"
+                    : "shrink-0 text-muted-foreground hover:text-foreground"
               }
               aria-current={isActive ? "page" : undefined}
             >
+              {opt.key === "new" && (
+                <Zap className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" aria-hidden="true" />
+              )}
               {opt.label}
               {isActive && (
                 <span className="absolute inset-x-1 -bottom-2 h-[2.5px] rounded-full bg-primary" />

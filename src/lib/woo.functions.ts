@@ -57,6 +57,10 @@ export const listProducts = createServerFn({ method: "GET" })
 
 
       // Run name/description search AND SKU search in parallel, then merge unique.
+      // The SKU probe is page-1 only: it ignores `page`, so re-running it for
+      // every page re-fetched the same rows, and those duplicates were dropped
+      // by the client de-dupe — making later pages look partially empty and
+      // stalling the visible result count.
       const term = data.search?.trim();
       const [byText, bySku] = await Promise.all([
         wooFetch<WooProduct[]>({
@@ -64,7 +68,7 @@ export const listProducts = createServerFn({ method: "GET" })
           query: { ...baseQuery, search: term || undefined },
           timeoutMs: 8000,
         }).catch(() => [] as WooProduct[]),
-        term
+        term && data.page === 1
           ? wooFetch<WooProduct[]>({
               path: "/products",
               query: { ...baseQuery, sku: term },
