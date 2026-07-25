@@ -67,7 +67,8 @@ export const listProducts = createServerFn({ method: "GET" })
         status: "publish",
         // Ask WooCommerce for storefront fields only — the untrimmed payload is
         // ~3x larger and is embedded in SSR HTML for every visitor.
-        _fields: PRODUCT_FIELDS,
+        _fields: data.fields === "card" ? CARD_PRODUCT_FIELDS : PRODUCT_FIELDS,
+
       } as Record<string, unknown>;
 
 
