@@ -4,6 +4,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { WooOrder, WooProduct, WooVariation } from "./woo.server";
 
 /** Guard every WooCommerce list response — upstream may return an error object. */
+/** Category fields the storefront renders; the raw payload adds descriptions, image EXIF dates and HAL links. */
+const CATEGORY_FIELDS = "id,name,slug,count,image";
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -119,7 +122,7 @@ export const listCategories = createServerFn({ method: "GET" })
     try {
       const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc" },
+        query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc", _fields: CATEGORY_FIELDS },
       });
       return {
         categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
@@ -137,7 +140,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
     try {
       const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc" },
+        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
       });
       return {
         categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
@@ -160,14 +163,14 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
       const { wooFetch } = await import("./woo.server");
       const parents = await wooFetch<(WooCategory & { parent?: number })[]>({
         path: "/products/categories",
-        query: { slug: data.slug, per_page: 1 },
+        query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
         timeoutMs: 8000,
       });
       const parent = parents[0] ?? null;
       if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
       const subs = await wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc" },
+        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
         timeoutMs: 8000,
       }).catch(() => [] as WooCategory[]);
       return { parent, subs, error: null as string | null };
