@@ -138,22 +138,27 @@ function VerifyOtpPage() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-background via-muted/40 to-background">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Verify your number" />
 
-      <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
-        <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <FlowIcon variant="static" icon={MessageSquareLock} />
-
-          <h1 className="text-center text-2xl font-bold tracking-tight">Enter verification code</h1>
-          <p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">
-            We texted a {CODE_LEN}-digit code to
-            <br />
-            <span className="font-semibold text-foreground">{phone ?? "your number"}</span>
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+        {/* Hero */}
+        <section className="rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-foreground/15">
+            <MessageSquareLock className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <h1 className="mt-3 font-display text-lg font-bold leading-tight">
+            Enter verification code
+          </h1>
+          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">
+            We texted a {CODE_LEN}-digit code to{" "}
+            <span className="font-semibold text-primary-foreground">{phone ?? "your number"}</span>
           </p>
+        </section>
 
-          {/* Code boxes */}
-          <div className="relative mt-8">
+        {/* Code card */}
+        <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="relative">
             <input
               ref={hiddenRef}
               type="text"
@@ -170,9 +175,9 @@ function VerifyOtpPage() {
               }}
               disabled={submitting}
               aria-label="One-time verification code"
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             />
-            <div className="flex justify-center gap-3" onClick={() => hiddenRef.current?.focus()}>
+            <div className="flex justify-center gap-2.5" onClick={() => hiddenRef.current?.focus()}>
               {digits.map((d, i) => {
                 const active = code.length === i;
                 const filled = !!d;
@@ -180,11 +185,11 @@ function VerifyOtpPage() {
                   <div
                     key={i}
                     className={[
-                      "grid h-16 w-14 place-items-center rounded-2xl border-2 bg-background text-3xl font-bold tabular-nums transition-all",
+                      "grid h-14 w-12 place-items-center rounded-2xl border-2 bg-background text-2xl font-bold tabular-nums transition-all",
                       error
                         ? "border-destructive/70 text-destructive"
                         : filled
-                          ? "border-primary text-foreground shadow-md shadow-primary/20"
+                          ? "border-primary text-foreground"
                           : active
                             ? "border-primary/60"
                             : "border-border",
@@ -192,7 +197,7 @@ function VerifyOtpPage() {
                   >
                     {d ||
                       (active && !submitting ? (
-                        <span className="h-7 w-[2px] animate-pulse rounded-full bg-primary" />
+                        <span className="h-6 w-[2px] animate-pulse rounded-full bg-primary" />
                       ) : null)}
                   </div>
                 );
@@ -200,7 +205,7 @@ function VerifyOtpPage() {
             </div>
           </div>
 
-          <div className="mt-4 text-center text-xs min-h-[18px]">
+          <div className="mt-3 min-h-[18px] text-center text-[12px]">
             {error ? (
               <span className="font-medium text-destructive">{error}</span>
             ) : submitting ? (
@@ -214,26 +219,29 @@ function VerifyOtpPage() {
           </div>
 
           <button
+            type="button"
             onClick={onResend}
             disabled={cooldown > 0 || resending}
-            className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 disabled:text-muted-foreground disabled:hover:bg-transparent"
+            className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} aria-hidden="true" />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
-          <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
-            <SupportFooter
-              label="Didn't get the code?"
-              waMessage={buildSupportMessage({
-                page: "Verify OTP",
-                orderNumber: number ?? order,
-                phone,
-                extra: "The code hasn't arrived yet.",
-              })}
-            />
-          </div>
+        </section>
+
+        <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
+          <SupportFooter
+            label="Didn't get the code?"
+            waMessage={buildSupportMessage({
+              page: "Verify OTP",
+              orderNumber: number ?? order,
+              phone,
+              extra: "The code hasn't arrived yet.",
+            })}
+          />
         </div>
       </main>
     </div>
   );
 }
+
