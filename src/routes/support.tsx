@@ -33,15 +33,15 @@ const FAQS: readonly { q: string; a: string }[] = [
   },
   {
     q: "Can I return or exchange a product?",
-    a: "Yes — 7-day exchange on unworn pieces in their original packaging. Open the parcel in front of the delivery person; if anything is damaged or wrong, refuse it or call us the same day.",
+    a: "Yes — 7-day exchange on unused items in their original packaging. Open the parcel in front of the delivery person; if anything is damaged or wrong, refuse it or call us the same day.",
   },
   {
     q: "How do I confirm my order?",
     a: "After you place an order we send a 4-digit code by SMS. Enter it on the verification screen and your order moves from pending to confirmed automatically.",
   },
   {
-    q: "Is the jewelry skin-safe?",
-    a: "Yes. Every piece is hypoallergenic, nickel-free and water resistant for daily wear.",
+    q: "Are your products genuine?",
+    a: "Yes — we source directly from verified suppliers and brands, and every parcel is quality-checked before dispatch.",
   },
   {
     q: "Can I pay online?",
@@ -163,8 +163,8 @@ const PROMISE = (
     <ul className="mt-2 grid grid-cols-2 gap-2">
       <InfoTile icon={Banknote} label="Cash on delivery" hint="Pay only when you receive" />
       <InfoTile icon={Truck} label="Fast delivery" hint="1–2 days Dhaka · 3–5 outside" />
-      <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days on unworn items" />
-      <InfoTile icon={ShieldCheck} label="Skin-safe wear" hint="Nickel-free & waterproof" />
+      <InfoTile icon={RotateCcw} label="Instant Return" hint="7 days in original packaging" />
+      <InfoTile icon={ShieldCheck} label="Verified quality" hint="Hand-checked before dispatch" />
     </ul>
   </section>
 );
