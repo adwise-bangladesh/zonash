@@ -10,21 +10,38 @@ import { TrustRow } from "@/components/home/TrustRow";
 import { getFeedNextPageParam, FEED_PER_PAGE, feedQueryKey } from "@/lib/home-feed";
 import type { WooProduct } from "@/lib/woo.server";
 
-const megaSaleQuery = queryOptions({
-  queryKey: ["home", "mega-sale"],
-  queryFn: () => listProductsByCategorySlug({ data: { slug: "mega-sale", perPage: 16 } }),
+/**
+ * Deals row: the "mega-sale" category is the source of truth. Only when it is
+ * empty do we pay for a second request (popular products) — previously both
+ * calls ran on every homepage render.
+ */
+const dealsQuery = queryOptions({
+  queryKey: ["home", "deals"],
+  queryFn: async () => {
+    const unavailable = {
+      products: [] as WooProduct[],
+      error: "Products are temporarily unavailable.",
+    };
+    const mega = await listProductsByCategorySlug({
+      data: { slug: "mega-sale", perPage: 16 },
+    }).catch(() => unavailable);
+    if (mega.products?.length) {
+      return { products: mega.products as WooProduct[], error: null as string | null };
+    }
+    const fallback = await listProducts({
+      data: { page: 1, perPage: 16, orderby: "popularity" },
+    }).catch(() => unavailable);
+    return {
+      products: (fallback.products ?? []) as WooProduct[],
+      error: (mega.error ?? fallback.error ?? null) as string | null,
+    };
+  },
   staleTime: 60_000,
 });
 const catQuery = queryOptions({
   queryKey: ["home", "categories"],
   queryFn: () => listCategories(),
   staleTime: 5 * 60_000,
-});
-// Fallback: featured/popular products in case the "mega-sale" category is empty.
-const fallbackQuery = queryOptions({
-  queryKey: ["home", "featured-fallback"],
-  queryFn: () => listProducts({ data: { page: 1, perPage: 16, orderby: "popularity" } }),
-  staleTime: 60_000,
 });
 
 export const Route = createFileRoute("/")({
@@ -47,33 +64,59 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async ({ context }) => {
-    // Critical: block SSR/render on above-the-fold data.
+    // Critical: block SSR/render on above-the-fold data, including the feed's
+    // first page — an un-awaited prefetch made the SSR HTML (empty feed)
+    // disagree with the hydrated cache (populated feed), forcing React to
+    // throw away and re-render the whole tree on hydration.
+    // Never reject — a Woo outage must still render the shell + empty states.
     await Promise.all([
-      context.queryClient.ensureQueryData(megaSaleQuery),
-      context.queryClient.ensureQueryData(fallbackQuery),
-      context.queryClient.ensureQueryData(catQuery),
+      context.queryClient.ensureQueryData(dealsQuery).catch(() => undefined),
+      context.queryClient.ensureQueryData(catQuery).catch(() => undefined),
+      context.queryClient
+        .prefetchInfiniteQuery({
+          queryKey: [...feedQueryKey],
+          initialPageParam: 1,
+          queryFn: ({ pageParam }) =>
+            listProducts({
+              data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
+            }),
+          getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
+            getFeedNextPageParam(last, all, FEED_PER_PAGE),
+          staleTime: 60_000,
+        })
+        .catch(() => undefined),
     ]);
-    // Warm the infinite feed's first page so scrolling feels instant.
-    // Non-blocking: don't await, don't fail the route if Woo is slow.
-    void context.queryClient
-      .prefetchInfiniteQuery({
-        queryKey: [...feedQueryKey],
-        initialPageParam: 1,
-        queryFn: ({ pageParam }) =>
-          listProducts({
-            data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
-          }),
-        getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
-          getFeedNextPageParam(last, all, FEED_PER_PAGE),
-
-        staleTime: 60_000,
-      })
-      .catch(() => {});
   },
 
   component: Home,
   pendingComponent: HomeSkeleton,
+  errorComponent: HomeError,
+  notFoundComponent: HomeError,
 });
+
+/** Route-level error boundary: keeps chrome intact and offers a retry. */
+function HomeError() {
+  return (
+    <div className="min-h-dvh bg-surface-muted/40">
+      <AppHeader />
+      <main className="container-page grid place-items-center py-24 text-center">
+        <div role="alert" className="max-w-sm space-y-3">
+          <h1 className="font-display text-xl font-bold text-ink">Something went wrong</h1>
+          <p className="text-sm text-muted-foreground">
+            We couldn't load the storefront just now. Please try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
+          >
+            Reload
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 /**
  * HomeSkeleton — pixel-mirrors the rendered Home layout so the transition
@@ -82,7 +125,7 @@ export const Route = createFileRoute("/")({
  */
 function HomeSkeleton() {
   return (
-    <div className="min-h-screen bg-surface-muted/40" aria-busy="true" aria-live="polite">
+    <div className="min-h-dvh bg-surface-muted/40" aria-busy="true" aria-live="polite">
       {/* Header (mirrors SiteHeader h-14 / md:h-16) */}
       <div className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
         <div className="container-page flex h-14 items-center justify-between gap-3 md:h-16">
@@ -169,17 +212,14 @@ function HomeSkeleton() {
 }
 
 function Home() {
-  const { data: mega } = useSuspenseQuery(megaSaleQuery);
-  const { data: fallback } = useSuspenseQuery(fallbackQuery);
+  const { data: deals } = useSuspenseQuery(dealsQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
-  const megaSale = mega.products as WooProduct[];
-  const fallbackProducts = fallback.products as WooProduct[];
-  const categories = catData.categories;
-  const dealsProducts = megaSale.length ? megaSale : fallbackProducts;
-  const errorMessage = mega.error ?? fallback.error;
+  const dealsProducts = deals?.products ?? [];
+  const categories = catData?.categories ?? [];
+  const errorMessage = deals?.error ?? catData?.error ?? null;
 
   return (
-    <div className="min-h-screen bg-surface-muted/40">
+    <div className="min-h-dvh bg-surface-muted/40">
       <AppHeader />
       <CategoryTabs categories={categories} />
       <main className="animate-fade-in">

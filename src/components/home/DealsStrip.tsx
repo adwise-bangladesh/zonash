@@ -1,22 +1,42 @@
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { resolveCardPrices } from "@/lib/price-range";
+import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
 
 const WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 function useResetCountdown() {
   // Stable placeholder for SSR / first client render so hydration matches.
-  // Real clock starts after mount.
+  // Real clock starts after mount, and pauses while the tab is hidden.
   const [remaining, setRemaining] = useState<number | null>(null);
+
   useEffect(() => {
+    let id: ReturnType<typeof setInterval> | undefined;
     const tick = () => setRemaining(WINDOW_MS - (Date.now() % WINDOW_MS));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+
+    const start = () => {
+      tick();
+      if (id === undefined) id = setInterval(tick, 1000);
+    };
+    const stop = () => {
+      if (id !== undefined) {
+        clearInterval(id);
+        id = undefined;
+      }
+    };
+    const onVisibility = () => (document.hidden ? stop() : start());
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
+
   if (remaining == null) return "--:--:--";
   const totalSec = Math.max(0, Math.floor(remaining / 1000));
   const h = Math.floor(totalSec / 3600);
@@ -26,10 +46,12 @@ function useResetCountdown() {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-export function DealsStrip({ products }: { products: WooProduct[] }) {
+export function DealsStrip({ products }: { products: WooProduct[] | undefined }) {
   const timer = useResetCountdown();
-  const queryClient = useQueryClient();
-  if (!products.length) return null;
+  const seedProduct = useSeedProductCache();
+  const list = (products ?? []).filter((p) => p && p.slug).slice(0, 12);
+  if (!list.length) return null;
+
   return (
     <section aria-label="Mega Deals" className="pb-3">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
@@ -43,6 +65,7 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
             <Link
               to="/products"
               search={{ orderby: "popularity" }}
+              aria-label="Shop the Mega Sale"
               className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5"
             >
               <p className="text-center font-display font-black uppercase leading-[0.95] tracking-tight text-white text-[13px] md:text-[16px]">
@@ -51,7 +74,12 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
               <p className="text-center font-display font-semibold italic leading-none tracking-wide text-white/85 text-[9px] md:text-[11px]">
                 Sale
               </p>
-              <p className="mt-0.5 rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]">
+              <p
+                role="timer"
+                aria-live="off"
+                aria-label={`Offer resets in ${timer}`}
+                className="mt-0.5 rounded-sm bg-white/15 px-1 py-[1px] font-mono text-[9px] font-bold tabular-nums leading-none text-white md:text-[10px]"
+              >
                 {timer}
               </p>
             </Link>
@@ -59,35 +87,28 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
 
           {/* Horizontal product scroll */}
           <div className="scroll-snap-x -mr-2.5 flex min-w-0 flex-1 gap-2 overflow-x-auto pr-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mr-3 md:pr-3">
-            {products.slice(0, 12).map((p, idx) => {
-              const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
+            {list.map((p, idx) => {
+              const { sell } = resolveCardPrices(p);
+              const image = p.images?.[0];
+              const seed = () => seedProduct(p);
               return (
                 <Link
                   key={p.id}
                   to="/products/$slug"
                   params={{ slug: p.slug }}
                   preload="intent"
+                  aria-label={p.name}
                   onPointerDown={(e) => {
-                    if (e.button === 0) {
-                      queryClient.setQueryData(["product", p.slug], {
-                        product: p,
-                        error: null as string | null,
-                      });
-                    }
+                    if (e.button === 0) seed();
                   }}
-                  onFocus={() => {
-                    queryClient.setQueryData(["product", p.slug], {
-                      product: p,
-                      error: null as string | null,
-                    });
-                  }}
+                  onFocus={seed}
                   className="flex w-[58px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-border bg-white transition-all hover:border-primary/40 hover:shadow-md md:w-[84px]"
                 >
                   <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-surface-muted">
-                    {p.images[0] ? (
+                    {image?.src ? (
                       <img
-                        src={p.images[0].src}
-                        alt={p.images[0].alt || p.name}
+                        src={image.src}
+                        alt={image.alt || p.name || "Product"}
                         width={168}
                         height={168}
                         loading={idx < 4 ? "eager" : "lazy"}
@@ -98,14 +119,14 @@ export function DealsStrip({ products }: { products: WooProduct[] }) {
                       />
                     ) : (
                       <div className="absolute inset-0 grid place-items-center text-muted-foreground/40">
-                        <Gem className="h-4 w-4" />
+                        <Gem className="h-4 w-4" aria-hidden="true" />
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-1 items-center justify-center bg-white px-1 py-1.5">
                     <p className="text-center text-[11px] font-extrabold leading-none text-primary md:text-[13px]">
-                      {formatBDT(price)}
+                      {formatBDT(sell)}
                     </p>
                   </div>
                 </Link>

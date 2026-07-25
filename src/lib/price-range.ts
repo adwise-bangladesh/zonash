@@ -39,3 +39,28 @@ export function parsePriceHtmlMin(priceHtml: string | undefined): MinPrices {
   // No sale — one plain range/value.
   return { sale: extractMin(priceHtml), regular: null };
 }
+
+/**
+ * Resolve the price pair shown on a product card.
+ *
+ * Simple products use price/sale_price directly; variable products have no
+ * per-variation prices in the list payload, so the minimum sell/regular price
+ * is parsed out of `price_html`.
+ */
+export function resolveCardPrices(p: {
+  type?: string;
+  price?: string;
+  regular_price?: string;
+  sale_price?: string;
+  price_html?: string;
+  on_sale?: boolean;
+}): { sell: number | string | undefined; regular: number | string | undefined } {
+  if (p.type === "variable") {
+    const parsed = parsePriceHtmlMin(p.price_html);
+    return { sell: parsed.sale ?? p.price, regular: parsed.regular ?? undefined };
+  }
+  return {
+    sell: p.on_sale && p.sale_price ? p.sale_price : p.price,
+    regular: p.on_sale && p.regular_price ? p.regular_price : undefined,
+  };
+}
