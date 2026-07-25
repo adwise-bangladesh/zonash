@@ -459,7 +459,7 @@ async function fetchOrdersFromCache(
     if (ev) o.status_events = ev;
 
   }
-  return { orders, total: count ?? orders.length };
+  return { orders, hasMore };
 }
 
 /** Real milestone timestamps: first time each status was recorded for the order. */
