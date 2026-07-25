@@ -257,13 +257,13 @@ function SearchPage() {
 
         {/* Idle state — recent + popular */}
         {!searching && (
-          <div className="space-y-5">
+          <div className="space-y-3">
             {recent.length > 0 && (
               <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <h2 className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-                    <Clock className="h-3 w-3" aria-hidden="true" />
-                    Recent searches
+                <div className="mb-1.5 flex items-center justify-between">
+                  <h2 className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                    Recent
                   </h2>
                   <button
                     type="button"
@@ -271,39 +271,38 @@ function SearchPage() {
                       clearRecent();
                       setRecent([]);
                     }}
-                    className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
+                    className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-primary"
                   >
                     Clear
                   </button>
                 </div>
-                <ul className="divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/70">
+                <div className="flex flex-wrap gap-1">
                   {recent.map((r) => (
-                    <li key={r}>
-                      <button
-                        type="button"
-                        onClick={() => runTerm(r)}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] text-foreground/85 transition-colors hover:bg-primary/[0.04]"
-                      >
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                        <span className="truncate">{r}</span>
-                      </button>
-                    </li>
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => runTerm(r)}
+                      className="inline-flex max-w-[46%] items-center gap-1 rounded-full border border-border/70 bg-surface-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition-colors hover:border-primary/50 hover:text-primary"
+                    >
+                      <Clock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+                      <span className="truncate">{r}</span>
+                    </button>
                   ))}
-                </ul>
+                </div>
               </section>
             )}
 
             <section>
-              <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+              <h2 className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
                 Popular
               </h2>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {POPULAR_TERMS.map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => runTerm(t)}
-                    className="rounded-full border border-border/80 bg-background px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
+                    className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/80 transition-colors hover:border-primary/60 hover:bg-primary/[0.04] hover:text-primary"
                   >
                     {t}
                   </button>
@@ -311,6 +310,7 @@ function SearchPage() {
               </div>
             </section>
           </div>
+
         )}
 
         {/* Trending heading when idle */}
