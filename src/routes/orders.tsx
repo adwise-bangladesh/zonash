@@ -619,20 +619,24 @@ const OrderCard = memo(function OrderCard({
         className={`group flex w-full items-stretch gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-transform active:scale-[0.99] ${focusRing}`}
       >
         <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
-          {image ? (
+          {thumb ? (
             <img
-              src={image}
+              src={thumb.src}
+              srcSet={thumb.srcSet}
+              sizes="80px"
               alt=""
               width={80}
               height={80}
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"
+              onError={onImageSrcSetError}
             />
           ) : (
             <Package className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
+
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
