@@ -690,12 +690,20 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
     }
 
     if (!codeOk) {
-      await supabaseAdmin
+      // Compare-and-swap so parallel guesses can't all write `attempts + 1`
+      // (a lost update let the 5-attempt cap be bypassed with concurrency).
+      const { data: bumped } = await supabaseAdmin
         .from("order_otps" as never)
         .update({ attempts: row.attempts + 1 } as never)
-        .eq("wc_order_id", data.order_id);
+        .eq("wc_order_id", data.order_id)
+        .eq("attempts", row.attempts)
+        .select("attempts");
+      if (!bumped || bumped.length === 0) {
+        return { ok: false as const, error: "Too many wrong attempts. Please request a new code." };
+      }
       return { ok: false as const, error: "Incorrect code. Please try again." };
     }
+
 
 
 

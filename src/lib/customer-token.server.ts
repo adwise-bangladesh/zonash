@@ -25,19 +25,36 @@ function secret(): string {
   );
 }
 
+/**
+ * The HMAC key is derived once per isolate. `importKey` is a KDF-ish call that
+ * showed up on every single authenticated read (order list page, autofill), so
+ * caching it removes one crypto import per request under load.
+ */
+let keyPromise: Promise<CryptoKey> | null = null;
+let keyFor = "";
+function hmacKey(): Promise<CryptoKey> {
+  const s = secret();
+  if (!keyPromise || keyFor !== s) {
+    keyFor = s;
+    keyPromise = crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(s),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+  }
+  return keyPromise;
+}
+
 async function sign(payload: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret()),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await hmacKey();
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
 
 /** Constant-time compare of two equal-length hex strings. */
 function safeEqual(a: string, b: string): boolean {

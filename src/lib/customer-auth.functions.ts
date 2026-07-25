@@ -48,21 +48,29 @@ export const requestCustomerLoginOtp = createServerFn({ method: "POST" })
       .eq("phone", phone)
       .maybeSingle();
 
+    // `send_count` is a rolling 24h counter. It used to accumulate forever, so
+    // a customer who had ever requested 8 codes was permanently locked out of
+    // sign-in ("try again later" that never cleared).
+    let sendCount = 0;
     if (existing) {
       const row = existing as { last_sent_at: string; send_count: number };
-      if (Date.now() - new Date(row.last_sent_at).getTime() < 60_000) {
+      const sinceLast = Date.now() - new Date(row.last_sent_at).getTime();
+      if (sinceLast < 60_000) {
         return {
           ok: false as const,
           error: "Please wait a minute before requesting another code.",
         };
       }
-      if (row.send_count >= 8) {
+      const windowOpen = sinceLast < 24 * 60 * 60_000;
+      sendCount = windowOpen ? (row.send_count ?? 0) : 0;
+      if (windowOpen && sendCount >= 8) {
         return {
           ok: false as const,
           error: "Too many code requests today. Try again later.",
         };
       }
     }
+
 
     const code = generateOtp();
     const codeHash = await sha256Hex(`${code}:${phone}`);
@@ -76,9 +84,8 @@ export const requestCustomerLoginOtp = createServerFn({ method: "POST" })
         max_attempts: 5,
         expires_at: expiresAt,
         last_sent_at: new Date().toISOString(),
-        send_count: existing
-          ? ((existing as { send_count: number }).send_count ?? 0) + 1
-          : 1,
+        send_count: sendCount + 1,
+
       } as never,
       { onConflict: "phone" },
     );
@@ -140,12 +147,23 @@ export const verifyCustomerLoginOtp = createServerFn({ method: "POST" })
     }
     const hash = await sha256Hex(`${data.code}:${phone}`);
     if (hash !== row.code_hash) {
-      await supabaseAdmin
+      // Compare-and-swap on `attempts`: a plain read-modify-write let an
+      // attacker fire N parallel guesses that all wrote `attempts + 1`, so the
+      // 5-attempt cap could be bypassed with concurrency. If the CAS loses, a
+      // concurrent guess already consumed this slot — refuse rather than retry.
+      const { data: bumped } = await supabaseAdmin
         .from("customer_login_otps" as never)
         .update({ attempts: row.attempts + 1 } as never)
-        .eq("phone", phone);
+        .eq("phone", phone)
+        .eq("attempts", row.attempts)
+        .select("attempts");
+      if (!bumped || bumped.length === 0) {
+        return { ok: false as const, error: "Too many attempts. Please request a new code." };
+      }
       return { ok: false as const, error: "Incorrect code. Please try again." };
     }
+
+
 
     // Consume the OTP so it can't be reused.
     await supabaseAdmin
@@ -328,6 +346,15 @@ const SYNC_TTL_MS = 15 * 60_000;
 const SYNC_PAGE_SIZE = 50;
 const SYNC_MAX_PAGES = 4; // caps a first-time sync at 200 orders / 4 upstream calls
 
+/**
+ * Single-flight guard for the Woo walk. Without it, a customer with three open
+ * tabs (or a fast double refresh) triggered three simultaneous 4-page Woo walks
+ * plus three cache backfills for the same phone. At 100k users that multiplies
+ * the only expensive upstream call on this screen.
+ */
+const syncInFlight = new Map<string, Promise<boolean>>();
+
+
 /** Is our mirror authoritative for this phone right now? */
 async function cacheIsFresh(phone: string): Promise<boolean> {
   try {
@@ -350,7 +377,16 @@ async function cacheIsFresh(phone: string): Promise<boolean> {
  * Postgres read instead of a Woo `search` scan, which is what makes this screen
  * cheap at scale. Returns whether the mirror can be trusted.
  */
-async function syncPhoneOrders(phone: string): Promise<boolean> {
+function syncPhoneOrders(phone: string): Promise<boolean> {
+  const running = syncInFlight.get(phone);
+  if (running) return running;
+  const p = runSyncPhoneOrders(phone).finally(() => syncInFlight.delete(phone));
+  syncInFlight.set(phone, p);
+  return p;
+}
+
+async function runSyncPhoneOrders(phone: string): Promise<boolean> {
+
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { mapOrderToCacheRow } = await import("./woo.server");
@@ -386,27 +422,31 @@ async function syncPhoneOrders(phone: string): Promise<boolean> {
 }
 
 /**
- * Reads the mirror. `total` lets pagination be exact instead of guessed from the
- * page size.
+ * Reads the mirror. Fetches one row more than the page size instead of asking
+ * Postgres for an exact `count` — the count was a separate aggregate over every
+ * order of that phone on *every* page request, and all the UI needs is
+ * "is there another page?".
  */
 async function fetchOrdersFromCache(
   phone: string,
   page: number,
   perPage: number,
-): Promise<{ orders: WooOrderLite[]; total: number }> {
+): Promise<{ orders: WooOrderLite[]; hasMore: boolean }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const from = (page - 1) * perPage;
-  const { data, error, count } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("orders_cache")
-    .select("wc_order_id, raw", { count: "exact" })
+    .select("wc_order_id, raw")
     .eq("customer_phone", phone)
     .order("date_created", { ascending: false })
-    .range(from, from + perPage - 1);
+    .range(from, from + perPage); // perPage + 1 rows: the extra row is the probe
   if (error || !Array.isArray(data)) {
     if (error) console.error("orders_cache read failed", error.message);
-    return { orders: [], total: 0 };
+    return { orders: [], hasMore: false };
   }
+  const hasMore = data.length > perPage;
   const orders = data
+    .slice(0, perPage)
     .map((r) => (r as { raw: unknown }).raw)
     .filter(
       (raw): raw is WooOrderLite =>
@@ -417,8 +457,9 @@ async function fetchOrdersFromCache(
   for (const o of orders) {
     const ev = events.get(o.id);
     if (ev) o.status_events = ev;
+
   }
-  return { orders, total: count ?? orders.length };
+  return { orders, hasMore };
 }
 
 /** Real milestone timestamps: first time each status was recorded for the order. */
@@ -480,20 +521,49 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 
     try {
-      // Mirror is authoritative once synced; only the first read per TTL touches Woo.
-      let trusted = await cacheIsFresh(phone);
-      if (!trusted) trusted = await syncPhoneOrders(phone);
-
-      if (trusted) {
-        const { orders, total } = await fetchOrdersFromCache(phone, page, perPage);
-        return {
-          orders: orders.map(redact),
-          page,
-          source: "cache" as const,
-          hasMore: page * perPage < total,
-          error: null as string | null,
-        };
+      // Only the first page needs to consider a re-sync. Infinite-scroll pages
+      // used to re-run the freshness lookup (an extra round trip each) even
+      // though page 1 had already guaranteed the mirror. Deep pages now read
+      // the mirror directly, and the optimistic read runs in parallel with the
+      // freshness check so a warm request costs a single round trip.
+      if (page > 1) {
+        const { orders, hasMore } = await fetchOrdersFromCache(phone, page, perPage);
+        // A deep page can only be requested after page 1 succeeded; if the
+        // mirror is empty here that request came from the Woo fallback path, so
+        // fall through to Woo rather than truncating the list.
+        if (orders.length > 0) {
+          return {
+            orders: orders.map(redact),
+            page,
+            source: "cache" as const,
+            hasMore,
+            error: null as string | null,
+          };
+        }
+      } else {
+        const [fresh, optimistic] = await Promise.all([
+          cacheIsFresh(phone),
+          fetchOrdersFromCache(phone, page, perPage),
+        ]);
+        let trusted = fresh;
+        let result = optimistic;
+        if (!trusted) {
+          trusted = await syncPhoneOrders(phone);
+          if (trusted) result = await fetchOrdersFromCache(phone, page, perPage);
+        }
+        if (trusted) {
+          return {
+            orders: result.orders.map(redact),
+            page,
+            source: "cache" as const,
+            hasMore: result.hasMore,
+            error: null as string | null,
+          };
+        }
       }
+
+
+
 
       // Woo fallback keeps the screen working if the mirror write failed.
       const { orders, fetched } = await fetchOrdersByPhone(phone, page, perPage);
@@ -520,6 +590,32 @@ export const listOrdersByPhone = createServerFn({ method: "GET" })
 
 // -------------------- Public: last order billing (for checkout autofill) --------------------
 
+/**
+ * Negative cache for autofill lookups. Bounded so it can never grow unbounded
+ * in a long-lived isolate.
+ */
+const AUTOFILL_MISS_TTL_MS = 5 * 60_000;
+const AUTOFILL_MISS_MAX = 2000;
+const autofillMisses = new Map<string, number>();
+function autofillMissRecently(phone: string): boolean {
+  const at = autofillMisses.get(phone);
+  if (at == null) return false;
+  if (Date.now() - at > AUTOFILL_MISS_TTL_MS) {
+    autofillMisses.delete(phone);
+    return false;
+  }
+  return true;
+}
+function rememberAutofillMiss(phone: string): void {
+  if (autofillMisses.size >= AUTOFILL_MISS_MAX) {
+    const cutoff = Date.now() - AUTOFILL_MISS_TTL_MS;
+    for (const [k, v] of autofillMisses) if (v < cutoff) autofillMisses.delete(k);
+    if (autofillMisses.size >= AUTOFILL_MISS_MAX) autofillMisses.clear();
+  }
+  autofillMisses.set(phone, Date.now());
+}
+
+
 export const getLastOrderByPhone = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
     z.object({ phone: z.string().trim().max(20).optional() }).parse(raw),
@@ -532,8 +628,14 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
 
     try {
       let { orders } = await fetchOrdersFromCache(phone, 1, 1);
-      if (orders.length === 0) ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
+      // First-time customers have nothing in the mirror, so this used to hit
+      // Woo on *every* checkout/landing page view. Remember the miss briefly.
+      if (orders.length === 0 && !autofillMissRecently(phone)) {
+        ({ orders } = await fetchOrdersByPhone(phone, 1, 10));
+        if (orders.length === 0) rememberAutofillMiss(phone);
+      }
       if (orders.length === 0) return { billing: null };
+
       const b = orders[0].billing ?? {};
       const first = (b.first_name ?? "").trim();
       const last = (b.last_name ?? "").trim();
