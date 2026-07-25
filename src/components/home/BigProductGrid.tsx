@@ -2,16 +2,19 @@ import { Link } from "@tanstack/react-router";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
+import { buildResponsiveImage } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
 
 function BigCard({
   p,
   priority,
+  columns,
   onSeed,
 }: {
   p: WooProduct;
   priority: boolean;
+  columns: 2 | 3;
   onSeed: (p: WooProduct) => void;
 }) {
   const { sell, regular } = resolveCardPrices(p);
@@ -19,6 +22,13 @@ function BigCard({
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
   const seed = () => onSeed(p);
+  // The storefront is capped at a 480px frame, so a card column never exceeds
+  // ~240px. Without a srcset the browser downloaded the full-size WordPress
+  // original (often 1000px+) for every card in the feed.
+  const responsive = buildResponsiveImage(image?.src, {
+    sizes: columns === 3 ? "(min-width: 480px) 160px, 33vw" : "(min-width: 480px) 240px, 50vw",
+    quality: 78,
+  });
 
   return (
     <Link
@@ -32,18 +42,20 @@ function BigCard({
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md"
     >
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
-        {image?.src ? (
+        {responsive ? (
           <img
-            src={image.src}
-            alt={image.alt || p.name || "Product"}
+            src={responsive.src}
+            srcSet={responsive.srcSet}
+            sizes={responsive.sizes}
+            alt={image?.alt || p.name || "Product"}
             width={600}
             height={600}
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
-            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
+
         ) : (
           <div className="grid h-full w-full place-items-center text-muted-foreground/40">
             <Gem className="h-10 w-10" aria-hidden="true" />
