@@ -33,8 +33,15 @@ type CacheEntry = { at: number; value: unknown };
 const GET_TTL_MS = 30_000;
 const EDGE_TTL_SECONDS = 60; // Cloudflare Cache API TTL (edge-shared)
 const MAX_CACHE_ENTRIES = 500;
+// Negative cache: an upstream failure is remembered briefly so a WooCommerce
+// outage cannot be amplified into 1 000 origin requests per minute (each of
+// which would also retry). Short enough that recovery is near-instant.
+const ERROR_TTL_MS = 5_000;
+const MAX_ERROR_ENTRIES = 200;
 const getCache = new Map<string, CacheEntry>();
+const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
+
 
 // Synthetic origin for Cache API keys. Must be a valid absolute URL; the
 // hostname is arbitrary and never resolved — Cache API only uses it as a key.
@@ -72,6 +79,21 @@ function cacheSet(key: string, value: unknown) {
   getCache.set(key, { at: Date.now(), value });
 }
 
+function errorGet(key: string): unknown | undefined {
+  const e = errorCache.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.at > ERROR_TTL_MS) {
+    errorCache.delete(key);
+    return undefined;
+  }
+  return e.error;
+}
+function errorSet(key: string, error: unknown) {
+  if (errorCache.size >= MAX_ERROR_ENTRIES) errorCache.clear();
+  errorCache.set(key, { at: Date.now(), error });
+}
+
+
 
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
   const lovableKey = process.env.LOVABLE_API_KEY;
@@ -101,7 +123,11 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     if (hit !== undefined) return hit as T;
     const pending = inflight.get(cacheKey);
     if (pending) return pending as Promise<T>;
+    // Replay a very recent failure instead of hammering a struggling origin.
+    const recentError = errorGet(cacheKey);
+    if (recentError !== undefined) throw recentError;
   }
+
 
   const run = async (): Promise<T> => {
     // Layer 2: try Cloudflare Cache API before hitting origin.
@@ -139,12 +165,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
       }
     };
 
-    // Retry once on 429/5xx with backoff.
+    // Retry once on 429/5xx with jittered backoff. Fixed backoff makes every
+    // isolate in a burst retry in lockstep, re-creating the spike that caused
+    // the 5xx; the jitter spreads the second wave over ~200-600ms.
     let res = await attempt();
     if (!res.ok && (res.status === 429 || res.status >= 500)) {
-      await new Promise((r) => setTimeout(r, 400));
+      // Release the discarded body so the connection is not held open.
+      try {
+        await res.body?.cancel();
+      } catch {
+        /* already consumed */
+      }
+      await new Promise((r) => setTimeout(r, 200 + Math.floor(Math.random() * 400)));
       res = await attempt();
     }
+
 
     const text = await res.text();
     if (!res.ok) {
@@ -183,13 +218,75 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
 
   if (!cacheable) return run();
 
-  const p = run().finally(() => {
-    inflight.delete(cacheKey);
-  });
+  const p = run()
+    .catch((err: unknown) => {
+      errorSet(cacheKey, err);
+      throw err;
+    })
+    .finally(() => {
+      inflight.delete(cacheKey);
+    });
+  // Attach a no-op rejection handler so a coalesced failure never surfaces as
+  // an unhandled rejection when the awaiting caller has already bailed out.
+  p.catch(() => {});
   inflight.set(cacheKey, p);
   return p;
+
 }
 
+/**
+ * Storefront product projection.
+ *
+ * WooCommerce returns ~60 fields per product, and every image carries a
+ * `srcset` string, a `sizes` string, a `thumbnail` URL and four timestamps.
+ * At 18 products per feed page that is tens of kilobytes of JSON that is
+ * embedded twice (SSR HTML + dehydrated Query cache) and shipped to every
+ * visitor. `_fields` trims it at the origin; `trimProducts` trims what
+ * `_fields` cannot reach (nested image/category objects).
+ */
+export const PRODUCT_FIELDS = [
+  "id",
+  "name",
+  "slug",
+  "permalink",
+  "type",
+  "sku",
+  "price",
+  "regular_price",
+  "sale_price",
+  "price_html",
+  "on_sale",
+  "stock_status",
+  "backorders",
+  "backorders_allowed",
+  "short_description",
+  "description",
+  "images",
+  "categories",
+  "tags",
+  "weight",
+  "dimensions",
+  "variations",
+  "attributes",
+  "default_attributes",
+  "average_rating",
+  "rating_count",
+].join(",");
+
+export function trimProduct(p: WooProduct): WooProduct {
+  return {
+    ...p,
+    images: (p.images ?? []).slice(0, 8).map((i) => ({ id: i.id, src: i.src, alt: i.alt ?? "" })),
+    categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+    tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
+  };
+}
+
+export function trimProducts(list: unknown): WooProduct[] {
+  return Array.isArray(list)
+    ? (list as WooProduct[]).filter((p) => p && typeof p.id === "number").map(trimProduct)
+    : [];
+}
 
 
 // ---------- Types (partial, only what we use) ----------

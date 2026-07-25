@@ -4,6 +4,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { WooOrder, WooProduct, WooVariation } from "./woo.server";
 
 /** Guard every WooCommerce list response — upstream may return an error object. */
+/** Category fields the storefront renders; the raw payload adds descriptions, image EXIF dates and HAL links. */
+const CATEGORY_FIELDS = "id,name,slug,count,image";
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -24,7 +27,7 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
       const baseQuery = {
         page: data.page,
         per_page: data.perPage,
@@ -33,6 +36,9 @@ export const listProducts = createServerFn({ method: "GET" })
         orderby: data.orderby,
         order: data.order,
         status: "publish",
+        // Ask WooCommerce for storefront fields only — the untrimmed payload is
+        // ~3x larger and is embedded in SSR HTML for every visitor.
+        _fields: PRODUCT_FIELDS,
       } as Record<string, unknown>;
 
       // Run name/description search AND SKU search in parallel, then merge unique.
@@ -56,8 +62,8 @@ export const listProducts = createServerFn({ method: "GET" })
       const products: WooProduct[] = [];
       // Validate the upstream shape: Woo can return an object error payload.
       // SKU matches first — usually the more precise intent for staff.
-      for (const p of [...asArray<WooProduct>(bySku), ...asArray<WooProduct>(byText)]) {
-        if (!p || typeof p.id !== "number" || seen.has(p.id)) continue;
+      for (const p of [...trimProducts(bySku), ...trimProducts(byText)]) {
+        if (seen.has(p.id)) continue;
         seen.add(p.id);
         products.push(p);
       }
@@ -69,15 +75,18 @@ export const listProducts = createServerFn({ method: "GET" })
   });
 
 
+
 export const getProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ slug: z.string().min(1).max(200) }).parse(raw))
   .handler(async ({ data }) => {
     try {
-      const products = await (await import("./woo.server")).wooFetch<WooProduct[]>({
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
+      const products = await wooFetch<WooProduct[]>({
         path: "/products",
-        query: { slug: data.slug },
+        query: { slug: data.slug, _fields: PRODUCT_FIELDS },
       });
-      return { product: products[0] ?? null, error: null as string | null };
+      return { product: trimProducts(products)[0] ?? null, error: null as string | null };
+
     } catch (e) {
       console.error("getProductBySlug failed", e);
       return { product: null, error: "Product is temporarily unavailable." };
@@ -113,7 +122,7 @@ export const listCategories = createServerFn({ method: "GET" })
     try {
       const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc" },
+        query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc", _fields: CATEGORY_FIELDS },
       });
       return {
         categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
@@ -131,7 +140,7 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
     try {
       const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc" },
+        query: { per_page: 50, hide_empty: true, parent: 0, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
       });
       return {
         categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
@@ -154,14 +163,14 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
       const { wooFetch } = await import("./woo.server");
       const parents = await wooFetch<(WooCategory & { parent?: number })[]>({
         path: "/products/categories",
-        query: { slug: data.slug, per_page: 1 },
+        query: { slug: data.slug, per_page: 1, _fields: CATEGORY_FIELDS },
         timeoutMs: 8000,
       });
       const parent = parents[0] ?? null;
       if (!parent) return { parent: null, subs: [] as WooCategory[], error: null as string | null };
       const subs = await wooFetch<WooCategory[]>({
         path: "/products/categories",
-        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc" },
+        query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "menu_order", order: "asc", _fields: CATEGORY_FIELDS },
         timeoutMs: 8000,
       }).catch(() => [] as WooCategory[]);
       return { parent, subs, error: null as string | null };
@@ -186,10 +195,10 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     try {
-      const { wooFetch } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
       const cats = await wooFetch<{ id: number }[]>({
         path: "/products/categories",
-        query: { slug: data.slug, per_page: 1 },
+        query: { slug: data.slug, per_page: 1, _fields: "id" },
         timeoutMs: 8000,
       });
       const catId = asArray<{ id: number }>(cats)[0]?.id;
@@ -202,10 +211,12 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
           orderby: data.orderby,
           order: "desc",
           status: "publish",
+          _fields: PRODUCT_FIELDS,
         },
         timeoutMs: 8000,
       });
-      return { products: asArray<WooProduct>(products), error: null as string | null };
+      return { products: trimProducts(products), error: null as string | null };
+
     } catch (e) {
       console.error("listProductsByCategorySlug failed", e);
       return { products: [] as WooProduct[], error: "Products are temporarily unavailable." };

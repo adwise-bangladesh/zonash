@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { memo, useMemo } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
@@ -6,7 +7,10 @@ import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
 import type { WooProduct } from "@/lib/woo.server";
 
-function BigCard({
+// Memoized: the feed grows to 180+ cards, and any parent state change
+// (scroll sentinel, tab switch, timer elsewhere) would otherwise re-render
+// every card and recompute its price/srcset.
+const BigCard = memo(function BigCard({
   p,
   priority,
   columns,
@@ -92,7 +96,7 @@ function BigCard({
       </div>
     </Link>
   );
-}
+});
 
 export function BigProductGrid({
   products,
@@ -102,7 +106,7 @@ export function BigProductGrid({
   columns?: 2 | 3;
 }) {
   const seedProduct = useSeedProductCache();
-  const list = (products ?? []).filter((p) => p && p.slug);
+  const list = useMemo(() => (products ?? []).filter((p) => p && p.slug), [products]);
   if (!list.length) return null;
   const gridClass =
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
