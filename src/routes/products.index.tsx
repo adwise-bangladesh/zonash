@@ -86,8 +86,13 @@ const searchProductsQuery = (
           featured,
           orderby,
           order,
+          // These cards never seed the product-detail cache, so the long
+          // `description` / `short_description` HTML would be shipped twice
+          // (SSR HTML + dehydrated cache) and rendered never.
+          fields: "card" as const,
         },
       }),
+
     getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
       getFeedNextPageParam(last, all, FILTER_PER_PAGE),
     staleTime: 60_000,
