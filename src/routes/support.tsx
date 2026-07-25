@@ -152,7 +152,7 @@ function Support() {
             <a
               href={`tel:${SUPPORT_TEL}`}
               aria-label="Call Zonash support hotline"
-              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary-foreground px-3 py-2 text-[13px] font-semibold text-primary transition-transform active:scale-[0.98] ${focusRing}`}
             >
               <Phone className="h-4 w-4" aria-hidden="true" />
               Call now
