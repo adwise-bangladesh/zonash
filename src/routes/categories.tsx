@@ -204,6 +204,8 @@ function CategoriesPage() {
           prefetched.current.add(slug);
           return;
         }
+        // Bound the de-dupe set so a long session can't grow it without limit.
+        if (prefetched.current.size > 64) prefetched.current.clear();
         prefetched.current.add(slug);
         void queryClient.prefetchQuery(opts).catch(() => {
           prefetched.current.delete(slug);
