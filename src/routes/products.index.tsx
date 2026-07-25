@@ -93,8 +93,17 @@ const searchProductsQuery = (
         },
       }),
 
-    getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
-      getFeedNextPageParam(last, all, FILTER_PER_PAGE),
+    // Trust the server's `hasMore`, which is computed from the paginated text
+    // query alone. Deriving it from the merged page length made SKU hits look
+    // like "the page is full" and offered a dead extra page.
+    getNextPageParam: (
+      last: { products: WooProduct[]; hasMore?: boolean },
+      all: { products: WooProduct[] }[],
+    ) =>
+      last?.hasMore === false
+        ? undefined
+        : getFeedNextPageParam(last, all, FILTER_PER_PAGE),
+
     staleTime: 60_000,
     // Every distinct search term creates a cache entry; without a bounded
     // gcTime a long browsing session retains every result set it ever saw.
@@ -330,11 +339,10 @@ function FilteredResults({
   const { data, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(searchProductsQuery(q ?? "", category, featured, sort));
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
-  // on every fetch-state tick (isFetching flips) as the list grows.
-  // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows. The
   // validity filter is folded in here too — it used to run inside the grid on
   // every parent render, walking the whole (growing) list for nothing.
+
   const products = useMemo(
     () => (dedupeFeedPages(data?.pages) as WooProduct[]).filter((p) => p && p.slug),
     [data?.pages],
