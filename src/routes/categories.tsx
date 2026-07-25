@@ -58,7 +58,20 @@ function normalizeCategories(input: unknown): SafeCategory[] {
 
 export const Route = createFileRoute("/categories")({
   validateSearch: (s) => searchSchema.parse(s),
-  loader: ({ context }) => context.queryClient.ensureQueryData(categoriesQuery),
+  loaderDeps: ({ search }) => ({ parent: search.parent }),
+  // Warm BOTH panes on the server so a deep link (?parent=slug) ships real
+  // sub-category markup in the SSR HTML instead of a skeleton plus a
+  // post-hydration round trip.
+  loader: async ({ context, deps }) => {
+    const primary = await context.queryClient.ensureQueryData(categoriesQuery);
+    const first = normalizeCategories(primary?.categories)[0]?.slug;
+    const slug = deps.parent ?? first;
+    if (slug) {
+      await context.queryClient.ensureQueryData(subsQuery(slug)).catch(() => undefined);
+    }
+    return primary;
+  },
+
   head: () => ({
     meta: [
       { title: "Shop by category — Zonash" },
