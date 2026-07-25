@@ -259,7 +259,7 @@ function Support() {
               external
             />
             <ContactRow
-              href={`mailto:${SUPPORT_EMAIL}`}
+              href={MAIL_HREF}
               icon={Mail}
               title="Email"
               value={SUPPORT_EMAIL}
