@@ -411,7 +411,7 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         </Link>
       </div>
 
-      <div className="px-1.5 pt-1.5">
+      <div className="px-2 pt-2">
         {isPending ? (
           <GridSkeleton />
         ) : failed ? (
@@ -434,32 +434,32 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
         ) : subs.length === 0 ? (
           <CompactEmpty name={name} slug={slug} />
         ) : (
-          <ul className="grid grid-cols-5 gap-x-1 gap-y-1.5">
+          <ul className="grid grid-cols-4 gap-2 px-0.5 pt-0.5">
             {subs.map((s) => (
               <li key={s.slug}>
                 <Link
                   to="/c/$slug"
                   params={{ slug: s.slug }}
                   preload="intent"
-                  className="group flex flex-col items-center rounded-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="group flex flex-col items-center gap-1.5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span className="block aspect-square w-full overflow-hidden rounded-[3px] bg-surface-muted ring-1 ring-border transition-all group-hover:ring-primary/40">
+                  <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow group-hover:shadow-md">
                     <CategoryThumb
                       src={s.imageSrc}
                       alt={s.name}
-                      size={120}
-                      iconClass="h-4 w-4"
-                      imgClass="transition-transform duration-200 group-hover:scale-105"
-
+                      size={160}
+                      iconClass="h-5 w-5"
+                      imgClass="transition-transform duration-300 group-hover:scale-105"
                     />
                   </span>
-                  <span className="mt-1 line-clamp-2 px-0.5 text-center text-[9px] font-medium leading-[1.2] text-foreground">
+                  <span className="line-clamp-2 text-center text-[10.5px] font-medium leading-tight text-ink">
                     {s.name}
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
+
         )}
       </div>
     </div>
@@ -468,13 +468,13 @@ function SubCategories({ slug, name }: { slug: string; name: string }) {
 
 function GridSkeleton() {
   return (
-    <ul className="grid grid-cols-5 gap-x-1 gap-y-1.5" aria-hidden="true">
-      {Array.from({ length: 15 }).map((_, i) => (
-
-        <li key={i} className="flex flex-col items-center gap-1">
-          <span className="block aspect-square w-full animate-pulse rounded-[3px] bg-surface-muted" />
-          <span className="h-2.5 w-3/4 animate-pulse rounded-[3px] bg-surface-muted" />
+    <ul className="grid grid-cols-4 gap-2 px-0.5 pt-0.5" aria-hidden="true">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <li key={i} className="flex flex-col items-center gap-1.5">
+          <span className="block aspect-square w-full animate-pulse rounded-2xl bg-surface-muted" />
+          <span className="h-2.5 w-3/4 animate-pulse rounded-full bg-surface-muted" />
         </li>
+
       ))}
     </ul>
   );
