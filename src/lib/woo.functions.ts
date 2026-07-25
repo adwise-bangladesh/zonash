@@ -74,6 +74,75 @@ export const listProducts = createServerFn({ method: "GET" })
     }
   });
 
+/**
+ * Typeahead suggestions for the storefront search bar.
+ *
+ * Deliberately tiny: only the fields a suggestion row renders, so the response
+ * stays a couple of KB even on a slow mobile network. Never throws — the UI
+ * shows an inline error state instead of an empty dropdown.
+ */
+export type ProductSuggestion = {
+  id: number;
+  name: string;
+  slug: string;
+  sku: string;
+  image: string | null;
+  sell: string | number | null;
+  regular: string | number | null;
+};
+
+export const suggestProducts = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        q: z.string().trim().min(2).max(120),
+        limit: z.number().int().min(1).max(10).default(6),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }): Promise<{ items: ProductSuggestion[]; error: string | null }> => {
+    try {
+      const { wooFetch } = await import("./woo.server");
+      const { resolveCardPrices } = await import("./price-range");
+      const query = {
+        per_page: data.limit,
+        status: "publish",
+        orderby: "relevance",
+        _fields: "id,name,slug,sku,type,price,regular_price,sale_price,price_html,on_sale,images",
+      } as Record<string, unknown>;
+
+      const [byText, bySku] = await Promise.all([
+        wooFetch<unknown>({ path: "/products", query: { ...query, search: data.q }, timeoutMs: 5000 }).catch(
+          () => [],
+        ),
+        wooFetch<unknown>({ path: "/products", query: { ...query, sku: data.q }, timeoutMs: 5000 }).catch(
+          () => [],
+        ),
+      ]);
+
+      const seen = new Set<number>();
+      const items: ProductSuggestion[] = [];
+      for (const raw of [...asArray<WooProduct>(bySku), ...asArray<WooProduct>(byText)]) {
+        if (!raw || typeof raw.id !== "number" || seen.has(raw.id)) continue;
+        seen.add(raw.id);
+        const { sell, regular } = resolveCardPrices(raw);
+        items.push({
+          id: raw.id,
+          name: String(raw.name ?? ""),
+          slug: String(raw.slug ?? ""),
+          sku: String(raw.sku ?? ""),
+          image: raw.images?.[0]?.src ?? null,
+          sell: sell ?? null,
+          regular: regular ?? null,
+        });
+        if (items.length >= data.limit) break;
+      }
+      return { items, error: null };
+    } catch (e) {
+      console.error("suggestProducts failed", e);
+      return { items: [], error: "Search is temporarily unavailable." };
+    }
+  });
 
 
 export const getProductBySlug = createServerFn({ method: "GET" })
