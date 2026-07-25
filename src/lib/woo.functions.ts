@@ -24,7 +24,7 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
       const baseQuery = {
         page: data.page,
         per_page: data.perPage,
@@ -33,6 +33,9 @@ export const listProducts = createServerFn({ method: "GET" })
         orderby: data.orderby,
         order: data.order,
         status: "publish",
+        // Ask WooCommerce for storefront fields only — the untrimmed payload is
+        // ~3x larger and is embedded in SSR HTML for every visitor.
+        _fields: PRODUCT_FIELDS,
       } as Record<string, unknown>;
 
       // Run name/description search AND SKU search in parallel, then merge unique.
@@ -56,8 +59,8 @@ export const listProducts = createServerFn({ method: "GET" })
       const products: WooProduct[] = [];
       // Validate the upstream shape: Woo can return an object error payload.
       // SKU matches first — usually the more precise intent for staff.
-      for (const p of [...asArray<WooProduct>(bySku), ...asArray<WooProduct>(byText)]) {
-        if (!p || typeof p.id !== "number" || seen.has(p.id)) continue;
+      for (const p of [...trimProducts(bySku), ...trimProducts(byText)]) {
+        if (seen.has(p.id)) continue;
         seen.add(p.id);
         products.push(p);
       }
@@ -67,6 +70,7 @@ export const listProducts = createServerFn({ method: "GET" })
       return { products: [] as WooProduct[], error: "Product catalog is temporarily unavailable." };
     }
   });
+
 
 
 export const getProductBySlug = createServerFn({ method: "GET" })
