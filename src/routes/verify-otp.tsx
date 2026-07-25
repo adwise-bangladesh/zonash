@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { MessageSquareLock, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { MessageSquareLock, Loader2, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
@@ -28,6 +28,28 @@ export const Route = createFileRoute("/verify-otp")({
     ],
   }),
   component: VerifyOtpPage,
+  errorComponent: ({ reset }) => (
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <CheckoutHeader title="Verify your number" />
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pt-6">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="text-[14px] font-semibold">Verification unavailable</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Please try again — your order is still reserved.
+          </p>
+          <button
+            onClick={reset}
+            className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+          >
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Try again
+          </button>
+        </div>
+      </main>
+    </div>
+  ),
 });
 
 const CODE_LEN = 4;
@@ -44,7 +66,13 @@ function VerifyOtpPage() {
   const verifyFn = useServerFn(verifyOrderOtp);
   const resendFn = useServerFn(resendOrderOtp);
   const { setPhone } = useCustomerSession();
+  const inFlight = useRef(false);
 
+  /** Only trust a well-formed BD mobile from the URL before rendering it. */
+  const prettyPhone = useMemo(() => {
+    const p = (phone ?? "").replace(/\D/g, "");
+    return /^01[3-9]\d{8}$/.test(p) ? `+880 ${p.slice(1, 5)} ${p.slice(5)}` : "your number";
+  }, [phone]);
 
   useEffect(() => {
     hiddenRef.current?.focus();
@@ -53,27 +81,33 @@ function VerifyOtpPage() {
   // WebOTP autofill (Chrome Android)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!("OTPCredential" in window)) return;
+    if (!("OTPCredential" in window) || !navigator.credentials?.get) return;
+    let alive = true;
     const ac = new AbortController();
     (navigator.credentials as unknown as {
       get: (o: unknown) => Promise<{ code?: string } | null>;
     })
       .get({ otp: { transport: ["sms"] }, signal: ac.signal })
       .then((cred) => {
-        if (cred?.code) setCode(cred.code.replace(/\D/g, "").slice(0, CODE_LEN));
+        if (alive && cred?.code) setCode(cred.code.replace(/\D/g, "").slice(0, CODE_LEN));
       })
       .catch(() => {});
-    return () => ac.abort();
+    return () => {
+      alive = false;
+      ac.abort();
+    };
   }, []);
 
+  const ticking = cooldown > 0;
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
+    if (!ticking) return;
+    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
     return () => clearInterval(t);
-  }, [cooldown]);
+  }, [ticking]);
 
-  const submit = async (full: string) => {
-    if (full.length !== CODE_LEN) return;
+  const submit = useCallback(async (full: string) => {
+    if (full.length !== CODE_LEN || inFlight.current) return;
+    inFlight.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -83,6 +117,7 @@ function VerifyOtpPage() {
         setCode("");
         hiddenRef.current?.focus();
         setSubmitting(false);
+        inFlight.current = false;
         return;
       }
       // Persist customer session (phone) for future visits — cookie + localStorage.
@@ -101,19 +136,18 @@ function VerifyOtpPage() {
           } as never,
         });
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
       setError("Verification failed. Please try again.");
       setSubmitting(false);
+      inFlight.current = false;
     }
-  };
+  }, [order, number, phone, verifyFn, setPhone, navigate]);
 
   useEffect(() => {
-    if (code.length === CODE_LEN && !submitting) void submit(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+    if (code.length === CODE_LEN) void submit(code);
+  }, [code, submit]);
 
-  const onResend = async () => {
+  const onResend = useCallback(async () => {
     if (cooldown > 0 || resending) return;
     setResending(true);
     try {
@@ -132,7 +166,7 @@ function VerifyOtpPage() {
     } finally {
       setResending(false);
     }
-  };
+  }, [cooldown, resending, order, resendFn]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -142,7 +176,7 @@ function VerifyOtpPage() {
         <AuthHero
           icon={MessageSquareLock}
           title="Enter verification code"
-          subtitle={`We texted a ${CODE_LEN}-digit code to ${phone ?? "your number"}.`}
+          subtitle={`We texted a ${CODE_LEN}-digit code to ${prettyPhone}.`}
           step={2}
         />
 
