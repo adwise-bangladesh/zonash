@@ -218,11 +218,20 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
 
   if (!cacheable) return run();
 
-  const p = run().finally(() => {
-    inflight.delete(cacheKey);
-  });
+  const p = run()
+    .catch((err: unknown) => {
+      errorSet(cacheKey, err);
+      throw err;
+    })
+    .finally(() => {
+      inflight.delete(cacheKey);
+    });
+  // Attach a no-op rejection handler so a coalesced failure never surfaces as
+  // an unhandled rejection when the awaiting caller has already bailed out.
+  p.catch(() => {});
   inflight.set(cacheKey, p);
   return p;
+
 }
 
 
