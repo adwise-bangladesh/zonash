@@ -162,12 +162,39 @@ function CategoriesPage() {
   );
 
   // Warm the sub-category cache on hover/focus — served from cache on click.
+  // Throttled + de-duped: sweeping the mouse down the rail must not fire one
+  // server call per item (that multiplies origin load by ~N per visitor), and
+  // anything already cached/fresh is skipped entirely.
+  const prefetchTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefetched = React.useRef<Set<string>>(new Set());
+  React.useEffect(
+    () => () => {
+      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+    },
+    [],
+  );
+
   const prefetchSubs = React.useCallback(
     (slug: string) => {
-      void queryClient.prefetchQuery(subsQuery(slug)).catch(() => {});
+      if (prefetched.current.has(slug)) return;
+      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = setTimeout(() => {
+        prefetchTimer.current = null;
+        if (prefetched.current.has(slug)) return;
+        const opts = subsQuery(slug);
+        if (queryClient.getQueryState(opts.queryKey)?.data) {
+          prefetched.current.add(slug);
+          return;
+        }
+        prefetched.current.add(slug);
+        void queryClient.prefetchQuery(opts).catch(() => {
+          prefetched.current.delete(slug);
+        });
+      }, 140);
     },
     [queryClient],
   );
+
 
   const onRailKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {
