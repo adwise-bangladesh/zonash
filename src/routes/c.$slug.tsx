@@ -1,12 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useInfiniteQuery, queryOptions } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Loader2, LayoutGrid } from "lucide-react";
 import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { NotFoundView } from "@/components/NotFoundView";
+import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import type { WooProduct } from "@/lib/woo.server";
+
+const SITE = "https://zonash.lovable.app";
 
 const categoryQuery = (slug: string) =>
   queryOptions({
@@ -16,22 +19,47 @@ const categoryQuery = (slug: string) =>
   });
 
 export const Route = createFileRoute("/c/$slug")({
-  loader: ({ params, context }) => {
-    if (params.slug === "demo") return;
-    return context.queryClient.ensureQueryData(categoryQuery(params.slug));
+  loader: async ({ params, context }) => {
+    const res = await context.queryClient.ensureQueryData(categoryQuery(params.slug));
+    // Upstream failure must surface as an error boundary (retryable), and an
+    // unknown slug must be a real 404 — previously both silently rendered a
+    // 200 "collection unavailable" placeholder.
+    if (res.error) throw new Error(res.error);
+    if (!res.parent) throw notFound();
+    return {
+      title: res.parent.name,
+      count: res.parent.count ?? 0,
+      image: res.parent.image?.src ?? null,
+    };
   },
-  head: ({ params }) => {
-    const pretty = params.slug
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
+  head: ({ params, loaderData }) => {
+    const name =
+      loaderData?.title ??
+      params.slug
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    const title = `${name} — Zonash`;
+    const description = `Shop ${name} at Zonash. Cash on delivery across Bangladesh, 7-day returns.`;
+    const url = `${SITE}/c/${params.slug}`;
+    const img = loaderData?.image;
     return {
       meta: [
-        { title: `${pretty} — Zonash` },
-        { name: "description", content: `Shop ${pretty} at Zonash.` },
-        { property: "og:title", content: `${pretty} — Zonash` },
-        { property: "og:description", content: `Curated ${pretty} collection from Zonash.` },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { name: "twitter:card", content: img ? "summary_large_image" : "summary" },
+        ...(img && /^https:\/\//.test(img)
+          ? [
+              { property: "og:image", content: img },
+              { name: "twitter:image", content: img },
+            ]
+          : []),
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: CollectionPage,
@@ -56,7 +84,6 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CollectionPage() {
   const { slug } = Route.useParams();
-  if (slug === "demo") return <DemoCollection />;
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
@@ -65,6 +92,9 @@ function CollectionPage() {
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
       <main>
+        {/* Every indexable page needs exactly one h1; the visual design has no
+            title bar, so it is screen-reader/crawler only. */}
+        <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
         <div className="bg-background pt-2">
           {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
         </div>
@@ -74,6 +104,7 @@ function CollectionPage() {
     </div>
   );
 }
+
 
 function SubcategoryStrip({
   parentSlug,
