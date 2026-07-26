@@ -30,6 +30,13 @@ const categoryQuery = (slug: string) =>
   });
 
 export const Route = createFileRoute("/c/$slug")({
+  // A bad/stale `?sort=` must degrade to the default view, never blow up the route.
+  validateSearch: (search: Record<string, unknown>): { sort?: SortKey } => {
+    const raw = String(search.sort ?? "");
+    return SORT_KEYS.includes(raw as SortKey) && raw !== "recommended"
+      ? { sort: raw as SortKey }
+      : {};
+  },
   loader: async ({ params, context }) => {
     const res = await context.queryClient.ensureQueryData(categoryQuery(params.slug));
     // Upstream failure must surface as an error boundary (retryable), and an
