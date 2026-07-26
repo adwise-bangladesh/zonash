@@ -707,7 +707,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     } catch {
       /* user dismissed the share sheet, or clipboard is blocked */
     }
-  }, [p.name]);
+  }, [p.name, p.slug]);
 
   const detailsText = useMemo(() => {
     // Deterministic on both sides of hydration. Reading `window.location.href`
