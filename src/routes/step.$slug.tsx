@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import {
   ArrowRight,
@@ -102,7 +102,11 @@ export const Route = createFileRoute("/step/$slug")({
   },
   component: StepLandingPage,
   pendingComponent: StepSkeleton,
-  pendingMs: 0,
+  // Skip the skeleton flash when the loader resolves quickly (SSR-warm /
+  // preloaded / cache hit). The route otherwise renders skeleton for a
+  // single frame before the real content, which reads as a second animation.
+  pendingMs: 900,
+  pendingMinMs: 0,
   errorComponent: ({ error, reset }) => {
     const message =
       error instanceof Error ? error.message : "Something went wrong loading this page.";
@@ -337,11 +341,21 @@ function StepLandingPage() {
   const [idem, setIdem] = useState(genId);
 
 
-  // Restore + persist
+  // Restore + persist. Uses a functional updater so a late autofill from
+  // `lastOrderQ` (which can land before this mount effect if the query was
+  // already cached) is not silently clobbered by an empty stored draft.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setForm({ ...EMPTY, ...JSON.parse(raw) });
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<FormShape>;
+      setForm((prev) => ({
+        name: prev.name || parsed.name || "",
+        phone: prev.phone || parsed.phone || "",
+        address: prev.address || parsed.address || "",
+        thana: prev.thana || parsed.thana || "",
+        email: prev.email || parsed.email || "",
+      }));
     } catch { /* ignore */ }
     router.preloadRoute({ to: "/verify-otp", search: { order: 1 } }).catch(() => {});
   }, [router]);
@@ -386,7 +400,9 @@ function StepLandingPage() {
 
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
 
-  const update = (patch: Partial<FormShape>) => {
+  // Stable identity — Field's onChange lands on stable inputs and doesn't
+  // invalidate memoized children on every keystroke.
+  const update = useCallback((patch: Partial<FormShape>) => {
     setForm((f) => ({ ...f, ...patch }));
     setErrors((prev) => {
       if (!Object.keys(prev).length) return prev;
@@ -394,7 +410,7 @@ function StepLandingPage() {
       for (const k of Object.keys(patch)) delete n[k];
       return n;
     });
-  };
+  }, []);
 
   // Shipping — 80 inside Dhaka City, 130 elsewhere
   const dhakaCitySet = useMemo(
@@ -482,6 +498,10 @@ function StepLandingPage() {
           description: "We couldn't text your code — tap Resend on the next screen.",
         });
       }
+      // Navigate away. We deliberately keep `submitting = true` through the
+      // unmount so the button can't fire again while the router transitions
+      // out — and we do NOT call setState after this point (it would target
+      // an unmounted component and trip a React dev warning).
       await navigate({
         to: "/verify-otp",
         search: {
@@ -490,12 +510,12 @@ function StepLandingPage() {
           phone: res.phone_masked,
         } as never,
       });
-      setIdem(genId());
-
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Could not place your order. Please try again.");
       setSubmitting(false);
+      // Rotate the idempotency key so a retry after a hard failure isn't
+      // silently deduped by the server-side cache as "same request".
+      setIdem(genId());
     }
   };
 
@@ -1117,7 +1137,11 @@ function CountdownInline() {
     if (!visible) return; // only tick while on-screen
     const t = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
-      tick();
+      const left = Math.max(0, endsAt - Date.now());
+      setRemaining(left);
+      // Stop ticking once the offer window has expired — the paint doesn't
+      // change any more, so every subsequent setState is wasted work.
+      if (left <= 0) clearInterval(t);
     }, 1000);
     return () => clearInterval(t);
   }, [visible]);

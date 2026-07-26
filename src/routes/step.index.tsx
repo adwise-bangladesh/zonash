@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -36,7 +36,10 @@ export const Route = createFileRoute("/step/")({
     ],
   }),
   component: StepIndex,
-  pendingMs: 0,
+  // Match the product page: let fast SSR-warm loads skip straight to the real
+  // grid instead of flashing the skeleton for one frame.
+  pendingMs: 800,
+  pendingMinMs: 0,
   pendingComponent: StepIndexSkeleton,
   errorComponent: ({ error, reset }) => (
     <NotFoundView
@@ -69,16 +72,15 @@ function StepIndex() {
   const { data } = useSuspenseQuery(stepListQuery(q));
 
   const [term, setTerm] = useState(q ?? "");
-  const needle = term.trim().toLowerCase();
   const all = data.products ?? [];
-  const products = needle
-    ? all.filter((p) => {
-        const hay = `${p.name} ${p.sku ?? ""} ${p.slug ?? ""}`.toLowerCase();
-        return hay.includes(needle);
-      })
-    : all;
-  const isFetching = false;
-
+  const products = useMemo(() => {
+    const needle = term.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter((p) => {
+      const hay = `${p.name} ${p.sku ?? ""} ${p.slug ?? ""}`.toLowerCase();
+      return hay.includes(needle);
+    });
+  }, [all, term]);
 
   return (
     <div className="min-h-[100dvh] bg-background pb-8">
@@ -91,7 +93,7 @@ function StepIndex() {
           </div>
           <div className="ml-auto flex-1 max-w-[280px]">
             <div className="relative flex items-center">
-              <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden />
               <input
                 type="search"
                 value={term}
@@ -115,15 +117,11 @@ function StepIndex() {
 
       {products.length === 0 ? (
         <div className="mx-auto mt-16 max-w-[420px] px-4 text-center">
-          <p className="text-sm font-semibold text-foreground">
-            {isFetching ? "Searching…" : "No products found"}
-          </p>
+          <p className="text-sm font-semibold text-foreground">No products found</p>
           <p className="mt-1 text-[12px] text-muted-foreground">Try a different search term.</p>
         </div>
       ) : (
-        <ul
-          className={`mx-auto mt-3 grid max-w-[720px] grid-cols-2 gap-3 px-3 sm:grid-cols-3 ${isFetching ? "opacity-60" : ""}`}
-        >
+        <ul className="mx-auto mt-3 grid max-w-[720px] grid-cols-2 gap-3 px-3 sm:grid-cols-3">
           {products.map((p) => (
             <li key={p.id}>
               <ProductCard product={p} />
