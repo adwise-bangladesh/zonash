@@ -41,8 +41,16 @@ type CartActions = {
   setQty: (key: string, qty: number) => void;
   /** Reconcile a line with server-authoritative pricing. */
   repriceLine: (key: string, price: number, regularPrice?: number) => void;
+  /**
+   * Apply a whole server reprice in a single state commit. Reconciling a
+   * 50-line bag line-by-line costs 50 array copies; this costs one.
+   */
+  repriceMany: (
+    entries: { key: string; price: number; regularPrice?: number }[],
+  ) => boolean;
   clear: () => void;
 };
+
 
 type CartContextValue = CartState & CartActions;
 
