@@ -100,6 +100,37 @@ const submitSchema = z.object({
   // logical submission; regenerated after a successful order. Server also
   // derives a fallback key from phone+items+fingerprint if omitted.
   idempotency_key: z.string().trim().min(8).max(128).optional(),
+  // Optional: a previously-created checkout-draft Woo order id. When present,
+  // the server updates that order (status→pending, full data) instead of
+  // creating a new one, so the draft becomes the real order.
+  draft_order_id: z.number().int().positive().optional(),
+});
+
+// Draft schema — permissive; any of the fields may still be partial.
+const draftSchema = z.object({
+  draft_order_id: z.number().int().positive().optional(),
+  items: z
+    .array(
+      z.object({
+        product_id: z.number().int().positive(),
+        variation_id: z.number().int().positive().optional(),
+        quantity: z.number().int().positive().max(99),
+      }),
+    )
+    .min(1)
+    .max(50),
+  billing: z.object({
+    first_name: z.string().trim().max(60).default(""),
+    last_name: z.string().trim().max(60).default(""),
+    email: z.string().trim().max(200).optional().default(""),
+    phone: z.string().trim().max(30).default(""),
+    address_1: z.string().trim().max(300).default(""),
+    address_2: z.string().trim().max(200).optional().default(""),
+    city: z.string().trim().max(80).default(""),
+    country: z.string().trim().length(2).default("BD"),
+  }),
+  customer_note: z.string().max(1000).optional().default(""),
+  tracking: trackingSchema,
 });
 
 // ---------- idempotency (short-TTL, in-worker dedup) ----------
