@@ -653,8 +653,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
       toast.error(inStock ? "Please select all options" : "This item is sold out");
       return;
     }
+    // No setBusy here on purpose: this path is fully synchronous, so React
+    // batched `true`+`false` into a single commit that never painted a busy
+    // state — it only cost an extra render of the whole tree per tap. The ref
+    // is what actually de-dupes the double tap.
     busyRef.current = true;
-    setBusy(true);
     try {
       addLine();
       toast.success("Added to cart");
@@ -662,7 +665,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       toast.error("Couldn't add to cart. Please try again.");
     } finally {
       busyRef.current = false;
-      setBusy(false);
     }
   }, [readyToBuy, inStock, addLine]);
 
@@ -690,7 +692,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const handleShare = useCallback(async () => {
     try {
-      const url = window.location.href;
+      // Deliberately NOT `window.location.href`: that carries whatever query
+      // string the visitor arrived with (utm_*, click IDs, an affiliate's
+      // params, or anything a third party appended) into the link they hand to
+      // friends, and preview hosts into shares from the preview domain.
+      const url = canonicalUrl(`/products/${p.slug}`);
+
       if (navigator.share) await navigator.share({ title: p.name, url });
       else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
@@ -699,7 +706,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     } catch {
       /* user dismissed the share sheet, or clipboard is blocked */
     }
-  }, [p.name]);
+  }, [p.name, p.slug]);
 
   const detailsText = useMemo(() => {
     // Deterministic on both sides of hydration. Reading `window.location.href`
@@ -738,14 +745,28 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const waOrderUrl = waLink(detailsText);
 
-  const handleCopyDetails = async () => {
+  const handleCopyDetails = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(detailsText);
       toast.success("Details copied");
     } catch {
       toast.error("Copy failed");
     }
-  };
+  }, [detailsText]);
+
+  /**
+   * Stable identities for the memoized children. Passing inline arrows here
+   * silently defeated `memo()` — `FloatingHeader` and `VariationSelector` were
+   * re-rendering on every parent render (every qty tap, every cart update)
+   * because their props were new function objects each time.
+   */
+  const selectOption = useCallback((attrKey: string, optKey: string) => {
+    setSelected((prev) => (prev[attrKey] === optKey ? prev : { ...prev, [attrKey]: optKey }));
+  }, []);
+  const handleBack = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
+    else void navigate({ to: "/" });
+  }, [navigate]);
 
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
@@ -753,11 +774,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
         title={p.name}
         cartCount={cartCount}
         onShare={handleShare}
-        onBack={() =>
-          typeof window !== "undefined" && window.history.length > 1
-            ? window.history.back()
-            : void navigate({ to: "/" })
-        }
+        onBack={handleBack}
       />
 
       <div className="mx-auto max-w-md">
@@ -804,123 +821,14 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </div>
           </div>
 
-          {/* Variation attribute selector — landing-page style with per-option savings */}
           {isVariable && variationAttrs.length > 0 && (
-            <div className="space-y-5 px-4 pb-2 pt-1">
-              {variationAttrs.map((attr) => {
-                const options = attr.options ?? [];
-                const attrKey = nk(attr.name);
-                const currentKey = selected[attrKey];
-                // Show the catalogue's own label, not the normalized key.
-                const currentLabel = options.find((o) => nk(o) === currentKey);
-                return (
-                  <div key={attr.id + attr.name}>
-                    <div className="mb-3 flex items-center gap-3">
-                      <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                      <span
-                        id={`attr-label-${attrKey}`}
-                        className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-                      >
-                        Choose {attr.name}
-                      </span>
-                      {currentLabel && (
-                        <span className="ml-auto text-[11px] font-semibold text-primary">
-                          {currentLabel}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Radio semantics: the selected option was previously
-                        invisible to screen readers (plain buttons, no state). */}
-                    <div
-                      className="grid grid-cols-2 gap-2"
-                      role="radiogroup"
-                      aria-labelledby={`attr-label-${attrKey}`}
-                    >
-                      {options.map((opt) => {
-                        const optKey = nk(opt);
-                        const active = currentKey === optKey;
-                        const meta = optionMeta.get(attrKey)?.get(optKey);
-                        const enabled = variations.length === 0 ? true : !!meta?.enabled;
-                        const best = meta?.best;
-                        const bp = best ? parseFloat(best.price) || 0 : 0;
-                        const br = best ? parseFloat(best.regular_price) || 0 : 0;
-                        const save = br > bp ? br - bp : 0;
-                        const pct = br > bp ? Math.round((save / br) * 100) : 0;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            role="radio"
-                            aria-checked={active}
-                            aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
-                            onClick={() => setSelected((prev) => ({ ...prev, [attrKey]: optKey }))}
-                            disabled={!enabled && !active}
-                            className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
-                              active
-                                ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
-                                : enabled
-                                  ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
-                                  : "border-dashed border-border bg-muted/30 opacity-60"
-                            }`}
-                          >
-                            {save > 0 && enabled && (
-                              <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
-                                −{pct}%
-                              </span>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
-                                  active
-                                    ? "border-primary bg-primary"
-                                    : "border-border bg-background"
-                                }`}
-                              >
-                                {active && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
-                                )}
-                              </span>
-                              <span
-                                className={`text-[13px] font-bold leading-tight ${
-                                  enabled ? "text-foreground" : "text-muted-foreground line-through"
-                                }`}
-                              >
-                                {opt}
-                              </span>
-                            </div>
-                            {best && (
-                              <div className="mt-1.5 pl-[22px]">
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-[14px] font-extrabold leading-none text-primary">
-                                    {formatBDT(bp)}
-                                  </span>
-                                  {save > 0 && (
-                                    <span className="text-[10px] text-muted-foreground line-through">
-                                      {formatBDT(br)}
-                                    </span>
-                                  )}
-                                </div>
-                                {save > 0 && enabled && (
-                                  <p className="mt-1 text-[10px] font-semibold text-emerald-600">
-                                    Save {formatBDT(save)}
-                                  </p>
-                                )}
-                                {!enabled && (
-                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    Out of stock
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <VariationSelector
+              attrs={variationAttrs}
+              selected={selected}
+              onSelect={selectOption}
+              optionMeta={optionMeta}
+              hasVariations={variations.length > 0}
+            />
           )}
         </div>
 
@@ -945,14 +853,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
             </CollapsibleSection>
           )}
 
-          {longDesc && (
-            <CollapsibleSection title="Description">
-              <div
-                className="prose prose-sm max-w-none text-[13px] leading-relaxed text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: longDesc }}
-              />
-            </CollapsibleSection>
-          )}
+          {longDesc && <DescriptionBlock html={longDesc} />}
 
           <CollapsibleSection title="Product details">
             <dl className="grid grid-cols-1 gap-1 text-[13px]">
@@ -1078,21 +979,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        {/* Related products — lazy-loaded below the fold. content-visibility
-            lets the browser skip layout/paint until the section is near the
-            viewport, keeping initial render focused on the hero. */}
-        <div
-          className="mt-4 pb-24"
-          style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
-        >
-          {/* The related feed is optional: a rejected suspense query inside it
-              would otherwise take the whole product page to its errorComponent. */}
-          <SoftBoundary>
-            <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-              <InfiniteFeed recommended />
-            </Suspense>
-          </SoftBoundary>
-        </div>
+        <RelatedFeed />
       </div>
 
       {/* Mobile sticky action bar */}
@@ -1491,6 +1378,183 @@ const Gallery = memo(function Gallery({
           ))}
         </div>
       )}
+    </div>
+  );
+});
+
+/**
+ * Variation option grid.
+ *
+ * Memoized and pulled out of `ProductDetail`: this is the largest subtree on
+ * the page (attributes x options cards, each with price/savings markup) and it
+ * was re-rendering on every quantity tap, every toast, and every cart-count
+ * change even though none of those touch the option state.
+ */
+type OptionMeta = Map<string, Map<string, { enabled: boolean; best?: WooVariation }>>;
+
+const VariationSelector = memo(function VariationSelector({
+  attrs,
+  selected,
+  onSelect,
+  optionMeta,
+  hasVariations,
+}: {
+  attrs: NonNullable<WooProduct["attributes"]>;
+  selected: Record<string, string>;
+  onSelect: (attrKey: string, optKey: string) => void;
+  optionMeta: OptionMeta;
+  hasVariations: boolean;
+}) {
+  return (
+    <div className="space-y-5 px-4 pb-2 pt-1">
+      {attrs.map((attr) => {
+        const options = attr.options ?? [];
+        const attrKey = nk(attr.name);
+        const currentKey = selected[attrKey];
+        // Show the catalogue's own label, not the normalized key.
+        const currentLabel = options.find((o) => nk(o) === currentKey);
+        return (
+          <div key={attr.id + attr.name}>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+              <span
+                id={`attr-label-${attrKey}`}
+                className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+              >
+                Choose {attr.name}
+              </span>
+              {currentLabel && (
+                <span className="ml-auto text-[11px] font-semibold text-primary">
+                  {currentLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Radio semantics: the selected option was previously
+                  invisible to screen readers (plain buttons, no state). */}
+            <div
+              className="grid grid-cols-2 gap-2"
+              role="radiogroup"
+              aria-labelledby={`attr-label-${attrKey}`}
+            >
+              {options.map((opt) => {
+                const optKey = nk(opt);
+                const active = currentKey === optKey;
+                const meta = optionMeta.get(attrKey)?.get(optKey);
+                const enabled = !hasVariations ? true : !!meta?.enabled;
+                const best = meta?.best;
+                const bp = best ? parseFloat(best.price) || 0 : 0;
+                const br = best ? parseFloat(best.regular_price) || 0 : 0;
+                const save = br > bp ? br - bp : 0;
+                const pct = br > bp ? Math.round((save / br) * 100) : 0;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
+                    onClick={() => onSelect(attrKey, optKey)}
+                    disabled={!enabled && !active}
+                    className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
+                      active
+                        ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
+                        : enabled
+                          ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
+                          : "border-dashed border-border bg-muted/30 opacity-60"
+                    }`}
+                  >
+                    {save > 0 && enabled && (
+                      <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
+                        −{pct}%
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
+                          active ? "border-primary bg-primary" : "border-border bg-background"
+                        }`}
+                      >
+                        {active && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
+                        )}
+                      </span>
+                      <span
+                        className={`text-[13px] font-bold leading-tight ${
+                          enabled ? "text-foreground" : "text-muted-foreground line-through"
+                        }`}
+                      >
+                        {opt}
+                      </span>
+                    </div>
+                    {best && (
+                      <div className="mt-1.5 pl-[22px]">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[14px] font-extrabold leading-none text-primary">
+                            {formatBDT(bp)}
+                          </span>
+                          {save > 0 && (
+                            <span className="text-[10px] text-muted-foreground line-through">
+                              {formatBDT(br)}
+                            </span>
+                          )}
+                        </div>
+                        {save > 0 && enabled && (
+                          <p className="mt-1 text-[10px] font-semibold text-emerald-600">
+                            Save {formatBDT(save)}
+                          </p>
+                        )}
+                        {!enabled && (
+                          <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                            Out of stock
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
+/**
+ * Sanitized description HTML. Memoized so re-renders driven by qty/variation
+ * state never ask React to diff a multi-KB `dangerouslySetInnerHTML` subtree.
+ */
+const DescriptionBlock = memo(function DescriptionBlock({ html }: { html: string }) {
+  return (
+    <CollapsibleSection title="Description">
+      <div
+        className="prose prose-sm max-w-none text-[13px] leading-relaxed text-muted-foreground"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </CollapsibleSection>
+  );
+});
+
+/**
+ * Below-the-fold recommendations. Props-free + memoized: the feed renders
+ * dozens of product cards, and it was being re-rendered by every unrelated
+ * state change in the page above it.
+ */
+const RelatedFeed = memo(function RelatedFeed() {
+  return (
+    <div
+      className="mt-4 pb-24"
+      style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
+    >
+      {/* The related feed is optional: a rejected suspense query inside it
+          would otherwise take the whole product page to its errorComponent. */}
+      <SoftBoundary>
+        <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
+          <InfiniteFeed recommended />
+        </Suspense>
+      </SoftBoundary>
     </div>
   );
 });
