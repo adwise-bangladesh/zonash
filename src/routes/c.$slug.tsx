@@ -102,6 +102,7 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CollectionPage() {
   const { slug } = Route.useParams();
+  const { sort = "recommended" } = Route.useSearch();
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
@@ -117,11 +118,14 @@ function CollectionPage() {
           {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
         </div>
 
-        <CategoryProductFeed categoryId={parent?.id ?? null} />
+        <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
+
+        <CategoryProductFeed categoryId={parent?.id ?? null} sort={sort} />
       </main>
     </div>
   );
 }
+
 
 
 function SubcategoryStrip({
