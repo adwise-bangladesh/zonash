@@ -40,6 +40,12 @@ const MAX_CACHE_ENTRIES = 500;
 // every real visitor reads. Partitioning caps the damage: search churn can
 // only evict other search entries.
 const MAX_VOLATILE_ENTRIES = 80;
+// Product-detail lookups (`/products?slug=…`, `/products/<id>/variations`) get
+// their own partition. They are hot (every PDP view) but their key space is as
+// large as the catalogue, so leaving them in the shared map meant a crawler
+// walking product URLs evicted the feed/taxonomy entries that every visitor
+// reads. Sized to hold the realistic hot set of a storefront catalogue.
+const MAX_DETAIL_ENTRIES = 300;
 // Negative cache: an upstream failure is remembered briefly so a WooCommerce
 // outage cannot be amplified into 1 000 origin requests per minute (each of
 // which would also retry). Short enough that recovery is near-instant.
@@ -47,6 +53,7 @@ const ERROR_TTL_MS = 5_000;
 const MAX_ERROR_ENTRIES = 200;
 const getCache = new Map<string, CacheEntry>();
 const volatileCache = new Map<string, CacheEntry>();
+const detailCache = new Map<string, CacheEntry>();
 const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -68,11 +75,16 @@ function isVolatileKey(key: string): boolean {
   return page ? Number(page[1]) > 5 : false;
 }
 
-function cacheFor(key: string): { map: Map<string, CacheEntry>; max: number } {
-  return isVolatileKey(key)
-    ? { map: volatileCache, max: MAX_VOLATILE_ENTRIES }
-    : { map: getCache, max: MAX_CACHE_ENTRIES };
+function isDetailKey(key: string): boolean {
+  return key.includes("slug=") || key.includes("/variations");
 }
+
+function cacheFor(key: string): { map: Map<string, CacheEntry>; max: number } {
+  if (isVolatileKey(key)) return { map: volatileCache, max: MAX_VOLATILE_ENTRIES };
+  if (isDetailKey(key)) return { map: detailCache, max: MAX_DETAIL_ENTRIES };
+  return { map: getCache, max: MAX_CACHE_ENTRIES };
+}
+
 
 
 
