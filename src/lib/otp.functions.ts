@@ -703,14 +703,90 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
 
-    // Log successful submit for future velocity checks (fire-and-forget).
-    void recordOrderSubmit({
-      ip: server.ip ?? "",
-      fingerprint: clientFingerprint,
-      phone,
-      meta: { order_id: created.id, score: assessment.score, signals: assessment.signals },
-    });
+    // Draft-vs-live audit note.
+    try {
+      const { wooFetch } = await import("./woo.server");
+      await wooFetch({
+        path: `/orders/${created.id}/notes`,
+        method: "POST",
+        body: {
+          note: `📥 Order submitted (${data.draft_order_id ? "promoted from checkout-draft" : "new"}). Awaiting OTP verification.`,
+          customer_note: false,
+        },
+      });
+    } catch { /* ignore */ }
 
+    // ---------- Logged-in shortcut: skip OTP ----------
+    // If the customer already has a signed session cookie AND the phone on
+    // this order matches that session, we don't need to re-verify by SMS.
+    // We run the same Hoorin+duplicate verdict inline and let the client
+    // navigate straight to the callback / review page.
+    try {
+      const { readCustomerSession } = await import("./customer-token.server");
+      const session = await readCustomerSession();
+      if (session?.phone && session.phone === phone) {
+        const clientGps = (data.tracking as { gps?: { lat?: number; lng?: number } } | undefined)?.gps;
+        const verdict = await runVerificationDecision({
+          order_id: created.id,
+          phone,
+          fingerprint: clientFingerprint,
+          gps:
+            clientGps && typeof clientGps.lat === "number" && typeof clientGps.lng === "number"
+              ? { lat: clientGps.lat, lng: clientGps.lng }
+              : null,
+        });
+
+        try {
+          const { wooFetch } = await import("./woo.server");
+          await wooFetch({
+            path: `/orders/${created.id}`,
+            method: "PUT",
+            body: {
+              meta_data: [
+                { key: "_zonash_otp_state", value: "skipped_session" },
+                { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+                { key: "_zonash_decision", value: verdict.decision },
+                { key: "_zonash_decision_reason", value: verdict.decisionReason },
+                { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
+                { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+                { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
+              ],
+            },
+            timeoutMs: 12_000,
+          });
+          await wooFetch({
+            path: `/orders/${created.id}/notes`,
+            method: "POST",
+            body: {
+              note:
+                `🔓 OTP skipped (trusted session). Decision: ${verdict.decision.toUpperCase()}.\n` +
+                (verdict.decisionReason ? `Reason: ${verdict.decisionReason}\n` : "") +
+                (verdict.duplicates.length
+                  ? `Duplicates: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}`
+                  : ""),
+              customer_note: false,
+            },
+          });
+        } catch (e) {
+          console.error("skip-OTP meta write failed", e);
+        }
+
+        return {
+          ok: true,
+          order_id: created.id,
+          order_number: created.number,
+          total: created.total,
+          phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
+          sms_ok: false,
+          skip_otp: true,
+          decision: verdict.decision,
+          reason: verdict.decisionReason,
+          duplicates: verdict.duplicates,
+        };
+      }
+    } catch (e) {
+      console.error("session lookup failed — falling back to OTP", e);
+    }
 
 
     // 2) Persist OTP in Supabase.
@@ -740,11 +816,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       if (error) console.error("order_otps upsert error", error);
     } catch (e) {
       console.error("order_otps write failed", e);
-      // Non-fatal: order exists in Woo, admins can still process manually.
     }
 
-    // 3) Send SMS (fail-open — don't block customer, they can resend).
-    //    Enforce a per-phone 24h SMS cap first to protect BDBulkSMS spend.
     let smsOk = false;
     const smsSentSoFar = await smsSendsLast24h(phone);
     if (smsSentSoFar >= SMS_MAX_PER_PHONE_24H) {
@@ -763,9 +836,6 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       }
     }
 
-    // 4) Record coupon redemption (best-effort) — enforces max_uses /
-    //    max_per_phone on subsequent attempts. Unique (coupon_code, wc_order_id)
-    //    makes this idempotent under retry.
     if (validCoupon && validDiscount > 0) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -780,8 +850,6 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       }
     }
 
-
-
     return {
       ok: true,
       order_id: created.id,
@@ -791,6 +859,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       sms_ok: smsOk,
     };
     };
+
 
     const promise = run();
     idempStore.set(idempKey, { promise, expiresAt: Date.now() + IDEMP_TTL_MS });
