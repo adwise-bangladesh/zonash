@@ -270,12 +270,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Whole-bag reconciliation in one commit. Returns true when at least one
+   * line actually moved, so the caller can show its "prices updated" notice
+   * without re-scanning the bag.
+   */
+  const changedRef = useRef(false);
+  const repriceMany = useCallback<CartActions["repriceMany"]>((entries) => {
+    if (entries.length === 0) return false;
+    const byKey = new Map<string, { price: number; regular?: number }>();
+    for (const e of entries) {
+      const p = num(e.price);
+      if (p <= 0) continue;
+      const r = num(e.regularPrice);
+      byKey.set(e.key, { price: p, regular: r > p ? r : undefined });
+    }
+    if (byKey.size === 0) return false;
+    changedRef.current = false;
+    setItems((cur) => {
+      let changed = false;
+      const next = cur.map((i) => {
+        const hit = byKey.get(itemKey(i));
+        if (!hit) return i;
+        if (i.price === hit.price && i.regularPrice === hit.regular) return i;
+        changed = true;
+        return { ...i, price: hit.price, regularPrice: hit.regular };
+      });
+      if (!changed) return cur;
+      changedRef.current = true;
+      return next;
+    });
+    return changedRef.current;
+  }, []);
+
   const clear = useCallback<CartActions["clear"]>(() => setItems([]), []);
 
   const actions = useMemo<CartActions>(
-    () => ({ add, remove, setQty, repriceLine, clear }),
-    [add, remove, setQty, repriceLine, clear],
+    () => ({ add, remove, setQty, repriceLine, repriceMany, clear }),
+    [add, remove, setQty, repriceLine, repriceMany, clear],
   );
+
 
   const state = useMemo<CartState>(
     () => ({
