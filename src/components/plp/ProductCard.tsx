@@ -80,7 +80,7 @@ export function ProductCard({ p }: { p: WooProduct }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2.5 sm:p-3">
-        <p className="line-clamp-2 min-h-[2.4rem] text-[12px] font-medium leading-snug text-foreground sm:text-sm">
+        <p className="line-clamp-2 h-[32px] overflow-hidden text-[12px] font-medium leading-[16px] text-foreground">
           {p.name}
         </p>
         <div className="mt-auto flex items-baseline gap-2">
