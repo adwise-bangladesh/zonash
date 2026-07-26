@@ -1250,7 +1250,7 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
           path: `/orders/${data.order_id}/notes`,
           method: "POST",
           body: {
-            note: "📞 Customer requested a confirmation call. Order kept as pending — please call to confirm before dispatch.",
+            note: "Customer requested a confirmation call. Order retained as pending; please contact the customer before dispatch.",
             customer_note: false,
           },
         });
