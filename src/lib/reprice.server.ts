@@ -203,14 +203,19 @@ const UNKNOWN: Cached["value"] = {
   gone: false,
 };
 
-async function fetchOne(l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
+/** A fetch outcome that also says whether upstream was actually reached. */
+type Outcome = { value: Cached["value"]; shed: boolean };
+
+async function fetchOne(l: RepriceLineInput, priority = false): Promise<Outcome> {
   try {
     await acquire(priority);
   } catch {
     // Load shed: never queue past the admission limit. The caller keeps its
-    // own snapshot, exactly like an upstream blip.
-    return UNKNOWN;
+    // own snapshot, exactly like an upstream blip. Flagged as `shed` so it is
+    // neither negative-cached nor handed to a trusted caller as a real answer.
+    return { value: UNKNOWN, shed: true };
   }
+
 
   try {
     return await fetchOneInner(l);
