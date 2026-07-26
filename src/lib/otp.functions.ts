@@ -807,30 +807,16 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
     });
     const { decision, decisionReason, duplicates, hoorinReport } = verdict;
 
-    let decision: "confirmed" | "review" = "confirmed";
-    let decisionReason = "";
-    if (ratingBlock) {
-      decision = "review";
-      decisionReason = ratingReason;
-    } else if (duplicates.length > 0) {
-      decision = "review";
-      decisionReason = `Duplicate signals against ${duplicates.length} active order(s): ${duplicates
-        .map((d) => `#${d.number} (${d.match.join("+")})`)
-        .join(", ")}`;
-    }
-
-    // Persist decision meta on Woo. Duplicates / low-rating orders stay in
-    // `pending` (flagged via _zonash_decision meta for admin review) instead
-    // of being moved to `on-hold`. Confirmed orders also remain `pending`
-    // until the customer picks a call preference in `finalizeOrderChoice`.
-    const wantedStatus = "pending";
-    let appliedStatus = wantedStatus;
+    // Apply verdict + audit note to Woo. Confirmed orders stay `pending` until
+    // the customer picks a callback preference in `finalizeOrderChoice`.
+    const { wooFetch } = await import("./woo.server");
+    const appliedStatus = "pending";
     try {
       await wooFetch({
         path: `/orders/${data.order_id}`,
         method: "PUT",
         body: {
-          status: wantedStatus,
+          status: appliedStatus,
           meta_data: [
             { key: "_zonash_otp_state", value: "verified" },
             { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
@@ -844,12 +830,9 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         timeoutMs: 12_000,
       });
     } catch (e) {
-      console.error(`Woo PUT ${wantedStatus} failed — falling back`, e);
-      appliedStatus = "pending";
+      console.error("Woo PUT pending failed", e);
     }
 
-
-    // Private note audit trail.
     try {
       await wooFetch({
         path: `/orders/${data.order_id}/notes`,
@@ -859,7 +842,7 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
             `✅ OTP verified. Decision: ${decision.toUpperCase()} (status → ${appliedStatus}).\n` +
             (decisionReason ? `Reason: ${decisionReason}\n` : "") +
             (duplicates.length
-              ? `Duplicates: ${duplicates.map((d) => `#${d.number} [${d.match.join(",")}]`).join(", ")}`
+              ? `Duplicates: ${duplicates.map((d) => `#${d.number}`).join(", ")}`
               : ""),
           customer_note: false,
         },
@@ -867,6 +850,7 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
     } catch {
       /* ignore */
     }
+
 
     await supabaseAdmin
       .from("order_otps" as never)
