@@ -1129,9 +1129,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
           className="mt-4 pb-24"
           style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
         >
-          <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-            <InfiniteFeed recommended />
-          </Suspense>
+          {/* The related feed is optional: a rejected suspense query inside it
+              would otherwise take the whole product page to its errorComponent. */}
+          <SoftBoundary>
+            <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
+              <InfiniteFeed recommended />
+            </Suspense>
+          </SoftBoundary>
         </div>
       </div>
 
@@ -1143,17 +1147,23 @@ function ProductDetail({ p }: { p: WooProduct }) {
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
             <button
-              aria-label="Decrease"
+              type="button"
+              aria-label="Decrease quantity"
+              disabled={qty <= 1}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95"
+              className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95 disabled:opacity-40"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+            <span aria-live="polite" className="w-8 text-center text-sm font-semibold">
+              {qty}
+            </span>
             <button
-              aria-label="Increase"
+              type="button"
+              aria-label="Increase quantity"
+              disabled={qty >= 99}
               onClick={() => setQty((q) => Math.min(99, q + 1))}
-              className="grid h-10 w-9 place-items-center text-primary active:scale-95"
+              className="grid h-10 w-9 place-items-center text-primary active:scale-95 disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -1161,15 +1171,17 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!inStock}
+            disabled={!inStock || busy}
+            aria-busy={busy}
             className="h-10 flex-1 rounded-[3px] border border-primary bg-background text-[13px] font-bold uppercase tracking-wide text-primary disabled:opacity-40"
           >
             Add to cart
           </button>
           <button
             type="button"
-            onClick={handleBuyNow}
-            disabled={!inStock}
+            onClick={() => void handleBuyNow()}
+            disabled={!inStock || busy}
+            aria-busy={busy}
             className="h-10 flex-1 rounded-[3px] bg-primary text-[13px] font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] disabled:opacity-40"
           >
             Buy now
