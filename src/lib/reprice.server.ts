@@ -10,9 +10,15 @@ export type RepriceLineResult = {
   regularPrice: number | null;
   /** false = purchasable stock ran out. */
   inStock: boolean;
+  /**
+   * Remaining purchasable units when the store manages stock for this line.
+   * null = untracked (backorder / unmanaged) or unknown.
+   */
+  stockQty: number | null;
   /** true = product/variation no longer exists or is not published. */
   gone: boolean;
 };
+
 
 type Cached = { at: number; value: Omit<RepriceLineResult, "productId" | "variationId"> };
 
