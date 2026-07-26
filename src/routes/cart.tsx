@@ -9,6 +9,10 @@ import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
+/** Max ids the reprice server function accepts per call. */
+const REPRICE_CHUNK = 50;
+type RepricedLine = Awaited<ReturnType<typeof repriceCartLines>>["lines"][number];
+
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
@@ -261,25 +265,40 @@ function CartPage() {
   // customer reorders or when quantities change, so tapping "+" no longer
   // risks a fresh server round-trip.
   const repriceKeys = useMemo(
-    () => Array.from(new Set(items.map(itemKey))).sort().slice(0, 50),
+    () => Array.from(new Set(items.map(itemKey))).sort(),
     [items],
   );
   const lineIds = repriceKeys.join(",");
   const { data: repriced } = useQuery({
     queryKey: ["cart-reprice", lineIds],
-    queryFn: () =>
-      repriceFn({
-        data: {
-          lines: repriceKeys.map((k) => {
-            const [p, v] = k.split(":");
-            const variationId = Number(v);
-            return {
-              productId: Number(p),
-              variationId: variationId > 0 ? variationId : undefined,
-            };
-          }),
-        },
-      }),
+    queryFn: async () => {
+      // The server function accepts 50 ids per call while the bag holds up to
+      // MAX_LINES. Sending only the first 50 left every line past that
+      // unchecked, so an out-of-stock or deleted item in a large bag walked
+      // straight past the checkout gate. Cover the whole bag in chunks; the
+      // server memo + single-flight make repeat chunks nearly free.
+      const chunks: string[][] = [];
+      for (let i = 0; i < repriceKeys.length; i += REPRICE_CHUNK) {
+        chunks.push(repriceKeys.slice(i, i + REPRICE_CHUNK));
+      }
+      const lines: RepricedLine[] = [];
+      for (const chunk of chunks) {
+        const res = await repriceFn({
+          data: {
+            lines: chunk.map((k) => {
+              const [p, v] = k.split(":");
+              const variationId = Number(v);
+              return {
+                productId: Number(p),
+                variationId: variationId > 0 ? variationId : undefined,
+              };
+            }),
+          },
+        });
+        lines.push(...res.lines);
+      }
+      return { lines };
+    },
     enabled: hydrated && repriceKeys.length > 0,
     staleTime: 60_000,
     // A bag left open in a background tab goes stale; re-check availability
@@ -288,6 +307,7 @@ function CartPage() {
     refetchOnWindowFocus: true,
     retry: 0,
   });
+
 
   const [priceChanged, setPriceChanged] = useState(false);
   // Reconcile in one pass and one state commit. The previous version did an
