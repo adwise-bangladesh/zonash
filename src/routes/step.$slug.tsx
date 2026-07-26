@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import {
   ArrowRight,
@@ -248,9 +248,10 @@ function StepLandingPage() {
   // Selected variation: bestseller by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
   useEffect(() => {
-    if (!isVariable || variations.length === 0 || selectedVarId) return;
+    if (!isVariable || variations.length === 0 || selectedVarId != null) return;
     setSelectedVarId(bestDealId ?? variations[0]?.id ?? null);
   }, [isVariable, variations, bestDealId, selectedVarId]);
+
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
@@ -292,68 +293,11 @@ function StepLandingPage() {
     return list;
   }, [product, selectedVar]);
 
-  const [activeImg, setActiveImg] = useState(0);
-  // Time window during which incoming scroll events belong to a programmatic
-  // (auto-slide) smooth-scroll and must NOT pause autoplay. A boolean flag
-  // fails because smooth-scroll fires many scroll events; the flag would flip
-  // after event #1 and subsequent events (still from the same animation)
-  // would be misread as user scrolls and kill autoplay after one tick.
-  const programmaticUntil = useRef(0);
-  const [paused, setPaused] = useState(false);
-  const galleryRef = useRef<HTMLDivElement>(null);
-  const galleryVisible = useOnScreen(galleryRef, "100px");
-  // When the variation changes and a new image is prepended, reset both the
-  // dot state AND the actual scroll position so they don't drift apart.
-  useEffect(() => {
-    setActiveImg(0);
-    const el = galleryRef.current;
-    if (el) {
-      programmaticUntil.current = performance.now() + 700;
-      el.scrollTo({ left: 0, behavior: "auto" });
-    }
-  }, [selectedVarId]);
-  // Auto-slide (paused after user interaction OR when off-screen)
-  useEffect(() => {
-    if (paused || gallery.length <= 1 || !galleryVisible) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const el = galleryRef.current;
-      if (!el) return;
-      setActiveImg((i) => {
-        const next = (i + 1) % gallery.length;
-        // Actually scroll the container — without this the visible image
-        // never advanced; only the dots did. Reserve ~800ms of scroll events
-        // as "programmatic" so the smooth-scroll animation doesn't get
-        // misidentified as a user gesture and stop autoplay after one tick.
-        programmaticUntil.current = performance.now() + 800;
-        el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-        return next;
-      });
-    }, 3500);
-    return () => clearInterval(t);
-  }, [paused, gallery.length, galleryVisible]);
-  // rAF-coalesced scroll handler. Native scroll fires up to ~60 events/s;
-  // without throttling we'd run Math.round + a potential React commit on
-  // each. Coalescing to one update per animation frame collapses that to at
-  // most ~1 setState per frame and keeps the main thread free for the
-  // snap-scroll animation itself.
-  const scrollRaf = useRef(0);
-  const onGalleryScroll = useCallback(() => {
-    if (scrollRaf.current) return;
-    scrollRaf.current = requestAnimationFrame(() => {
-      scrollRaf.current = 0;
-      const el = galleryRef.current;
-      if (!el || el.clientWidth === 0) return;
-      const idx = Math.round(el.scrollLeft / el.clientWidth);
-      setActiveImg((cur) => (cur === idx ? cur : idx));
-      // Inside the programmatic scroll window → don't pause autoplay.
-      if (performance.now() < programmaticUntil.current) return;
-      setPaused((p) => (p ? p : true));
-    });
-  }, []);
-  useEffect(() => () => {
-    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
-  }, []);
+  // Gallery state (activeImg / paused / timers / rAF) lives inside the
+  // memoized <Gallery> subcomponent below, so autoplay ticks don't
+  // re-render this ~1000-line tree every 3.5s.
+
+
 
 
 
@@ -397,12 +341,29 @@ function StepLandingPage() {
     } catch { /* ignore */ }
     router.preloadRoute({ to: "/verify-otp", search: { order: 1 } }).catch(() => {});
   }, [router]);
+  // Persist the draft. Debounce keystrokes at 250ms AND flush the latest
+  // value on unmount / tab hide — otherwise a keystroke within 250ms of
+  // navigation is silently lost when the cleanup clears the pending timer.
+  const formRef = useRef(form);
+  formRef.current = form;
   useEffect(() => {
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
     }, 250);
     return () => clearTimeout(t);
   }, [form]);
+  useEffect(() => {
+    const flush = () => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(formRef.current)); } catch { /* ignore */ }
+    };
+    const onVis = () => { if (document.hidden) flush(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      flush();
+    };
+  }, []);
+
 
   // Autofill from last order
   const policeFn = useServerFn(getPublicPoliceStations);
@@ -460,6 +421,19 @@ function StepLandingPage() {
   const subtotal = effectivePrice;
   const total = subtotal + shipping;
   const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
+
+  // Memoize the WhatsApp deep link. The template literal + encodeURIComponent
+  // over ~200 chars runs on every parent render otherwise; at scale that's
+  // significant JS work for a link most users won't click.
+  const waHref = useMemo(() => {
+    const opts = selectedVar
+      ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}`
+      : "";
+    const link = product.permalink ? `\n\nLink: ${product.permalink}` : "";
+    const text = `Hi Zonash, I'd like to order:\n\n${product.name}${opts}\nPrice: ${formatBDT(effectivePrice)}${link}`;
+    return `https://wa.me/8801926644575?text=${encodeURIComponent(text)}`;
+  }, [product.name, product.permalink, selectedVar, effectivePrice]);
+
 
   const orderRef = useRef<HTMLDivElement>(null);
   const scrollToOrder = () => {
@@ -565,47 +539,10 @@ function StepLandingPage() {
         Cash on Delivery · All over Bangladesh
       </div>
 
-      {/* Hero image gallery */}
-      <section className="relative">
-        <div
-          ref={galleryRef}
-          onScroll={onGalleryScroll}
-          onPointerDown={() => setPaused((p) => (p ? p : true))}
+      {/* Hero image gallery — isolated component so autoplay ticks don't
+          re-render this whole page tree every 3.5s. */}
+      <Gallery images={gallery} resetKey={selectedVarId ?? 0} />
 
-          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Product images"
-        >
-          {gallery.length === 0 ? (
-            <div className="aspect-square w-full shrink-0 bg-muted" />
-          ) : (
-            gallery.map((img, i) => (
-              <div key={img.src + i} className="relative aspect-square w-full shrink-0 snap-start bg-muted">
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  className="h-full w-full object-cover"
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  fetchPriority={i === 0 ? "high" : "auto"}
-                />
-              </div>
-            ))
-          )}
-        </div>
-        {/* Dots */}
-        {gallery.length > 1 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-            {gallery.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Title + price */}
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
@@ -1051,9 +988,8 @@ function StepLandingPage() {
             </svg>
           </a>
           <a
-            href={`https://wa.me/8801926644575?text=${encodeURIComponent(
-              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}${product.permalink ? `\n\nLink: ${product.permalink}` : ""}`,
-            )}`}
+            href={waHref}
+
 
             target="_blank"
             rel="noopener noreferrer"
@@ -1110,7 +1046,115 @@ function StepLandingPage() {
   );
 }
 
+// ---------- Gallery (isolated so autoplay ticks don't re-render parent) ----------
+
+type GalleryImage = { src: string; alt: string };
+const Gallery = memo(function Gallery({
+  images,
+  resetKey,
+}: {
+  images: GalleryImage[];
+  resetKey: number;
+}) {
+  const [activeImg, setActiveImg] = useState(0);
+  const [paused, setPaused] = useState(false);
+  // Programmatic-scroll window: smooth-scroll fires many scroll events; a
+  // time window (instead of a boolean flag) prevents autoplay from
+  // self-pausing on event #2 of its own animation.
+  const programmaticUntil = useRef(0);
+  const scrollRaf = useRef(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const visible = useOnScreen(ref, "100px");
+
+  // Reset when the variation image set changes.
+  useEffect(() => {
+    setActiveImg(0);
+    const el = ref.current;
+    if (el) {
+      programmaticUntil.current = performance.now() + 700;
+      el.scrollTo({ left: 0, behavior: "auto" });
+    }
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (paused || images.length <= 1 || !visible) return;
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      const el = ref.current;
+      if (!el) return;
+      setActiveImg((i) => {
+        const next = (i + 1) % images.length;
+        programmaticUntil.current = performance.now() + 800;
+        el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+        return next;
+      });
+    }, 3500);
+    return () => clearInterval(t);
+  }, [paused, images.length, visible]);
+
+  const onScroll = useCallback(() => {
+    if (scrollRaf.current) return;
+    scrollRaf.current = requestAnimationFrame(() => {
+      scrollRaf.current = 0;
+      const el = ref.current;
+      if (!el || el.clientWidth === 0) return;
+      const idx = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((cur) => (cur === idx ? cur : idx));
+      if (performance.now() < programmaticUntil.current) return;
+      setPaused((p) => (p ? p : true));
+    });
+  }, []);
+  useEffect(() => () => {
+    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
+  }, []);
+  const onPointerDown = useCallback(() => {
+    setPaused((p) => (p ? p : true));
+  }, []);
+
+  return (
+    <section className="relative">
+      <div
+        ref={ref}
+        onScroll={onScroll}
+        onPointerDown={onPointerDown}
+        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Product images"
+      >
+        {images.length === 0 ? (
+          <div className="aspect-square w-full shrink-0 bg-muted" />
+        ) : (
+          images.map((img, i) => (
+            <div key={img.src + i} className="relative aspect-square w-full shrink-0 snap-start bg-muted">
+              <img
+                src={img.src}
+                alt={img.alt}
+                className="h-full w-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={i === 0 ? "high" : "auto"}
+              />
+            </div>
+          ))
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
+          {images.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${
+                i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+});
+
 // ---------- helpers ----------
+
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
