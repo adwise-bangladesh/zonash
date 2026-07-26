@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
 import { repriceCartLines } from "@/lib/woo.functions";
+import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
@@ -251,10 +252,43 @@ const CartRow = memo(function CartRow({
 
 function CartPage() {
   const { items, subtotal, setQty, remove, repriceMany, hydrated } = useCart();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const policeFn = useServerFn(getPublicPoliceStations);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Warm the checkout screen while the customer is still reading their bag.
+  // `preload="intent"` only fires on hover/touchstart — on a phone that is the
+  // tap itself, so the route chunk download lands *inside* the navigation and
+  // the transition stutters. Fetching the chunk and the thana list up front
+  // makes the tap render instantly, like a native push.
+  const hasItems = hydrated && items.length > 0;
+  useEffect(() => {
+    if (!hasItems) return;
+    const idle =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (cb: () => void) => window.setTimeout(cb, 200);
+    const id = idle(() => {
+      router.preloadRoute({ to: "/checkout" }).catch(() => {});
+      queryClient
+        .prefetchQuery({
+          queryKey: ["checkout", "police-stations"],
+          queryFn: () => policeFn(),
+          staleTime: 24 * 60 * 60_000,
+        })
+        .catch(() => {});
+    });
+    return () => {
+      if (typeof window.cancelIdleCallback === "function" && typeof id === "number") {
+        window.cancelIdleCallback(id);
+      }
+    };
+  }, [hasItems, router, queryClient, policeFn]);
+
 
   // `setQty` already clamps to [0, MAX_QTY] and drops the line at 0, so the
   // page keeps no clamping rules of its own.
@@ -541,7 +575,8 @@ function CartPage() {
             <Link
               to="/checkout"
               preload="intent"
-              className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
+              viewTransition
+              className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-transform duration-150 active:scale-[0.97]"
             >
               <span
                 aria-hidden="true"

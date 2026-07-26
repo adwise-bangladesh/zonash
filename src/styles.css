@@ -298,10 +298,23 @@
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     mix-blend-mode: normal;
   }
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 220ms;
+  /* Page-level push: the outgoing screen fades and settles back slightly
+   * while the incoming one slides in from the right. Short and eased so it
+   * reads like a native stack push rather than a web page repaint. */
+  ::view-transition-old(root) {
+    animation: navPushOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
   }
+  ::view-transition-new(root) {
+    animation: navPushIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes navPushOut {
+  to { opacity: 0; transform: translate3d(-3%, 0, 0); }
+}
+@keyframes navPushIn {
+  from { opacity: 0; transform: translate3d(6%, 0, 0); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Bangla text uses Tiro Bangla. `:lang(bn)` catches elements explicitly
