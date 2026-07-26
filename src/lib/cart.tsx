@@ -96,7 +96,7 @@ function sanitize(raw: unknown): CartItem[] {
       image: typeof o.image === "string" ? o.image : undefined,
       quantity,
     });
-    if (out.length >= 200) break;
+    if (out.length >= MAX_LINES) break;
   }
   return out;
 }
