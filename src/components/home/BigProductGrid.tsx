@@ -83,7 +83,10 @@ const BigCard = memo(function BigCard({
             <Truck className="h-2.5 w-2.5" aria-hidden="true" /> Slower delivery
           </span>
         )}
-        <p className="line-clamp-2 min-h-[2.4rem] text-[13px] font-medium leading-snug text-ink">
+        {/* Fixed two-line box. Bengali glyphs are taller than Latin, so a
+            `min-h` + line-clamp box leaked a sliver of the third line; an exact
+            height (2 x line-height) with overflow hidden crops cleanly. */}
+        <p className="line-clamp-2 h-[34px] overflow-hidden text-[13px] font-medium leading-[17px] text-ink">
           {p.name}
         </p>
         {(rating > 0 || soldish > 0) && (
