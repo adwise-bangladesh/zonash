@@ -284,21 +284,50 @@ export const getProductBySlug = createServerFn({ method: "GET" })
     }
   });
 
+/**
+ * Fields the product page actually reads off a variation. Woo's default
+ * variation payload ships ~30 unused keys per row (dates, downloads, tax,
+ * shipping class, `_links`, permalink, meta_data) — ~1.8 KB per variation.
+ * At 100 variations that is ~180 KB fetched, parsed, cached in the isolate,
+ * AND dehydrated into the SSR HTML of every single visitor.
+ */
+const VARIATION_FIELDS =
+  "id,sku,price,regular_price,sale_price,stock_status,image,attributes,menu_order";
+
 export const getProductVariations = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ productId: z.number().int().positive() }).parse(raw))
   .handler(async ({ data }) => {
     try {
-      const variations = await (await import("./woo.server")).wooFetch<WooVariation[]>({
+      const raw = await (await import("./woo.server")).wooFetch<WooVariation[]>({
         path: `/products/${data.productId}/variations`,
-        query: { per_page: 100 },
+        // `status: publish` keeps draft/private variations out of the option
+        // grid — they were previously rendered as selectable, unbuyable rows.
+        query: { per_page: 100, status: "publish", _fields: VARIATION_FIELDS },
         timeoutMs: 10000,
       });
+      // Second trim: Woo returns the full attachment object for `image`
+      // (dates, name, id). Only `src`/`alt` are rendered, and this array is
+      // serialized into the SSR HTML, so drop the rest before it leaves here.
+      const variations: WooVariation[] = (Array.isArray(raw) ? raw : []).map((v) => ({
+        id: v.id,
+        sku: v.sku,
+        price: v.price,
+        regular_price: v.regular_price,
+        sale_price: v.sale_price,
+        stock_status: v.stock_status,
+        menu_order: v.menu_order,
+        attributes: Array.isArray(v.attributes)
+          ? v.attributes.map((a) => ({ id: a.id, name: a.name, option: a.option }))
+          : [],
+        ...(v.image?.src ? { image: { id: 0, src: v.image.src, alt: v.image.alt ?? "" } } : {}),
+      }));
       return { variations, error: null as string | null };
     } catch (e) {
       console.error("getProductVariations failed", e);
       return { variations: [] as WooVariation[], error: "Variations unavailable." };
     }
   });
+
 
 /**
  * Server-authoritative re-pricing for bag lines.
