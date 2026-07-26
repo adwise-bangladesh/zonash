@@ -953,15 +953,15 @@ function StepLandingPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Lock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>Cash on Delivery · No online payment</span>
+                      <span>Cash on Delivery — no advance payment</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Undo2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>Instant return if product is damaged</span>
+                      <span>Instant return if the product is damaged</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>100% authentic · Quality checked before ship</span>
+                      <span>100% authentic · Quality checked before shipping</span>
                     </li>
                   </ul>
                 </div>
