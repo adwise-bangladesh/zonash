@@ -37,6 +37,17 @@ export function SupportFooter({
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => {
+            e.preventDefault();
+            const w = window.open(waHref, "_blank", "noopener,noreferrer");
+            if (!w) {
+              try {
+                window.top!.location.href = waHref;
+              } catch {
+                window.location.href = waHref;
+              }
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3.5 py-1.5 text-[12px] font-medium text-foreground/85 transition-colors hover:border-[#25D366]/60 hover:text-[#128C7E]"
           aria-label="Chat on WhatsApp"
         >
