@@ -293,7 +293,17 @@ function StepLandingPage() {
   }, [product, selectedVar]);
 
   const [activeImg, setActiveImg] = useState(0);
-  useEffect(() => { setActiveImg(0); }, [selectedVarId]);
+  const programmaticScroll = useRef(false);
+  // When the variation changes and a new image is prepended, reset both the
+  // dot state AND the actual scroll position so they don't drift apart.
+  useEffect(() => {
+    setActiveImg(0);
+    const el = galleryRef.current;
+    if (el) {
+      programmaticScroll.current = true;
+      el.scrollTo({ left: 0, behavior: "auto" });
+    }
+  }, [selectedVarId]);
   // Auto-slide (paused after user interaction OR when off-screen)
   const [paused, setPaused] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -302,7 +312,16 @@ function StepLandingPage() {
     if (paused || gallery.length <= 1 || !galleryVisible) return;
     const t = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
-      setActiveImg((i) => (i + 1) % gallery.length);
+      const el = galleryRef.current;
+      if (!el) return;
+      setActiveImg((i) => {
+        const next = (i + 1) % gallery.length;
+        // Actually scroll the container — without this the visible image
+        // never advanced; only the dots did.
+        programmaticScroll.current = true;
+        el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+        return next;
+      });
     }, 3500);
     return () => clearInterval(t);
   }, [paused, gallery.length, galleryVisible]);
@@ -311,6 +330,12 @@ function StepLandingPage() {
     if (!el) return;
     const idx = Math.round(el.scrollLeft / el.clientWidth);
     if (idx !== activeImg) setActiveImg(idx);
+    // Only user-initiated scrolls should pause autoplay. Programmatic scrolls
+    // triggered by the interval itself would otherwise stop autoplay on tick #1.
+    if (programmaticScroll.current) {
+      programmaticScroll.current = false;
+      return;
+    }
     setPaused(true);
   };
 
