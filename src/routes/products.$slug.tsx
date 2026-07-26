@@ -1329,7 +1329,7 @@ const Gallery = memo(function Gallery({
    * callback, before the browser snapshots the new state.
    */
   const heroRef = useRef<HTMLImageElement>(null);
-  useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     const el = heroRef.current;
     if (!el || document.documentElement.dataset.nav !== "hero") return;
     el.style.viewTransitionName = "product-hero";
