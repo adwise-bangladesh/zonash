@@ -378,6 +378,74 @@ function StepLandingPage() {
   }, []);
 
 
+  // Save an abandoned-checkout DRAFT to WooCommerce once the user has typed
+  // a valid name + phone + address, even without clicking Confirm. Debounced
+  // 1.5s after the last keystroke; also runs on tab hide so partial checkouts
+  // are captured on bounce. Skips when a request is already in flight or the
+  // signature hasn't changed.
+  useEffect(() => {
+    if (submitting) return;
+    const name = form.name.trim();
+    const phone = normalizeBdPhone(form.phone);
+    const address = form.address.trim();
+    const thana = form.thana.trim();
+    if (
+      !name ||
+      name.length < 2 ||
+      !/^01[3-9]\d{8}$/.test(phone) ||
+      address.length < 5
+    ) {
+      return;
+    }
+    if (isVariable && !selectedVar) return;
+    const sig = `${name}|${phone}|${address}|${thana}|${selectedVar?.id ?? 0}`;
+    if (sig === lastDraftSigRef.current) return;
+    let cancelled = false;
+    const run = async () => {
+      if (draftInFlightRef.current) return;
+      draftInFlightRef.current = true;
+      try {
+        const tracking = await collectTracking({ name, phone, email: form.email || undefined });
+        const { first, last } = splitName(name);
+        const res = await draftFn({
+          data: {
+            draft_order_id: draftIdRef.current ?? undefined,
+            items: [{ product_id: product.id, variation_id: selectedVar?.id, quantity: 1 }],
+            billing: {
+              first_name: first,
+              last_name: last || "",
+              email: form.email || "",
+              phone,
+              address_1: address,
+              address_2: "",
+              city: thana || "",
+              country: "BD",
+            },
+            customer_note: `Landing: ${slug}`,
+            tracking,
+          },
+        });
+        if (!cancelled && res.ok) {
+          draftIdRef.current = res.draft_order_id;
+          lastDraftSigRef.current = sig;
+        }
+      } catch { /* silent — draft is best-effort */ }
+      finally { draftInFlightRef.current = false; }
+    };
+    const t = setTimeout(run, 1500);
+    const onHide = () => { if (document.hidden) void run(); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [form.name, form.phone, form.address, form.thana, form.email, selectedVar, isVariable, product.id, slug, submitting, draftFn]);
+
+
+
+
+
   // Autofill from last order
   const policeFn = useServerFn(getPublicPoliceStations);
   const policeQ = useQuery({
