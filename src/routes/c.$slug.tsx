@@ -98,6 +98,9 @@ function CollectionPage() {
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
+  // Leaf categories have no children; showing their siblings keeps the browse
+  // strip (and a way out) on screen even when the shelf is empty.
+  const strip = subs.length > 0 ? subs : (data.siblings ?? []);
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
@@ -107,8 +110,15 @@ function CollectionPage() {
             title bar, so it is screen-reader/crawler only. */}
         <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
         <div className="bg-background pt-2">
-          {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
+          {strip.length > 0 && (
+            <SubcategoryStrip
+              parentSlug={slug}
+              subs={strip}
+              label={subs.length > 0 ? "Subcategories" : "Related categories"}
+            />
+          )}
         </div>
+
 
         <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
 
