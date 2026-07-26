@@ -592,31 +592,71 @@ function ProductDetail({ p }: { p: WooProduct }) {
   };
   const readyToBuy =
     inStock &&
+    priceNum > 0 &&
     (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
-  const handleAdd = () => {
+
+  // Two taps on "Buy now" before the route transition paints used to push two
+  // identical lines into the cart. A ref gates synchronously (state updates are
+  // async) and the state drives the disabled/aria-busy UI.
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const handleAdd = useCallback(() => {
+    if (busyRef.current) return;
     if (!readyToBuy) {
-      toast.error("Please select all options");
+      toast.error(inStock ? "Please select all options" : "This item is sold out");
       return;
     }
-    addLine();
-    toast.success("Added to cart");
-  };
-  const handleBuyNow = () => {
-    if (!readyToBuy) {
-      toast.error("Please select all options");
-      return;
-    }
-    addLine();
-    navigate({ to: "/checkout" });
-  };
-  const handleShare = async () => {
+    busyRef.current = true;
+    setBusy(true);
     try {
-      if (navigator.share) await navigator.share({ title: p.name, url: window.location.href });
-      else await navigator.clipboard.writeText(window.location.href);
+      addLine();
+      toast.success("Added to cart");
     } catch {
-      /* ignore */
+      toast.error("Couldn't add to cart. Please try again.");
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
-  };
+    // addLine closes over the current selection; recreating it per render is
+    // intentional and cheap — the guard is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyToBuy, inStock, addLine]);
+
+  const handleBuyNow = useCallback(async () => {
+    if (busyRef.current) return;
+    if (!readyToBuy) {
+      toast.error(inStock ? "Please select all options" : "This item is sold out");
+      return;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      addLine();
+      await navigate({ to: "/checkout" });
+    } catch {
+      toast.error("Couldn't open checkout. Please try again.");
+    } finally {
+      // Navigation unmounts this tree on success; the guard release only
+      // matters for the failure path, and setBusy on an unmounted component is
+      // a no-op in React 19.
+      busyRef.current = false;
+      setBusy(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyToBuy, inStock, addLine, navigate]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      const url = window.location.href;
+      if (navigator.share) await navigator.share({ title: p.name, url });
+      else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied");
+      }
+    } catch {
+      /* user dismissed the share sheet, or clipboard is blocked */
+    }
+  }, [p.name]);
 
   const detailsText = useMemo(() => {
     const url = typeof window !== "undefined" ? window.location.href : "";
