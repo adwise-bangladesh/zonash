@@ -456,12 +456,16 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     return list;
   }, [q, category, featured]);
 
+  const busy = isFetchingNextPage || isRefetching;
   const loadMore = useCallback(() => {
-    // Guard as well as `disabled`: a queued keyboard repeat can fire again in
-    // the same tick before React re-renders the disabled state.
-    if (isFetchingNextPage || !hasNextPage) return;
+    // Gate on `busy`, not just `isFetchingNextPage`: while "Try again" runs a
+    // page-1 `refetch()`, "Load more" stayed enabled and could queue a second
+    // concurrent request against the same key — two in-flight Woo calls per
+    // shopper and a page appended on top of results that were being replaced.
+    if (busy || !hasNextPage) return;
     void fetchNextPage();
-  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
+  }, [fetchNextPage, busy, hasNextPage]);
+
   // Two distinct recovery paths — the previous single path was dead for the
   // most common failure. When page 1 is the failed page there is no tail to
   // drop and `fetchNextPage()` either no-ops or appends page 2 on top of an
