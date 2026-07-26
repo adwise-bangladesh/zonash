@@ -90,13 +90,17 @@ function CartSkeleton() {
  */
 const CartRow = memo(function CartRow({
   item,
+  status,
   onSetQty,
   onRemove,
 }: {
   item: CartItem;
+  /** Availability reported by the last server reprice. */
+  status?: "oos" | "gone";
   onSetQty: (key: string, qty: number) => void;
   onRemove: (key: string) => void;
 }) {
+
   const lineTotal = item.price * item.quantity;
   const hasOld = !!item.regularPrice && item.regularPrice > item.price;
   const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
