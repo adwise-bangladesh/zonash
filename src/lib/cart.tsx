@@ -27,8 +27,48 @@ type CartActions = {
 
 type CartContextValue = CartState & CartActions;
 
-const MAX_QTY = 99;
+export const MAX_QTY = 99;
 const clampQty = (n: number) => Math.max(0, Math.min(MAX_QTY, Math.floor(n) || 0));
+
+const num = (v: unknown): number => {
+  const n = typeof v === "string" ? Number.parseFloat(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+/**
+ * localStorage is user-writable and can hold data from older app versions, so
+ * every persisted line is re-validated before it reaches React. Anything that
+ * cannot be repaired (missing id/slug) is dropped instead of crashing the page.
+ */
+function sanitize(raw: unknown): CartItem[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<number>();
+  const out: CartItem[] = [];
+  for (const r of raw) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>;
+    const productId = Number(o.productId);
+    const slug = typeof o.slug === "string" ? o.slug : "";
+    if (!Number.isFinite(productId) || productId <= 0 || !slug || seen.has(productId)) continue;
+    const quantity = clampQty(Number(o.quantity));
+    if (quantity <= 0) continue;
+    seen.add(productId);
+    const price = num(o.price);
+    const regular = num(o.regularPrice);
+    out.push({
+      productId,
+      slug,
+      name: typeof o.name === "string" && o.name ? o.name : slug,
+      sku: typeof o.sku === "string" ? o.sku : undefined,
+      price,
+      regularPrice: regular > price ? regular : undefined,
+      image: typeof o.image === "string" ? o.image : undefined,
+      quantity,
+    });
+    if (out.length >= 200) break;
+  }
+  return out;
+}
 
 // Two contexts: state changes frequently, actions are stable refs.
 // Consumers that only need to mutate the cart subscribe to actions
@@ -46,31 +86,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw));
-    } catch { /* ignore */ }
+      if (raw) setItems(sanitize(JSON.parse(raw)));
+    } catch { /* corrupt or unavailable storage — start empty */ }
     setHydrated(true);
+
+    // Keep tabs in sync; without this a checkout in one tab leaves a stale bag
+    // in another and the customer can re-submit an already-placed order.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return;
+      try {
+        setItems(e.newValue ? sanitize(JSON.parse(e.newValue)) : []);
+      } catch { /* ignore malformed cross-tab payload */ }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* quota / private mode */ }
   }, [items, hydrated]);
+
 
   // Stable action refs — functional setState means these never need to
   // close over `items`, so we can freeze them for the provider's lifetime.
   const add = useCallback<CartActions["add"]>((item, qty = 1) => {
+    if (!item || !Number.isFinite(item.productId) || !item.slug) return;
     setItems((cur) => {
-      const found = cur.find((i) => i.productId === item.productId);
-      if (found) {
+      if (cur.some((i) => i.productId === item.productId)) {
         return cur.map((i) =>
           i.productId === item.productId
             ? { ...i, quantity: clampQty(i.quantity + qty) }
             : i,
         );
       }
-      return [...cur, { ...item, quantity: clampQty(qty || 1) }];
+      const price = num(item.price);
+      const regular = num(item.regularPrice);
+      return [
+        ...cur,
+        {
+          ...item,
+          price,
+          regularPrice: regular > price ? regular : undefined,
+          quantity: clampQty(qty || 1),
+        },
+      ];
     });
   }, []);
+
 
   const remove = useCallback<CartActions["remove"]>((id) => {
     setItems((cur) => cur.filter((i) => i.productId !== id));
