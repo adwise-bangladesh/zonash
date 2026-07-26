@@ -13,6 +13,7 @@ import { LayoutGrid, X } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
+import { SoftBoundary } from "@/components/SoftBoundary";
 import { InfiniteFeedSection, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, SORT_KEYS, type SortKey } from "@/components/products/SortTabs";
 import { NotFoundView } from "@/components/NotFoundView";
