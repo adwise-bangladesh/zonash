@@ -33,14 +33,33 @@ type CacheEntry = { at: number; value: unknown };
 const GET_TTL_MS = 30_000;
 const EDGE_TTL_SECONDS = 60; // Cloudflare Cache API TTL (edge-shared)
 const MAX_CACHE_ENTRIES = 500;
+// Volatile (attacker-controllable) keys live in their own small partition.
+// `?q=<anything>` has unbounded cardinality: a crawler or a bot walking
+// `/products?q=aaa…` used to push 500 unique search payloads through the ONE
+// shared map, evicting the genuinely hot keys (feed page 1, taxonomy) that
+// every real visitor reads. Partitioning caps the damage: search churn can
+// only evict other search entries.
+const MAX_VOLATILE_ENTRIES = 80;
 // Negative cache: an upstream failure is remembered briefly so a WooCommerce
 // outage cannot be amplified into 1 000 origin requests per minute (each of
 // which would also retry). Short enough that recovery is near-instant.
 const ERROR_TTL_MS = 5_000;
 const MAX_ERROR_ENTRIES = 200;
 const getCache = new Map<string, CacheEntry>();
+const volatileCache = new Map<string, CacheEntry>();
 const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
+
+/** Search/sku lookups are user-controlled and unbounded — keep them apart. */
+function isVolatileKey(key: string): boolean {
+  return key.includes("search=") || key.includes("sku=");
+}
+function cacheFor(key: string): { map: Map<string, CacheEntry>; max: number } {
+  return isVolatileKey(key)
+    ? { map: volatileCache, max: MAX_VOLATILE_ENTRIES }
+    : { map: getCache, max: MAX_CACHE_ENTRIES };
+}
+
 
 
 // Synthetic origin for Cache API keys. Must be a valid absolute URL; the
