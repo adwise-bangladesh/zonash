@@ -845,10 +845,10 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             method: "POST",
             body: {
               note:
-                `🔓 OTP skipped (trusted session). Decision: ${verdict.decision.toUpperCase()}.\n` +
-                (verdict.decisionReason ? `Reason: ${verdict.decisionReason}\n` : "") +
+                `Phone verification skipped (trusted customer session). Decision: ${verdict.decision}.` +
+                (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
                 (verdict.duplicates.length
-                  ? `Duplicates: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}`
+                  ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
                   : ""),
               customer_note: false,
             },
