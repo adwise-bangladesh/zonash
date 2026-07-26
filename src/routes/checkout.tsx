@@ -326,6 +326,7 @@ function CheckoutPage() {
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
           tracking,
           idempotency_key: idempotencyKey,
+          draft_order_id: draftIdRef.current ?? undefined,
         },
       });
       if (!res.ok) {
