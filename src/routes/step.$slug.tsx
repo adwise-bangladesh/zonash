@@ -602,7 +602,7 @@ function StepLandingPage() {
             ))}
           </span>
           <span className="font-semibold text-foreground">{parseFloat(product.average_rating) > 0 ? product.average_rating : "4.8"}</span>
-          <span>({(product.rating_count > 0 ? product.rating_count : fakeReviewCount(slug)).toLocaleString()}+ reviews)</span>
+          <span>({reviewsCountDisplay.toLocaleString()}+ reviews)</span>
           <span aria-hidden>·</span>
           <span className={inStock ? "font-semibold text-success" : "font-semibold text-destructive"}>
             {inStock ? "In stock" : "Out of stock"}
