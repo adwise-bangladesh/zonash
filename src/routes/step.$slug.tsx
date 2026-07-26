@@ -1202,7 +1202,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const onScreen = useOnScreen(rootRef, "150px");
   useEffect(() => {
-    if (paused || !onScreen) return;
+    if (paused || !onScreen || pages <= 1) return;
     const t = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
       setPage((p) => (p + 1) % pages);
