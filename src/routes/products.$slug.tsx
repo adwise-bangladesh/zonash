@@ -806,10 +806,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
             })}
           </div>
           {gallery.length > 1 && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-              {gallery.map((_: string, i: number) => (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1"
+            >
+              {gallery.map((src: string, i: number) => (
                 <span
-                  key={i}
+                  key={src}
                   className={`h-1.5 rounded-full transition-all ${
                     i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
                   }`}
