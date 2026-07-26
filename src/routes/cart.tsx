@@ -163,6 +163,15 @@ const CartRow = memo(function CartRow({
             SKU: <span className="font-mono">{item.sku}</span>
           </div>
         )}
+        {status ? (
+          <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-destructive">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {status === "gone"
+              ? "No longer available — remove to continue"
+              : "Out of stock — remove to continue"}
+          </p>
+        ) : null}
+
         <div className="mt-auto flex items-center justify-between pt-0.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
