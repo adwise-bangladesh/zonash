@@ -434,7 +434,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       return changed ? next : prev;
     });
     // `nk` is a pure module-level-style helper; excluded intentionally.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations]);
 
   const matchedVariation: WooVariation | null = useMemo(() => {
@@ -449,7 +448,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
         }),
       ) ?? null
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations, selected]);
 
   /**
@@ -488,7 +486,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       }
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations, selected]);
 
   // ---------- Pricing / stock (variation-aware) ----------
