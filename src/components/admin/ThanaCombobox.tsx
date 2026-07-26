@@ -128,7 +128,7 @@ export function ThanaCombobox({
               </div>
             </div>
           )}
-          <ul className="max-h-64 overflow-y-auto py-1">
+          <ul className="max-h-64 overflow-y-auto pb-1">
             {showValueMissing && !q && (
               <li>
                 <button
@@ -152,7 +152,7 @@ export function ThanaCombobox({
               ) : (
                 filteredGroups.map(([district, list]) => (
                   <li key={district}>
-                    <div className="sticky top-0 z-10 bg-muted/60 px-3 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="sticky top-0 z-10 border-b border-border bg-popover px-3 py-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {district}
                     </div>
                     <ul>
