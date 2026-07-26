@@ -539,8 +539,13 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                       // and cast `as never`, which silenced the real check —
                       // a typo'd key would have removed nothing at runtime.
                       search={(prev: SearchState) => ({ ...prev, [chip.key]: undefined })}
-
+                      // Removing a filter stays on this page — sliding the whole
+                      // screen would read as a page load rather than a list
+                      // refresh, so this one navigation opts out of the global
+                      // view transition.
+                      viewTransition={false}
                       aria-label={`Remove filter ${chip.label}`}
+
                       className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
                     >
                       <span className="truncate">{chip.label}</span>
