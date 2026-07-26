@@ -159,6 +159,16 @@ export const Route = createFileRoute("/products/$slug")({
       // srcset candidate that fits the viewport × DPR before React hydrates.
       links: [
         { rel: "canonical", href: url },
+        // The hero lives on a different origin than the app. Without an early
+        // hint the browser only opens that TLS connection when it parses the
+        // preload, adding a full DNS+TCP+TLS round trip (~200-400 ms on 4G)
+        // in front of the LCP paint.
+        ...(imageOrigin
+          ? ([
+              { rel: "preconnect", href: imageOrigin, crossOrigin: "" },
+              { rel: "dns-prefetch", href: imageOrigin },
+            ] as const)
+          : []),
         ...(responsive
           ? [
               {
@@ -175,9 +185,15 @@ export const Route = createFileRoute("/products/$slug")({
       scripts: [
         {
           type: "application/ld+json",
-          children: JSON.stringify(jsonLd),
+          // A product name containing "</script>" (or a crafted one from a
+          // compromised WP admin) would otherwise terminate this tag early and
+          // let the remainder of the JSON execute as HTML/JS. JSON.stringify
+          // does not escape "<", so escape it to its \u form — semantically
+          // identical JSON, inert inside a script element.
+          children: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         },
       ],
+
     };
   },
   component: ProductPage,
