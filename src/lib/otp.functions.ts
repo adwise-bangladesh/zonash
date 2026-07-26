@@ -454,10 +454,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     let created: { id: number; number: string; total: string; currency: string };
     try {
       const { wooFetch } = await import("./woo.server");
-      created = await wooFetch<{ id: number; number: string; total: string; currency: string }>({
-        path: "/orders",
-        method: "POST",
-        body: {
+      const orderBody = {
           status: "pending",
           payment_method: "cod",
           payment_method_title: "Cash on Delivery",
@@ -498,12 +495,35 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_risk_score", value: String(assessment.score) },
             { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
             { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
+            { key: "_zonash_draft", value: "0" },
           ],
+        };
 
-
-        },
-        timeoutMs: 15000,
-      });
+      // If a draft order id was provided and the draft still exists as a
+      // checkout-draft, promote it in place. Otherwise fall through to a
+      // fresh POST.
+      let promoted = false;
+      if (data.draft_order_id) {
+        try {
+          created = await wooFetch<{ id: number; number: string; total: string; currency: string }>({
+            path: `/orders/${data.draft_order_id}`,
+            method: "PUT",
+            body: orderBody,
+            timeoutMs: 15000,
+          });
+          promoted = true;
+        } catch (e) {
+          console.warn("submitPendingOrder: draft promote failed, creating new", e);
+        }
+      }
+      if (!promoted) {
+        created = await wooFetch<{ id: number; number: string; total: string; currency: string }>({
+          path: "/orders",
+          method: "POST",
+          body: orderBody,
+          timeoutMs: 15000,
+        });
+      }
     } catch (e) {
       console.error("submitPendingOrder: Woo create failed", e);
       return {
