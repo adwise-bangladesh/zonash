@@ -24,8 +24,8 @@ import { canonicalUrl, waLink } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
-const InfiniteFeed = lazy(() =>
-  import("@/components/home/InfiniteFeed").then((m) => ({ default: m.InfiniteFeed })),
+const RelatedProducts = lazy(() =>
+  import("@/components/product/RelatedProducts").then((m) => ({ default: m.RelatedProducts })),
 );
 
 const productQuery = (slug: string) =>
@@ -981,7 +981,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        <RelatedFeed excludeId={p.id} />
+        <RelatedFeed productId={p.id} categoryIds={relatedCategoryIds} />
       </div>
 
       {/* Mobile sticky action bar */}
@@ -1570,22 +1570,26 @@ const DescriptionBlock = memo(function DescriptionBlock({ html }: { html: string
 });
 
 /**
- * Below-the-fold recommendations. Props-free + memoized: the feed renders
- * dozens of product cards, and it was being re-rendered by every unrelated
- * state change in the page above it.
+ * Below-the-fold related products (same category as the current product).
+ * Memoized so unrelated state changes above it don't re-render the grid.
  */
-const RelatedFeed = memo(function RelatedFeed({ excludeId }: { excludeId?: number }) {
+const RelatedFeed = memo(function RelatedFeed({
+  productId,
+  categoryIds,
+}: {
+  productId: number;
+  categoryIds: number[];
+}) {
   return (
     <div
       className="mt-4 pb-24"
-      style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "900px" }}
     >
-      {/* The related feed is optional: a rejected suspense query inside it
-          would otherwise take the whole product page to its errorComponent. */}
-      <h2 className="px-[5px] pb-2 pt-1 text-[15px] font-bold text-ink">You may also like</h2>
+      {/* Optional surface: a rejected query inside it must not take the whole
+          product page to its errorComponent. */}
       <SoftBoundary>
         <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-          <InfiniteFeed recommended excludeId={excludeId} />
+          <RelatedProducts productId={productId} categoryIds={categoryIds} />
         </Suspense>
       </SoftBoundary>
     </div>
