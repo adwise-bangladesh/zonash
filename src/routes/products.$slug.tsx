@@ -336,7 +336,37 @@ function sanitizeHtml(html: string): string {
     );
 }
 
+/**
+ * Attribute-name/option normalization key.
+ *
+ * WooCommerce is not consistent about attribute casing across endpoints:
+ * `default_attributes` returns the slug ("1-pcs") while `attributes[].options`
+ * returns the label ("1 Pcs"), and variation rows differ again in spacing
+ * ("2Pcs"). Exact comparison silently failed to match a variation, so the page
+ * fell back to the parent price range and added the line with no `variationId`
+ * — the wrong price and SKU reached checkout.
+ *
+ * Memoized because the option grid calls it O(variations × attributes) times
+ * per render on a hot path, always over the same tiny set of strings.
+ */
+const NK_CACHE = new Map<string, string>();
+function nk(s: string): string {
+  if (!s) return "";
+  const hit = NK_CACHE.get(s);
+  if (hit !== undefined) return hit;
+  const out = s
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "")
+    .trim();
+  // Bounded: attribute vocabularies are tiny, but the map is module-scoped and
+  // therefore lives for the whole isolate/tab session.
+  if (NK_CACHE.size > 500) NK_CACHE.clear();
+  NK_CACHE.set(s, out);
+  return out;
+}
+
 function ProductPage() {
+
   const { slug } = Route.useParams();
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     ...productQuery(slug),
