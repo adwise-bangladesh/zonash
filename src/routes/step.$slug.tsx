@@ -248,9 +248,10 @@ function StepLandingPage() {
   // Selected variation: bestseller by default.
   const [selectedVarId, setSelectedVarId] = useState<number | null>(null);
   useEffect(() => {
-    if (!isVariable || variations.length === 0 || selectedVarId) return;
+    if (!isVariable || variations.length === 0 || selectedVarId != null) return;
     setSelectedVarId(bestDealId ?? variations[0]?.id ?? null);
   }, [isVariable, variations, bestDealId, selectedVarId]);
+
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
