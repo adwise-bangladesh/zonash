@@ -47,7 +47,7 @@ type CartActions = {
    */
   repriceMany: (
     entries: { key: string; price: number; regularPrice?: number }[],
-  ) => boolean;
+  ) => void;
   clear: () => void;
 };
 
@@ -271,13 +271,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Whole-bag reconciliation in one commit. Returns true when at least one
-   * line actually moved, so the caller can show its "prices updated" notice
-   * without re-scanning the bag.
+   * Whole-bag reconciliation in one commit. The caller compares against the
+   * bag it already holds to decide whether to show its "prices updated"
+   * notice, so this stays a pure state write.
    */
-  const changedRef = useRef(false);
   const repriceMany = useCallback<CartActions["repriceMany"]>((entries) => {
-    if (entries.length === 0) return false;
+    if (entries.length === 0) return;
     const byKey = new Map<string, { price: number; regular?: number }>();
     for (const e of entries) {
       const p = num(e.price);
@@ -285,8 +284,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const r = num(e.regularPrice);
       byKey.set(e.key, { price: p, regular: r > p ? r : undefined });
     }
-    if (byKey.size === 0) return false;
-    changedRef.current = false;
+    if (byKey.size === 0) return;
     setItems((cur) => {
       let changed = false;
       const next = cur.map((i) => {
@@ -296,11 +294,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         changed = true;
         return { ...i, price: hit.price, regularPrice: hit.regular };
       });
-      if (!changed) return cur;
-      changedRef.current = true;
-      return next;
+      return changed ? next : cur;
     });
-    return changedRef.current;
   }, []);
 
   const clear = useCallback<CartActions["clear"]>(() => setItems([]), []);
