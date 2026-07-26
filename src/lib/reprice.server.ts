@@ -102,12 +102,19 @@ const waiters: (() => void)[] = [];
 
 class Shed extends Error {}
 
-async function acquire(): Promise<void> {
+/**
+ * Trusted internal callers (order submission) get a priority lane: they are
+ * never shed on queue depth and wait longer, because for them "unknown" is
+ * not a soft fallback — it rejects a real, paid-intent order.
+ */
+const PRIORITY_WAIT_MS = 8000;
+
+async function acquire(priority = false): Promise<void> {
   if (active < GLOBAL_CONCURRENCY) {
     active++;
     return;
   }
-  if (waiters.length >= MAX_QUEUE) throw new Shed();
+  if (!priority && waiters.length >= MAX_QUEUE) throw new Shed();
   await new Promise<void>((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -116,7 +123,7 @@ async function acquire(): Promise<void> {
       const i = waiters.indexOf(grant);
       if (i >= 0) waiters.splice(i, 1);
       reject(new Shed());
-    }, QUEUE_WAIT_MS);
+    }, priority ? PRIORITY_WAIT_MS : QUEUE_WAIT_MS);
     // The permit is handed over directly (see `release`), so the woken caller
     // must NOT increment `active` itself — doing so after an `await` opened a
     // window where a fresh caller saw `active < GLOBAL_CONCURRENCY` and the
@@ -127,9 +134,11 @@ async function acquire(): Promise<void> {
       clearTimeout(timer);
       resolve();
     }
-    waiters.push(grant);
+    if (priority) waiters.unshift(grant);
+    else waiters.push(grant);
   });
 }
+
 
 function release() {
   const next = waiters.shift();
