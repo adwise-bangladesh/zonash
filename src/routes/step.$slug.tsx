@@ -293,6 +293,12 @@ function StepLandingPage() {
     return list;
   }, [product, selectedVar]);
 
+  // Memoized review count for header (avoid recomputing per render).
+  const reviewsCountDisplay = useMemo(
+    () => (product.rating_count > 0 ? product.rating_count : fakeReviewCount(slug)),
+    [product.rating_count, slug],
+  );
+
   // Gallery state (activeImg / paused / timers / rAF) lives inside the
   // memoized <Gallery> subcomponent below, so autoplay ticks don't
   // re-render this ~1000-line tree every 3.5s.
