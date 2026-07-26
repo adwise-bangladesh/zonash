@@ -799,7 +799,7 @@ function StepLandingPage() {
           {[
             { icon: Truck, label: "Fast delivery" },
             { icon: Undo2, label: "Instant return" },
-            { icon: ShieldCheck, label: "100% Authentic" },
+            { icon: ShieldCheck, label: "100% authentic" },
           ].map((b) => (
             <div key={b.label} className="flex flex-col items-center gap-1 rounded-[6px] border border-border bg-background p-3 text-center">
               <b.icon className="h-5 w-5 text-primary" aria-hidden />
@@ -818,10 +818,10 @@ function StepLandingPage() {
             Order in 30 seconds
           </div>
           <h2 className="mt-3 text-center text-lg font-extrabold text-foreground">
-            Cash on Delivery
+            Delivery details
           </h2>
           <p className="mt-1 text-center text-[12px] text-muted-foreground">
-            Fill your details to place your order.
+            Pay cash when your order arrives.
           </p>
 
 
@@ -953,15 +953,15 @@ function StepLandingPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Lock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>Cash on Delivery · No online payment</span>
+                      <span>Cash on Delivery — no advance payment</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Undo2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>Instant return if product is damaged</span>
+                      <span>Instant return if the product is damaged</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      <span>100% authentic · Quality checked before ship</span>
+                      <span>100% authentic · Quality checked before shipping</span>
                     </li>
                   </ul>
                 </div>
@@ -978,9 +978,6 @@ function StepLandingPage() {
               <Lock className="h-4 w-4" aria-hidden />
               {submitting ? "Placing your order…" : `Confirm order · ${formatBDT(total)}`}
             </button>
-            <p className="mt-1.5 text-center text-[10.5px] text-muted-foreground">
-              No online payment · Pay when you receive
-            </p>
           </form>
         </div>
       </section>
@@ -990,12 +987,12 @@ function StepLandingPage() {
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Or order directly
+            Prefer to talk?
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Talk to us — we'll place the order for you
+          We'll place the order for you
         </p>
         <div className="mt-3 space-y-2.5">
           <a
@@ -1036,10 +1033,10 @@ function StepLandingPage() {
             </span>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#128C7E]">
-                Order on WhatsApp
+                WhatsApp
               </div>
               <div className="text-[15px] font-extrabold text-foreground">
-                Chat with us instantly
+                Chat with us now
               </div>
             </div>
             <svg className="h-4 w-4 shrink-0 text-[#128C7E]/70 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1052,14 +1049,14 @@ function StepLandingPage() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
           </span>
-          Daily 10am – 10pm · Cash on Delivery
+          Open daily · 10 AM – 10 PM
         </p>
       </section>
 
       {/* Footer link back to full store */}
       <div className="mt-6 mb-4 text-center">
         <Link to="/" className="text-[12px] font-semibold text-muted-foreground underline underline-offset-2">
-          ← Back to Zonash store
+          ← Back to store
         </Link>
       </div>
 
@@ -1362,7 +1359,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
           </p>
         </div>
         <div className="rounded-[6px] border border-border bg-background px-2.5 py-1.5 text-right">
-          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Social proof</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Verified</p>
           <div className="mt-1 flex justify-end -space-x-1" aria-hidden>
             {(Object.keys(SOURCE_META) as ReviewSource[]).map((source) => {
               const meta = SOURCE_META[source];
