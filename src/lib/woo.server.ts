@@ -77,31 +77,34 @@ function getEdgeCache(): Cache | null {
 
 
 function cacheGet(key: string): unknown | undefined {
-  const e = getCache.get(key);
+  const { map } = cacheFor(key);
+  const e = map.get(key);
   if (!e) return undefined;
   if (Date.now() - e.at > GET_TTL_MS) {
-    getCache.delete(key);
+    map.delete(key);
     return undefined;
   }
   return e.value;
 }
 function cacheSet(key: string, value: unknown) {
+  const { map, max } = cacheFor(key);
   // Delete-then-set so the Map's insertion order is a true recency order.
   // Without this, refreshing an existing hot key kept its original (oldest)
   // position, so the "drop oldest" sweep below evicted the *most requested*
   // entries first — exactly the ones a 100k-visitor burst re-reads.
-  getCache.delete(key);
-  if (getCache.size >= MAX_CACHE_ENTRIES) {
+  map.delete(key);
+  if (map.size >= max) {
     // Drop oldest ~10% to keep memory bounded.
-    const drop = Math.ceil(MAX_CACHE_ENTRIES * 0.1);
+    const drop = Math.ceil(max * 0.1);
     let i = 0;
-    for (const k of getCache.keys()) {
+    for (const k of map.keys()) {
       if (i++ >= drop) break;
-      getCache.delete(k);
+      map.delete(k);
     }
   }
-  getCache.set(key, { at: Date.now(), value });
+  map.set(key, { at: Date.now(), value });
 }
+
 
 function errorGet(key: string): unknown | undefined {
   const e = errorCache.get(key);
