@@ -438,14 +438,17 @@ function StepLandingPage() {
   // Memoize the WhatsApp deep link. The template literal + encodeURIComponent
   // over ~200 chars runs on every parent render otherwise; at scale that's
   // significant JS work for a link most users won't click.
+  const selectedVarLabel = useMemo(
+    () => (selectedVar ? selectedVar.attributes.map((a) => a.option).join(" / ") : ""),
+    [selectedVar],
+  );
   const waHref = useMemo(() => {
-    const opts = selectedVar
-      ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}`
-      : "";
+    const opts = selectedVarLabel ? ` — ${selectedVarLabel}` : "";
     const link = product.permalink ? `\n\nLink: ${product.permalink}` : "";
     const text = `Hi Zonash, I'd like to order:\n\n${product.name}${opts}\nPrice: ${formatBDT(effectivePrice)}${link}`;
     return `https://wa.me/8801926644575?text=${encodeURIComponent(text)}`;
-  }, [product.name, product.permalink, selectedVar, effectivePrice]);
+  }, [product.name, product.permalink, selectedVarLabel, effectivePrice]);
+
 
 
   const orderRef = useRef<HTMLDivElement>(null);
