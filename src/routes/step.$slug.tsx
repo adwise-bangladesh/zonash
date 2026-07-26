@@ -1056,7 +1056,7 @@ function StepLandingPage() {
       {/* Footer link back to full store */}
       <div className="mt-6 mb-4 text-center">
         <Link to="/" className="text-[12px] font-semibold text-muted-foreground underline underline-offset-2">
-          ← Back to Zonash store
+          ← Back to store
         </Link>
       </div>
 
