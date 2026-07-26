@@ -818,10 +818,10 @@ function StepLandingPage() {
             Order in 30 seconds
           </div>
           <h2 className="mt-3 text-center text-lg font-extrabold text-foreground">
-            Cash on Delivery
+            Delivery details
           </h2>
           <p className="mt-1 text-center text-[12px] text-muted-foreground">
-            Fill your details to place your order.
+            Pay cash when your order arrives.
           </p>
 
 
