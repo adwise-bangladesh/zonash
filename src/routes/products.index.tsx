@@ -13,6 +13,7 @@ import { LayoutGrid, X } from "lucide-react";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
+import { SoftBoundary } from "@/components/SoftBoundary";
 import { InfiniteFeedSection, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
 import { SortTabs, sortToWoo, SORT_KEYS, type SortKey } from "@/components/products/SortTabs";
 import { NotFoundView } from "@/components/NotFoundView";
@@ -28,7 +29,9 @@ const primaryCategoriesQuery = queryOptions({
   queryKey: ["categories", "primary"],
   queryFn: () => listPrimaryCategories(),
   staleTime: 5 * 60_000,
+  retry: 1,
 });
+
 
 /**
  * Every field is individually `.catch()`-ed: `validateSearch` throwing on a
@@ -115,6 +118,12 @@ const searchProductsQuery = (
     // Every distinct search term creates a cache entry; without a bounded
     // gcTime a long browsing session retains every result set it ever saw.
     gcTime: 5 * 60_000,
+    // Upstream failures already come back as a soft `{ error }` payload, so a
+    // *thrown* error here means the transport died. Three exponential retries
+    // just held the shopper on a skeleton for ~7s before the retry affordance
+    // appeared, and tripled origin load during an outage.
+    retry: 1,
+
   });
 };
 
@@ -297,10 +306,15 @@ function Shop({ sort }: { sort: SortKey }) {
   return (
     <Shell>
       <AppHeader />
-      {/* Own boundary: a slow taxonomy call must not block the product feed. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
+      {/* Own boundary: a slow taxonomy call must not block the product feed,
+          and a rejected one must not take the whole route to its error screen
+          — the strip is navigation garnish, the feed is the page. */}
+      <SoftBoundary>
+        <Suspense fallback={<CategoryStripSkeleton />}>
+          <PrimaryCategoryStrip />
+        </Suspense>
+      </SoftBoundary>
+
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         {/* The unfiltered shop is the only indexable variant of this route and
@@ -403,9 +417,12 @@ function FilteredResults(props: FilterProps) {
     <Shell>
       <AppHeader />
       {/* Keep taxonomy navigation available inside filtered views too. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
+      <SoftBoundary>
+        <Suspense fallback={<CategoryStripSkeleton />}>
+          <PrimaryCategoryStrip />
+        </Suspense>
+      </SoftBoundary>
+
       <SortTabs active={props.sort} />
       <main className="animate-fade-in">
         <Suspense
@@ -442,9 +459,15 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   // every parent render, walking the whole (growing) list for nothing.
 
   const products = useMemo(
-    () => (dedupeFeedPages(data?.pages) as WooProduct[]).filter((p) => p && p.slug),
+    () =>
+      (dedupeFeedPages(data?.pages) as WooProduct[]).filter(
+        // `id` guards the React key and the de-dupe Set: a malformed upstream
+        // row without one collapses every sibling onto `key={undefined}`.
+        (p) => p && typeof p.id === "number" && typeof p.slug === "string" && p.slug.length > 0,
+      ),
     [data?.pages],
   );
+
   // Read the newest page's error, not page 1's: a "Load more" that failed
   // upstream returned an error the UI never surfaced (silent dead button).
   const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
@@ -504,7 +527,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
 
           <div className="mb-3 flex items-center justify-between gap-2">
             {chips.length > 0 && (
-              <ul className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <ul aria-label="Active filters" className="flex min-w-0 flex-wrap items-center gap-1.5">
+
                 {chips.map((chip) => (
                   <li key={chip.key}>
                     <Link
