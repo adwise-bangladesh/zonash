@@ -293,68 +293,11 @@ function StepLandingPage() {
     return list;
   }, [product, selectedVar]);
 
-  const [activeImg, setActiveImg] = useState(0);
-  // Time window during which incoming scroll events belong to a programmatic
-  // (auto-slide) smooth-scroll and must NOT pause autoplay. A boolean flag
-  // fails because smooth-scroll fires many scroll events; the flag would flip
-  // after event #1 and subsequent events (still from the same animation)
-  // would be misread as user scrolls and kill autoplay after one tick.
-  const programmaticUntil = useRef(0);
-  const [paused, setPaused] = useState(false);
-  const galleryRef = useRef<HTMLDivElement>(null);
-  const galleryVisible = useOnScreen(galleryRef, "100px");
-  // When the variation changes and a new image is prepended, reset both the
-  // dot state AND the actual scroll position so they don't drift apart.
-  useEffect(() => {
-    setActiveImg(0);
-    const el = galleryRef.current;
-    if (el) {
-      programmaticUntil.current = performance.now() + 700;
-      el.scrollTo({ left: 0, behavior: "auto" });
-    }
-  }, [selectedVarId]);
-  // Auto-slide (paused after user interaction OR when off-screen)
-  useEffect(() => {
-    if (paused || gallery.length <= 1 || !galleryVisible) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const el = galleryRef.current;
-      if (!el) return;
-      setActiveImg((i) => {
-        const next = (i + 1) % gallery.length;
-        // Actually scroll the container — without this the visible image
-        // never advanced; only the dots did. Reserve ~800ms of scroll events
-        // as "programmatic" so the smooth-scroll animation doesn't get
-        // misidentified as a user gesture and stop autoplay after one tick.
-        programmaticUntil.current = performance.now() + 800;
-        el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-        return next;
-      });
-    }, 3500);
-    return () => clearInterval(t);
-  }, [paused, gallery.length, galleryVisible]);
-  // rAF-coalesced scroll handler. Native scroll fires up to ~60 events/s;
-  // without throttling we'd run Math.round + a potential React commit on
-  // each. Coalescing to one update per animation frame collapses that to at
-  // most ~1 setState per frame and keeps the main thread free for the
-  // snap-scroll animation itself.
-  const scrollRaf = useRef(0);
-  const onGalleryScroll = useCallback(() => {
-    if (scrollRaf.current) return;
-    scrollRaf.current = requestAnimationFrame(() => {
-      scrollRaf.current = 0;
-      const el = galleryRef.current;
-      if (!el || el.clientWidth === 0) return;
-      const idx = Math.round(el.scrollLeft / el.clientWidth);
-      setActiveImg((cur) => (cur === idx ? cur : idx));
-      // Inside the programmatic scroll window → don't pause autoplay.
-      if (performance.now() < programmaticUntil.current) return;
-      setPaused((p) => (p ? p : true));
-    });
-  }, []);
-  useEffect(() => () => {
-    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
-  }, []);
+  // Gallery state (activeImg / paused / timers / rAF) lives inside the
+  // memoized <Gallery> subcomponent below, so autoplay ticks don't
+  // re-render this ~1000-line tree every 3.5s.
+
+
 
 
 
