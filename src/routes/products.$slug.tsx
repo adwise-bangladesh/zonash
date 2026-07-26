@@ -47,11 +47,17 @@ export const Route = createFileRoute("/products/$slug")({
     if (typeof document === "undefined") {
       const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
       if (!res.product) throw notFound();
-      // Chain-prefetch variations on the server to collapse the client
-      // waterfall — wooFetch dedupes/coalesces so this is ~free on cache hits.
       const prod = res.product;
       if (prod.type === "variable" && (prod.variations?.length ?? 0) > 0) {
-        void context.queryClient.prefetchQuery(variationsQueryOptions(prod.id));
+        // Awaited on purpose. A fire-and-forget prefetch resolved *after* the
+        // HTML was rendered but *before* the query cache was dehydrated, so the
+        // client hydrated with variation pricing the server never printed —
+        // React threw a hydration mismatch and re-rendered the whole tree.
+        // wooFetch dedupes/edge-caches this call, so awaiting is near-free.
+        await context.queryClient
+          .ensureQueryData(variationsQueryOptions(prod.id))
+          // Options are non-critical: a variations outage must not 500 the page.
+          .catch(() => undefined);
       }
     } else {
       void context.queryClient.prefetchQuery(productQuery(params.slug));
