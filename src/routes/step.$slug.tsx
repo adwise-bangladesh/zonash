@@ -799,7 +799,7 @@ function StepLandingPage() {
           {[
             { icon: Truck, label: "Fast delivery" },
             { icon: Undo2, label: "Instant return" },
-            { icon: ShieldCheck, label: "100% Authentic" },
+            { icon: ShieldCheck, label: "100% authentic" },
           ].map((b) => (
             <div key={b.label} className="flex flex-col items-center gap-1 rounded-[6px] border border-border bg-background p-3 text-center">
               <b.icon className="h-5 w-5 text-primary" aria-hidden />
