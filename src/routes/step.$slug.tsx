@@ -405,6 +405,19 @@ function StepLandingPage() {
   const total = subtotal + shipping;
   const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
 
+  // Memoize the WhatsApp deep link. The template literal + encodeURIComponent
+  // over ~200 chars runs on every parent render otherwise; at scale that's
+  // significant JS work for a link most users won't click.
+  const waHref = useMemo(() => {
+    const opts = selectedVar
+      ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}`
+      : "";
+    const link = product.permalink ? `\n\nLink: ${product.permalink}` : "";
+    const text = `Hi Zonash, I'd like to order:\n\n${product.name}${opts}\nPrice: ${formatBDT(effectivePrice)}${link}`;
+    return `https://wa.me/8801926644575?text=${encodeURIComponent(text)}`;
+  }, [product.name, product.permalink, selectedVar, effectivePrice]);
+
+
   const orderRef = useRef<HTMLDivElement>(null);
   const scrollToOrder = () => {
     orderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
