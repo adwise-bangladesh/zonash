@@ -966,6 +966,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
         </div>
 
         <RelatedFeed />
+      </div>
+
+
 
       {/* Mobile sticky action bar */}
       <div
