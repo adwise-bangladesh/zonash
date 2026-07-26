@@ -498,6 +498,10 @@ function StepLandingPage() {
           description: "We couldn't text your code — tap Resend on the next screen.",
         });
       }
+      // Navigate away. We deliberately keep `submitting = true` through the
+      // unmount so the button can't fire again while the router transitions
+      // out — and we do NOT call setState after this point (it would target
+      // an unmounted component and trip a React dev warning).
       await navigate({
         to: "/verify-otp",
         search: {
@@ -506,12 +510,12 @@ function StepLandingPage() {
           phone: res.phone_masked,
         } as never,
       });
-      setIdem(genId());
-
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Could not place your order. Please try again.");
       setSubmitting(false);
+      // Rotate the idempotency key so a retry after a hard failure isn't
+      // silently deduped by the server-side cache as "same request".
+      setIdem(genId());
     }
   };
 
