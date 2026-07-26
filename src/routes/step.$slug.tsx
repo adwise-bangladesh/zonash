@@ -1046,7 +1046,115 @@ function StepLandingPage() {
   );
 }
 
+// ---------- Gallery (isolated so autoplay ticks don't re-render parent) ----------
+
+type GalleryImage = { src: string; alt: string };
+const Gallery = memo(function Gallery({
+  images,
+  resetKey,
+}: {
+  images: GalleryImage[];
+  resetKey: number;
+}) {
+  const [activeImg, setActiveImg] = useState(0);
+  const [paused, setPaused] = useState(false);
+  // Programmatic-scroll window: smooth-scroll fires many scroll events; a
+  // time window (instead of a boolean flag) prevents autoplay from
+  // self-pausing on event #2 of its own animation.
+  const programmaticUntil = useRef(0);
+  const scrollRaf = useRef(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const visible = useOnScreen(ref, "100px");
+
+  // Reset when the variation image set changes.
+  useEffect(() => {
+    setActiveImg(0);
+    const el = ref.current;
+    if (el) {
+      programmaticUntil.current = performance.now() + 700;
+      el.scrollTo({ left: 0, behavior: "auto" });
+    }
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (paused || images.length <= 1 || !visible) return;
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      const el = ref.current;
+      if (!el) return;
+      setActiveImg((i) => {
+        const next = (i + 1) % images.length;
+        programmaticUntil.current = performance.now() + 800;
+        el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+        return next;
+      });
+    }, 3500);
+    return () => clearInterval(t);
+  }, [paused, images.length, visible]);
+
+  const onScroll = useCallback(() => {
+    if (scrollRaf.current) return;
+    scrollRaf.current = requestAnimationFrame(() => {
+      scrollRaf.current = 0;
+      const el = ref.current;
+      if (!el || el.clientWidth === 0) return;
+      const idx = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((cur) => (cur === idx ? cur : idx));
+      if (performance.now() < programmaticUntil.current) return;
+      setPaused((p) => (p ? p : true));
+    });
+  }, []);
+  useEffect(() => () => {
+    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
+  }, []);
+  const onPointerDown = useCallback(() => {
+    setPaused((p) => (p ? p : true));
+  }, []);
+
+  return (
+    <section className="relative">
+      <div
+        ref={ref}
+        onScroll={onScroll}
+        onPointerDown={onPointerDown}
+        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Product images"
+      >
+        {images.length === 0 ? (
+          <div className="aspect-square w-full shrink-0 bg-muted" />
+        ) : (
+          images.map((img, i) => (
+            <div key={img.src + i} className="relative aspect-square w-full shrink-0 snap-start bg-muted">
+              <img
+                src={img.src}
+                alt={img.alt}
+                className="h-full w-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={i === 0 ? "high" : "auto"}
+              />
+            </div>
+          ))
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
+          {images.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${
+                i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+});
+
 // ---------- helpers ----------
+
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
