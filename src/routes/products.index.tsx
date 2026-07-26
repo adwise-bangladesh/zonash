@@ -443,9 +443,15 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   // every parent render, walking the whole (growing) list for nothing.
 
   const products = useMemo(
-    () => (dedupeFeedPages(data?.pages) as WooProduct[]).filter((p) => p && p.slug),
+    () =>
+      (dedupeFeedPages(data?.pages) as WooProduct[]).filter(
+        // `id` guards the React key and the de-dupe Set: a malformed upstream
+        // row without one collapses every sibling onto `key={undefined}`.
+        (p) => p && typeof p.id === "number" && typeof p.slug === "string" && p.slug.length > 0,
+      ),
     [data?.pages],
   );
+
   // Read the newest page's error, not page 1's: a "Load more" that failed
   // upstream returned an error the UI never surfaced (silent dead button).
   const error = data?.pages?.[data.pages.length - 1]?.error ?? null;
