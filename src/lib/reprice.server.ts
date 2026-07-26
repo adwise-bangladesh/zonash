@@ -94,18 +94,31 @@ const GLOBAL_CONCURRENCY = 16;
  * shape and keeps its own snapshot, which is exactly the upstream-blip path.
  */
 const MAX_QUEUE = 256;
+/**
+ * The priority lane needs its own, separate bound. Two problems otherwise:
+ *  1. Priority callers were exempt from *every* depth check, so during a store
+ *     stall the queue grew without limit — the very leak MAX_QUEUE exists to
+ *     prevent, now on the path that also holds a live order request open.
+ *  2. Depth was measured across both lanes, so a burst of order submits shed
+ *     storefront callers even though the storefront lane was empty.
+ * Order submits are far rarer than cart opens, so this cap is generous enough
+ * that it is only ever reached in a genuine outage.
+ */
+const MAX_PRIORITY_QUEUE = 1024;
 /** A queued caller never waits longer than this before shedding. */
 const QUEUE_WAIT_MS = 1500;
 
 let active = 0;
-const waiters: (() => void)[] = [];
+/** Separate lanes: priority drains first, and each is bounded on its own. */
+const pWaiters: (() => void)[] = [];
+const nWaiters: (() => void)[] = [];
 
 class Shed extends Error {}
 
 /**
  * Trusted internal callers (order submission) get a priority lane: they are
- * never shed on queue depth and wait longer, because for them "unknown" is
- * not a soft fallback — it rejects a real, paid-intent order.
+ * shed only in a genuine outage and wait longer, because for them "unknown"
+ * is not a soft fallback — it rejects a real, paid-intent order.
  */
 const PRIORITY_WAIT_MS = 8000;
 
@@ -114,14 +127,15 @@ async function acquire(priority = false): Promise<void> {
     active++;
     return;
   }
-  if (!priority && waiters.length >= MAX_QUEUE) throw new Shed();
+  const queue = priority ? pWaiters : nWaiters;
+  if (queue.length >= (priority ? MAX_PRIORITY_QUEUE : MAX_QUEUE)) throw new Shed();
   await new Promise<void>((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      const i = waiters.indexOf(grant);
-      if (i >= 0) waiters.splice(i, 1);
+      const i = queue.indexOf(grant);
+      if (i >= 0) queue.splice(i, 1);
       reject(new Shed());
     }, priority ? PRIORITY_WAIT_MS : QUEUE_WAIT_MS);
     // The permit is handed over directly (see `release`), so the woken caller
@@ -134,22 +148,24 @@ async function acquire(priority = false): Promise<void> {
       clearTimeout(timer);
       resolve();
     }
-    if (priority) waiters.unshift(grant);
-    else waiters.push(grant);
+    queue.push(grant);
   });
 }
 
 
 function release() {
-  const next = waiters.shift();
+  const next = pWaiters.shift() ?? nWaiters.shift();
   // Transfer the permit rather than free-then-reacquire; `active` stays put.
   if (next) next();
   else active--;
 }
 
 
+
 const cache = new Map<string, Cached>();
 const inFlight = new Map<string, Promise<{ value: Cached["value"]; shed: boolean }>>();
+/** Same, for the trusted/priority lane — see `refresh`. */
+const inFlightP = new Map<string, Promise<{ value: Cached["value"]; shed: boolean }>>();
 
 const keyOf = (l: RepriceLineInput) => `${l.productId}:${l.variationId ?? 0}`;
 
@@ -318,8 +334,20 @@ function markBlip(key: string) {
   }
 }
 
+/**
+ * Per-key single flight, split by lane.
+ *
+ * A priority caller must not simply join a storefront in-flight request: that
+ * request is queued behind the short storefront deadline, so the trusted call
+ * inherits a shed it never asked for. It gets its own coalescing map instead,
+ * so order submits still collapse to one upstream request per key among
+ * themselves — the earlier "retry once outside the single-flight" escape hatch
+ * amplified a burst of submits for the same product into N upstream calls and
+ * then threw the successful answer away without caching it.
+ */
 function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Outcome> {
-  const running = inFlight.get(key);
+  const map = priority ? inFlightP : inFlight;
+  const running = map.get(key);
   if (running) return running;
   const p = fetchOne(l, priority)
     .then((out) => {
@@ -331,8 +359,8 @@ function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Ou
       else markBlip(key);
       return out;
     })
-    .finally(() => inFlight.delete(key));
-  inFlight.set(key, p);
+    .finally(() => map.delete(key));
+  map.set(key, p);
   return p;
 }
 
@@ -340,27 +368,31 @@ async function load(key: string, l: RepriceLineInput, priority = false): Promise
   const fresh = readCache(key);
   if (fresh) return fresh;
 
-  const stale = readStale(key);
-  if (stale) {
-    // Serve stale instantly, refresh once behind it. Without this, every hot
-    // id expires for all concurrent visitors on the same tick.
-    void refresh(key, l, priority).catch(() => {});
-    return stale;
+  // Stale-while-revalidate is a *presentation* affordance. Pricing a real
+  // order off a value up to TTL+grace (3 min) old is a money-correctness bug,
+  // so a trusted caller never takes the stale shortcut — it waits for the
+  // authoritative answer and only falls back if upstream cannot supply one.
+  if (!priority) {
+    const stale = readStale(key);
+    if (stale) {
+      // Serve stale instantly, refresh once behind it. Without this, every hot
+      // id expires for all concurrent visitors on the same tick.
+      void refresh(key, l, false).catch(() => {});
+      return stale;
+    }
+    // The blip damper is a presentation-path optimisation only.
+    if (blipped(key)) return UNKNOWN;
   }
 
-  // The blip damper is a presentation-path optimisation only. A trusted caller
-  // (order submission) must still try upstream: for it an "unknown" price is a
-  // rejected order, not a harmless stale badge.
-  if (!priority && blipped(key)) return UNKNOWN;
-
   const out = await refresh(key, l, priority);
-  // Priority inversion guard: a trusted caller may have joined an in-flight
-  // request that a *storefront* caller started and that got load-shed. Its
-  // shed result is not an answer, so retry once in the priority lane instead
-  // of failing a real order.
-  if (out.shed && priority) return (await fetchOne(l, true)).value;
+  if (out.shed && priority) {
+    // Genuine outage-level shed on the priority lane: fall back to a stale
+    // value if one exists rather than rejecting a paid-intent order.
+    return readStale(key) ?? out.value;
+  }
   return out.value;
 }
+
 
 
 
