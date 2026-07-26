@@ -19,8 +19,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       position="bottom-center"
       // Sticky bar (~72px) + safe area + breathing room.
-      offset="calc(88px + env(safe-area-inset-bottom))"
-      mobileOffset="calc(88px + env(safe-area-inset-bottom))"
+      // Object form: a bare string offsets every side, which shifted the
+      // centred container sideways too.
+      offset={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }}
+      mobileOffset={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }}
       gap={8}
       duration={2000}
       visibleToasts={2}
@@ -33,7 +35,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         // CSS variables on the element, which outrank plain classes.
         classNames: {
           toast:
-            "group toast !w-full !justify-center !gap-2 !rounded-full !border !px-3.5 !py-2 !text-center " +
+            "group toast !justify-center !gap-2 !rounded-full !border !px-3.5 !py-2 !text-center " +
             "!bg-foreground !text-background !border-transparent " +
             "!shadow-[0_10px_24px_-10px_rgb(0_0_0/0.45)]",
           content: "!w-auto !flex-none",
