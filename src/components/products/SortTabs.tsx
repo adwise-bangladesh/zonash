@@ -69,8 +69,15 @@ export function SortTabs({
   // came first in the DOM — scope the lookup to this nav's own ancestor tree
   // so a card-level <header> can never win.
   useIsoLayoutEffect(() => {
-    const root = scroller.current?.closest("div,main,body")?.parentElement ?? document.body;
-    const header = root.querySelector("header") ?? document.querySelector("header");
+    // `scroller` IS a div, so `closest("div,…")` matched the element itself and
+    // `parentElement` was this component's own <nav> — which never contains a
+    // <header>, so the "scoped" lookup silently fell through to the global
+    // `document.querySelector` on every render path. Walk up to the page shell
+    // (the nav's parent) and search there, so the site header is found by
+    // structure rather than by document order.
+    const shell = scroller.current?.closest("nav")?.parentElement ?? document.body;
+    const header = shell.querySelector(":scope > header") ?? document.querySelector("header");
+
     if (!header) return;
     const sync = () => setTop(Math.round(header.getBoundingClientRect().height));
     sync();
