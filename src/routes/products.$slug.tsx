@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -17,8 +17,10 @@ import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
+import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
+import { canonicalUrl } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
@@ -45,11 +47,17 @@ export const Route = createFileRoute("/products/$slug")({
     if (typeof document === "undefined") {
       const res = await context.queryClient.ensureQueryData(productQuery(params.slug));
       if (!res.product) throw notFound();
-      // Chain-prefetch variations on the server to collapse the client
-      // waterfall — wooFetch dedupes/coalesces so this is ~free on cache hits.
       const prod = res.product;
       if (prod.type === "variable" && (prod.variations?.length ?? 0) > 0) {
-        void context.queryClient.prefetchQuery(variationsQueryOptions(prod.id));
+        // Awaited on purpose. A fire-and-forget prefetch resolved *after* the
+        // HTML was rendered but *before* the query cache was dehydrated, so the
+        // client hydrated with variation pricing the server never printed —
+        // React threw a hydration mismatch and re-rendered the whole tree.
+        // wooFetch dedupes/edge-caches this call, so awaiting is near-free.
+        await context.queryClient
+          .ensureQueryData(variationsQueryOptions(prod.id))
+          // Options are non-critical: a variations outage must not 500 the page.
+          .catch(() => undefined);
       }
     } else {
       void context.queryClient.prefetchQuery(productQuery(params.slug));
@@ -57,41 +65,99 @@ export const Route = createFileRoute("/products/$slug")({
     return { id: params.slug };
   },
   head: ({ match }) => {
+    const url = canonicalUrl(`/products/${match.params.slug}`);
     const detail = match.context?.queryClient.getQueryData(
       productQuery(match.params.slug).queryKey,
     ) as { product: WooProduct | null } | undefined;
     const p = detail?.product;
-    if (!p) return { meta: [{ title: "Product — Zonash" }] };
+    if (!p) {
+      return {
+        meta: [{ title: "Product — Zonash" }],
+        links: [{ rel: "canonical", href: url }],
+      };
+    }
     const img = p.images?.[0]?.src;
     const responsive = buildResponsiveImage(img);
     const desc =
-      (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
-      `Buy ${p.name} at Zonash.`;
+      (p.short_description ?? "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 155) || `Buy ${p.name} at Zonash. Cash on delivery across Bangladesh.`;
+    // Titles over ~60 chars get truncated in SERPs; trim the name, never the brand.
+    const title = `${p.name.length > 46 ? `${p.name.slice(0, 45).trimEnd()}…` : p.name} — Zonash`;
+    const price = (p.price || "").trim();
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: p.name,
+      description: desc,
+      ...(img ? { image: [img] } : {}),
+      ...(p.sku ? { sku: p.sku } : {}),
+      brand: { "@type": "Brand", name: "Zonash" },
+      ...(p.rating_count > 0 && parseFloat(p.average_rating) > 0
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: p.average_rating,
+              reviewCount: p.rating_count,
+            },
+          }
+        : {}),
+      ...(price
+        ? {
+            offers: {
+              "@type": "Offer",
+              url,
+              priceCurrency: "BDT",
+              price,
+              availability:
+                p.stock_status === "instock"
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+            },
+          }
+        : {}),
+    };
     return {
       meta: [
-        { title: `${p.name} — ${p.price} Tk` },
+        { title },
         { name: "description", content: desc },
         { property: "og:type", content: "product" },
-        { property: "og:title", content: p.name },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
-        ...(img ? [{ property: "og:image", content: img } as const] : []),
-        { name: "twitter:card", content: "summary_large_image" },
-        ...(img ? [{ name: "twitter:image", content: img } as const] : []),
+        { property: "og:url", content: url },
+        ...(img && /^https:\/\//.test(img)
+          ? ([
+              { property: "og:image", content: img },
+              { name: "twitter:image", content: img },
+            ] as const)
+          : []),
+        { name: "twitter:card", content: img ? "summary_large_image" : "summary" },
       ],
       // Preload the hero image responsively — the browser picks the smallest
       // srcset candidate that fits the viewport × DPR before React hydrates.
-      links: responsive
-        ? [
-            {
-              rel: "preload",
-              as: "image",
-              href: responsive.src,
-              imagesrcset: responsive.srcSet,
-              imagesizes: responsive.sizes,
-              fetchpriority: "high",
-            } as const,
-          ]
-        : [],
+      links: [
+        { rel: "canonical", href: url },
+        ...(responsive
+          ? [
+              {
+                rel: "preload",
+                as: "image",
+                href: responsive.src,
+                imageSrcSet: responsive.srcSet,
+                imageSizes: responsive.sizes,
+                fetchPriority: "high",
+              } as const,
+            ]
+          : []),
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(jsonLd),
+        },
+      ],
     };
   },
   component: ProductPage,
@@ -139,7 +205,7 @@ function ProductPageSkeleton() {
 
         {/* Info hero — matches real layout: rating → title → price row */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
-          <div className="px-4 pb-5 pt-5">
+          <div className="px-4 pb-5 pt-2">
             <div className="mb-2 h-3 w-24 rounded bg-muted" />
             <div className="h-5 w-4/5 rounded bg-muted" />
             <div className="mt-1.5 h-5 w-2/3 rounded bg-muted" />
@@ -234,13 +300,32 @@ function sanitizeHtml(html: string): string {
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const { data, isPending } = useQuery(productQuery(slug));
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+    ...productQuery(slug),
+    retry: 1,
+  });
   if (isPending) return <ProductPageSkeleton />;
+  // A transport failure is retryable and must not be reported as a 404 — the
+  // previous code collapsed both into "Product not found", which told shoppers
+  // a live product had been removed whenever the shop API blipped.
+  if (isError || (!data?.product && data?.error)) {
+    return (
+      <NotFoundView
+        variant="error"
+        title="Couldn't load product"
+        description={
+          data?.error ||
+          (error instanceof Error ? error.message : "The shop is taking longer than usual.")
+        }
+        onRetry={isFetching ? undefined : () => void refetch()}
+      />
+    );
+  }
   if (!data?.product) {
     return (
       <NotFoundView
         title="Product not found"
-        description={data?.error || "This piece may have been removed or the link is incorrect."}
+        description="This piece may have been removed or the link is incorrect."
         primaryLabel="Browse shop"
         primaryTo="/products"
       />
@@ -250,7 +335,20 @@ function ProductPage() {
 }
 
 function ProductDetail({ p }: { p: WooProduct }) {
-  const gallery = p.images.map((i) => i.src);
+  // Woo can return duplicate/blank image entries (a variation image repeated in
+  // the parent gallery); duplicates produced repeated slides and a dot strip
+  // that never matched the visible slide.
+  const gallery = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (p.images ?? [])
+            .map((i) => (typeof i?.src === "string" ? i.src.trim() : ""))
+            .filter((s) => s.length > 0),
+        ),
+      ),
+    [p.images],
+  );
   const { add, count: cartCount } = useCart();
   const navigate = useNavigate();
 
@@ -262,21 +360,30 @@ function ProductDetail({ p }: { p: WooProduct }) {
     enabled: isVariable,
     retry: 1,
   });
-  const variations = useMemo<WooVariation[]>(
-    () => variationsQuery.data?.variations ?? [],
-    [variationsQuery.data?.variations],
-  );
+  // Woo occasionally returns partially-shaped variation rows (missing
+  // `attributes` on a trashed variation). Every consumer below iterates
+  // `v.attributes`, so normalise once here instead of guarding at 6 call sites.
+  const variations = useMemo<WooVariation[]>(() => {
+    const raw = variationsQuery.data?.variations;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((v): v is WooVariation => !!v && typeof v.id === "number")
+      .map((v) => (Array.isArray(v.attributes) ? v : { ...v, attributes: [] }));
+  }, [variationsQuery.data?.variations]);
   // Surface a soft warning once if variations fail to load — the CTA guards
   // against an incomplete selection so the user is never stuck.
   const variationsErrShownRef = useRef(false);
+  const variationsFailed = variationsQuery.isError;
   useEffect(() => {
     if (!isVariable) return;
-    const msg = variationsQuery.data?.error;
+    const msg =
+      variationsQuery.data?.error ||
+      (variationsFailed ? "Couldn't load options. Please refresh." : "");
     if (msg && !variationsErrShownRef.current) {
       variationsErrShownRef.current = true;
       toast.error(msg);
     }
-  }, [isVariable, variationsQuery.data?.error]);
+  }, [isVariable, variationsQuery.data?.error, variationsFailed]);
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
@@ -317,21 +424,39 @@ function ProductDetail({ p }: { p: WooProduct }) {
     );
   }, [isVariable, variations, selected]);
 
-  // Which options are valid given the currently-selected other attributes.
-  function isOptionAvailable(attrName: string, option: string): boolean {
-    if (!isVariable || variations.length === 0) return true;
-    return variations.some((v) => {
-      let matches = true;
-      for (const a of v.attributes) {
-        if (a.name === attrName) {
-          if (a.option !== option) matches = false;
-        } else if (selected[a.name] && selected[a.name] !== a.option) {
-          matches = false;
+  /**
+   * Per-option availability + best candidate, computed in ONE pass.
+   *
+   * The render previously called `isOptionAvailable()` and ran a second
+   * `variations.filter()` inside the option loop, so a product with 3
+   * attributes × 8 options × 60 variations walked the variation list ~48 times
+   * on every keystroke-level state change. This map is O(variations × attrs)
+   * once per `selected` change and is read in O(1) per option.
+   */
+  const optionMeta = useMemo(() => {
+    const map = new Map<string, Map<string, { enabled: boolean; best?: WooVariation }>>();
+    if (!isVariable) return map;
+    for (const v of variations) {
+      const attrs = v.attributes;
+      for (const a of attrs) {
+        const compatible = attrs.every(
+          (o) => o.name === a.name || !selected[o.name] || selected[o.name] === o.option,
+        );
+        if (!compatible) continue;
+        let byOpt = map.get(a.name);
+        if (!byOpt) {
+          byOpt = new Map();
+          map.set(a.name, byOpt);
         }
+        const entry = byOpt.get(a.option) ?? { enabled: false, best: undefined };
+        const inStockV = v.stock_status === "instock";
+        if (inStockV) entry.enabled = true;
+        if (!entry.best || (inStockV && entry.best.stock_status !== "instock")) entry.best = v;
+        byOpt.set(a.option, entry);
       }
-      return matches && v.stock_status === "instock";
-    });
-  }
+    }
+    return map;
+  }, [isVariable, variations, selected]);
 
   // ---------- Pricing / stock (variation-aware) ----------
   const activePriceStr =
@@ -456,7 +581,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => io.disconnect();
   }, [gallery]);
 
-  const addLine = () => {
+  const addLine = useCallback(() => {
     const variantSuffix = matchedVariation
       ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
       : "";
@@ -473,34 +598,83 @@ function ProductDetail({ p }: { p: WooProduct }) {
       },
       qty,
     );
-  };
+  }, [
+    add,
+    matchedVariation,
+    p.id,
+    p.name,
+    p.slug,
+    activeSku,
+    priceNum,
+    showOld,
+    oldPrice,
+    activeImage,
+    gallery,
+    qty,
+  ]);
   const readyToBuy =
     inStock &&
+    priceNum > 0 &&
     (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
-  const handleAdd = () => {
+
+  // Two taps on "Buy now" before the route transition paints used to push two
+  // identical lines into the cart. A ref gates synchronously (state updates are
+  // async) and the state drives the disabled/aria-busy UI.
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const handleAdd = useCallback(() => {
+    if (busyRef.current) return;
     if (!readyToBuy) {
-      toast.error("Please select all options");
+      toast.error(inStock ? "Please select all options" : "This item is sold out");
       return;
     }
-    addLine();
-    toast.success("Added to cart");
-  };
-  const handleBuyNow = () => {
-    if (!readyToBuy) {
-      toast.error("Please select all options");
-      return;
-    }
-    addLine();
-    navigate({ to: "/checkout" });
-  };
-  const handleShare = async () => {
+    busyRef.current = true;
+    setBusy(true);
     try {
-      if (navigator.share) await navigator.share({ title: p.name, url: window.location.href });
-      else await navigator.clipboard.writeText(window.location.href);
+      addLine();
+      toast.success("Added to cart");
     } catch {
-      /* ignore */
+      toast.error("Couldn't add to cart. Please try again.");
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
-  };
+  }, [readyToBuy, inStock, addLine]);
+
+  const handleBuyNow = useCallback(async () => {
+    if (busyRef.current) return;
+    if (!readyToBuy) {
+      toast.error(inStock ? "Please select all options" : "This item is sold out");
+      return;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      addLine();
+      await navigate({ to: "/checkout" });
+    } catch {
+      toast.error("Couldn't open checkout. Please try again.");
+    } finally {
+      // Navigation unmounts this tree on success; the guard release only
+      // matters for the failure path, and setBusy on an unmounted component is
+      // a no-op in React 19.
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [readyToBuy, inStock, addLine, navigate]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      const url = window.location.href;
+      if (navigator.share) await navigator.share({ title: p.name, url });
+      else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied");
+      }
+    } catch {
+      /* user dismissed the share sheet, or clipboard is blocked */
+    }
+  }, [p.name]);
 
   const detailsText = useMemo(() => {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -599,56 +773,62 @@ function ProductDetail({ p }: { p: WooProduct }) {
             onScroll={onGalleryScroll}
             onTouchStart={() => (lastInteractRef.current = Date.now())}
             onPointerDown={() => (lastInteractRef.current = Date.now())}
+            role="group"
+            aria-roledescription="carousel"
+            aria-label={`${p.name} images`}
             className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
               const responsive = src ? buildResponsiveImage(src) : null;
               return (
-                <div key={i} data-slide data-idx={i} className="relative aspect-square w-full shrink-0 snap-center">
-                  {responsive ? (
-                    <picture>
-                      <img
-                        src={responsive.src}
-                        srcSet={responsive.srcSet}
-                        sizes={responsive.sizes}
-                        alt={p.name}
-                        width={800}
-                        height={800}
-                        draggable={false}
-                        className="h-full w-full select-none object-cover"
-                        loading={i === 0 ? "eager" : "lazy"}
-                        decoding={i === 0 ? "sync" : "async"}
-                        fetchPriority={i === 0 ? "high" : "auto"}
-                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          img.style.display = "none";
-                          const parent = img.parentElement?.parentElement;
-                          if (parent && !parent.querySelector("[data-img-fallback]")) {
-                            const fallback = document.createElement("div");
-                            fallback.setAttribute("data-img-fallback", "");
-                            fallback.className = "grid h-full w-full place-items-center bg-muted";
-                            fallback.innerHTML =
-                              '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      />
-                    </picture>
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-muted">
-                      <Gem className="h-16 w-16 text-muted-foreground/40" />
-                    </div>
+                <div
+                  key={src || "placeholder"}
+                  data-slide
+                  data-idx={i}
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`Image ${i + 1} of ${Math.max(gallery.length, 1)}`}
+                  className="relative aspect-square w-full shrink-0 snap-center"
+                >
+                  {/* Static fallback layer: revealed when the <img> hides after
+                      every candidate URL fails. Previously the error handler
+                      appended a raw DOM node into a React-managed subtree,
+                      which React could drop on the next render. */}
+                  <div className="absolute inset-0 grid place-items-center bg-muted">
+                    <Gem className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />
+                  </div>
+                  {responsive && (
+                    <img
+                      src={responsive.src}
+                      srcSet={responsive.srcSet || undefined}
+                      sizes={responsive.sizes}
+                      alt={i === 0 ? p.name : `${p.name} — image ${i + 1} of ${gallery.length}`}
+                      width={800}
+                      height={800}
+                      draggable={false}
+                      className="relative h-full w-full select-none object-cover"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      decoding={i === 0 ? "sync" : "async"}
+                      fetchPriority={i === 0 ? "high" : "auto"}
+                      style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                      // Shared handler: a missing WordPress crop retries the
+                      // original URL before giving up (the old handler hid the
+                      // slide on the first 404, losing a working image).
+                      onError={onImageSrcSetError}
+                    />
                   )}
                 </div>
               );
             })}
           </div>
           {gallery.length > 1 && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-              {gallery.map((_: string, i: number) => (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1"
+            >
+              {gallery.map((src: string, i: number) => (
                 <span
-                  key={i}
+                  key={src}
                   className={`h-1.5 rounded-full transition-all ${
                     i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
                   }`}
@@ -662,7 +842,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
           {/* Title + price */}
           <div className="px-4 pb-5 pt-2">
-
             <div className="mb-2 flex items-center gap-2">
               {p.rating_count > 0 && (
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -723,16 +902,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     <div className="grid grid-cols-2 gap-2">
                       {options.map((opt) => {
                         const active = current === opt;
-                        const enabled = isOptionAvailable(attr.name, opt);
-                        const candidates = variations.filter((v) =>
-                          v.attributes.every((a) =>
-                            a.name === attr.name
-                              ? a.option === opt
-                              : !selected[a.name] || selected[a.name] === a.option,
-                          ),
-                        );
-                        const best =
-                          candidates.find((v) => v.stock_status === "instock") ?? candidates[0];
+                        const meta = optionMeta.get(attr.name)?.get(opt);
+                        const enabled = variations.length === 0 ? true : !!meta?.enabled;
+                        const best = meta?.best;
                         const bp = best ? parseFloat(best.price) || 0 : 0;
                         const br = best ? parseFloat(best.regular_price) || 0 : 0;
                         const save = br > bp ? br - bp : 0;
@@ -972,9 +1144,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
           className="mt-4 pb-24"
           style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
         >
-          <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-            <InfiniteFeed recommended />
-          </Suspense>
+          {/* The related feed is optional: a rejected suspense query inside it
+              would otherwise take the whole product page to its errorComponent. */}
+          <SoftBoundary>
+            <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
+              <InfiniteFeed recommended />
+            </Suspense>
+          </SoftBoundary>
         </div>
       </div>
 
@@ -986,17 +1162,23 @@ function ProductDetail({ p }: { p: WooProduct }) {
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
             <button
-              aria-label="Decrease"
+              type="button"
+              aria-label="Decrease quantity"
+              disabled={qty <= 1}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95"
+              className="grid h-10 w-9 place-items-center text-muted-foreground active:scale-95 disabled:opacity-40"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+            <span aria-live="polite" className="w-8 text-center text-sm font-semibold">
+              {qty}
+            </span>
             <button
-              aria-label="Increase"
+              type="button"
+              aria-label="Increase quantity"
+              disabled={qty >= 99}
               onClick={() => setQty((q) => Math.min(99, q + 1))}
-              className="grid h-10 w-9 place-items-center text-primary active:scale-95"
+              className="grid h-10 w-9 place-items-center text-primary active:scale-95 disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -1004,15 +1186,17 @@ function ProductDetail({ p }: { p: WooProduct }) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!inStock}
+            disabled={!inStock || busy}
+            aria-busy={busy}
             className="h-10 flex-1 rounded-[3px] border border-primary bg-background text-[13px] font-bold uppercase tracking-wide text-primary disabled:opacity-40"
           >
             Add to cart
           </button>
           <button
             type="button"
-            onClick={handleBuyNow}
-            disabled={!inStock}
+            onClick={() => void handleBuyNow()}
+            disabled={!inStock || busy}
+            aria-busy={busy}
             className="h-10 flex-1 rounded-[3px] bg-primary text-[13px] font-bold uppercase tracking-wide text-primary-foreground shadow-[var(--shadow-glow)] disabled:opacity-40"
           >
             Buy now
