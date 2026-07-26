@@ -21,8 +21,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // Sticky bar (~72px) + safe area + breathing room.
       // Object form: a bare string offsets every side, which shifted the
       // centred container sideways too.
-      offset={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }}
-      mobileOffset={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }}
+      offset={{ bottom: "calc(88px + env(safe-area-inset-bottom))", left: 0, right: 0 }}
+      mobileOffset={{ bottom: "calc(88px + env(safe-area-inset-bottom))", left: 0, right: 0 }}
       gap={8}
       duration={2000}
       visibleToasts={2}
