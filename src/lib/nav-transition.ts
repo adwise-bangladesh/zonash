@@ -44,7 +44,7 @@ function canAnimate(): boolean {
  * shortly after, so a navigation we don't explicitly mark (a nav-bar tap, a
  * redirect) animates as a push rather than inheriting a stale "back".
  */
-export function setNavDirection(dir: "forward" | "back"): void {
+export function setNavDirection(dir: "forward" | "back" | "hero"): void {
   if (typeof document === "undefined") return;
   document.documentElement.dataset.nav = dir;
   if (clearDirTimer) clearTimeout(clearDirTimer);
@@ -52,6 +52,7 @@ export function setNavDirection(dir: "forward" | "back"): void {
     document.documentElement.dataset.nav = "forward";
   }, CLEANUP_MS);
 }
+
 
 /**
  * Browser/gesture back must animate as a pop. `popstate` fires before the
