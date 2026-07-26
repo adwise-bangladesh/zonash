@@ -373,15 +373,27 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     }
 
 
-    // Server-side coupon validation: recompute subtotal from Woo prices and
-    // resolve the discount against our own coupon table. Any tampered
-    // `data.discount` or unknown `data.coupon_code` is discarded here.
-    const serverSubtotal = await computeServerSubtotal(data.items);
+    // Server-side pricing, availability and coupon validation. The cart page's
+    // availability gate is presentational and bypassable, so the same checks
+    // are enforced here before a Woo order can exist. Any tampered
+    // `data.discount` or unknown `data.coupon_code` is discarded too.
+    const priced = await priceAndValidateBag(data.items);
+    if (!priced.ok) {
+      return {
+        ok: false as const,
+        error:
+          priced.reason === "unavailable"
+            ? "One or more items in your bag are no longer available in the quantity requested. Please review your cart and try again."
+            : "We couldn't confirm current prices for your bag. Please try again in a moment.",
+      };
+    }
+    const serverSubtotal = priced.subtotal;
     const { code: validCoupon, discount: validDiscount } = await resolveCouponDiscount(
       data.coupon_code,
       serverSubtotal,
       phone,
     );
+
 
     const serverShipping = await computeServerShipping(data.billing.city);
     const serverGrandTotal = Math.max(0, serverSubtotal - validDiscount) + serverShipping.amount;
