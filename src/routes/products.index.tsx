@@ -159,7 +159,7 @@ export const Route = createFileRoute("/products/")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
       ],
-      links: filtered ? [] : [{ rel: "canonical", href: `${SITE_URL}/products` }],
+      links: [{ rel: "canonical", href: `${SITE_URL}/products` }],
       // The canonical shop page was the only indexable variant of this route
       // and shipped no structured data at all, so search engines had no
       // breadcrumb or collection signal for it. Filtered views stay clean —
