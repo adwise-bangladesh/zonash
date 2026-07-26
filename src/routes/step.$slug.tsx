@@ -971,9 +971,8 @@ function StepLandingPage() {
             </svg>
           </a>
           <a
-            href={`https://wa.me/8801926644575?text=${encodeURIComponent(
-              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}${product.permalink ? `\n\nLink: ${product.permalink}` : ""}`,
-            )}`}
+            href={waHref}
+
 
             target="_blank"
             rel="noopener noreferrer"
