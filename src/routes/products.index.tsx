@@ -298,10 +298,15 @@ function Shop({ sort }: { sort: SortKey }) {
   return (
     <Shell>
       <AppHeader />
-      {/* Own boundary: a slow taxonomy call must not block the product feed. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
+      {/* Own boundary: a slow taxonomy call must not block the product feed,
+          and a rejected one must not take the whole route to its error screen
+          — the strip is navigation garnish, the feed is the page. */}
+      <SoftBoundary>
+        <Suspense fallback={<CategoryStripSkeleton />}>
+          <PrimaryCategoryStrip />
+        </Suspense>
+      </SoftBoundary>
+
       <SortTabs active={sort} />
       <main className="animate-fade-in">
         {/* The unfiltered shop is the only indexable variant of this route and
