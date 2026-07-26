@@ -36,7 +36,10 @@ export const Route = createFileRoute("/step/")({
     ],
   }),
   component: StepIndex,
-  pendingMs: 0,
+  // Match the product page: let fast SSR-warm loads skip straight to the real
+  // grid instead of flashing the skeleton for one frame.
+  pendingMs: 800,
+  pendingMinMs: 0,
   pendingComponent: StepIndexSkeleton,
   errorComponent: ({ error, reset }) => (
     <NotFoundView
