@@ -743,7 +743,9 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         path: `/orders/${created.id}/notes`,
         method: "POST",
         body: {
-          note: `📥 Order submitted (${data.draft_order_id ? "promoted from checkout-draft" : "new"}). Awaiting OTP verification.`,
+          note: data.draft_order_id
+            ? "Order submitted by customer. Promoted from checkout draft; awaiting phone verification."
+            : "Order submitted by customer. Awaiting phone verification.",
           customer_note: false,
         },
       });
