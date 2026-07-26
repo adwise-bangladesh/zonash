@@ -1393,17 +1393,25 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
       const { wooFetch } = await import("./woo.server");
       if (data.draft_order_id) {
         try {
+          // Check current status first — if the order has already been
+          // promoted (pending / on-hold / processing / confirmed / …), we
+          // MUST NOT PUT status: "checkout-draft" or we would silently
+          // demote a live order back to a draft.
+          const existing = await wooFetch<{ id: number; status: string }>({
+            path: `/orders/${data.draft_order_id}`,
+            method: "GET",
+            timeoutMs: 8000,
+          });
+          if (existing.status && existing.status !== "checkout-draft") {
+            // Order is live — skip the update entirely, signal client to stop.
+            return { ok: true, draft_order_id: existing.id };
+          }
           const upd = await wooFetch<{ id: number; status: string }>({
             path: `/orders/${data.draft_order_id}`,
             method: "PUT",
             body,
             timeoutMs: 12000,
           });
-          // If the existing order was already promoted (not a draft anymore)
-          // don't try to overwrite it — signal the client to stop.
-          if (upd.status && upd.status !== "checkout-draft") {
-            return { ok: true, draft_order_id: upd.id };
-          }
           return { ok: true, draft_order_id: upd.id };
         } catch {
           // fall through to create fresh
