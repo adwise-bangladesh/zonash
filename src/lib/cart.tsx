@@ -41,8 +41,16 @@ type CartActions = {
   setQty: (key: string, qty: number) => void;
   /** Reconcile a line with server-authoritative pricing. */
   repriceLine: (key: string, price: number, regularPrice?: number) => void;
+  /**
+   * Apply a whole server reprice in a single state commit. Reconciling a
+   * 50-line bag line-by-line costs 50 array copies; this costs one.
+   */
+  repriceMany: (
+    entries: { key: string; price: number; regularPrice?: number }[],
+  ) => void;
   clear: () => void;
 };
+
 
 type CartContextValue = CartState & CartActions;
 
@@ -121,27 +129,83 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(sanitize(JSON.parse(raw)));
+      if (raw) {
+        const parsed = sanitize(JSON.parse(raw));
+        setItems(parsed);
+        // Seed the persist guard so hydration alone never triggers a write.
+        lastWritten.current = JSON.stringify(parsed);
+      } else {
+        lastWritten.current = "[]";
+      }
       for (const k of LEGACY_KEYS) localStorage.removeItem(k);
     } catch { /* corrupt or unavailable storage — start empty */ }
     setHydrated(true);
+
 
     // Keep tabs in sync; without this a checkout in one tab leaves a stale bag
     // in another and the customer can re-submit an already-placed order.
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY) return;
       try {
-        setItems(e.newValue ? sanitize(JSON.parse(e.newValue)) : []);
+        const next = e.newValue ? sanitize(JSON.parse(e.newValue)) : [];
+        // Record what storage already holds so adopting another tab's bag
+        // does not bounce the identical payload straight back out.
+        lastWritten.current = JSON.stringify(next);
+        setItems(next);
       } catch { /* ignore malformed cross-tab payload */ }
     };
+
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  /**
+   * Persisting the bag is a synchronous, main-thread `JSON.stringify` +
+   * storage write. Holding down "+" fires one per tap, which janks the row
+   * animation on low-end phones, so writes are coalesced to the next idle
+   * slot and skipped entirely when the serialised bag is unchanged (the
+   * common case right after hydration, which used to write the file back
+   * verbatim on every page load).
+   */
+  const lastWritten = useRef<string | null>(null);
+  const pendingWrite = useRef<string | null>(null);
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushWrite = useCallback(() => {
+    if (writeTimer.current !== null) {
+      clearTimeout(writeTimer.current);
+      writeTimer.current = null;
+    }
+    const payload = pendingWrite.current;
+    pendingWrite.current = null;
+    if (payload === null || payload === lastWritten.current) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, payload);
+      lastWritten.current = payload;
+    } catch { /* quota / private mode */ }
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* quota / private mode */ }
-  }, [items, hydrated]);
+    const payload = JSON.stringify(items);
+    if (payload === lastWritten.current) return;
+    pendingWrite.current = payload;
+    if (writeTimer.current !== null) clearTimeout(writeTimer.current);
+    writeTimer.current = setTimeout(flushWrite, 250);
+  }, [items, hydrated, flushWrite]);
+
+  // A coalesced write must never be lost to a navigation or tab close.
+  useEffect(() => {
+    const onHide = () => flushWrite();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+      flushWrite();
+    };
+  }, [flushWrite]);
+
 
 
   // Stable action refs — functional setState means these never need to
@@ -206,12 +270,41 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Whole-bag reconciliation in one commit. The caller compares against the
+   * bag it already holds to decide whether to show its "prices updated"
+   * notice, so this stays a pure state write.
+   */
+  const repriceMany = useCallback<CartActions["repriceMany"]>((entries) => {
+    if (entries.length === 0) return;
+    const byKey = new Map<string, { price: number; regular?: number }>();
+    for (const e of entries) {
+      const p = num(e.price);
+      if (p <= 0) continue;
+      const r = num(e.regularPrice);
+      byKey.set(e.key, { price: p, regular: r > p ? r : undefined });
+    }
+    if (byKey.size === 0) return;
+    setItems((cur) => {
+      let changed = false;
+      const next = cur.map((i) => {
+        const hit = byKey.get(itemKey(i));
+        if (!hit) return i;
+        if (i.price === hit.price && i.regularPrice === hit.regular) return i;
+        changed = true;
+        return { ...i, price: hit.price, regularPrice: hit.regular };
+      });
+      return changed ? next : cur;
+    });
+  }, []);
+
   const clear = useCallback<CartActions["clear"]>(() => setItems([]), []);
 
   const actions = useMemo<CartActions>(
-    () => ({ add, remove, setQty, repriceLine, clear }),
-    [add, remove, setQty, repriceLine, clear],
+    () => ({ add, remove, setQty, repriceLine, repriceMany, clear }),
+    [add, remove, setQty, repriceLine, repriceMany, clear],
   );
+
 
   const state = useMemo<CartState>(
     () => ({

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
@@ -240,7 +240,7 @@ const CartRow = memo(function CartRow({
 });
 
 function CartPage() {
-  const { items, subtotal, setQty, remove, repriceLine, hydrated } = useCart();
+  const { items, subtotal, setQty, remove, repriceMany, hydrated } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -257,22 +257,30 @@ function CartPage() {
   // Bag prices are snapshots. Re-check them against WooCommerce once the bag
   // is hydrated so the customer never sees a price that checkout will change.
   const repriceFn = useServerFn(repriceCartLines);
-  const lineIds = useMemo(
-    () => items.map((i) => `${i.productId}:${i.variationId ?? 0}`).join(","),
+  // Only the *set* of lines matters. Sorting keeps the key stable when the
+  // customer reorders or when quantities change, so tapping "+" no longer
+  // risks a fresh server round-trip.
+  const repriceKeys = useMemo(
+    () => Array.from(new Set(items.map(itemKey))).sort().slice(0, 50),
     [items],
   );
+  const lineIds = repriceKeys.join(",");
   const { data: repriced } = useQuery({
     queryKey: ["cart-reprice", lineIds],
     queryFn: () =>
       repriceFn({
         data: {
-          lines: items.slice(0, 50).map((i) => ({
-            productId: i.productId,
-            variationId: i.variationId,
-          })),
+          lines: repriceKeys.map((k) => {
+            const [p, v] = k.split(":");
+            const variationId = Number(v);
+            return {
+              productId: Number(p),
+              variationId: variationId > 0 ? variationId : undefined,
+            };
+          }),
         },
       }),
-    enabled: hydrated && items.length > 0,
+    enabled: hydrated && repriceKeys.length > 0,
     staleTime: 60_000,
     // A bag left open in a background tab goes stale; re-check availability
     // when the customer comes back rather than sending them to checkout with
@@ -281,26 +289,29 @@ function CartPage() {
     retry: 0,
   });
 
-
   const [priceChanged, setPriceChanged] = useState(false);
+  // Reconcile in one pass and one state commit. The previous version did an
+  // O(lines x bag) `find` and fired a separate setState per changed line.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   useEffect(() => {
     if (!repriced?.lines) return;
-    let changed = false;
+    const bag = new Map<string, CartItem>(itemsRef.current.map((i) => [itemKey(i), i] as const));
+    const updates: { key: string; price: number; regularPrice?: number }[] = [];
     for (const l of repriced.lines) {
       if (l.price == null) continue;
       const key = lineKey(l.productId, l.variationId ?? undefined);
-      const cur = items.find((i) => itemKey(i) === key);
+      const cur = bag.get(key);
       if (!cur) continue;
       if (cur.price !== l.price || (cur.regularPrice ?? 0) !== (l.regularPrice ?? 0)) {
-        changed = true;
-        repriceLine(key, l.price, l.regularPrice ?? undefined);
+        updates.push({ key, price: l.price, regularPrice: l.regularPrice ?? undefined });
       }
     }
-    if (changed) setPriceChanged(true);
-    // `items` is intentionally excluded — repriceLine is a no-op when the line
-    // already matches, and including it would loop on every write.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repriced, repriceLine]);
+    if (updates.length === 0) return;
+    repriceMany(updates);
+    setPriceChanged(true);
+  }, [repriced, repriceMany]);
+
 
   // Availability reported by the server. A line that is out of stock or gone
   // cannot be ordered, so it must be surfaced here rather than failing inside
