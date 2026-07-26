@@ -467,6 +467,54 @@ export function categorySlugMap(): Promise<Map<string, number>> {
   });
 }
 
+/**
+ * Fill `min_regular_price` for variable products in a list payload.
+ *
+ * Woo's `/products` response returns an empty `regular_price` and a plain
+ * price range (no `<del>`) for variable products, so cards could only ever
+ * render the sale price. Variations carry the real regular price; we fetch
+ * them in small parallel batches. Every call goes through `wooFetch`, so
+ * results are single-flighted and cached (memory + edge) — a warm feed page
+ * costs zero extra origin requests.
+ */
+export async function enrichVariableRegular(products: WooProduct[]): Promise<WooProduct[]> {
+  const targets = products.filter((p) => p?.type === "variable" && !p.min_regular_price);
+  if (!targets.length) return products;
+
+  const found = new Map<number, string>();
+  const BATCH = 6;
+  for (let i = 0; i < targets.length; i += BATCH) {
+    await Promise.all(
+      targets.slice(i, i + BATCH).map(async (p) => {
+        try {
+          const vars = await wooFetch<WooVariation[]>({
+            path: `/products/${p.id}/variations`,
+            query: { per_page: 100, status: "publish", _fields: "price,regular_price" },
+            timeoutMs: 6000,
+          });
+          if (!Array.isArray(vars) || !vars.length) return;
+          let best: { price: number; regular: number } | null = null;
+          for (const v of vars) {
+            const price = Number.parseFloat(v?.price ?? "");
+            if (!Number.isFinite(price) || price <= 0) continue;
+            const reg = Number.parseFloat(v?.regular_price ?? "");
+            if (!best || price < best.price) {
+              best = { price, regular: Number.isFinite(reg) ? reg : 0 };
+            }
+          }
+          // Only meaningful when it is actually a markdown.
+          if (best && best.regular > best.price) found.set(p.id, String(best.regular));
+        } catch {
+          // A variation lookup failure just means no strikethrough on that card.
+        }
+      }),
+    );
+  }
+  if (!found.size) return products;
+  return products.map((p) =>
+    found.has(p.id) ? { ...p, min_regular_price: found.get(p.id) } : p,
+  );
+}
 
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
@@ -497,6 +545,13 @@ export type WooProduct = {
   meta_data?: { id?: number; key: string; value: string | number | boolean | null }[];
   average_rating: string;
   rating_count: number;
+  /**
+   * Derived: lowest regular (pre-sale) price across a variable product's
+   * variations. Woo's list payload leaves `regular_price` empty for variable
+   * products and its `price_html` range omits the strikethrough, so the card
+   * had no way to show the crossed-out price. Filled by `enrichVariableRegular`.
+   */
+  min_regular_price?: string;
 };
 
 export type WooVariation = {

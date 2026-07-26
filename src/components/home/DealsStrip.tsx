@@ -146,8 +146,9 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
               className="pointer-events-none absolute -right-3 -top-3 h-10 w-10 rounded-full bg-amber-300/25 blur-xl"
             />
             <Link
-              to="/products"
-              search={{ sort: "rating" }}
+              to="/c/$slug"
+              params={{ slug: "mega-sale" }}
+              preload="intent"
               aria-label="Shop the Mega Sale"
               className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5"
             >

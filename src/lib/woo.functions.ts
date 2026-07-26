@@ -42,7 +42,7 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS, categorySlugMap } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, categorySlugMap, enrichVariableRegular } = await import("./woo.server");
       // Woo's `category` filter takes a term ID, not a slug: passing a slug
       // silently returned zero products. Resolve slugs off a cached slug->id
       // Map (O(1) per slug, no extra upstream call once warm).
@@ -152,7 +152,11 @@ export const listProducts = createServerFn({ method: "GET" })
       // length was used as the page-full signal, so a short text page topped up
       // by SKU hits (e.g. 20 + 5 = 25 >= 24) advertised another page that only
       // ever came back empty — a dead "Load more" button.
-      return { products, hasMore: textRows.length >= data.perPage, error: null as string | null };
+      return {
+        products: await enrichVariableRegular(products),
+        hasMore: textRows.length >= data.perPage,
+        error: null as string | null,
+      };
 
     } catch (e) {
       console.error("listProducts failed", e);
@@ -399,7 +403,7 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, enrichVariableRegular } = await import("./woo.server");
       const cats = await wooFetch<{ id: number }[]>({
         path: "/products/categories",
         query: { slug: data.slug, per_page: 1, _fields: "id" },
@@ -419,7 +423,10 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
         },
         timeoutMs: 8000,
       });
-      return { products: trimProducts(products), error: null as string | null };
+      return {
+        products: await enrichVariableRegular(trimProducts(products)),
+        error: null as string | null,
+      };
 
     } catch (e) {
       console.error("listProductsByCategorySlug failed", e);
