@@ -1585,7 +1585,7 @@ const RelatedFeed = memo(function RelatedFeed({ excludeId }: { excludeId?: numbe
       <h2 className="px-[5px] pb-2 pt-1 text-[15px] font-bold text-ink">You may also like</h2>
       <SoftBoundary>
         <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-          <InfiniteFeed recommended columns={2} excludeId={excludeId} />
+          <InfiniteFeed recommended excludeId={excludeId} />
         </Suspense>
       </SoftBoundary>
     </div>
