@@ -136,7 +136,22 @@ const draftSchema = z.object({
 // ---------- idempotency (short-TTL, in-worker dedup) ----------
 
 type SubmitResult =
-  | { ok: true; order_id: number; order_number: string; total: string; phone_masked: string; sms_ok: boolean }
+  | {
+      ok: true;
+      order_id: number;
+      order_number: string;
+      total: string;
+      phone_masked: string;
+      sms_ok: boolean;
+      // When true, the customer already has a verified session cookie for this
+      // phone — no OTP is required and the server has already run the
+      // Hoorin+duplicate verdict inline. The client should navigate directly
+      // to the callback page (decision=confirmed) or the review page.
+      skip_otp?: boolean;
+      decision?: "confirmed" | "review";
+      reason?: string;
+      duplicates?: Duplicate[];
+    }
   | { ok: false; error: string };
 
 const IDEMP_TTL_MS = 10 * 60_000; // 10 minutes
