@@ -312,10 +312,10 @@ function markBlip(key: string) {
   }
 }
 
-function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   const running = inFlight.get(key);
   if (running) return running;
-  const p = fetchOne(l)
+  const p = fetchOne(l, priority)
     .then((value) => {
       if (value.price !== null || value.gone) writeCache(key, value);
       else markBlip(key);
@@ -326,7 +326,7 @@ function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   return p;
 }
 
-function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+function load(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   const fresh = readCache(key);
   if (fresh) return Promise.resolve(fresh);
 
@@ -334,13 +334,17 @@ function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   if (stale) {
     // Serve stale instantly, refresh once behind it. Without this, every hot
     // id expires for all concurrent visitors on the same tick.
-    void refresh(key, l).catch(() => {});
+    void refresh(key, l, priority).catch(() => {});
     return Promise.resolve(stale);
   }
 
-  if (blipped(key)) return Promise.resolve(UNKNOWN);
-  return refresh(key, l);
+  // The blip damper is a presentation-path optimisation only. A trusted caller
+  // (order submission) must still try upstream: for it an "unknown" price is a
+  // rejected order, not a harmless stale badge.
+  if (!priority && blipped(key)) return Promise.resolve(UNKNOWN);
+  return refresh(key, l, priority);
 }
+
 
 export async function repriceLines(
   lines: RepriceLineInput[],
