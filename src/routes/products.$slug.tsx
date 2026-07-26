@@ -1381,7 +1381,7 @@ const Gallery = memo(function Gallery({
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding={i === 0 ? "sync" : "async"}
                   fetchPriority={i === 0 ? "high" : "auto"}
-                  style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                  ref={i === 0 ? heroRef : undefined}
                   onError={onImageSrcSetError}
                 />
               )}
