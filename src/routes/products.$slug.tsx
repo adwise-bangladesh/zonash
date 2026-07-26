@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, lazy, memo, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
