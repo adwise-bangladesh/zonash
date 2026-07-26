@@ -340,12 +340,27 @@ function CartPage() {
             Some prices were updated to the latest store price.
           </p>
         )}
+        {blockedCount > 0 && (
+          <p
+            role="alert"
+            className="mb-2.5 rounded-[3px] border border-destructive/40 bg-destructive/5 px-3 py-2 text-[11.5px] font-medium text-destructive"
+          >
+            {blockedCount === 1 ? "1 item is" : `${blockedCount} items are`} unavailable. Remove{" "}
+            {blockedCount === 1 ? "it" : "them"} to continue to checkout.
+          </p>
+        )}
         <ul className="space-y-2.5">
-
           {items.map((item) => (
-            <CartRow key={itemKey(item)} item={item} onSetQty={onSetQty} onRemove={onRemove} />
+            <CartRow
+              key={itemKey(item)}
+              item={item}
+              status={blocked.get(itemKey(item))}
+              onSetQty={onSetQty}
+              onRemove={onRemove}
+            />
           ))}
         </ul>
+
 
         <details className="mt-4 rounded-[3px] border border-border bg-background [&[open]>summary>span>svg]:rotate-180">
           <summary className="flex cursor-pointer list-none items-center justify-between p-4">
