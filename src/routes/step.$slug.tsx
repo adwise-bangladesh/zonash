@@ -1137,7 +1137,11 @@ function CountdownInline() {
     if (!visible) return; // only tick while on-screen
     const t = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
-      tick();
+      const left = Math.max(0, endsAt - Date.now());
+      setRemaining(left);
+      // Stop ticking once the offer window has expired — the paint doesn't
+      // change any more, so every subsequent setState is wasted work.
+      if (left <= 0) clearInterval(t);
     }, 1000);
     return () => clearInterval(t);
   }, [visible]);
