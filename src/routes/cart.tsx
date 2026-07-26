@@ -271,31 +271,43 @@ function CartPage() {
   const lineIds = repriceKeys.join(",");
   const { data: repriced } = useQuery({
     queryKey: ["cart-reprice", lineIds],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // The server function accepts 50 ids per call while the bag holds up to
-      // MAX_LINES. Sending only the first 50 left every line past that
-      // unchecked, so an out-of-stock or deleted item in a large bag walked
-      // straight past the checkout gate. Cover the whole bag in chunks; the
-      // server memo + single-flight make repeat chunks nearly free.
+      // MAX_LINES, so the whole bag is covered in chunks; the server memo +
+      // single-flight make repeat chunks nearly free. Chunks run concurrently
+      // (bounded) instead of serially, and one failing chunk must not erase
+      // the availability gate for the chunks that succeeded.
       const chunks: string[][] = [];
       for (let i = 0; i < repriceKeys.length; i += REPRICE_CHUNK) {
         chunks.push(repriceKeys.slice(i, i + REPRICE_CHUNK));
       }
+      const settled = await Promise.allSettled(
+        chunks.map((chunk) =>
+          repriceFn({
+            signal,
+            data: {
+              lines: chunk.map((k) => {
+                const [p, v] = k.split(":");
+                const productId = Number(p);
+                const variationId = Number(v);
+                return {
+                  productId,
+                  variationId: variationId > 0 ? variationId : undefined,
+                };
+              }),
+            },
+          }),
+        ),
+      );
       const lines: RepricedLine[] = [];
-      for (const chunk of chunks) {
-        const res = await repriceFn({
-          data: {
-            lines: chunk.map((k) => {
-              const [p, v] = k.split(":");
-              const variationId = Number(v);
-              return {
-                productId: Number(p),
-                variationId: variationId > 0 ? variationId : undefined,
-              };
-            }),
-          },
-        });
-        lines.push(...res.lines);
+      for (const r of settled) {
+        if (r.status !== "fulfilled") continue;
+        // The response crosses an untrusted boundary; only accept the shape
+        // the UI actually reads.
+        const got = Array.isArray(r.value?.lines) ? r.value.lines : [];
+        for (const l of got) {
+          if (l && Number.isFinite(l.productId)) lines.push(l);
+        }
       }
       return { lines };
     },
@@ -305,11 +317,17 @@ function CartPage() {
     // when the customer comes back rather than sending them to checkout with
     // an hour-old stock snapshot.
     refetchOnWindowFocus: true,
+    // Removing one line changes the query key. Without carrying the previous
+    // result forward the availability gate blinks off mid-refetch and the
+    // Checkout button becomes clickable with a ghost line still in the bag.
+    placeholderData: keepPreviousData,
     retry: 0,
   });
 
 
   const [priceChanged, setPriceChanged] = useState(false);
+  // The notice belongs to one bag composition; a later bag must not inherit it.
+  useEffect(() => setPriceChanged(false), [lineIds]);
   // Reconcile in one pass and one state commit. The previous version did an
   // O(lines x bag) `find` and fired a separate setState per changed line.
   const itemsRef = useRef(items);
@@ -319,7 +337,7 @@ function CartPage() {
     const bag = new Map<string, CartItem>(itemsRef.current.map((i) => [itemKey(i), i] as const));
     const updates: { key: string; price: number; regularPrice?: number }[] = [];
     for (const l of repriced.lines) {
-      if (l.price == null) continue;
+      if (typeof l.price !== "number" || !(l.price > 0)) continue;
       const key = lineKey(l.productId, l.variationId ?? undefined);
       const cur = bag.get(key);
       if (!cur) continue;
@@ -333,29 +351,27 @@ function CartPage() {
   }, [repriced, repriceMany]);
 
 
-  // Availability reported by the server. A line that is out of stock or gone
-  // cannot be ordered, so it must be surfaced here rather than failing inside
+  // Availability + remaining stock, derived in a single pass over the server
+  // response rather than three separate walks. A line that is out of stock or
+  // gone cannot be ordered, so it must surface here rather than failing inside
   // WooCommerce order creation after the customer has typed their address.
-  const blocked = useMemo(() => {
-    const m = new Map<string, "oos" | "gone">();
+  const { blocked, stockCaps } = useMemo(() => {
+    const blockedMap = new Map<string, "oos" | "gone">();
+    const caps = new Map<string, number>();
     for (const l of repriced?.lines ?? []) {
-      if (!l.gone && l.inStock) continue;
-      m.set(lineKey(l.productId, l.variationId ?? undefined), l.gone ? "gone" : "oos");
+      const key = lineKey(l.productId, l.variationId ?? undefined);
+      if (l.gone || !l.inStock) {
+        blockedMap.set(key, l.gone ? "gone" : "oos");
+        continue;
+      }
+      if (typeof l.stockQty === "number" && l.stockQty > 0) caps.set(key, l.stockQty);
     }
-    return m;
+    return { blocked: blockedMap, stockCaps: caps };
   }, [repriced]);
-  const blockedCount = blocked.size;
-
-  // Remaining units per line when the store tracks stock. "In stock" is not
-  // enough: a bag asking for 5 of a 2-unit line fails inside WooCommerce.
-  const stockCaps = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const l of repriced?.lines ?? []) {
-      if (typeof l.stockQty !== "number" || l.stockQty <= 0) continue;
-      m.set(lineKey(l.productId, l.variationId ?? undefined), l.stockQty);
-    }
-    return m;
-  }, [repriced]);
+  const blockedCount = useMemo(
+    () => items.reduce((n, i) => n + (blocked.has(itemKey(i)) ? 1 : 0), 0),
+    [items, blocked],
+  );
 
   const overStockKeys = useMemo(() => {
     const out: { key: string; cap: number }[] = [];
@@ -371,11 +387,15 @@ function CartPage() {
   // The "unavailable items" CTA used to be a disabled dead end: it told the
   // customer what to do but could not do it. It now performs the fix.
   const resolveIssues = useCallback(() => {
-    for (const key of blocked.keys()) remove(key);
+    for (const i of itemsRef.current) {
+      const key = itemKey(i);
+      if (blocked.has(key)) remove(key);
+    }
     for (const { key, cap } of overStockKeys) setQty(key, cap);
   }, [blocked, overStockKeys, remove, setQty]);
 
   const issueCount = blockedCount + overStockKeys.length;
+
 
   const savings = useMemo(
 
