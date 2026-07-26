@@ -85,6 +85,10 @@ function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clear, hydrated, setQty, remove } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
+  const draftFn = useServerFn(saveDraftOrder);
+  const draftIdRef = useRef<number | null>(null);
+  const draftInFlightRef = useRef(false);
+  const lastDraftSigRef = useRef<string>("");
 
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
