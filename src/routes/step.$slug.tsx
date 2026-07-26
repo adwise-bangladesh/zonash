@@ -1359,7 +1359,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
           </p>
         </div>
         <div className="rounded-[6px] border border-border bg-background px-2.5 py-1.5 text-right">
-          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Social proof</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Verified</p>
           <div className="mt-1 flex justify-end -space-x-1" aria-hidden>
             {(Object.keys(SOURCE_META) as ReviewSource[]).map((source) => {
               const meta = SOURCE_META[source];
