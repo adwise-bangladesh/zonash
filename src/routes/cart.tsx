@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
 import { repriceCartLines } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
