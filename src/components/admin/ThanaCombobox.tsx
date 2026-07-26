@@ -128,7 +128,7 @@ export function ThanaCombobox({
               </div>
             </div>
           )}
-          <ul className="max-h-64 overflow-y-auto py-1">
+          <ul className="max-h-64 overflow-y-auto pb-1">
             {showValueMissing && !q && (
               <li>
                 <button
