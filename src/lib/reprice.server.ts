@@ -155,7 +155,9 @@ export async function repriceLines(lines: RepriceLineInput[]): Promise<RepriceLi
 
   return lines.map((l) => {
     const v = results.get(keyOf(l)) ?? {
+      stockQty: null,
       price: null,
+
       regularPrice: null,
       inStock: true,
       gone: false,
