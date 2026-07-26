@@ -1,12 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { useCart } from "@/lib/cart";
+import { MAX_QTY, useCart, type CartItem } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
-
-const MAX_QTY = 99;
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -17,7 +15,25 @@ export const Route = createFileRoute("/cart")({
     ],
   }),
   component: CartPage,
+  errorComponent: CartError,
 });
+
+function CartError() {
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-muted/30">
+      <CheckoutHeader title="My Cart" />
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
+        <EmptyState
+          icon={ShoppingBag}
+          title="We couldn't load your bag"
+          description="Something went wrong while opening your cart. Please try again."
+          primary={{ label: "Reload", onClick: () => window.location.reload() }}
+          secondary={{ label: "Continue shopping", to: "/products" }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function CartSkeleton() {
   return (
@@ -65,6 +81,126 @@ function CartSkeleton() {
   );
 }
 
+/**
+ * One bag line. Memoised on the item identity plus the two stable callbacks,
+ * so bumping the quantity of one line never re-renders the rest of the bag.
+ */
+const CartRow = memo(function CartRow({
+  item,
+  onSetQty,
+  onRemove,
+}: {
+  item: CartItem;
+  onSetQty: (id: number, qty: number) => void;
+  onRemove: (id: number) => void;
+}) {
+  const lineTotal = item.price * item.quantity;
+  const hasOld = !!item.regularPrice && item.regularPrice > item.price;
+  const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
+  const lineSave = hasOld ? lineOld - lineTotal : 0;
+  const pct = hasOld && lineOld > 0 ? Math.round((lineSave / lineOld) * 100) : 0;
+  const atMax = item.quantity >= MAX_QTY;
+
+  const thumb = item.image ? (
+    <img
+      src={item.image}
+      alt=""
+      width={64}
+      height={64}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      decoding="async"
+      onError={(e) => {
+        e.currentTarget.style.visibility = "hidden";
+      }}
+    />
+  ) : (
+    <span className="block h-full w-full bg-muted" />
+  );
+
+  return (
+    <li className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5">
+      <Link
+        to="/products/$slug"
+        params={{ slug: item.slug }}
+        className="h-16 w-16 shrink-0 overflow-hidden rounded-[3px] bg-muted"
+        aria-label={item.name}
+      >
+        {thumb}
+      </Link>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-start gap-2">
+          <Link
+            to="/products/$slug"
+            params={{ slug: item.slug }}
+            className="line-clamp-2 flex-1 text-[13px] font-medium text-foreground"
+          >
+            {item.name}
+          </Link>
+          <button
+            type="button"
+            aria-label={`Remove ${item.name}`}
+            onClick={() => onRemove(item.productId)}
+            className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+        {item.sku && (
+          <div className="text-[10.5px] leading-tight text-muted-foreground">
+            SKU: <span className="font-mono">{item.sku}</span>
+          </div>
+        )}
+        <div className="mt-auto flex items-center justify-between pt-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
+            {hasOld ? (
+              <>
+                <span className="text-[11px] text-muted-foreground line-through tabular-nums">
+                  {formatBDT(lineOld)}
+                </span>
+                <span className="rounded-[2px] bg-destructive/10 px-1 py-[1px] text-[9px] font-bold text-destructive">
+                  -{pct}%
+                </span>
+              </>
+            ) : null}
+          </div>
+          <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
+            <button
+              type="button"
+              aria-label={
+                item.quantity <= 1
+                  ? `Remove ${item.name}`
+                  : `Decrease quantity of ${item.name}`
+              }
+              onClick={() => onSetQty(item.productId, item.quantity - 1)}
+              className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
+            >
+              <Minus className="h-3 w-3" aria-hidden="true" />
+            </button>
+            <span
+              aria-label={`Quantity ${item.quantity}`}
+              className="w-7 text-center text-xs font-semibold tabular-nums"
+            >
+              {item.quantity}
+            </span>
+            <button
+              type="button"
+              aria-label={`Increase quantity of ${item.name}`}
+              onClick={() => onSetQty(item.productId, item.quantity + 1)}
+              disabled={atMax}
+              aria-disabled={atMax}
+              className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
+            >
+              <Plus className="h-3 w-3" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+});
+
 function CartPage() {
   const { items, subtotal, setQty, remove, hydrated } = useCart();
 
@@ -72,20 +208,28 @@ function CartPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const { savings, grandTotal } = useMemo(() => {
-    const regular = items.reduce(
-      (s, i) => s + (i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) * i.quantity,
-      0,
-    );
-    return {
-      savings: Math.max(0, regular - subtotal),
-      grandTotal: subtotal,
-    };
-  }, [items, subtotal]);
+  // `setQty` already clamps to [0, MAX_QTY] and drops the line at 0, so the
+  // page keeps no clamping rules of its own.
+  const onSetQty = useCallback(
+    (id: number, qty: number) => setQty(id, qty),
+    [setQty],
+  );
+  const onRemove = useCallback((id: number) => remove(id), [remove]);
+
+  const savings = useMemo(
+    () =>
+      Math.max(
+        0,
+        items.reduce(
+          (s, i) =>
+            s + ((i.regularPrice && i.regularPrice > i.price ? i.regularPrice : i.price) - i.price) * i.quantity,
+          0,
+        ),
+      ),
+    [items],
+  );
 
   if (!hydrated) return <CartSkeleton />;
-
-
 
   if (items.length === 0) {
     return (
@@ -110,105 +254,9 @@ function CartPage() {
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
         <ul className="space-y-2.5">
-          {items.map((item) => {
-            const lineTotal = item.price * item.quantity;
-            const hasOld = !!item.regularPrice && item.regularPrice > item.price;
-            const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
-            const lineSave = hasOld ? lineOld - lineTotal : 0;
-            const pct = hasOld ? Math.round((lineSave / lineOld) * 100) : 0;
-            return (
-              <li
-                key={item.productId}
-                className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5"
-              >
-                <Link
-                  to="/products/$slug"
-                  params={{ slug: item.slug }}
-                  className="h-16 w-16 shrink-0 overflow-hidden rounded-[3px] bg-muted"
-                  aria-label={item.name}
-                >
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt=""
-                      width={64}
-                      height={64}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span className="block h-full w-full bg-muted" />
-                  )}
-                </Link>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-start gap-2">
-                    <Link
-                      to="/products/$slug"
-                      params={{ slug: item.slug }}
-                      className="line-clamp-2 flex-1 text-[13px] font-medium text-foreground"
-                    >
-                      {item.name}
-                    </Link>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${item.name}`}
-                      onClick={() => remove(item.productId)}
-                      className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  {item.sku && (
-                    <div className="text-[10.5px] leading-tight text-muted-foreground">
-                      SKU: <span className="font-mono">{item.sku}</span>
-                    </div>
-                  )}
-                  <div className="mt-auto flex items-center justify-between pt-0.5">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
-                      {hasOld ? (
-                        <>
-                          <span className="text-[11px] text-muted-foreground line-through tabular-nums">
-                            {formatBDT(lineOld)}
-                          </span>
-                          <span className="rounded-[2px] bg-destructive/10 px-1 py-[1px] text-[9px] font-bold text-destructive">
-                            -{pct}%
-                          </span>
-                        </>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center rounded-[3px] bg-secondary shadow-[var(--shadow-soft)]">
-                      <button
-                        type="button"
-                        aria-label="Decrease quantity"
-                        onClick={() => setQty(item.productId, item.quantity - 1)}
-                        className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span
-                        aria-live="polite"
-                        aria-label={`Quantity ${item.quantity}`}
-                        className="w-7 text-center text-xs font-semibold tabular-nums"
-                      >
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Increase quantity"
-                        onClick={() => setQty(item.productId, Math.min(MAX_QTY, item.quantity + 1))}
-                        disabled={item.quantity >= MAX_QTY}
-                        className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+          {items.map((item) => (
+            <CartRow key={item.productId} item={item} onSetQty={onSetQty} onRemove={onRemove} />
+          ))}
         </ul>
 
         <details className="mt-4 rounded-[3px] border border-border bg-background [&[open]>summary>span>svg]:rotate-180">
@@ -218,7 +266,7 @@ function CartPage() {
             </span>
             <span className="flex items-center gap-2">
               <span className="text-sm font-bold text-primary">{formatBDT(subtotal)}</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" aria-hidden="true" />
             </span>
           </summary>
           <dl className="space-y-2 border-t border-dashed border-border px-4 pb-4 pt-3 text-sm">
@@ -238,7 +286,7 @@ function CartPage() {
             </div>
             <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-border pt-3">
               <dt className="text-sm font-semibold">Total</dt>
-              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(grandTotal)}</dd>
+              <dd className="text-xl font-bold tabular-nums text-primary">{formatBDT(subtotal)}</dd>
             </div>
           </dl>
         </details>
@@ -259,11 +307,15 @@ function CartPage() {
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
           <Link
             to="/checkout"
+            preload="intent"
             className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
           >
-            <span className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]" />
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]"
+            />
             <Lock className="h-4 w-4" aria-hidden="true" />
-            Checkout · {formatBDT(grandTotal)}
+            Checkout · {formatBDT(subtotal)}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
