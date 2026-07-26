@@ -415,21 +415,39 @@ function ProductDetail({ p }: { p: WooProduct }) {
     );
   }, [isVariable, variations, selected]);
 
-  // Which options are valid given the currently-selected other attributes.
-  function isOptionAvailable(attrName: string, option: string): boolean {
-    if (!isVariable || variations.length === 0) return true;
-    return variations.some((v) => {
-      let matches = true;
-      for (const a of v.attributes) {
-        if (a.name === attrName) {
-          if (a.option !== option) matches = false;
-        } else if (selected[a.name] && selected[a.name] !== a.option) {
-          matches = false;
+  /**
+   * Per-option availability + best candidate, computed in ONE pass.
+   *
+   * The render previously called `isOptionAvailable()` and ran a second
+   * `variations.filter()` inside the option loop, so a product with 3
+   * attributes × 8 options × 60 variations walked the variation list ~48 times
+   * on every keystroke-level state change. This map is O(variations × attrs)
+   * once per `selected` change and is read in O(1) per option.
+   */
+  const optionMeta = useMemo(() => {
+    const map = new Map<string, Map<string, { enabled: boolean; best?: WooVariation }>>();
+    if (!isVariable) return map;
+    for (const v of variations) {
+      const attrs = v.attributes;
+      for (const a of attrs) {
+        const compatible = attrs.every(
+          (o) => o.name === a.name || !selected[o.name] || selected[o.name] === o.option,
+        );
+        if (!compatible) continue;
+        let byOpt = map.get(a.name);
+        if (!byOpt) {
+          byOpt = new Map();
+          map.set(a.name, byOpt);
         }
+        const entry = byOpt.get(a.option) ?? { enabled: false, best: undefined };
+        const inStockV = v.stock_status === "instock";
+        if (inStockV) entry.enabled = true;
+        if (!entry.best || (inStockV && entry.best.stock_status !== "instock")) entry.best = v;
+        byOpt.set(a.option, entry);
       }
-      return matches && v.stock_status === "instock";
-    });
-  }
+    }
+    return map;
+  }, [isVariable, variations, selected]);
 
   // ---------- Pricing / stock (variation-aware) ----------
   const activePriceStr =
