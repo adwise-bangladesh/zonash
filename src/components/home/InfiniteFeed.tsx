@@ -3,11 +3,19 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import { dedupeFeedPages, getFeedNextPageParam, FEED_PER_PAGE, feedKeyFor } from "@/lib/home-feed";
+import {
+  dedupeFeedPages,
+  getFeedNextPageParam,
+  FEED_PER_PAGE,
+  feedKeyFor,
+  recommendedFeedKey,
+} from "@/lib/home-feed";
+import { fetchRecommendedPage } from "@/lib/recommended-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
 type Orderby = "date" | "price" | "popularity" | "rating" | "title";
 type Order = "asc" | "desc";
+
 
 /** Grid placeholder used while a feed variant (sort change, first load) streams in. */
 export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
