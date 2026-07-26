@@ -177,7 +177,17 @@ const CartRow = memo(function CartRow({
               ? "No longer available — remove to continue"
               : "Out of stock — remove to continue"}
           </p>
+        ) : overStock ? (
+          <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-destructive">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+            Only {cap} left — reduce the quantity to continue
+          </p>
+        ) : atMax && cap < MAX_QTY ? (
+          <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-500">
+            Last {cap} in stock
+          </p>
         ) : null}
+
 
         <div className="mt-auto flex items-center justify-between pt-0.5">
           <div className="flex items-baseline gap-1.5">
