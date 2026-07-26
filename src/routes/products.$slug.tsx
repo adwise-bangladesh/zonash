@@ -24,8 +24,8 @@ import { canonicalUrl, waLink } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
-const InfiniteFeed = lazy(() =>
-  import("@/components/home/InfiniteFeed").then((m) => ({ default: m.InfiniteFeed })),
+const RelatedProducts = lazy(() =>
+  import("@/components/product/RelatedProducts").then((m) => ({ default: m.RelatedProducts })),
 );
 
 const productQuery = (slug: string) =>
@@ -599,6 +599,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
     [p.short_description],
   );
   const longDesc = useMemo(() => sanitizeHtml((p.description ?? "").trim()), [p.description]);
+  // Stable identity so the memoized related grid doesn't refetch every render.
+  const relatedCategoryIds = useMemo(
+    () => (p.categories ?? []).map((c) => c.id).filter(Boolean).slice(0, 5),
+    [p.categories],
+  );
 
   // ---------- UI state ----------
   // NOTE: the window-scroll flag and the gallery's active-slide index used to
@@ -970,18 +975,26 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </div>
               </div>
             ) : (
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
-                No reviews yet. Verified customers can leave a review from their{" "}
-                <Link to="/orders" className="font-semibold text-primary hover:underline">
-                  orders dashboard
-                </Link>{" "}
-                after receiving this item.
-              </p>
+              <div className="rounded-2xl border border-dashed border-border/80 bg-surface-muted/50 px-4 py-5 text-center">
+                <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full bg-background shadow-sm ring-1 ring-border/60">
+                  <Star className="h-5 w-5 text-warning" aria-hidden="true" />
+                </div>
+                <p className="text-[13px] font-semibold text-foreground">Be the first to review</p>
+                <p className="mx-auto mt-1 max-w-[16rem] text-[11.5px] leading-relaxed text-muted-foreground">
+                  No reviews yet for this item. Verified buyers can rate it after delivery.
+                </p>
+                <Link
+                  to="/orders"
+                  className="mt-3 inline-flex items-center justify-center rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-surface-muted"
+                >
+                  Go to my orders
+                </Link>
+              </div>
             )}
           </CollapsibleSection>
         </div>
 
-        <RelatedFeed excludeId={p.id} />
+        <RelatedFeed productId={p.id} categoryIds={relatedCategoryIds} />
       </div>
 
       {/* Mobile sticky action bar */}
@@ -1570,22 +1583,26 @@ const DescriptionBlock = memo(function DescriptionBlock({ html }: { html: string
 });
 
 /**
- * Below-the-fold recommendations. Props-free + memoized: the feed renders
- * dozens of product cards, and it was being re-rendered by every unrelated
- * state change in the page above it.
+ * Below-the-fold related products (same category as the current product).
+ * Memoized so unrelated state changes above it don't re-render the grid.
  */
-const RelatedFeed = memo(function RelatedFeed({ excludeId }: { excludeId?: number }) {
+const RelatedFeed = memo(function RelatedFeed({
+  productId,
+  categoryIds,
+}: {
+  productId: number;
+  categoryIds: number[];
+}) {
   return (
     <div
       className="mt-4 pb-24"
-      style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "900px" }}
     >
-      {/* The related feed is optional: a rejected suspense query inside it
-          would otherwise take the whole product page to its errorComponent. */}
-      <h2 className="px-[5px] pb-2 pt-1 text-[15px] font-bold text-ink">You may also like</h2>
+      {/* Optional surface: a rejected query inside it must not take the whole
+          product page to its errorComponent. */}
       <SoftBoundary>
         <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-          <InfiniteFeed recommended excludeId={excludeId} />
+          <RelatedProducts productId={productId} categoryIds={categoryIds} />
         </Suspense>
       </SoftBoundary>
     </div>
