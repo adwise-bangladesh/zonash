@@ -22,7 +22,15 @@ export const getRouter = () => {
     defaultPreload: "intent",
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
+    // Animate every navigation, including browser/gesture back — `popstate`
+    // navigations are driven by the router, so a per-link opt-in could never
+    // animate them, and back was the most jarring transition in the app.
+    // Same-route search-param updates (filter chips, sort) opt OUT individually
+    // with `viewTransition={false}`; sliding the whole screen for a filter
+    // toggle reads as a page load, which is the opposite of what we want.
+    defaultViewTransition: true,
   });
+
 
   return routerWithQueryClient(router, queryClient);
 };
