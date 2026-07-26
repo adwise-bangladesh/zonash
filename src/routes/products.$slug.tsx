@@ -351,21 +351,30 @@ function ProductDetail({ p }: { p: WooProduct }) {
     enabled: isVariable,
     retry: 1,
   });
-  const variations = useMemo<WooVariation[]>(
-    () => variationsQuery.data?.variations ?? [],
-    [variationsQuery.data?.variations],
-  );
+  // Woo occasionally returns partially-shaped variation rows (missing
+  // `attributes` on a trashed variation). Every consumer below iterates
+  // `v.attributes`, so normalise once here instead of guarding at 6 call sites.
+  const variations = useMemo<WooVariation[]>(() => {
+    const raw = variationsQuery.data?.variations;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((v): v is WooVariation => !!v && typeof v.id === "number")
+      .map((v) => (Array.isArray(v.attributes) ? v : { ...v, attributes: [] }));
+  }, [variationsQuery.data?.variations]);
   // Surface a soft warning once if variations fail to load — the CTA guards
   // against an incomplete selection so the user is never stuck.
   const variationsErrShownRef = useRef(false);
+  const variationsFailed = variationsQuery.isError;
   useEffect(() => {
     if (!isVariable) return;
-    const msg = variationsQuery.data?.error;
+    const msg =
+      variationsQuery.data?.error ||
+      (variationsFailed ? "Couldn't load options. Please refresh." : "");
     if (msg && !variationsErrShownRef.current) {
       variationsErrShownRef.current = true;
       toast.error(msg);
     }
-  }, [isVariable, variationsQuery.data?.error]);
+  }, [isVariable, variationsQuery.data?.error, variationsFailed]);
 
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
