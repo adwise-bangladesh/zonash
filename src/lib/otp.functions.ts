@@ -553,6 +553,12 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
 
     // Hard block-list — phone / email / IP / fingerprint added by staff.
+    // We do NOT error out: silent errors leak the fact that the identity is
+    // flagged and let a bot iterate to bypass. Instead we let the order be
+    // created as normal `pending`, skip OTP + SMS, and force the customer
+    // onto the /order-review page ("we'll call to confirm"). Admins see the
+    // block hit as a private note and can action it from the dashboard.
+    let blockedHit: { kind: string; value: string } | null = null;
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const email = (data.billing?.email ?? "").trim().toLowerCase();
@@ -571,18 +577,13 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         const set = new Set(
           (blocks ?? []).map((b: { kind: string; value: string }) => `${b.kind}:${b.value.toLowerCase()}`),
         );
-        const hit = wants.find((w) => set.has(`${w.kind}:${w.value.toLowerCase()}`));
-        if (hit) {
-          return {
-            ok: false as const,
-            error: "We couldn't place your order right now. Please try again in a few minutes.",
-          };
-        }
+        blockedHit = wants.find((w) => set.has(`${w.kind}:${w.value.toLowerCase()}`)) ?? null;
       }
     } catch (e) {
       console.error("block-check failed:", (e as Error).message);
       // fail-open — do not block legitimate customers on infra hiccup
     }
+
 
     // Rate limit + bot-signal assessment. Fail-open on DB errors.
     const { assessOrderSubmit, recordOrderSubmit } = await import("./abuse.server");
