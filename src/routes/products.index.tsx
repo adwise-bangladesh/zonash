@@ -68,6 +68,8 @@ const searchSchema = z.object({
     .catch(undefined),
 });
 
+type SearchState = z.infer<typeof searchSchema>;
+
 const FILTER_PER_PAGE = 24;
 
 /**
