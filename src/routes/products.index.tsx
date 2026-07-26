@@ -29,7 +29,9 @@ const primaryCategoriesQuery = queryOptions({
   queryKey: ["categories", "primary"],
   queryFn: () => listPrimaryCategories(),
   staleTime: 5 * 60_000,
+  retry: 1,
 });
+
 
 /**
  * Every field is individually `.catch()`-ed: `validateSearch` throwing on a
