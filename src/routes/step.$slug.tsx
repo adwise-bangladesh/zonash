@@ -389,15 +389,28 @@ function StepLandingPage() {
       raw && opts.length
         ? (opts.find((o) => o.toLowerCase() === raw.toLowerCase()) ?? raw)
         : raw;
-    setForm((f) => ({
-      name: f.name || b.name || "",
-      phone: f.phone || b.phone || sessionPhone || "",
-      address: f.address || b.address || "",
-      thana: f.thana || canonicalThana || "",
-      email: f.email || b.email || "",
-    }));
-
+    setForm((f) => {
+      const next = {
+        name: f.name || b.name || "",
+        phone: f.phone || b.phone || sessionPhone || "",
+        address: f.address || b.address || "",
+        thana: f.thana || canonicalThana || "",
+        email: f.email || b.email || "",
+      };
+      // Bail out if nothing actually changed — otherwise React commits a
+      // new state object every time policeQ.data.items refetches or a new
+      // array reference lands, triggering a full parent re-render at scale.
+      if (
+        next.name === f.name &&
+        next.phone === f.phone &&
+        next.address === f.address &&
+        next.thana === f.thana &&
+        next.email === f.email
+      ) return f;
+      return next;
+    });
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
+
 
   // Stable identity — Field's onChange lands on stable inputs and doesn't
   // invalidate memoized children on every keystroke.
