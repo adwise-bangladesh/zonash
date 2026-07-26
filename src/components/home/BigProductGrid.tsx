@@ -27,6 +27,8 @@ const BigCard = memo(function BigCard({
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
   const seed = () => onSeed(p);
+  const imgRef = useRef<HTMLImageElement>(null);
+
   // The storefront is capped at a 480px frame, so a card column never exceeds
   // ~240px. Without a srcset the browser downloaded the full-size WordPress
   // original (often 1000px+) for every card in the feed.
