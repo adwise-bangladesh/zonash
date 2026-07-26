@@ -123,12 +123,25 @@ export const listProducts = createServerFn({ method: "GET" })
       // overwhelming majority of queries in exchange for guaranteed zero rows.
       const skuCandidate =
         !!term && !/\s/.test(term) && term.length <= 32 && /[\d-]/.test(term);
+      // A failed TEXT query is an outage, not "zero products". Swallowing it
+      // into `[]` with `error: null` made every list view — the unfiltered shop
+      // feed included — render a confident "No matches found" / empty catalog
+      // during a WooCommerce blip, with no retry affordance, and `wooFetch`'s
+      // negative cache then pinned that state for the whole error window. The
+      // taxonomy path above already surfaces its failure; this one is the
+      // request that actually returns the products.
+      let textFailed = false;
       const [byText, bySku] = await Promise.all([
         wooFetch<WooProduct[]>({
           path: "/products",
           query: { ...baseQuery, search: term || undefined },
           timeoutMs: 8000,
-        }).catch(() => [] as WooProduct[]),
+        }).catch(() => {
+          textFailed = true;
+          return [] as WooProduct[];
+        }),
+        // The SKU probe stays best-effort: it is a bonus exact-match lane, and
+        // its failure must not hide a healthy text result set.
         skuCandidate && data.page === 1
           ? wooFetch<WooProduct[]>({
               path: "/products",
@@ -137,6 +150,14 @@ export const listProducts = createServerFn({ method: "GET" })
             }).catch(() => [] as WooProduct[])
           : Promise.resolve([] as WooProduct[]),
       ]);
+
+      if (textFailed) {
+        return {
+          products: [] as WooProduct[],
+          hasMore: false,
+          error: "Product catalog is temporarily unavailable.",
+        };
+      }
 
       const textRows = trimProducts(byText);
       const seen = new Set<number>();
@@ -157,6 +178,7 @@ export const listProducts = createServerFn({ method: "GET" })
         hasMore: textRows.length >= data.perPage,
         error: null as string | null,
       };
+
 
     } catch (e) {
       console.error("listProducts failed", e);
