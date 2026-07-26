@@ -10,7 +10,7 @@ const MAX_QTY = 99;
 import { formatBDT } from "@/lib/format";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
-import { submitPendingOrder } from "@/lib/otp.functions";
+import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
 import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
