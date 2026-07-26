@@ -584,123 +584,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const longDesc = useMemo(() => sanitizeHtml((p.description ?? "").trim()), [p.description]);
 
   // ---------- UI state ----------
+  // NOTE: the window-scroll flag and the gallery's active-slide index used to
+  // live here. Both change many times per second while a shopper scrolls or
+  // swipes, and each change re-rendered this entire ~700-node tree (gallery,
+  // option grid, all collapsibles, the sticky bar). They now live inside
+  // `FloatingHeader` and `Gallery`, so scrolling re-renders ~6 nodes instead.
   const [qty, setQty] = useState(1);
-  const galleryRef = useRef<HTMLDivElement>(null);
-  const [activeImg, setActiveImg] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
-  const lastInteractRef = useRef(0);
-  const scrollRafRef = useRef(0);
-  // Set while a programmatic scroll is in flight. `scrollTo({behavior:"smooth"})`
-  // emits the same scroll events a finger does, so the handler below was
-  // stamping `lastInteractRef` on the slideshow's *own* animation: after the
-  // first auto-advance every later tick saw "user interacted <6s ago" and
-  // bailed, permanently freezing the carousel on slide 2.
-  const autoScrollUntilRef = useRef(0);
-  const onGalleryScroll = () => {
-    if (Date.now() > autoScrollUntilRef.current) lastInteractRef.current = Date.now();
-    if (scrollRafRef.current) return;
-    scrollRafRef.current = window.requestAnimationFrame(() => {
-      scrollRafRef.current = 0;
-      const el = galleryRef.current;
-      if (!el || el.clientWidth === 0) return;
-      const i = Math.round(el.scrollLeft / el.clientWidth);
-      setActiveImg((prev) => (prev === i ? prev : i));
-    });
-  };
-  useEffect(
-    () => () => {
-      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
-    },
-    [],
-  );
-  /** Respect the OS "reduce motion" setting for both auto-play and smoothing. */
-  const prefersReducedMotion = () =>
-    typeof window !== "undefined" &&
-    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  const scrollToImg = (i: number) => {
-    const el = galleryRef.current;
-    if (!el) return;
-    autoScrollUntilRef.current = Date.now() + 1200;
-    el.scrollTo({
-      left: i * el.clientWidth,
-      behavior: prefersReducedMotion() ? "auto" : "smooth",
-    });
-    setActiveImg(i);
-  };
-  // Auto-scroll gallery to the variation's image when it changes.
-  useEffect(() => {
-    if (!activeImage) return;
-    const idx = gallery.findIndex((s) => s === activeImage);
-    if (idx >= 0 && idx !== activeImg) scrollToImg(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeImage]);
-
-  // Auto-advance slideshow (pauses ~6s after any user interaction).
-  useEffect(() => {
-    if (gallery.length < 2) return;
-    // Auto-playing carousels are a WCAG 2.2.2 failure for motion-sensitive
-    // users; honour the OS preference instead of animating unconditionally.
-    if (prefersReducedMotion()) return;
-    const id = window.setInterval(() => {
-      if (Date.now() - lastInteractRef.current < 6000) return;
-      if (document.hidden) return;
-      const el = galleryRef.current;
-      if (!el || el.clientWidth === 0) return;
-      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % gallery.length;
-      autoScrollUntilRef.current = Date.now() + 1200;
-      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-    }, 3500);
-    return () => window.clearInterval(id);
-  }, [gallery.length]);
-
-  // IntersectionObserver-based preload+decode for offscreen gallery slides.
-  // When a slide gets within 1 viewport of scrolling in, fetch + decode its
-  // image off the main thread so the swipe is a no-op paint.
-  useEffect(() => {
-    const root = galleryRef.current;
-    if (!root || gallery.length < 2) return;
-    const decoded = new Set<string>();
-    const decode = (src: string) => {
-      if (!src || decoded.has(src)) return;
-      decoded.add(src);
-      const img = new Image();
-      img.decoding = "async";
-      const responsive = buildResponsiveImage(src);
-      if (responsive) {
-        img.srcset = responsive.srcSet;
-        img.sizes = responsive.sizes;
-        img.src = responsive.src;
-      } else {
-        img.src = src;
-      }
-      // decode() rejects on broken URLs — swallow so we don't spam console.
-      img.decode?.().catch(() => {});
-    };
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          const idx = Number((e.target as HTMLElement).dataset.idx ?? -1);
-          if (Number.isNaN(idx) || idx < 0) continue;
-          decode(gallery[idx]);
-          decode(gallery[(idx + 1) % gallery.length]);
-          decode(gallery[(idx - 1 + gallery.length) % gallery.length]);
-        }
-      },
-      { root, rootMargin: "0px 100% 0px 100%", threshold: 0.01 },
-    );
-    const slides = root.querySelectorAll<HTMLElement>("[data-slide]");
-    slides.forEach((s) => io.observe(s));
-    return () => io.disconnect();
-  }, [gallery]);
 
   const addLine = useCallback(() => {
     const variantSuffix = matchedVariation
