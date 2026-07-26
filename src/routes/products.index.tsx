@@ -496,13 +496,14 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                 {chips.map((chip) => (
                   <li key={chip.key}>
                     <Link
-                      from={Route.fullPath}
+                      from="/products/"
                       to="."
                       // Route-scoped (`from` + `to`) so the updater's type is
                       // inferred. It was annotated `Record<string, unknown>`
                       // and cast `as never`, which silenced the real check —
                       // a typo'd key would have removed nothing at runtime.
-                      search={(prev) => ({ ...prev, [chip.key]: undefined })}
+                      search={(prev: SearchState) => ({ ...prev, [chip.key]: undefined })}
+
                       aria-label={`Remove filter ${chip.label}`}
                       className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
                     >
