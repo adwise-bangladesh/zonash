@@ -148,7 +148,7 @@ type SubmitResult =
       // Hoorin+duplicate verdict inline. The client should navigate directly
       // to the callback page (decision=confirmed) or the review page.
       skip_otp?: boolean;
-      decision?: "confirmed" | "review";
+      decision?: "confirmed" | "review" | "blocked";
       reason?: string;
       duplicates?: Duplicate[];
     }
@@ -751,11 +751,11 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       });
     } catch { /* ignore */ }
 
-    // ---------- Blocked identity → route to /order-review ----------
-    // Order exists as `pending`. We skip OTP + SMS (no signal to the user
-    // that they're flagged, no SMS spend on a blocked phone) and hand the
-    // client a "review" decision. The admin dashboard sees the block hit
-    // via the private note + meta.
+    // ---------- Blocked identity → cancel order, route to /order-blocked ----------
+    // Order exists as `pending`. Immediately move it to `cancelled` in Woo,
+    // skip OTP + SMS, and surface a generic "blocked" decision so the client
+    // can show a professional refusal page. Admins still see the full
+    // block-hit context via meta + private note.
     if (blockedHit) {
       try {
         const { wooFetch } = await import("./woo.server");
@@ -763,10 +763,11 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           path: `/orders/${created.id}`,
           method: "PUT",
           body: {
+            status: "cancelled",
             meta_data: [
               { key: "_zonash_otp_state", value: "skipped_blocked" },
-              { key: "_zonash_decision", value: "review" },
-              { key: "_zonash_decision_reason", value: "account-review" },
+              { key: "_zonash_decision", value: "blocked" },
+              { key: "_zonash_decision_reason", value: "account-blocked" },
               { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
               { key: "_zonash_awaiting_call_choice", value: "0" },
             ],
@@ -778,13 +779,13 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           method: "POST",
           body: {
             note:
-              `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
-              `Phone verification skipped; order held for manual review.`,
+              `Order automatically cancelled. Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
+              `Phone verification skipped and no SMS was sent.`,
             customer_note: false,
           },
         });
       } catch (e) {
-        console.error("blocked-review meta write failed", e);
+        console.error("blocked-cancel meta write failed", e);
       }
       return {
         ok: true,
@@ -794,8 +795,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
         sms_ok: false,
         skip_otp: true,
-        decision: "review",
-        reason: "account-review",
+        decision: "blocked",
+        reason: "account-blocked",
         duplicates: [],
       };
     }

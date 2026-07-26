@@ -337,7 +337,12 @@ function CheckoutPage() {
       // Trusted session → server already ran Hoorin + duplicate checks and
       // skipped OTP. Route straight to callback (confirmed) or review (risky).
       if (res.skip_otp) {
-        if (res.decision === "confirmed") {
+        if (res.decision === "blocked") {
+          await navigate({
+            to: "/order-blocked",
+            search: { order: res.order_id, number: res.order_number } as never,
+          });
+        } else if (res.decision === "confirmed") {
           await navigate({
             to: "/order-callback-choice",
             search: { order: res.order_id, number: res.order_number } as never,

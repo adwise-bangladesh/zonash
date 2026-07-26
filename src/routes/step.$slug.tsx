@@ -630,7 +630,12 @@ function StepLandingPage() {
     // Hoorin + duplicate verdict.
     if (res.skip_otp) {
       try {
-        if (res.decision === "confirmed") {
+        if (res.decision === "blocked") {
+          await navigate({
+            to: "/order-blocked",
+            search: { order: res.order_id, number: res.order_number } as never,
+          });
+        } else if (res.decision === "confirmed") {
           await navigate({
             to: "/order-callback-choice",
             search: { order: res.order_id, number: res.order_number } as never,
