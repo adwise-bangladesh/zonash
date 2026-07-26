@@ -78,6 +78,8 @@ export const Route = createFileRoute("/products/$slug")({
     }
     const img = p.images?.[0]?.src;
     const responsive = buildResponsiveImage(img);
+    const imageOrigin = /^https:\/\/[^/]+/.exec(img ?? "")?.[0] ?? "";
+
     const desc =
       (p.short_description ?? "")
         .replace(/<[^>]+>/g, "")
