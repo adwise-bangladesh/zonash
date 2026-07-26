@@ -574,7 +574,7 @@ function StepLandingPage() {
 
       {/* Hero image gallery — isolated component so autoplay ticks don't
           re-render this whole page tree every 3.5s. */}
-      <Gallery images={gallery} resetKey={selectedVarId ?? 0} />
+      <Gallery images={gallery} resetKey={`${product.id}:${selectedVarId ?? 0}`} />
 
 
       {/* Title + price */}
