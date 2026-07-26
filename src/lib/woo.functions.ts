@@ -97,7 +97,14 @@ export const listProducts = createServerFn({ method: "GET" })
       // every page re-fetched the same rows, and those duplicates were dropped
       // by the client de-dupe — making later pages look partially empty and
       // stalling the visible result count.
-      const term = data.search?.trim();
+      // Normalise before it becomes a cache key. WooCommerce search is
+      // case-insensitive and ignores repeated whitespace, so "Gold Chain",
+      // "gold  chain" and "GOLD chain" are the same upstream query — but as raw
+      // strings they were three distinct cache entries and three origin calls.
+      // Folding them collapses the long tail of near-duplicate queries that a
+      // 100k-visitor day (and every crawler) generates.
+      const term = data.search?.trim().replace(/\s+/g, " ").toLowerCase() || undefined;
+
       // Only probe /products?sku= when the term could plausibly BE a SKU.
       // Store SKUs are hyphenated alphanumerics with no whitespace (PL-4,
       // BWG-01), so a natural-language query like "gold chain" can never match
