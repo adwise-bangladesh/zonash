@@ -392,15 +392,16 @@ function CartPage() {
             Some prices were updated to the latest store price.
           </p>
         )}
-        {blockedCount > 0 && (
+        {issueCount > 0 && (
           <p
             role="alert"
             className="mb-2.5 rounded-[3px] border border-destructive/40 bg-destructive/5 px-3 py-2 text-[11.5px] font-medium text-destructive"
           >
-            {blockedCount === 1 ? "1 item is" : `${blockedCount} items are`} unavailable. Remove{" "}
-            {blockedCount === 1 ? "it" : "them"} to continue to checkout.
+            {issueCount === 1 ? "1 item needs" : `${issueCount} items need`} attention before
+            checkout — {blockedCount > 0 ? "some are unavailable" : "stock is limited"}.
           </p>
         )}
+
         <ul className="space-y-2.5">
           {items.map((item) => (
             <CartRow
