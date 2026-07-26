@@ -55,8 +55,15 @@ export function SortTabs({
   // clipped and product cards scrolled visibly through the gap. Measure the
   // real header instead of assuming one breakpoint's height.
   const [top, setTop] = useState(57);
-  useEffect(() => {
-    const header = document.querySelector("header");
+  // Layout effect, not effect: measuring after paint let desktop render one
+  // frame at the 57px SSR default and then visibly snap the whole strip down
+  // 8px on hydration. This commits the corrected offset before the browser
+  // paints. `document.querySelector("header")` also matched whichever <header>
+  // came first in the DOM — scope the lookup to this nav's own ancestor tree
+  // so a card-level <header> can never win.
+  useLayoutEffect(() => {
+    const root = scroller.current?.closest("div,main,body")?.parentElement ?? document.body;
+    const header = root.querySelector("header") ?? document.querySelector("header");
     if (!header) return;
     const sync = () => setTop(Math.round(header.getBoundingClientRect().height));
     sync();
@@ -70,13 +77,20 @@ export function SortTabs({
   // the active tab and its underline entirely off-screen — the shopper had no
   // visible signal that a sort was applied. Bring the active tab into view
   // after paint, without scrolling the page itself.
+  const didAlign = useRef(false);
   useEffect(() => {
-    const el = scroller.current?.querySelector<HTMLElement>('[aria-current="page"]');
     const box = scroller.current;
+    const el = box?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!el || !box) return;
     const target = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
-    box.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+    const left = Math.max(0, target);
+    if (Math.abs(box.scrollLeft - left) < 2) return;
+    // Smooth on mount animated the strip sideways during hydration, competing
+    // with the page's own entry animation. Only the *change* of sort animates.
+    box.scrollTo({ left, behavior: didAlign.current ? "smooth" : "auto" });
+    didAlign.current = true;
   }, [active]);
+
 
   return (
     <nav
