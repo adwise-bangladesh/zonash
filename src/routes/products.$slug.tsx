@@ -653,8 +653,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
       toast.error(inStock ? "Please select all options" : "This item is sold out");
       return;
     }
+    // No setBusy here on purpose: this path is fully synchronous, so React
+    // batched `true`+`false` into a single commit that never painted a busy
+    // state — it only cost an extra render of the whole tree per tap. The ref
+    // is what actually de-dupes the double tap.
     busyRef.current = true;
-    setBusy(true);
     try {
       addLine();
       toast.success("Added to cart");
@@ -662,9 +665,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
       toast.error("Couldn't add to cart. Please try again.");
     } finally {
       busyRef.current = false;
-      setBusy(false);
     }
   }, [readyToBuy, inStock, addLine]);
+
 
   const handleBuyNow = useCallback(async () => {
     if (busyRef.current) return;
