@@ -505,21 +505,19 @@ function StepLandingPage() {
     busyRef.current = true;
     setSubmitting(true);
 
+    // 1) Submit — a throw here means NO order was created; safe to rotate
+    //    the idempotency key and show the failure toast.
+    let res: Awaited<ReturnType<typeof submitFn>>;
     try {
-      const { first, last } = splitName(parsed.data.name);
       const tracking = await collectTracking({
         name: parsed.data.name,
         phone: parsed.data.phone,
         email: parsed.data.email || undefined,
       });
-      const line = {
-        product_id: product.id,
-        variation_id: selectedVar?.id,
-        quantity: 1,
-      };
-      const res = await submitFn({
+      const { first, last } = splitName(parsed.data.name);
+      res = await submitFn({
         data: {
-          items: [line],
+          items: [{ product_id: product.id, variation_id: selectedVar?.id, quantity: 1 }],
           billing: {
             first_name: first,
             last_name: last || "",
@@ -538,22 +536,34 @@ function StepLandingPage() {
           idempotency_key: idem,
         },
       });
-      if (!res.ok) {
-        toast.error(res.error || "Order failed");
-        busyRef.current = false;
-        setSubmitting(false);
-        return;
-      }
+    } catch {
+      toast.error("Could not place your order. Please try again.");
+      busyRef.current = false;
+      setSubmitting(false);
+      // Rotate only when we're certain the server didn't accept the order —
+      // rotating after a successful submit would let a retry bypass the
+      // server-side idempotency cache and create a DUPLICATE order.
+      setIdem(genId());
+      return;
+    }
 
-      if (!res.sms_ok) {
-        toast.message("Order created", {
-          description: "We couldn't text your code — tap Resend on the next screen.",
-        });
-      }
-      // Navigate away. We deliberately keep `submitting = true` through the
-      // unmount so the button can't fire again while the router transitions
-      // out — and we do NOT call setState after this point (it would target
-      // an unmounted component and trip a React dev warning).
+    if (!res.ok) {
+      toast.error(res.error || "Order failed");
+      busyRef.current = false;
+      setSubmitting(false);
+      return;
+    }
+    if (!res.sms_ok) {
+      toast.message("Order created", {
+        description: "We couldn't text your code — tap Resend on the next screen.",
+      });
+    }
+
+    // 2) Order exists server-side. Navigate — but if navigation itself
+    //    fails, do NOT show "order failed" and do NOT rotate the idem key.
+    //    Keep `submitting = true` through unmount; on nav failure, offer a
+    //    manual link into the OTP flow so the user can complete it.
+    try {
       await navigate({
         to: "/verify-otp",
         search: {
@@ -563,15 +573,27 @@ function StepLandingPage() {
         } as never,
       });
     } catch {
-      toast.error("Could not place your order. Please try again.");
+      toast.message("Order placed", {
+        description: "Tap here to verify your number.",
+        action: {
+          label: "Verify",
+          onClick: () => {
+            void navigate({
+              to: "/verify-otp",
+              search: {
+                order: res.order_id,
+                number: res.order_number,
+                phone: res.phone_masked,
+              } as never,
+            });
+          },
+        },
+      });
       busyRef.current = false;
       setSubmitting(false);
-      // Rotate the idempotency key so a retry after a hard failure isn't
-      // silently deduped by the server-side cache as "same request".
-      setIdem(genId());
     }
-
   };
+
 
   return (
     <div className="min-h-[100dvh] bg-background pb-6">
