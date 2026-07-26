@@ -552,6 +552,38 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
 
+    // Hard block-list — phone / email / IP / fingerprint added by staff.
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const email = (data.billing?.email ?? "").trim().toLowerCase();
+      const ip = (server.ip ?? "").trim();
+      const wants: { kind: string; value: string }[] = [];
+      if (phone) wants.push({ kind: "phone", value: phone });
+      if (email) wants.push({ kind: "email", value: email });
+      if (ip) wants.push({ kind: "ip", value: ip });
+      if (clientFingerprint) wants.push({ kind: "fingerprint", value: clientFingerprint });
+      if (wants.length > 0) {
+        const { data: blocks } = await supabaseAdmin
+          .from("blocked_identities")
+          .select("kind,value")
+          .in("kind", Array.from(new Set(wants.map((w) => w.kind))))
+          .in("value", wants.map((w) => w.value));
+        const set = new Set(
+          (blocks ?? []).map((b: { kind: string; value: string }) => `${b.kind}:${b.value.toLowerCase()}`),
+        );
+        const hit = wants.find((w) => set.has(`${w.kind}:${w.value.toLowerCase()}`));
+        if (hit) {
+          return {
+            ok: false as const,
+            error: "We couldn't place your order right now. Please try again in a few minutes.",
+          };
+        }
+      }
+    } catch (e) {
+      console.error("block-check failed:", (e as Error).message);
+      // fail-open — do not block legitimate customers on infra hiccup
+    }
+
     // Rate limit + bot-signal assessment. Fail-open on DB errors.
     const { assessOrderSubmit, recordOrderSubmit } = await import("./abuse.server");
     const assessment = await assessOrderSubmit({
