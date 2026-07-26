@@ -102,7 +102,11 @@ export const Route = createFileRoute("/step/$slug")({
   },
   component: StepLandingPage,
   pendingComponent: StepSkeleton,
-  pendingMs: 0,
+  // Skip the skeleton flash when the loader resolves quickly (SSR-warm /
+  // preloaded / cache hit). The route otherwise renders skeleton for a
+  // single frame before the real content, which reads as a second animation.
+  pendingMs: 900,
+  pendingMinMs: 0,
   errorComponent: ({ error, reset }) => {
     const message =
       error instanceof Error ? error.message : "Something went wrong loading this page.";
