@@ -839,16 +839,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
                     <div className="grid grid-cols-2 gap-2">
                       {options.map((opt) => {
                         const active = current === opt;
-                        const enabled = isOptionAvailable(attr.name, opt);
-                        const candidates = variations.filter((v) =>
-                          v.attributes.every((a) =>
-                            a.name === attr.name
-                              ? a.option === opt
-                              : !selected[a.name] || selected[a.name] === a.option,
-                          ),
-                        );
-                        const best =
-                          candidates.find((v) => v.stock_status === "instock") ?? candidates[0];
+                        const meta = optionMeta.get(attr.name)?.get(opt);
+                        const enabled = variations.length === 0 ? true : !!meta?.enabled;
+                        const best = meta?.best;
                         const bp = best ? parseFloat(best.price) || 0 : 0;
                         const br = best ? parseFloat(best.regular_price) || 0 : 0;
                         const save = br > bp ? br - bp : 0;
