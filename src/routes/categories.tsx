@@ -102,7 +102,7 @@ export const Route = createFileRoute("/categories")({
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <CheckoutHeader title="Categories" showBack={false} />
+      <CheckoutHeader title="Categories" />
       <main className="flex flex-1 items-start justify-center">{children}</main>
     </div>
   );
@@ -111,7 +111,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
 function PagePending() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <CheckoutHeader title="Categories" showBack={false} />
+      <CheckoutHeader title="Categories" />
       <main className="min-h-0 flex-1 overflow-hidden">
         <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           <aside className="border-r border-border bg-surface-muted">
@@ -280,7 +280,7 @@ function CategoriesPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <CheckoutHeader title="Categories" showBack={false} />
+      <CheckoutHeader title="Categories" />
       <main className="min-h-0 flex-1 overflow-hidden">
         <div className="grid h-[calc(100dvh-44px)] w-full grid-cols-[76px_minmax(0,1fr)] overflow-hidden md:h-[calc(100dvh-56px)]">
           {/* Left rail: main parent categories */}
