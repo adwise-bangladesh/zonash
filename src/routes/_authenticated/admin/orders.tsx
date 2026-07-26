@@ -2112,6 +2112,156 @@ function MetaKV({
   );
 }
 
+
+/** Block / unblock a customer's phone, email, IP and device fingerprint. */
+function BlocksSection({ order }: { order: { billing?: { phone?: string; email?: string }; meta_data?: { key: string; value: unknown }[] } }) {
+  const qc = useQueryClient();
+  const lookupFn = useServerFn(lookupBlocksForOrder);
+  const addFn = useServerFn(addBlock);
+  const removeFn = useServerFn(removeBlock);
+
+  const identities = useMemo(() => {
+    const meta = new Map<string, unknown>();
+    for (const m of order.meta_data ?? []) meta.set(m.key, m.value);
+    const phone = (order.billing?.phone ?? "").replace(/\D+/g, "");
+    const email = (order.billing?.email ?? "").trim().toLowerCase();
+    const ip = String(meta.get("_zonash_ip") ?? "").trim();
+    const fp = String(meta.get("_zonash_fingerprint") ?? "").trim();
+    return { phone, email, ip, fp };
+  }, [order]);
+
+  const key = ["admin", "blocks", identities.phone, identities.email, identities.ip, identities.fp];
+  const q = useQuery({
+    queryKey: key,
+    queryFn: () =>
+      lookupFn({
+        data: {
+          phone: identities.phone || undefined,
+          email: identities.email || undefined,
+          ip: identities.ip || undefined,
+          fingerprint: identities.fp || undefined,
+        },
+      }),
+    staleTime: 30_000,
+  });
+  const rows = (q.data?.rows ?? []) as BlockedIdentity[];
+  const findBlock = (kind: BlockKind, value: string): BlockedIdentity | undefined =>
+    rows.find((r) => r.kind === kind && r.value.toLowerCase() === value.toLowerCase());
+
+  const add = useMutation({
+    mutationFn: (v: { kind: BlockKind; value: string; reason?: string }) => addFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Blocked");
+      qc.invalidateQueries({ queryKey: ["admin", "blocks"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to block"),
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => removeFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Unblocked");
+      qc.invalidateQueries({ queryKey: ["admin", "blocks"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to unblock"),
+  });
+
+  const anyBlocked = rows.length > 0;
+
+  const list: { kind: BlockKind; label: string; value: string; icon: ReactNode }[] = [
+    { kind: "phone", label: "Phone", value: identities.phone, icon: <Smartphone className="h-3 w-3" /> },
+    { kind: "email", label: "Email", value: identities.email, icon: <Send className="h-3 w-3" /> },
+    { kind: "ip", label: "IP address", value: identities.ip, icon: <Wifi className="h-3 w-3" /> },
+    { kind: "fingerprint", label: "Device fingerprint", value: identities.fp, icon: <Fingerprint className="h-3 w-3" /> },
+  ];
+
+  return (
+    <Section
+      title="Block customer"
+      icon={<Shield className="h-3.5 w-3.5" />}
+      defaultOpen={false}
+      rightSlot={
+        anyBlocked ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-1.5 py-[1px] text-[10px] font-semibold text-rose-700">
+            <Ban className="h-2.5 w-2.5" /> {rows.length} blocked
+          </span>
+        ) : (
+          <span className="rounded-full bg-muted px-1.5 py-[1px] text-[10px] font-semibold text-muted-foreground">
+            Clean
+          </span>
+        )
+      }
+    >
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        Blocking prevents new orders from this identity. Existing orders stay untouched.
+      </p>
+      <div className="space-y-1.5">
+        {list.map((it) => {
+          const hasValue = Boolean(it.value);
+          const block = hasValue ? findBlock(it.kind, it.value) : undefined;
+          return (
+            <div
+              key={it.kind}
+              className={`flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+                block ? "border-rose-200 bg-rose-50/50" : "border-input bg-background"
+              }`}
+            >
+              <span
+                className={`grid h-6 w-6 shrink-0 place-items-center rounded ${
+                  block ? "bg-rose-100 text-rose-700" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {it.icon}
+              </span>
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{it.label}</div>
+                <div className={`truncate font-mono text-[11.5px] ${hasValue ? "text-foreground" : "text-muted-foreground/60"}`}>
+                  {hasValue ? it.value : "— none captured —"}
+                </div>
+              </div>
+              {hasValue && (
+                block ? (
+                  <button
+                    type="button"
+                    onClick={() => del.mutate(block.id)}
+                    disabled={del.isPending}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    <ShieldOff className="h-3 w-3" /> Unblock
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reason = window.prompt(`Reason for blocking this ${it.label.toLowerCase()}? (optional)`) ?? undefined;
+                      add.mutate({ kind: it.kind, value: it.value, reason: reason || undefined });
+                    }}
+                    disabled={add.isPending}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-2 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    <Ban className="h-3 w-3" /> Block
+                  </button>
+                )
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {anyBlocked && (
+        <div className="mt-3 rounded-md border border-rose-200 bg-rose-50/40 px-2 py-1.5 text-[10.5px] text-rose-700">
+          Active blocks:{" "}
+          {rows.map((r, i) => (
+            <span key={r.id} className="font-mono">
+              {r.kind}
+              {r.reason ? ` (${r.reason})` : ""}
+              {i < rows.length - 1 ? ", " : ""}
+            </span>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 /** Order notes — reads/writes WooCommerce notes and sends SMS to the customer. */
 function OrderNotesSection({ orderId }: { orderId: number }) {
   const qc = useQueryClient();
