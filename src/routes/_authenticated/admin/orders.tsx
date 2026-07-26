@@ -1675,6 +1675,9 @@ function OrderDrawer({
             {/* Location & device — from _zonash_tracking meta */}
             <LocationSection metaData={o.meta_data ?? []} />
 
+            {/* Block / unblock this customer's identities */}
+            <BlocksSection order={o} />
+
             {/* Items — editable */}
             <Section
               title={`Items (${items.filter((i) => !i.removed).length})`}
