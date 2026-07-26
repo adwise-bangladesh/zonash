@@ -975,13 +975,21 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </div>
               </div>
             ) : (
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
-                No reviews yet. Verified customers can leave a review from their{" "}
-                <Link to="/orders" className="font-semibold text-primary hover:underline">
-                  orders dashboard
-                </Link>{" "}
-                after receiving this item.
-              </p>
+              <div className="rounded-2xl border border-dashed border-border/80 bg-surface-muted/50 px-4 py-5 text-center">
+                <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-full bg-background shadow-sm ring-1 ring-border/60">
+                  <Star className="h-5 w-5 text-warning" aria-hidden="true" />
+                </div>
+                <p className="text-[13px] font-semibold text-foreground">Be the first to review</p>
+                <p className="mx-auto mt-1 max-w-[16rem] text-[11.5px] leading-relaxed text-muted-foreground">
+                  No reviews yet for this item. Verified buyers can rate it after delivery.
+                </p>
+                <Link
+                  to="/orders"
+                  className="mt-3 inline-flex items-center justify-center rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-surface-muted"
+                >
+                  Go to my orders
+                </Link>
+              </div>
             )}
           </CollapsibleSection>
         </div>
