@@ -332,15 +332,29 @@ function StepLandingPage() {
     }, 3500);
     return () => clearInterval(t);
   }, [paused, gallery.length, galleryVisible]);
-  const onGalleryScroll = () => {
-    const el = galleryRef.current;
-    if (!el) return;
-    const idx = Math.round(el.scrollLeft / el.clientWidth);
-    if (idx !== activeImg) setActiveImg(idx);
-    // Inside the programmatic scroll window → don't pause autoplay.
-    if (performance.now() < programmaticUntil.current) return;
-    setPaused(true);
-  };
+  // rAF-coalesced scroll handler. Native scroll fires up to ~60 events/s;
+  // without throttling we'd run Math.round + a potential React commit on
+  // each. Coalescing to one update per animation frame collapses that to at
+  // most ~1 setState per frame and keeps the main thread free for the
+  // snap-scroll animation itself.
+  const scrollRaf = useRef(0);
+  const onGalleryScroll = useCallback(() => {
+    if (scrollRaf.current) return;
+    scrollRaf.current = requestAnimationFrame(() => {
+      scrollRaf.current = 0;
+      const el = galleryRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const idx = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((cur) => (cur === idx ? cur : idx));
+      // Inside the programmatic scroll window → don't pause autoplay.
+      if (performance.now() < programmaticUntil.current) return;
+      setPaused((p) => (p ? p : true));
+    });
+  }, []);
+  useEffect(() => () => {
+    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
+  }, []);
+
 
 
   // Highlights from short_description (strip HTML → split lines)
