@@ -668,7 +668,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
   }, [readyToBuy, inStock, addLine]);
 
-
   const handleBuyNow = useCallback(async () => {
     if (busyRef.current) return;
     if (!readyToBuy) {
@@ -769,7 +768,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     else void navigate({ to: "/" });
   }, [navigate]);
 
-
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
       <FloatingHeader
@@ -777,7 +775,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
         cartCount={cartCount}
         onShare={handleShare}
         onBack={handleBack}
-
       />
 
       <div className="mx-auto max-w-md">
@@ -984,8 +981,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
         <RelatedFeed />
       </div>
-
-
 
       {/* Mobile sticky action bar */}
       <div
@@ -1387,7 +1382,6 @@ const Gallery = memo(function Gallery({
   );
 });
 
-
 /**
  * Variation option grid.
  *
@@ -1412,121 +1406,119 @@ const VariationSelector = memo(function VariationSelector({
   hasVariations: boolean;
 }) {
   return (
-      <div className="space-y-5 px-4 pb-2 pt-1">
-        {attrs.map((attr) => {
-          const options = attr.options ?? [];
-          const attrKey = nk(attr.name);
-          const currentKey = selected[attrKey];
-          // Show the catalogue's own label, not the normalized key.
-          const currentLabel = options.find((o) => nk(o) === currentKey);
-          return (
-            <div key={attr.id + attr.name}>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                <span
-                  id={`attr-label-${attrKey}`}
-                  className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-                >
-                  Choose {attr.name}
-                </span>
-                {currentLabel && (
-                  <span className="ml-auto text-[11px] font-semibold text-primary">
-                    {currentLabel}
-                  </span>
-                )}
-              </div>
-
-              {/* Radio semantics: the selected option was previously
-                  invisible to screen readers (plain buttons, no state). */}
-              <div
-                className="grid grid-cols-2 gap-2"
-                role="radiogroup"
-                aria-labelledby={`attr-label-${attrKey}`}
+    <div className="space-y-5 px-4 pb-2 pt-1">
+      {attrs.map((attr) => {
+        const options = attr.options ?? [];
+        const attrKey = nk(attr.name);
+        const currentKey = selected[attrKey];
+        // Show the catalogue's own label, not the normalized key.
+        const currentLabel = options.find((o) => nk(o) === currentKey);
+        return (
+          <div key={attr.id + attr.name}>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+              <span
+                id={`attr-label-${attrKey}`}
+                className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
               >
-                {options.map((opt) => {
-                  const optKey = nk(opt);
-                  const active = currentKey === optKey;
-                  const meta = optionMeta.get(attrKey)?.get(optKey);
-                  const enabled = !hasVariations ? true : !!meta?.enabled;
-                  const best = meta?.best;
-                  const bp = best ? parseFloat(best.price) || 0 : 0;
-                  const br = best ? parseFloat(best.regular_price) || 0 : 0;
-                  const save = br > bp ? br - bp : 0;
-                  const pct = br > bp ? Math.round((save / br) * 100) : 0;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
-                      onClick={() => onSelect(attrKey, optKey)}
-                      disabled={!enabled && !active}
-                      className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
-                        active
-                          ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
-                          : enabled
-                            ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
-                            : "border-dashed border-border bg-muted/30 opacity-60"
-                      }`}
-                    >
-                      {save > 0 && enabled && (
-                        <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
-                          −{pct}%
-                        </span>
-                      )}
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
-                            active
-                              ? "border-primary bg-primary"
-                              : "border-border bg-background"
-                          }`}
-                        >
-                          {active && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
-                          )}
-                        </span>
-                        <span
-                          className={`text-[13px] font-bold leading-tight ${
-                            enabled ? "text-foreground" : "text-muted-foreground line-through"
-                          }`}
-                        >
-                          {opt}
-                        </span>
-                      </div>
-                      {best && (
-                        <div className="mt-1.5 pl-[22px]">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-[14px] font-extrabold leading-none text-primary">
-                              {formatBDT(bp)}
+                Choose {attr.name}
+              </span>
+              {currentLabel && (
+                <span className="ml-auto text-[11px] font-semibold text-primary">
+                  {currentLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Radio semantics: the selected option was previously
+                  invisible to screen readers (plain buttons, no state). */}
+            <div
+              className="grid grid-cols-2 gap-2"
+              role="radiogroup"
+              aria-labelledby={`attr-label-${attrKey}`}
+            >
+              {options.map((opt) => {
+                const optKey = nk(opt);
+                const active = currentKey === optKey;
+                const meta = optionMeta.get(attrKey)?.get(optKey);
+                const enabled = !hasVariations ? true : !!meta?.enabled;
+                const best = meta?.best;
+                const bp = best ? parseFloat(best.price) || 0 : 0;
+                const br = best ? parseFloat(best.regular_price) || 0 : 0;
+                const save = br > bp ? br - bp : 0;
+                const pct = br > bp ? Math.round((save / br) * 100) : 0;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
+                    onClick={() => onSelect(attrKey, optKey)}
+                    disabled={!enabled && !active}
+                    className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
+                      active
+                        ? "border-primary bg-white shadow-[0_4px_16px_-6px_hsl(var(--primary)/0.35)] ring-1 ring-primary"
+                        : enabled
+                          ? "border-border bg-white hover:border-primary/50 hover:shadow-sm"
+                          : "border-dashed border-border bg-muted/30 opacity-60"
+                    }`}
+                  >
+                    {save > 0 && enabled && (
+                      <span className="absolute right-1.5 top-1.5 rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-foreground shadow-sm">
+                        −{pct}%
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`grid h-4 w-4 place-items-center rounded-full border transition-colors ${
+                          active ? "border-primary bg-primary" : "border-border bg-background"
+                        }`}
+                      >
+                        {active && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
+                        )}
+                      </span>
+                      <span
+                        className={`text-[13px] font-bold leading-tight ${
+                          enabled ? "text-foreground" : "text-muted-foreground line-through"
+                        }`}
+                      >
+                        {opt}
+                      </span>
+                    </div>
+                    {best && (
+                      <div className="mt-1.5 pl-[22px]">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[14px] font-extrabold leading-none text-primary">
+                            {formatBDT(bp)}
+                          </span>
+                          {save > 0 && (
+                            <span className="text-[10px] text-muted-foreground line-through">
+                              {formatBDT(br)}
                             </span>
-                            {save > 0 && (
-                              <span className="text-[10px] text-muted-foreground line-through">
-                                {formatBDT(br)}
-                              </span>
-                            )}
-                          </div>
-                          {save > 0 && enabled && (
-                            <p className="mt-1 text-[10px] font-semibold text-emerald-600">
-                              Save {formatBDT(save)}
-                            </p>
-                          )}
-                          {!enabled && (
-                            <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                              Out of stock
-                            </p>
                           )}
                         </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                        {save > 0 && enabled && (
+                          <p className="mt-1 text-[10px] font-semibold text-emerald-600">
+                            Save {formatBDT(save)}
+                          </p>
+                        )}
+                        {!enabled && (
+                          <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                            Out of stock
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
+    </div>
   );
 });
 
