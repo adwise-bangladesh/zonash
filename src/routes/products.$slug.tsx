@@ -87,6 +87,40 @@ export const Route = createFileRoute("/products/$slug")({
     // Titles over ~60 chars get truncated in SERPs; trim the name, never the brand.
     const title = `${p.name.length > 46 ? `${p.name.slice(0, 45).trimEnd()}…` : p.name} — Zonash`;
     const price = (p.price || "").trim();
+    /**
+     * Variable products ship a single lowest-variation `price`, so the markup
+     * advertised "590 Tk" while the page could show 1,890 Tk. Google treats a
+     * structured-price/on-page-price mismatch as a rich-result violation and
+     * drops the price snippet. Variations are already awaited in the SSR loader,
+     * so the real range is available here.
+     */
+    const variationPrices = (
+       (
+         match.context?.queryClient.getQueryData(
+           variationsQueryOptions(p.id).queryKey,
+         ) as { variations?: WooVariation[] } | undefined
+       )?.variations ?? []
+     )
+      .map((v) => parseFloat(v?.price ?? ""))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const availability =
+      p.stock_status === "instock"
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock";
+    const offers =
+      variationPrices.length > 1
+        ? {
+            "@type": "AggregateOffer",
+            url,
+            priceCurrency: "BDT",
+            lowPrice: String(Math.min(...variationPrices)),
+            highPrice: String(Math.max(...variationPrices)),
+            offerCount: variationPrices.length,
+            availability,
+          }
+        : price
+          ? { "@type": "Offer", url, priceCurrency: "BDT", price, availability }
+          : null;
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -104,21 +138,9 @@ export const Route = createFileRoute("/products/$slug")({
             },
           }
         : {}),
-      ...(price
-        ? {
-            offers: {
-              "@type": "Offer",
-              url,
-              priceCurrency: "BDT",
-              price,
-              availability:
-                p.stock_status === "instock"
-                  ? "https://schema.org/InStock"
-                  : "https://schema.org/OutOfStock",
-            },
-          }
-        : {}),
+      ...(offers ? { offers } : {}),
     };
+
     return {
       meta: [
         { title },
