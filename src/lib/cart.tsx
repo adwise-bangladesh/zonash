@@ -129,10 +129,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(sanitize(JSON.parse(raw)));
+      if (raw) {
+        const parsed = sanitize(JSON.parse(raw));
+        setItems(parsed);
+        // Seed the persist guard so hydration alone never triggers a write.
+        lastWritten.current = JSON.stringify(parsed);
+      } else {
+        lastWritten.current = "[]";
+      }
       for (const k of LEGACY_KEYS) localStorage.removeItem(k);
     } catch { /* corrupt or unavailable storage — start empty */ }
     setHydrated(true);
+
 
     // Keep tabs in sync; without this a checkout in one tab leaves a stale bag
     // in another and the customer can re-submit an already-placed order.
