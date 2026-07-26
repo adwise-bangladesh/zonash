@@ -978,9 +978,6 @@ function StepLandingPage() {
               <Lock className="h-4 w-4" aria-hidden />
               {submitting ? "Placing your order…" : `Confirm order · ${formatBDT(total)}`}
             </button>
-            <p className="mt-1.5 text-center text-[10.5px] text-muted-foreground">
-              No online payment · Pay when you receive
-            </p>
           </form>
         </div>
       </section>
