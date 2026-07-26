@@ -451,7 +451,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       billingPayload.email = data.billing.email.trim();
     }
 
-    let created: { id: number; number: string; total: string; currency: string };
+    let created!: { id: number; number: string; total: string; currency: string };
     try {
       const { wooFetch } = await import("./woo.server");
       const orderBody = {
