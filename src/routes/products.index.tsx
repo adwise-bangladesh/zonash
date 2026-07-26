@@ -404,9 +404,12 @@ function FilteredResults(props: FilterProps) {
     <Shell>
       <AppHeader />
       {/* Keep taxonomy navigation available inside filtered views too. */}
-      <Suspense fallback={<CategoryStripSkeleton />}>
-        <PrimaryCategoryStrip />
-      </Suspense>
+      <SoftBoundary>
+        <Suspense fallback={<CategoryStripSkeleton />}>
+          <PrimaryCategoryStrip />
+        </Suspense>
+      </SoftBoundary>
+
       <SortTabs active={props.sort} />
       <main className="animate-fade-in">
         <Suspense
