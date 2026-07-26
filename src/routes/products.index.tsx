@@ -7,9 +7,10 @@ import {
   infiniteQueryOptions,
 } from "@tanstack/react-query";
 
-import { Suspense, memo, useMemo, useCallback } from "react";
+import { Suspense, memo, useMemo, useCallback, useRef } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
+import { beginProductPush } from "@/lib/nav-transition";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
