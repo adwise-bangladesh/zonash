@@ -459,7 +459,7 @@ function StepLandingPage() {
 
   const orderRef = useRef<HTMLDivElement>(null);
   const scrollToOrder = () => {
-    orderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    orderRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   // Real double-submit guard. React state updates are async, so a fast
