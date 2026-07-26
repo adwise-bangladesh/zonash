@@ -42,7 +42,7 @@ export const listProducts = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => listProductsSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS, categorySlugMap } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, categorySlugMap, enrichVariableRegular } = await import("./woo.server");
       // Woo's `category` filter takes a term ID, not a slug: passing a slug
       // silently returned zero products. Resolve slugs off a cached slug->id
       // Map (O(1) per slug, no extra upstream call once warm).
