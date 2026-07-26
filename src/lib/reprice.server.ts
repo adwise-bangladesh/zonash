@@ -94,18 +94,31 @@ const GLOBAL_CONCURRENCY = 16;
  * shape and keeps its own snapshot, which is exactly the upstream-blip path.
  */
 const MAX_QUEUE = 256;
+/**
+ * The priority lane needs its own, separate bound. Two problems otherwise:
+ *  1. Priority callers were exempt from *every* depth check, so during a store
+ *     stall the queue grew without limit — the very leak MAX_QUEUE exists to
+ *     prevent, now on the path that also holds a live order request open.
+ *  2. Depth was measured across both lanes, so a burst of order submits shed
+ *     storefront callers even though the storefront lane was empty.
+ * Order submits are far rarer than cart opens, so this cap is generous enough
+ * that it is only ever reached in a genuine outage.
+ */
+const MAX_PRIORITY_QUEUE = 1024;
 /** A queued caller never waits longer than this before shedding. */
 const QUEUE_WAIT_MS = 1500;
 
 let active = 0;
-const waiters: (() => void)[] = [];
+/** Separate lanes: priority drains first, and each is bounded on its own. */
+const pWaiters: (() => void)[] = [];
+const nWaiters: (() => void)[] = [];
 
 class Shed extends Error {}
 
 /**
  * Trusted internal callers (order submission) get a priority lane: they are
- * never shed on queue depth and wait longer, because for them "unknown" is
- * not a soft fallback — it rejects a real, paid-intent order.
+ * shed only in a genuine outage and wait longer, because for them "unknown"
+ * is not a soft fallback — it rejects a real, paid-intent order.
  */
 const PRIORITY_WAIT_MS = 8000;
 
@@ -114,14 +127,15 @@ async function acquire(priority = false): Promise<void> {
     active++;
     return;
   }
-  if (!priority && waiters.length >= MAX_QUEUE) throw new Shed();
+  const queue = priority ? pWaiters : nWaiters;
+  if (queue.length >= (priority ? MAX_PRIORITY_QUEUE : MAX_QUEUE)) throw new Shed();
   await new Promise<void>((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      const i = waiters.indexOf(grant);
-      if (i >= 0) waiters.splice(i, 1);
+      const i = queue.indexOf(grant);
+      if (i >= 0) queue.splice(i, 1);
       reject(new Shed());
     }, priority ? PRIORITY_WAIT_MS : QUEUE_WAIT_MS);
     // The permit is handed over directly (see `release`), so the woken caller
@@ -134,18 +148,18 @@ async function acquire(priority = false): Promise<void> {
       clearTimeout(timer);
       resolve();
     }
-    if (priority) waiters.unshift(grant);
-    else waiters.push(grant);
+    queue.push(grant);
   });
 }
 
 
 function release() {
-  const next = waiters.shift();
+  const next = pWaiters.shift() ?? nWaiters.shift();
   // Transfer the permit rather than free-then-reacquire; `active` stays put.
   if (next) next();
   else active--;
 }
+
 
 
 const cache = new Map<string, Cached>();
