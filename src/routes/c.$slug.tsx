@@ -98,6 +98,9 @@ function CollectionPage() {
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
+  // Leaf categories have no children; showing their siblings keeps the browse
+  // strip (and a way out) on screen even when the shelf is empty.
+  const strip = subs.length > 0 ? subs : (data.siblings ?? []);
 
   return (
     <div className="min-h-screen bg-surface-muted/40">
@@ -107,8 +110,15 @@ function CollectionPage() {
             title bar, so it is screen-reader/crawler only. */}
         <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
         <div className="bg-background pt-2">
-          {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
+          {strip.length > 0 && (
+            <SubcategoryStrip
+              parentSlug={slug}
+              subs={strip}
+              label={subs.length > 0 ? "Subcategories" : "Related categories"}
+            />
+          )}
         </div>
+
 
         <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
 
@@ -123,13 +133,16 @@ function CollectionPage() {
 function SubcategoryStrip({
   parentSlug,
   subs,
+  label = "Subcategories",
 }: {
   parentSlug: string;
   subs: { id: number; name: string; slug: string; image: { src: string; alt: string } | null }[];
+  label?: string;
 }) {
   const many = subs.length > 5;
   return (
-    <nav aria-label="Subcategories" className="pb-4">
+    <nav aria-label={label} className="pb-4">
+
       {many ? (
         <ul
           className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
