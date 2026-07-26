@@ -121,6 +121,11 @@ function RootComponent() {
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
+  // Browser/gesture back must animate as a pop, not a push. `popstate` fires
+  // before the router commits, so flipping the direction flag there lands
+  // before the view transition takes its snapshot.
+  useEffect(() => installBackGestureListener(), []);
+
   // Persist product / variations queries to localStorage so returning users
   // get instant product-page renders with zero network wait.
   useEffect(() => {
@@ -130,6 +135,7 @@ function RootComponent() {
     });
     return () => unsub?.();
   }, [queryClient]);
+
 
   return (
     <QueryClientProvider client={queryClient}>
