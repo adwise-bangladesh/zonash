@@ -577,11 +577,12 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                   <button
                     type="button"
                     onClick={loadMore}
-                    disabled={isFetchingNextPage}
-                    aria-busy={isFetchingNextPage}
+                    disabled={busy}
+                    aria-busy={busy}
                     className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
                   >
-                    {isFetchingNextPage ? "Loading…" : "Load more"}
+                    {busy ? "Loading…" : "Load more"}
+
                   </button>
                 </div>
               )}
