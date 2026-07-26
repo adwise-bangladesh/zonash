@@ -531,8 +531,14 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const lastInteractRef = useRef(0);
   const scrollRafRef = useRef(0);
+  // Set while a programmatic scroll is in flight. `scrollTo({behavior:"smooth"})`
+  // emits the same scroll events a finger does, so the handler below was
+  // stamping `lastInteractRef` on the slideshow's *own* animation: after the
+  // first auto-advance every later tick saw "user interacted <6s ago" and
+  // bailed, permanently freezing the carousel on slide 2.
+  const autoScrollUntilRef = useRef(0);
   const onGalleryScroll = () => {
-    lastInteractRef.current = Date.now();
+    if (Date.now() > autoScrollUntilRef.current) lastInteractRef.current = Date.now();
     if (scrollRafRef.current) return;
     scrollRafRef.current = window.requestAnimationFrame(() => {
       scrollRafRef.current = 0;
@@ -548,10 +554,19 @@ function ProductDetail({ p }: { p: WooProduct }) {
     },
     [],
   );
+  /** Respect the OS "reduce motion" setting for both auto-play and smoothing. */
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
   const scrollToImg = (i: number) => {
     const el = galleryRef.current;
     if (!el) return;
-    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+    autoScrollUntilRef.current = Date.now() + 1200;
+    el.scrollTo({
+      left: i * el.clientWidth,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
     setActiveImg(i);
   };
   // Auto-scroll gallery to the variation's image when it changes.
@@ -565,16 +580,21 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // Auto-advance slideshow (pauses ~6s after any user interaction).
   useEffect(() => {
     if (gallery.length < 2) return;
+    // Auto-playing carousels are a WCAG 2.2.2 failure for motion-sensitive
+    // users; honour the OS preference instead of animating unconditionally.
+    if (prefersReducedMotion()) return;
     const id = window.setInterval(() => {
       if (Date.now() - lastInteractRef.current < 6000) return;
       if (document.hidden) return;
       const el = galleryRef.current;
-      if (!el) return;
+      if (!el || el.clientWidth === 0) return;
       const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % gallery.length;
+      autoScrollUntilRef.current = Date.now() + 1200;
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
     }, 3500);
     return () => window.clearInterval(id);
   }, [gallery.length]);
+
 
   // IntersectionObserver-based preload+decode for offscreen gallery slides.
   // When a slide gets within 1 viewport of scrolling in, fetch + decode its
