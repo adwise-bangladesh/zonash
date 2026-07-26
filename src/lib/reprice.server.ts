@@ -128,9 +128,7 @@ export async function repriceLines(lines: RepriceLineInput[]): Promise<RepriceLi
       results.set(key, await load(key, line));
     }
   };
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker),
-  );
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
 
   return lines.map((l) => {
     const v = results.get(keyOf(l)) ?? {
