@@ -1390,7 +1390,7 @@ const VariationSelector = memo(function VariationSelector({
 }) {
   return (
       <div className="space-y-5 px-4 pb-2 pt-1">
-        {variationAttrs.map((attr) => {
+        {attrs.map((attr) => {
           const options = attr.options ?? [];
           const attrKey = nk(attr.name);
           const currentKey = selected[attrKey];
@@ -1424,7 +1424,7 @@ const VariationSelector = memo(function VariationSelector({
                   const optKey = nk(opt);
                   const active = currentKey === optKey;
                   const meta = optionMeta.get(attrKey)?.get(optKey);
-                  const enabled = variations.length === 0 ? true : !!meta?.enabled;
+                  const enabled = !hasVariations ? true : !!meta?.enabled;
                   const best = meta?.best;
                   const bp = best ? parseFloat(best.price) || 0 : 0;
                   const br = best ? parseFloat(best.regular_price) || 0 : 0;
@@ -1437,7 +1437,7 @@ const VariationSelector = memo(function VariationSelector({
                       role="radio"
                       aria-checked={active}
                       aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
-                      onClick={() => setSelected((prev) => ({ ...prev, [attrKey]: optKey }))}
+                      onClick={() => onSelect(attrKey, optKey)}
                       disabled={!enabled && !active}
                       className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
                         active
