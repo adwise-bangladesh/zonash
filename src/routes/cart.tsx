@@ -274,8 +274,13 @@ function CartPage() {
       }),
     enabled: hydrated && items.length > 0,
     staleTime: 60_000,
+    // A bag left open in a background tab goes stale; re-check availability
+    // when the customer comes back rather than sending them to checkout with
+    // an hour-old stock snapshot.
+    refetchOnWindowFocus: true,
     retry: 0,
   });
+
 
   const [priceChanged, setPriceChanged] = useState(false);
   useEffect(() => {
