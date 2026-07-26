@@ -235,10 +235,12 @@ function ProductPageSkeleton() {
 
       <div className="mx-auto max-w-md">
         {/* Gallery */}
-        <div
-          className="aspect-square w-full bg-muted"
-          style={{ viewTransitionName: "product-hero" }}
-        />
+        {/* No `view-transition-name` here: the skeleton is a grey box, and
+            morphing a card thumbnail into a grey box then hard-swapping the
+            real photo in looks worse than a plain fade. The name is claimed by
+            the real hero image once it renders. */}
+        <div className="aspect-square w-full bg-muted" />
+
 
         {/* Info hero — matches real layout: rating → title → price row */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
