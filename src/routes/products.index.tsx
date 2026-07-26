@@ -521,8 +521,10 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               // A zero-result search is NOT an HTTP 404 — the previous
               // "not-found" variant printed an "Error 404" eyebrow above a
               // successful 200 response, which reads as a site fault.
-              code={q ? "No results" : "Nothing here yet"}
-              title={q ? "No matches found" : "Nothing here yet"}
+              // The no-search branch also printed the same string as eyebrow
+              // AND heading ("Nothing here yet" twice, stacked).
+              code={q ? "No results" : "Empty filter"}
+              title={q ? "No matches found" : "Nothing matches this filter"}
               description={
                 q
                   ? `We couldn't find anything for "${q}". Try a different word or browse the shop.`
@@ -530,8 +532,9 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               }
               // The CTA said "Clear search" even when no search term existed
               // (e.g. `?category=rings` with zero published products), offering
-              // to clear something the shopper never typed.
-              primaryLabel={q ? "Clear search" : "Browse shop"}
+              // to clear something the shopper never typed. It also repeated
+              // the "Browse shop" quick-action tile directly below it.
+              primaryLabel={q ? "Clear search" : "Clear filters"}
               primaryTo="/products"
             />
           ) : (
