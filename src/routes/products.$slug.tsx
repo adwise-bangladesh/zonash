@@ -981,7 +981,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        <RelatedFeed excludeId={data.product.id} />
+        <RelatedFeed excludeId={p.id} />
       </div>
 
       {/* Mobile sticky action bar */}
