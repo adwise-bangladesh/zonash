@@ -741,14 +741,29 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const waOrderUrl = waLink(detailsText);
 
-  const handleCopyDetails = async () => {
+  const handleCopyDetails = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(detailsText);
       toast.success("Details copied");
     } catch {
       toast.error("Copy failed");
     }
-  };
+  }, [detailsText]);
+
+  /**
+   * Stable identities for the memoized children. Passing inline arrows here
+   * silently defeated `memo()` — `FloatingHeader` and `VariationSelector` were
+   * re-rendering on every parent render (every qty tap, every cart update)
+   * because their props were new function objects each time.
+   */
+  const selectOption = useCallback((attrKey: string, optKey: string) => {
+    setSelected((prev) => (prev[attrKey] === optKey ? prev : { ...prev, [attrKey]: optKey }));
+  }, []);
+  const handleBack = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
+    else void navigate({ to: "/" });
+  }, [navigate]);
+
 
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
