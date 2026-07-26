@@ -111,18 +111,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Stable action refs — functional setState means these never need to
   // close over `items`, so we can freeze them for the provider's lifetime.
   const add = useCallback<CartActions["add"]>((item, qty = 1) => {
+    if (!item || !Number.isFinite(item.productId) || !item.slug) return;
     setItems((cur) => {
-      const found = cur.find((i) => i.productId === item.productId);
-      if (found) {
+      if (cur.some((i) => i.productId === item.productId)) {
         return cur.map((i) =>
           i.productId === item.productId
             ? { ...i, quantity: clampQty(i.quantity + qty) }
             : i,
         );
       }
-      return [...cur, { ...item, quantity: clampQty(qty || 1) }];
+      const price = num(item.price);
+      const regular = num(item.regularPrice);
+      return [
+        ...cur,
+        {
+          ...item,
+          price,
+          regularPrice: regular > price ? regular : undefined,
+          quantity: clampQty(qty || 1),
+        },
+      ];
     });
   }, []);
+
 
   const remove = useCallback<CartActions["remove"]>((id) => {
     setItems((cur) => cur.filter((i) => i.productId !== id));
