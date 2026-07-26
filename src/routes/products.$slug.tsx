@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -17,8 +17,10 @@ import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
+import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
+import { canonicalUrl } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
