@@ -212,11 +212,29 @@ function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   return p;
 }
 
-export async function repriceLines(lines: RepriceLineInput[]): Promise<RepriceLineResult[]> {
+export async function repriceLines(
+  lines: RepriceLineInput[],
+  /**
+   * Opaque caller id (IP) used only for the enumeration guard. Omit for
+   * trusted internal callers such as order submission, which must never be
+   * budget-limited.
+   */
+  client?: string,
+): Promise<RepriceLineResult[]> {
   // De-duplicate first: a malformed or hostile payload can repeat one id 50x.
   const unique = new Map<string, RepriceLineInput>();
   for (const l of lines) if (!unique.has(keyOf(l))) unique.set(keyOf(l), l);
-  const entries = [...unique.entries()];
+  let entries = [...unique.entries()];
+
+  if (client) {
+    // Cached ids are free; only unseen ids consume the budget. Over-budget
+    // ids are simply not looked up — they fall through to the "unknown"
+    // shape below, which tells the client to keep its own snapshot.
+    const cachedEntries = entries.filter(([, l]) => isCached(l));
+    const freshEntries = entries.filter(([, l]) => !isCached(l));
+    const allowed = enumAllowance(client, freshEntries.length);
+    entries = [...cachedEntries, ...freshEntries.slice(0, allowed)];
+  }
 
   const results = new Map<string, Cached["value"]>();
   let cursor = 0;
@@ -228,6 +246,7 @@ export async function repriceLines(lines: RepriceLineInput[]): Promise<RepriceLi
     }
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
+
 
   return lines.map((l) => {
     const v = results.get(keyOf(l)) ?? {
