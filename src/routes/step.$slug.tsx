@@ -1084,7 +1084,7 @@ const Gallery = memo(function Gallery({
   resetKey,
 }: {
   images: GalleryImage[];
-  resetKey: number;
+  resetKey: string | number;
 }) {
   const [activeImg, setActiveImg] = useState(0);
   const [paused, setPaused] = useState(false);
