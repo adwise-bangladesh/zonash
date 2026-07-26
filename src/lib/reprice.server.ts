@@ -149,7 +149,7 @@ function release() {
 
 
 const cache = new Map<string, Cached>();
-const inFlight = new Map<string, Promise<Cached["value"]>>();
+const inFlight = new Map<string, Promise<{ value: Cached["value"]; shed: boolean }>>();
 
 const keyOf = (l: RepriceLineInput) => `${l.productId}:${l.variationId ?? 0}`;
 
