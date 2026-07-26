@@ -332,8 +332,20 @@ function markBlip(key: string) {
   }
 }
 
+/**
+ * Per-key single flight, split by lane.
+ *
+ * A priority caller must not simply join a storefront in-flight request: that
+ * request is queued behind the short storefront deadline, so the trusted call
+ * inherits a shed it never asked for. It gets its own coalescing map instead,
+ * so order submits still collapse to one upstream request per key among
+ * themselves — the earlier "retry once outside the single-flight" escape hatch
+ * amplified a burst of submits for the same product into N upstream calls and
+ * then threw the successful answer away without caching it.
+ */
 function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Outcome> {
-  const running = inFlight.get(key);
+  const map = priority ? inFlightP : inFlight;
+  const running = map.get(key);
   if (running) return running;
   const p = fetchOne(l, priority)
     .then((out) => {
@@ -345,8 +357,8 @@ function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Ou
       else markBlip(key);
       return out;
     })
-    .finally(() => inFlight.delete(key));
-  inFlight.set(key, p);
+    .finally(() => map.delete(key));
+  map.set(key, p);
   return p;
 }
 
@@ -354,27 +366,31 @@ async function load(key: string, l: RepriceLineInput, priority = false): Promise
   const fresh = readCache(key);
   if (fresh) return fresh;
 
-  const stale = readStale(key);
-  if (stale) {
-    // Serve stale instantly, refresh once behind it. Without this, every hot
-    // id expires for all concurrent visitors on the same tick.
-    void refresh(key, l, priority).catch(() => {});
-    return stale;
+  // Stale-while-revalidate is a *presentation* affordance. Pricing a real
+  // order off a value up to TTL+grace (3 min) old is a money-correctness bug,
+  // so a trusted caller never takes the stale shortcut — it waits for the
+  // authoritative answer and only falls back if upstream cannot supply one.
+  if (!priority) {
+    const stale = readStale(key);
+    if (stale) {
+      // Serve stale instantly, refresh once behind it. Without this, every hot
+      // id expires for all concurrent visitors on the same tick.
+      void refresh(key, l, false).catch(() => {});
+      return stale;
+    }
+    // The blip damper is a presentation-path optimisation only.
+    if (blipped(key)) return UNKNOWN;
   }
 
-  // The blip damper is a presentation-path optimisation only. A trusted caller
-  // (order submission) must still try upstream: for it an "unknown" price is a
-  // rejected order, not a harmless stale badge.
-  if (!priority && blipped(key)) return UNKNOWN;
-
   const out = await refresh(key, l, priority);
-  // Priority inversion guard: a trusted caller may have joined an in-flight
-  // request that a *storefront* caller started and that got load-shed. Its
-  // shed result is not an answer, so retry once in the priority lane instead
-  // of failing a real order.
-  if (out.shed && priority) return (await fetchOne(l, true)).value;
+  if (out.shed && priority) {
+    // Genuine outage-level shed on the priority lane: fall back to a stale
+    // value if one exists rather than rejecting a paid-intent order.
+    return readStale(key) ?? out.value;
+  }
   return out.value;
 }
+
 
 
 
