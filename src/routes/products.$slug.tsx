@@ -326,15 +326,25 @@ function parseHighlights(html: string): string[] {
  */
 function sanitizeHtml(html: string): string {
   if (!html) return "";
-  return html
-    .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
-    .replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[^>]*\/?>/gi, "")
-    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(
-      /(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript):[^"']*\2/gi,
-      '$1="#"',
-    );
+  return (
+    html
+      .replace(/<\s*(script|style|iframe|object|embed|link|meta|svg|math|base)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
+      .replace(/<\s*(script|style|iframe|object|embed|link|meta|svg|math|base)\b[^>]*\/?>/gi, "")
+      .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      // `srcset`/`formaction`/`style` were not covered: `srcset` fetches the
+      // attacker's URL without ever touching `src`, `formaction` retargets a
+      // form submit, and `style` carries `url()`/`expression()` payloads.
+      .replace(/\s(srcset|formaction|action|ping|style|background)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      .replace(
+        /(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript|blob|file):[^"']*\2/gi,
+        '$1="#"',
+      )
+      // Unquoted variant of the same — the quoted-only rule above let
+      // `href=javascript:alert(1)` through untouched.
+      .replace(/(href|src|xlink:href)\s*=\s*(?:javascript|data|vbscript|blob|file):[^\s>]*/gi, '$1="#"')
+  );
 }
+
 
 /**
  * Attribute-name/option normalization key.
