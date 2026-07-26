@@ -152,7 +152,11 @@ export const listProducts = createServerFn({ method: "GET" })
       // length was used as the page-full signal, so a short text page topped up
       // by SKU hits (e.g. 20 + 5 = 25 >= 24) advertised another page that only
       // ever came back empty — a dead "Load more" button.
-      return { products, hasMore: textRows.length >= data.perPage, error: null as string | null };
+      return {
+        products: await enrichVariableRegular(products),
+        hasMore: textRows.length >= data.perPage,
+        error: null as string | null,
+      };
 
     } catch (e) {
       console.error("listProducts failed", e);
