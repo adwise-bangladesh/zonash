@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 
@@ -37,6 +37,21 @@ export function sortToWoo(sort: SortKey): {
 
 export function SortTabs({ active }: { active: SortKey }) {
   const scroller = useRef<HTMLDivElement>(null);
+  // The sticky offset was hard-coded to 57px (the mobile header height). The
+  // site header is 65px from `md` up (larger logo lockup), so on desktop the
+  // tab strip stuck 8px *underneath* the header: the active underline was
+  // clipped and product cards scrolled visibly through the gap. Measure the
+  // real header instead of assuming one breakpoint's height.
+  const [top, setTop] = useState(57);
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const sync = () => setTop(Math.round(header.getBoundingClientRect().height));
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(header);
+    return () => ro.disconnect();
+  }, []);
 
   // The strip scrolls horizontally and always starts at offset 0, so landing on
   // (or sharing) a link sorted by "Top Rated" / "A–Z" showed "Recommended" with
@@ -54,10 +69,8 @@ export function SortTabs({ active }: { active: SortKey }) {
   return (
     <nav
       aria-label="Sort products"
-      // The site header measures 57px (56px + 1px bottom border), so `top-14`
-      // (56px) parked the tab strip 1px underneath it: the active tab's text
-      // top edge and the strip's own border were clipped while scrolling.
-      className="sticky top-[57px] z-30 border-b border-border bg-background/95 backdrop-blur"
+      style={{ top }}
+      className="sticky z-30 border-b border-border bg-background/95 backdrop-blur"
     >
       <div
         ref={scroller}
