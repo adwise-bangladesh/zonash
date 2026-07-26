@@ -8,6 +8,8 @@
 
 export const FEED_PER_PAGE = 18;
 export const feedQueryKey = ["home", "feed", FEED_PER_PAGE] as const;
+/** Cache key for the curated "recommended" feed (featured + best sellers). */
+export const recommendedFeedKey = ["home", "feed", "recommended", FEED_PER_PAGE] as const;
 
 /**
  * Single source of truth for the feed cache key.
