@@ -1187,7 +1187,13 @@ const FloatingHeader = memo(function FloatingHeader({
  * decode observer so a swipe (which fires scroll events at 60 Hz) repaints
  * only the dot strip instead of the whole product page.
  */
+// This page is server-rendered, and `useLayoutEffect` warns during SSR. The
+// effect below is purely a pre-paint DOM write, so falling back to `useEffect`
+// on the server (where it never runs) is exactly equivalent and silent.
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 const Gallery = memo(function Gallery({
+
   images,
   name,
   activeImage,
