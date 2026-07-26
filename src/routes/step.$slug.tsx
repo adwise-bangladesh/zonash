@@ -1049,7 +1049,7 @@ function StepLandingPage() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
           </span>
-          Daily 10am – 10pm · Cash on Delivery
+          Open daily · 10 AM – 10 PM
         </p>
       </section>
 
