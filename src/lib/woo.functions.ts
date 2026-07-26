@@ -105,13 +105,16 @@ export const listProducts = createServerFn({ method: "GET" })
       // 100k-visitor day (and every crawler) generates.
       const term = data.search?.trim().replace(/\s+/g, " ").toLowerCase() || undefined;
 
-      // Deep-pagination guard for user-supplied searches. `page` accepted up to
-      // 500, and every search page is a cache-miss by construction, so
-      // `?q=a&page=417` was a free uncached round trip to WooCommerce that could
-      // be replayed indefinitely. No real result set is 20 pages deep here.
-      if (term && data.page > 20) {
+      // Deep-pagination guard. `page` accepted up to 500, and a deep page of a
+      // filtered view is a cache-miss by construction, so `?q=a&page=417` —
+      // or `?category=rings&page=417` — was a free uncached round trip to
+      // WooCommerce that could be replayed indefinitely. The guard covered the
+      // search lane only; category and featured filters are just as cheap to
+      // enumerate. 20 pages is ~480 rows, far past any real browsing depth.
+      if ((term || data.category || data.featured) && data.page > 20) {
         return { products: [] as WooProduct[], hasMore: false, error: null as string | null };
       }
+
 
 
 
