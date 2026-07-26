@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_identities: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          reason: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          reason?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          reason?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       coupon_usage: {
         Row: {
           coupon_code: string
