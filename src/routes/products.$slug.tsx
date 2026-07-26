@@ -1191,3 +1191,290 @@ function Stars({ value }: { value: number }) {
     </div>
   );
 }
+
+/**
+ * Floating header with its own scroll subscription.
+ *
+ * Previously the `scrolled` boolean lived in `ProductDetail`, so every scroll
+ * event that crossed the 40px threshold re-rendered the entire product tree.
+ * Worse, the listener called `setState` on *every* scroll frame (React bails
+ * on an identical value, but only after re-entering the scheduler). Now the
+ * work is: rAF-coalesced read, compare, and at most a 6-node re-render.
+ */
+const FloatingHeader = memo(function FloatingHeader({
+  title,
+  cartCount,
+  onShare,
+  onBack,
+}: {
+  title: string;
+  cartCount: number;
+  onShare: () => void;
+  onBack: () => void;
+}) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const read = () => {
+      raf = 0;
+      setScrolled(window.scrollY > 40);
+    };
+    const onScroll = () => {
+      if (!raf) raf = window.requestAnimationFrame(read);
+    };
+    read();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  const pill = scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40";
+  return (
+    <header
+      className={`fixed inset-x-0 top-0 z-40 mx-auto flex h-11 max-w-[480px] items-center gap-1 px-3 transition-all ${
+        scrolled
+          ? "border-x border-b border-border bg-background/95 backdrop-blur"
+          : "bg-gradient-to-b from-black/40 to-transparent"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back"
+        className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${pill}`}
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+      <span
+        className={`min-w-0 flex-1 truncate text-sm font-semibold transition-opacity ${
+          scrolled ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {title}
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          aria-label="Share"
+          onClick={onShare}
+          className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${pill}`}
+        >
+          <Share2 className="h-5 w-5" />
+        </button>
+        <Link
+          to="/cart"
+          aria-label="Cart"
+          className={`relative grid h-9 w-9 place-items-center rounded-full transition-colors ${pill}`}
+        >
+          <ShoppingBag className="h-5 w-5" />
+          {cartCount > 0 && (
+            <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+              {cartCount > 9 ? "9+" : cartCount}
+            </span>
+          )}
+        </Link>
+      </div>
+    </header>
+  );
+});
+
+/**
+ * Swipeable gallery. Owns the active-slide index, the autoplay timer and the
+ * decode observer so a swipe (which fires scroll events at 60 Hz) repaints
+ * only the dot strip instead of the whole product page.
+ */
+const Gallery = memo(function Gallery({
+  images,
+  name,
+  activeImage,
+}: {
+  images: string[];
+  name: string;
+  activeImage?: string;
+}) {
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const [activeImg, setActiveImg] = useState(0);
+  const lastInteractRef = useRef(0);
+  const scrollRafRef = useRef(0);
+  // Set while a programmatic scroll is in flight. `scrollTo({behavior:"smooth"})`
+  // emits the same scroll events a finger does, so the handler below was
+  // stamping `lastInteractRef` on the slideshow's own animation and freezing
+  // the carousel on slide 2 forever.
+  const autoScrollUntilRef = useRef(0);
+
+  const onGalleryScroll = useCallback(() => {
+    if (Date.now() > autoScrollUntilRef.current) lastInteractRef.current = Date.now();
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const el = galleryRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveImg((prev) => (prev === i ? prev : i));
+    });
+  }, []);
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    },
+    [],
+  );
+
+  /** Respect the OS "reduce motion" setting for both auto-play and smoothing. */
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  // Auto-scroll to the variation's image when it changes.
+  useEffect(() => {
+    if (!activeImage) return;
+    const idx = images.indexOf(activeImage);
+    const el = galleryRef.current;
+    if (idx < 0 || !el) return;
+    autoScrollUntilRef.current = Date.now() + 1200;
+    el.scrollTo({ left: idx * el.clientWidth, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    setActiveImg(idx);
+  }, [activeImage, images]);
+
+  // Auto-advance slideshow (pauses ~6s after any user interaction).
+  useEffect(() => {
+    if (images.length < 2 || prefersReducedMotion()) return;
+    let id = 0;
+    const tick = () => {
+      if (Date.now() - lastInteractRef.current < 6000) return;
+      const el = galleryRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % images.length;
+      autoScrollUntilRef.current = Date.now() + 1200;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    };
+    // The old timer kept firing every 3.5s in background tabs (it only skipped
+    // the work). With 100k sessions, most of them backgrounded, that is a lot
+    // of pointless wakeups; stop the interval outright while hidden.
+    const start = () => {
+      if (!id) id = window.setInterval(tick, 3500);
+    };
+    const stop = () => {
+      if (id) window.clearInterval(id);
+      id = 0;
+    };
+    const onVisibility = () => (document.hidden ? stop() : start());
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [images.length]);
+
+  // IntersectionObserver-based preload+decode for offscreen slides.
+  useEffect(() => {
+    const root = galleryRef.current;
+    if (!root || images.length < 2) return;
+    const decoded = new Set<string>();
+    const decode = (src: string) => {
+      if (!src || decoded.has(src)) return;
+      decoded.add(src);
+      const img = new Image();
+      img.decoding = "async";
+      const responsive = buildResponsiveImage(src);
+      if (responsive) {
+        img.srcset = responsive.srcSet;
+        img.sizes = responsive.sizes;
+        img.src = responsive.src;
+      } else {
+        img.src = src;
+      }
+      // decode() rejects on broken URLs — swallow so we don't spam console.
+      img.decode?.().catch(() => {});
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const idx = Number((e.target as HTMLElement).dataset.idx ?? -1);
+          if (Number.isNaN(idx) || idx < 0) continue;
+          decode(images[idx]);
+          decode(images[(idx + 1) % images.length]);
+          decode(images[(idx - 1 + images.length) % images.length]);
+        }
+      },
+      { root, rootMargin: "0px 100% 0px 100%", threshold: 0.01 },
+    );
+    root.querySelectorAll<HTMLElement>("[data-slide]").forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [images]);
+
+  const markInteract = useCallback(() => {
+    lastInteractRef.current = Date.now();
+  }, []);
+
+  return (
+    <div className="relative bg-background">
+      <div
+        ref={galleryRef}
+        onScroll={onGalleryScroll}
+        onTouchStart={markInteract}
+        onPointerDown={markInteract}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label={`${name} images`}
+        className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {(images.length ? images : [""]).map((src: string, i: number) => {
+          const responsive = src ? buildResponsiveImage(src) : null;
+          return (
+            <div
+              key={src || "placeholder"}
+              data-slide
+              data-idx={i}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`Image ${i + 1} of ${Math.max(images.length, 1)}`}
+              className="relative aspect-square w-full shrink-0 snap-center"
+            >
+              {/* Static fallback layer, revealed when every candidate URL fails. */}
+              <div className="absolute inset-0 grid place-items-center bg-muted">
+                <Gem className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />
+              </div>
+              {responsive && (
+                <img
+                  src={responsive.src}
+                  srcSet={responsive.srcSet || undefined}
+                  sizes={responsive.sizes}
+                  alt={i === 0 ? name : `${name} — image ${i + 1} of ${images.length}`}
+                  width={800}
+                  height={800}
+                  draggable={false}
+                  className="relative h-full w-full select-none object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding={i === 0 ? "sync" : "async"}
+                  fetchPriority={i === 0 ? "high" : "auto"}
+                  style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                  onError={onImageSrcSetError}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {images.length > 1 && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1"
+        >
+          {images.map((src: string, i: number) => (
+            <span
+              key={src}
+              className={`h-1.5 rounded-full transition-all ${
+                i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
