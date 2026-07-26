@@ -599,6 +599,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
     [p.short_description],
   );
   const longDesc = useMemo(() => sanitizeHtml((p.description ?? "").trim()), [p.description]);
+  // Stable identity so the memoized related grid doesn't refetch every render.
+  const relatedCategoryIds = useMemo(
+    () => (p.categories ?? []).map((c) => c.id).filter(Boolean).slice(0, 5),
+    [p.categories],
+  );
 
   // ---------- UI state ----------
   // NOTE: the window-scroll flag and the gallery's active-slide index used to
