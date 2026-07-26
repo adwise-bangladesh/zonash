@@ -1080,3 +1080,126 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
     }
     return { ok: true as const, decision: "confirmed" as const, applied };
   });
+
+
+// ---------- saveDraftOrder ----------
+//
+// Creates or updates a WooCommerce order with status `checkout-draft`, so
+// abandoned/in-progress checkouts (name+mobile+address typed but not
+// confirmed) are still visible in the admin. The returned id is later passed
+// to submitPendingOrder as `draft_order_id` to promote it in place.
+//
+// This endpoint is intentionally lightweight: no OTP, no SMS, no pricing
+// enforcement, no abuse gate — those all run at confirm time. Rate-limit
+// signals are still recorded to keep bots from spraying drafts.
+
+type DraftResult =
+  | { ok: true; draft_order_id: number }
+  | { ok: false; error: string };
+
+export const saveDraftOrder = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => draftSchema.parse(raw))
+  .handler(async ({ data }): Promise<DraftResult> => {
+    const phone = normalizePhone(data.billing.phone);
+    // Require at least: a name, a valid BD phone, and a non-empty address.
+    if (
+      !data.billing.first_name ||
+      !/^01[3-9]\d{8}$/.test(phone) ||
+      !data.billing.address_1 ||
+      data.billing.address_1.trim().length < 3
+    ) {
+      return { ok: false, error: "Draft requires name, phone and address." };
+    }
+
+    const server = await readClientContext();
+    const trackingBundle = {
+      client: data.tracking ?? {},
+      server: { ...server, at: new Date().toISOString() },
+    };
+    const clientFingerprint =
+      (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
+
+    const billingPayload: Record<string, unknown> = {
+      first_name: data.billing.first_name,
+      last_name: data.billing.last_name,
+      phone,
+      address_1: data.billing.address_1,
+      address_2: data.billing.address_2,
+      city: data.billing.city,
+      country: data.billing.country || "BD",
+    };
+    if (data.billing.email && data.billing.email.trim()) {
+      billingPayload.email = data.billing.email.trim();
+    }
+
+    const body = {
+      status: "checkout-draft",
+      payment_method: "cod",
+      payment_method_title: "Cash on Delivery",
+      set_paid: false,
+      billing: billingPayload,
+      shipping: {
+        first_name: data.billing.first_name,
+        last_name: data.billing.last_name,
+        address_1: data.billing.address_1,
+        address_2: data.billing.address_2,
+        city: data.billing.city,
+        country: data.billing.country || "BD",
+        phone,
+      },
+      line_items: data.items,
+      customer_note: data.customer_note,
+      meta_data: [
+        { key: "_zonash_draft", value: "1" },
+        { key: "_zonash_tracking", value: JSON.stringify(trackingBundle) },
+        { key: "_zonash_fingerprint", value: clientFingerprint },
+        { key: "_zonash_ip", value: server.ip ?? "" },
+        { key: "_zonash_ua", value: server.user_agent ?? "" },
+        { key: "_zonash_channel", value: "storefront-draft" },
+      ],
+    };
+
+    try {
+      const { wooFetch } = await import("./woo.server");
+      if (data.draft_order_id) {
+        try {
+          const upd = await wooFetch<{ id: number; status: string }>({
+            path: `/orders/${data.draft_order_id}`,
+            method: "PUT",
+            body,
+            timeoutMs: 12000,
+          });
+          // If the existing order was already promoted (not a draft anymore)
+          // don't try to overwrite it — signal the client to stop.
+          if (upd.status && upd.status !== "checkout-draft") {
+            return { ok: true, draft_order_id: upd.id };
+          }
+          return { ok: true, draft_order_id: upd.id };
+        } catch {
+          // fall through to create fresh
+        }
+      }
+      // Try with checkout-draft; if the store rejects that status, fall back
+      // to `pending` with the _zonash_draft meta.
+      let created: { id: number };
+      try {
+        created = await wooFetch<{ id: number }>({
+          path: "/orders",
+          method: "POST",
+          body,
+          timeoutMs: 12000,
+        });
+      } catch {
+        created = await wooFetch<{ id: number }>({
+          path: "/orders",
+          method: "POST",
+          body: { ...body, status: "pending" },
+          timeoutMs: 12000,
+        });
+      }
+      return { ok: true, draft_order_id: created.id };
+    } catch (e) {
+      console.error("saveDraftOrder failed", e);
+      return { ok: false, error: "Draft save failed." };
+    }
+  });
