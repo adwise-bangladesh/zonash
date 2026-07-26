@@ -13,8 +13,18 @@
 // drops srcset/sizes and falls back to the original URL instead of showing a
 // broken image.
 
-/** WordPress/WooCommerce default generated widths (square crops in this store). */
-const WP_SIZES = [150, 300, 600, 768, 1024] as const;
+/**
+ * WordPress/WooCommerce generated square crops this store reliably produces.
+ *
+ * 768/1024 square crops were also advertised, but WordPress only generates
+ * `-768x768`/`-1024x1024` when the source is big enough AND square cropping is
+ * configured for those sizes — on this store many uploads have neither, so the
+ * browser picked a 404 candidate on high-DPR phones and painted a broken image
+ * before the fallback could run. The original URL still caps the srcset, so
+ * large slots keep full quality.
+ */
+const WP_SIZES = [150, 300, 600] as const;
+
 
 const SIZED_SUFFIX = /-(\d+)x(\d+)(?=\.[a-z0-9]+$)/i;
 
@@ -61,17 +71,37 @@ export function buildResponsiveImage(
 }
 
 /**
- * `<img onError>` guard: if a generated size is missing (404), fall back to the
- * original URL rather than rendering a broken image.
+ * `<img onError>` guard: if a generated WordPress size is missing (404), fall
+ * back to the original URL instead of leaving a broken image on screen.
+ *
+ * Two failure modes the previous version could not recover from:
+ *  1. `img.src` was already the original URL (we render `src=original` +
+ *     `srcSet=sized candidates`), so re-assigning the identical string is a
+ *     no-op in Chromium/WebKit and the broken sized candidate stayed painted.
+ *     The attribute is removed first to force a fresh fetch.
+ *  2. `srcset` had already been cleared by a first error, so the early return
+ *     left a permanently broken <img>. The element is now hidden after the
+ *     original itself fails, revealing the card's neutral placeholder box.
  */
 export function onImageSrcSetError(event: React.SyntheticEvent<HTMLImageElement>) {
   const img = event.currentTarget;
-  if (!img.srcset) return;
+  const stage = img.dataset.imgFallback;
+  if (stage) {
+    // The original URL failed too — nothing left to try.
+    img.dataset.imgFallback = "failed";
+    img.style.visibility = "hidden";
+    return;
+  }
+  img.dataset.imgFallback = "original";
   const original = toOriginal(img.currentSrc || img.src);
-  img.srcset = "";
-  img.sizes = "";
+  img.removeAttribute("srcset");
+  img.removeAttribute("sizes");
+  // removeAttribute() does not fire another error event; assigning afterwards
+  // guarantees a real network request even when the URL is unchanged.
+  img.removeAttribute("src");
   img.src = original;
 }
+
 
 /**
  * Small fixed-size thumbnail (category tiles, avatars).
