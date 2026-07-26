@@ -466,17 +466,21 @@ function CartPage() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          {blockedCount > 0 ? (
+          {issueCount > 0 ? (
             <button
               type="button"
-              disabled
-              aria-disabled="true"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-muted text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground"
+              onClick={resolveIssues}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-destructive text-sm font-bold uppercase tracking-[0.08em] text-destructive-foreground transition-all active:scale-[0.99]"
             >
               <AlertCircle className="h-4 w-4" aria-hidden="true" />
-              Remove unavailable {blockedCount === 1 ? "item" : "items"}
+              {blockedCount > 0 && overStockKeys.length > 0
+                ? "Fix bag to continue"
+                : blockedCount > 0
+                  ? `Remove unavailable ${blockedCount === 1 ? "item" : "items"}`
+                  : "Adjust quantities to available stock"}
             </button>
           ) : (
+
             <Link
               to="/checkout"
               preload="intent"
