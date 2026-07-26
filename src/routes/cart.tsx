@@ -403,15 +403,20 @@ function CartPage() {
         )}
 
         <ul className="space-y-2.5">
-          {items.map((item) => (
-            <CartRow
-              key={itemKey(item)}
-              item={item}
-              status={blocked.get(itemKey(item))}
-              onSetQty={onSetQty}
-              onRemove={onRemove}
-            />
-          ))}
+          {items.map((item) => {
+            const key = itemKey(item);
+            return (
+              <CartRow
+                key={key}
+                item={item}
+                status={blocked.get(key)}
+                stockQty={stockCaps.get(key) ?? null}
+                onSetQty={onSetQty}
+                onRemove={onRemove}
+              />
+            );
+          })}
+
         </ul>
 
 
