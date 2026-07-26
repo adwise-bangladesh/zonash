@@ -1117,8 +1117,8 @@ const Gallery = memo(function Gallery({
 
   useEffect(() => {
     if (paused || images.length <= 1 || !visible) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
+    let t: ReturnType<typeof setInterval> | null = null;
+    const tick = () => {
       const el = ref.current;
       if (!el) return;
       setActiveImg((i) => {
@@ -1127,8 +1127,16 @@ const Gallery = memo(function Gallery({
         el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
         return next;
       });
-    }, 3500);
-    return () => clearInterval(t);
+    };
+    const start = () => { if (t === null) t = setInterval(tick, 3500); };
+    const stop = () => { if (t !== null) { clearInterval(t); t = null; } };
+    const onVis = () => { if (document.hidden) stop(); else start(); };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [paused, images.length, visible]);
 
   const onScroll = useCallback(() => {
