@@ -42,7 +42,12 @@ const BigCard = memo(function BigCard({
       params={{ slug: p.slug }}
       preload="intent"
       onPointerDown={(e) => {
-        if (e.button === 0) seed();
+        if (e.button !== 0) return;
+        seed();
+        // Morph this card's image into the product hero. Marked imperatively on
+        // pointerdown: the same product can appear in both Mega Sale and the
+        // feed, and two elements sharing a view-transition-name kills it.
+        beginProductPush(imgRef.current);
       }}
       onFocus={seed}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md"
@@ -50,7 +55,9 @@ const BigCard = memo(function BigCard({
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {responsive ? (
           <img
+            ref={imgRef}
             src={responsive.src}
+
             srcSet={responsive.srcSet}
             sizes={responsive.sizes}
             alt={image?.alt || p.name || "Product"}
