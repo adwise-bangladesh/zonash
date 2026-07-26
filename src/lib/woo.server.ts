@@ -497,6 +497,13 @@ export type WooProduct = {
   meta_data?: { id?: number; key: string; value: string | number | boolean | null }[];
   average_rating: string;
   rating_count: number;
+  /**
+   * Derived: lowest regular (pre-sale) price across a variable product's
+   * variations. Woo's list payload leaves `regular_price` empty for variable
+   * products and its `price_html` range omits the strikethrough, so the card
+   * had no way to show the crossed-out price. Filled by `enrichVariableRegular`.
+   */
+  min_regular_price?: string;
 };
 
 export type WooVariation = {
