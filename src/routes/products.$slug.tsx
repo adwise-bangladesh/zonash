@@ -391,10 +391,28 @@ function ProductDetail({ p }: { p: WooProduct }) {
     [p.attributes],
   );
 
-  // Selected option per attribute name. Seed from default_attributes.
+  /**
+   * WooCommerce is not consistent about attribute casing across endpoints:
+   * `default_attributes` frequently returns the slug ("1-pcs") while
+   * `attributes[].options` returns the label ("1 Pcs"), and variation rows can
+   * differ again in spacing ("2Pcs" vs "2 pcs"). Exact string comparison
+   * therefore silently failed to match a variation — the page fell back to the
+   * parent's price range and added the item to the cart with no `variationId`,
+   * i.e. the wrong price and SKU reached checkout. Every comparison below goes
+   * through this key; labels shown to the user stay untouched.
+   */
+  const nk = (s: string) =>
+    (s ?? "")
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "")
+      .trim();
+
+  // Selected option per attribute, keyed and valued by normalized form.
   const [selected, setSelected] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
-    for (const d of p.default_attributes ?? []) init[d.name] = d.option;
+    for (const d of p.default_attributes ?? []) {
+      if (d?.name && d?.option) init[nk(d.name)] = nk(d.option);
+    }
     return init;
   });
 
@@ -407,21 +425,31 @@ function ProductDetail({ p }: { p: WooProduct }) {
       const next = { ...prev };
       let changed = false;
       for (const a of first.attributes) {
-        if (!next[a.name]) {
-          next[a.name] = a.option;
+        const key = nk(a.name);
+        if (!next[key]) {
+          next[key] = nk(a.option);
           changed = true;
         }
       }
       return changed ? next : prev;
     });
+    // `nk` is a pure module-level-style helper; excluded intentionally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations]);
 
   const matchedVariation: WooVariation | null = useMemo(() => {
     if (!isVariable || variations.length === 0) return null;
     return (
-      variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ??
-      null
+      variations.find((v) =>
+        v.attributes.every((a) => {
+          const want = selected[nk(a.name)];
+          // An empty variation option means "Any" in Woo — it matches anything.
+          if (!a.option) return true;
+          return want != null && want === nk(a.option);
+        }),
+      ) ?? null
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations, selected]);
 
   /**
@@ -439,23 +467,28 @@ function ProductDetail({ p }: { p: WooProduct }) {
     for (const v of variations) {
       const attrs = v.attributes;
       for (const a of attrs) {
-        const compatible = attrs.every(
-          (o) => o.name === a.name || !selected[o.name] || selected[o.name] === o.option,
-        );
+        const compatible = attrs.every((o) => {
+          if (nk(o.name) === nk(a.name) || !o.option) return true;
+          const want = selected[nk(o.name)];
+          return !want || want === nk(o.option);
+        });
         if (!compatible) continue;
-        let byOpt = map.get(a.name);
+        const attrKey = nk(a.name);
+        let byOpt = map.get(attrKey);
         if (!byOpt) {
           byOpt = new Map();
-          map.set(a.name, byOpt);
+          map.set(attrKey, byOpt);
         }
-        const entry = byOpt.get(a.option) ?? { enabled: false, best: undefined };
+        const optKey = nk(a.option);
+        const entry = byOpt.get(optKey) ?? { enabled: false, best: undefined };
         const inStockV = v.stock_status === "instock";
         if (inStockV) entry.enabled = true;
         if (!entry.best || (inStockV && entry.best.stock_status !== "instock")) entry.best = v;
-        byOpt.set(a.option, entry);
+        byOpt.set(optKey, entry);
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVariable, variations, selected]);
 
   // ---------- Pricing / stock (variation-aware) ----------
