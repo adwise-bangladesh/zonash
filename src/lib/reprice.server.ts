@@ -1,5 +1,49 @@
 import { WooError, wooFetch } from "./woo.server";
 
+/**
+ * Distinct-id enumeration guard for the public reprice endpoint.
+ *
+ * The endpoint is intentionally unauthenticated (a bag exists before a login
+ * does), and everything it returns is already public on the storefront. The
+ * residual risk is a scraper walking the id space: cached ids are cheap, but
+ * *new* ids each cost an upstream request. So the quota counts unique,
+ * uncached ids per client per minute rather than requests — a real shopper
+ * with a 200-line bag passes once and is then served from the memo, while a
+ * crawler asking for fresh ids runs out almost immediately.
+ */
+const ENUM_WINDOW_MS = 60_000;
+const ENUM_MAX_NEW_IDS = 240;
+const ENUM_MAX_CLIENTS = 5000;
+const enumBuckets = new Map<string, { at: number; n: number }>();
+
+/** @returns how many of `count` new ids the caller is still allowed to fetch. */
+export function enumAllowance(client: string, count: number): number {
+  if (!client) return count; // unknown client (local/SSR) — don't penalise
+  const now = Date.now();
+  const b = enumBuckets.get(client);
+  if (!b || now - b.at > ENUM_WINDOW_MS) {
+    enumBuckets.set(client, { at: now, n: Math.min(count, ENUM_MAX_NEW_IDS) });
+    if (enumBuckets.size > ENUM_MAX_CLIENTS) {
+      // Bounded map: drop the oldest insertion rather than growing forever.
+      for (const k of enumBuckets.keys()) {
+        enumBuckets.delete(k);
+        if (enumBuckets.size <= ENUM_MAX_CLIENTS) break;
+      }
+    }
+    return Math.min(count, ENUM_MAX_NEW_IDS);
+  }
+  const left = Math.max(0, ENUM_MAX_NEW_IDS - b.n);
+  const grant = Math.min(count, left);
+  b.n += grant;
+  return grant;
+}
+
+/** True when the key is already memoised, i.e. costs no upstream request. */
+export function isCached(l: RepriceLineInput): boolean {
+  return readCache(keyOf(l)) !== undefined;
+}
+
+
 export type RepriceLineInput = { productId: number; variationId?: number };
 
 export type RepriceLineResult = {
