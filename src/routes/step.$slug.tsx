@@ -283,7 +283,10 @@ function StepLandingPage() {
   }, [isVariable, selectedVar, product]);
   const { price: effectivePrice, regular: effectiveRegular, showStrike, inStock } = active;
 
-  // Gallery
+  // Gallery — depend only on the fields that actually shape the list.
+  // Using the whole `product` object invalidates on every react-query
+  // background refetch, rebuilding the list (and its object identities)
+  // even when images and name are byte-identical.
   const gallery = useMemo(() => {
     const list: { src: string; alt: string }[] = [];
     if (selectedVar?.image?.src) list.push({ src: selectedVar.image.src, alt: product.name });
@@ -291,7 +294,7 @@ function StepLandingPage() {
       if (!list.some((x) => x.src === img.src)) list.push({ src: img.src, alt: img.alt || product.name });
     }
     return list;
-  }, [product, selectedVar]);
+  }, [product.images, product.name, selectedVar]);
 
   // Memoized review count for header (avoid recomputing per render).
   const reviewsCountDisplay = useMemo(
@@ -586,14 +589,14 @@ function StepLandingPage() {
       {/* Title + price */}
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
         <h1 className="text-[19px] font-bold leading-tight text-foreground">{product.name}</h1>
-        {(selectedVar?.sku || product.sku) && (
-          <div className="mt-1 flex items-center justify-between gap-2">
+        <div className="mt-1 flex items-center justify-between gap-2">
+          {(selectedVar?.sku || product.sku) ? (
             <div className="text-[11px] font-medium text-muted-foreground">
               SKU: <span className="font-mono text-foreground/80">{selectedVar?.sku || product.sku}</span>
             </div>
-            <CountdownInline />
-          </div>
-        )}
+          ) : <span aria-hidden />}
+          <CountdownInline />
+        </div>
 
         <div className="mt-1 flex items-center gap-2 text-[11.5px] text-muted-foreground">
           <span className="flex items-center gap-0.5" aria-label={`Rating ${product.average_rating}`}>
@@ -1114,8 +1117,8 @@ const Gallery = memo(function Gallery({
 
   useEffect(() => {
     if (paused || images.length <= 1 || !visible) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
+    let t: ReturnType<typeof setInterval> | null = null;
+    const tick = () => {
       const el = ref.current;
       if (!el) return;
       setActiveImg((i) => {
@@ -1124,8 +1127,16 @@ const Gallery = memo(function Gallery({
         el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
         return next;
       });
-    }, 3500);
-    return () => clearInterval(t);
+    };
+    const start = () => { if (t === null) t = setInterval(tick, 3500); };
+    const stop = () => { if (t !== null) { clearInterval(t); t = null; } };
+    const onVis = () => { if (document.hidden) stop(); else start(); };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [paused, images.length, visible]);
 
   const onScroll = useCallback(() => {
