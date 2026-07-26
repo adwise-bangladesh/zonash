@@ -142,9 +142,9 @@ export const Route = createFileRoute("/products/$slug")({
                 rel: "preload",
                 as: "image",
                 href: responsive.src,
-                imagesrcset: responsive.srcSet,
-                imagesizes: responsive.sizes,
-                fetchpriority: "high",
+                imageSrcSet: responsive.srcSet,
+                imageSizes: responsive.sizes,
+                fetchPriority: "high",
               } as const,
             ]
           : []),
