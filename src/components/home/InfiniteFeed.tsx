@@ -68,10 +68,13 @@ export function InfiniteFeed({
   order,
   columns = 3,
   recommended = false,
+  excludeId,
 }: {
   orderby?: Orderby;
   order?: Order;
   columns?: 2 | 3;
+  /** Product to drop from the feed (e.g. the product page you're already on). */
+  excludeId?: number;
   /**
    * Curated ordering: featured products first, then best sellers. Used for
    * "Recommended for you" surfaces, where newest-published was misleading.
@@ -132,10 +135,12 @@ export function InfiniteFeed({
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
   // every render (scroll, hover, focus). Memoize on the page array identity so
   // it only runs when a new page actually lands.
-  const products = useMemo(
-    () => dedupeFeedPages<WooProduct>(data?.pages as { products: WooProduct[] }[] | undefined),
-    [data?.pages],
-  );
+  const products = useMemo(() => {
+    const all = dedupeFeedPages<WooProduct>(
+      data?.pages as { products: WooProduct[] }[] | undefined,
+    );
+    return excludeId ? all.filter((p) => p.id !== excludeId) : all;
+  }, [data?.pages, excludeId]);
 
   // Server functions resolve with `{ products, error }` instead of throwing.
   const softError = data?.pages?.some((p) => (p as { error?: string | null })?.error) ?? false;
