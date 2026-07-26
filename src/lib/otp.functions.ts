@@ -743,7 +743,9 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         path: `/orders/${created.id}/notes`,
         method: "POST",
         body: {
-          note: `📥 Order submitted (${data.draft_order_id ? "promoted from checkout-draft" : "new"}). Awaiting OTP verification.`,
+          note: data.draft_order_id
+            ? "Order submitted by customer. Promoted from checkout draft; awaiting phone verification."
+            : "Order submitted by customer. Awaiting phone verification.",
           customer_note: false,
         },
       });
@@ -776,8 +778,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           method: "POST",
           body: {
             note:
-              `🚫 Blocked identity matched (${blockedHit.kind}: ${blockedHit.value}). ` +
-              `Order held for review — OTP skipped, customer routed to review page.`,
+              `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
+              `Phone verification skipped; order held for manual review.`,
             customer_note: false,
           },
         });
@@ -843,10 +845,10 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             method: "POST",
             body: {
               note:
-                `🔓 OTP skipped (trusted session). Decision: ${verdict.decision.toUpperCase()}.\n` +
-                (verdict.decisionReason ? `Reason: ${verdict.decisionReason}\n` : "") +
+                `Phone verification skipped (trusted customer session). Decision: ${verdict.decision}.` +
+                (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
                 (verdict.duplicates.length
-                  ? `Duplicates: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}`
+                  ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
                   : ""),
               customer_note: false,
             },
@@ -1146,10 +1148,10 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         method: "POST",
         body: {
           note:
-            `✅ OTP verified. Decision: ${decision.toUpperCase()} (status → ${appliedStatus}).\n` +
-            (decisionReason ? `Reason: ${decisionReason}\n` : "") +
+            `Phone verified via one-time code. Decision: ${decision}; status set to ${appliedStatus}.` +
+            (decisionReason ? ` Reason: ${decisionReason}.` : "") +
             (duplicates.length
-              ? `Duplicates: ${duplicates.map((d) => `#${d.number}`).join(", ")}`
+              ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
               : ""),
           customer_note: false,
         },
@@ -1248,7 +1250,7 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
           path: `/orders/${data.order_id}/notes`,
           method: "POST",
           body: {
-            note: "📞 Customer requested a confirmation call. Order kept as pending — please call to confirm before dispatch.",
+            note: "Customer requested a confirmation call. Order retained as pending; please contact the customer before dispatch.",
             customer_note: false,
           },
         });
@@ -1301,7 +1303,7 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
         path: `/orders/${data.order_id}/notes`,
         method: "POST",
         body: {
-          note: `✅ Customer confirmed via storefront — no call requested. Status → ${applied}.`,
+          note: `Customer confirmed the order from the storefront and declined a callback. Status set to ${applied}.`,
           customer_note: false,
         },
       });
@@ -1393,17 +1395,25 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
       const { wooFetch } = await import("./woo.server");
       if (data.draft_order_id) {
         try {
+          // Check current status first — if the order has already been
+          // promoted (pending / on-hold / processing / confirmed / …), we
+          // MUST NOT PUT status: "checkout-draft" or we would silently
+          // demote a live order back to a draft.
+          const existing = await wooFetch<{ id: number; status: string }>({
+            path: `/orders/${data.draft_order_id}`,
+            method: "GET",
+            timeoutMs: 8000,
+          });
+          if (existing.status && existing.status !== "checkout-draft") {
+            // Order is live — skip the update entirely, signal client to stop.
+            return { ok: true, draft_order_id: existing.id };
+          }
           const upd = await wooFetch<{ id: number; status: string }>({
             path: `/orders/${data.draft_order_id}`,
             method: "PUT",
             body,
             timeoutMs: 12000,
           });
-          // If the existing order was already promoted (not a draft anymore)
-          // don't try to overwrite it — signal the client to stop.
-          if (upd.status && upd.status !== "checkout-draft") {
-            return { ok: true, draft_order_id: upd.id };
-          }
           return { ok: true, draft_order_id: upd.id };
         } catch {
           // fall through to create fresh
