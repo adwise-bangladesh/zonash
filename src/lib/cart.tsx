@@ -47,7 +47,14 @@ type CartActions = {
 type CartContextValue = CartState & CartActions;
 
 export const MAX_QTY = 99;
+/**
+ * Hard cap on distinct bag lines. `sanitize` has always trimmed to this on
+ * read, so without the same cap on write a bag could grow past it in memory
+ * and then silently lose its tail on the next page load.
+ */
+export const MAX_LINES = 200;
 const clampQty = (n: number) => Math.max(0, Math.min(MAX_QTY, Math.floor(n) || 0));
+
 
 const num = (v: unknown): number => {
   const n = typeof v === "string" ? Number.parseFloat(v) : typeof v === "number" ? v : NaN;
@@ -89,7 +96,7 @@ function sanitize(raw: unknown): CartItem[] {
       image: typeof o.image === "string" ? o.image : undefined,
       quantity,
     });
-    if (out.length >= 200) break;
+    if (out.length >= MAX_LINES) break;
   }
   return out;
 }
@@ -150,8 +157,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           itemKey(i) === key ? { ...i, quantity: clampQty(i.quantity + qty) } : i,
         );
       }
+      // Refuse silently rather than accepting a line that would be dropped
+      // again by `sanitize` on the next load.
+      if (cur.length >= MAX_LINES) return cur;
       const price = num(item.price);
       const regular = num(item.regularPrice);
+
       return [
         ...cur,
         {

@@ -91,12 +91,15 @@ function CartSkeleton() {
 const CartRow = memo(function CartRow({
   item,
   status,
+  stockQty,
   onSetQty,
   onRemove,
 }: {
   item: CartItem;
   /** Availability reported by the last server reprice. */
   status?: "oos" | "gone";
+  /** Remaining units when the store tracks stock for this line. */
+  stockQty?: number | null;
   onSetQty: (key: string, qty: number) => void;
   onRemove: (key: string) => void;
 }) {
@@ -106,7 +109,10 @@ const CartRow = memo(function CartRow({
   const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
   const lineSave = hasOld ? lineOld - lineTotal : 0;
   const pct = hasOld && lineOld > 0 ? Math.round((lineSave / lineOld) * 100) : 0;
-  const atMax = item.quantity >= MAX_QTY;
+  const cap = typeof stockQty === "number" && stockQty > 0 ? Math.min(MAX_QTY, stockQty) : MAX_QTY;
+  const atMax = item.quantity >= cap;
+  const overStock = item.quantity > cap;
+
 
   const thumb = item.image ? (
     <img
@@ -128,9 +134,10 @@ const CartRow = memo(function CartRow({
   return (
     <li
       className={`flex gap-2.5 rounded-[3px] border bg-background p-2.5 ${
-        status ? "border-destructive/40" : "border-border"
+        status || overStock ? "border-destructive/40" : "border-border"
       }`}
     >
+
 
       <Link
         to="/products/$slug"
@@ -170,7 +177,17 @@ const CartRow = memo(function CartRow({
               ? "No longer available — remove to continue"
               : "Out of stock — remove to continue"}
           </p>
+        ) : overStock ? (
+          <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-destructive">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+            Only {cap} left — reduce the quantity to continue
+          </p>
+        ) : atMax && cap < MAX_QTY ? (
+          <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-500">
+            Last {cap} in stock
+          </p>
         ) : null}
+
 
         <div className="mt-auto flex items-center justify-between pt-0.5">
           <div className="flex items-baseline gap-1.5">
@@ -257,8 +274,13 @@ function CartPage() {
       }),
     enabled: hydrated && items.length > 0,
     staleTime: 60_000,
+    // A bag left open in a background tab goes stale; re-check availability
+    // when the customer comes back rather than sending them to checkout with
+    // an hour-old stock snapshot.
+    refetchOnWindowFocus: true,
     retry: 0,
   });
+
 
   const [priceChanged, setPriceChanged] = useState(false);
   useEffect(() => {
@@ -293,9 +315,39 @@ function CartPage() {
   }, [repriced]);
   const blockedCount = blocked.size;
 
+  // Remaining units per line when the store tracks stock. "In stock" is not
+  // enough: a bag asking for 5 of a 2-unit line fails inside WooCommerce.
+  const stockCaps = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of repriced?.lines ?? []) {
+      if (typeof l.stockQty !== "number" || l.stockQty <= 0) continue;
+      m.set(lineKey(l.productId, l.variationId ?? undefined), l.stockQty);
+    }
+    return m;
+  }, [repriced]);
 
+  const overStockKeys = useMemo(() => {
+    const out: { key: string; cap: number }[] = [];
+    for (const i of items) {
+      const key = itemKey(i);
+      if (blocked.has(key)) continue;
+      const cap = stockCaps.get(key);
+      if (cap !== undefined && i.quantity > cap) out.push({ key, cap });
+    }
+    return out;
+  }, [items, stockCaps, blocked]);
+
+  // The "unavailable items" CTA used to be a disabled dead end: it told the
+  // customer what to do but could not do it. It now performs the fix.
+  const resolveIssues = useCallback(() => {
+    for (const key of blocked.keys()) remove(key);
+    for (const { key, cap } of overStockKeys) setQty(key, cap);
+  }, [blocked, overStockKeys, remove, setQty]);
+
+  const issueCount = blockedCount + overStockKeys.length;
 
   const savings = useMemo(
+
     () =>
       Math.max(
         0,
@@ -340,25 +392,31 @@ function CartPage() {
             Some prices were updated to the latest store price.
           </p>
         )}
-        {blockedCount > 0 && (
+        {issueCount > 0 && (
           <p
             role="alert"
             className="mb-2.5 rounded-[3px] border border-destructive/40 bg-destructive/5 px-3 py-2 text-[11.5px] font-medium text-destructive"
           >
-            {blockedCount === 1 ? "1 item is" : `${blockedCount} items are`} unavailable. Remove{" "}
-            {blockedCount === 1 ? "it" : "them"} to continue to checkout.
+            {issueCount === 1 ? "1 item needs" : `${issueCount} items need`} attention before
+            checkout — {blockedCount > 0 ? "some are unavailable" : "stock is limited"}.
           </p>
         )}
+
         <ul className="space-y-2.5">
-          {items.map((item) => (
-            <CartRow
-              key={itemKey(item)}
-              item={item}
-              status={blocked.get(itemKey(item))}
-              onSetQty={onSetQty}
-              onRemove={onRemove}
-            />
-          ))}
+          {items.map((item) => {
+            const key = itemKey(item);
+            return (
+              <CartRow
+                key={key}
+                item={item}
+                status={blocked.get(key)}
+                stockQty={stockCaps.get(key) ?? null}
+                onSetQty={onSetQty}
+                onRemove={onRemove}
+              />
+            );
+          })}
+
         </ul>
 
 
@@ -408,17 +466,21 @@ function CartPage() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          {blockedCount > 0 ? (
+          {issueCount > 0 ? (
             <button
               type="button"
-              disabled
-              aria-disabled="true"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-muted text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground"
+              onClick={resolveIssues}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-destructive text-sm font-bold uppercase tracking-[0.08em] text-destructive-foreground transition-all active:scale-[0.99]"
             >
               <AlertCircle className="h-4 w-4" aria-hidden="true" />
-              Remove unavailable {blockedCount === 1 ? "item" : "items"}
+              {blockedCount > 0 && overStockKeys.length > 0
+                ? "Fix bag to continue"
+                : blockedCount > 0
+                  ? `Remove unavailable ${blockedCount === 1 ? "item" : "items"}`
+                  : "Adjust quantities to available stock"}
             </button>
           ) : (
+
             <Link
               to="/checkout"
               preload="intent"
