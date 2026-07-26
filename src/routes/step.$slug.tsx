@@ -987,12 +987,12 @@ function StepLandingPage() {
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            Or order directly
+            Prefer to talk?
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Talk to us — we'll place the order for you
+          We'll place the order for you
         </p>
         <div className="mt-3 space-y-2.5">
           <a
