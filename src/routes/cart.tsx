@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { MAX_QTY, useCart, type CartItem } from "@/lib/cart";
+import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
+import { repriceCartLines } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
@@ -91,8 +94,8 @@ const CartRow = memo(function CartRow({
   onRemove,
 }: {
   item: CartItem;
-  onSetQty: (id: number, qty: number) => void;
-  onRemove: (id: number) => void;
+  onSetQty: (key: string, qty: number) => void;
+  onRemove: (key: string) => void;
 }) {
   const lineTotal = item.price * item.quantity;
   const hasOld = !!item.regularPrice && item.regularPrice > item.price;
@@ -140,7 +143,7 @@ const CartRow = memo(function CartRow({
           <button
             type="button"
             aria-label={`Remove ${item.name}`}
-            onClick={() => onRemove(item.productId)}
+            onClick={() => onRemove(itemKey(item))}
             className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -173,7 +176,7 @@ const CartRow = memo(function CartRow({
                   ? `Remove ${item.name}`
                   : `Decrease quantity of ${item.name}`
               }
-              onClick={() => onSetQty(item.productId, item.quantity - 1)}
+              onClick={() => onSetQty(itemKey(item), item.quantity - 1)}
               className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
             >
               <Minus className="h-3 w-3" aria-hidden="true" />
@@ -187,7 +190,7 @@ const CartRow = memo(function CartRow({
             <button
               type="button"
               aria-label={`Increase quantity of ${item.name}`}
-              onClick={() => onSetQty(item.productId, item.quantity + 1)}
+              onClick={() => onSetQty(itemKey(item), item.quantity + 1)}
               disabled={atMax}
               aria-disabled={atMax}
               className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
@@ -299,7 +302,7 @@ function CartPage() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
         <ul className="space-y-2.5">
           {items.map((item) => (
-            <CartRow key={item.productId} item={item} onSetQty={onSetQty} onRemove={onRemove} />
+            <CartRow key={itemKey(item)} item={item} onSetQty={onSetQty} onRemove={onRemove} />
           ))}
         </ul>
 

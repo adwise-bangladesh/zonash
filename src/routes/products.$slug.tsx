@@ -460,10 +460,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
     const variantSuffix = matchedVariation
       ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
       : "";
-    const productKey = matchedVariation ? p.id * 100000 + matchedVariation.id : p.id;
     add(
       {
-        productId: productKey,
+        productId: p.id,
+        variationId: matchedVariation?.id,
         name: p.name + variantSuffix,
         slug: p.slug,
         sku: activeSku || undefined,
