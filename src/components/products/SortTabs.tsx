@@ -91,7 +91,8 @@ export function SortTabs({
           return (
             <Link
               key={opt.key}
-              to="/products"
+              to={to as never}
+              params={params as never}
               // Function form: sorting inside a search/category view previously
               // replaced the whole search object, silently dropping `q`,
               // `category` and `featured` and dumping the shopper back into the
