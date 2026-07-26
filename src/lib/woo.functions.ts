@@ -403,7 +403,7 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     try {
-      const { wooFetch, trimProducts, PRODUCT_FIELDS } = await import("./woo.server");
+      const { wooFetch, trimProducts, PRODUCT_FIELDS, enrichVariableRegular } = await import("./woo.server");
       const cats = await wooFetch<{ id: number }[]>({
         path: "/products/categories",
         query: { slug: data.slug, per_page: 1, _fields: "id" },
@@ -423,7 +423,10 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
         },
         timeoutMs: 8000,
       });
-      return { products: trimProducts(products), error: null as string | null };
+      return {
+        products: await enrichVariableRegular(trimProducts(products)),
+        error: null as string | null,
+      };
 
     } catch (e) {
       console.error("listProductsByCategorySlug failed", e);
