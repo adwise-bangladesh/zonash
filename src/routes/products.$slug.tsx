@@ -755,46 +755,51 @@ function ProductDetail({ p }: { p: WooProduct }) {
             onScroll={onGalleryScroll}
             onTouchStart={() => (lastInteractRef.current = Date.now())}
             onPointerDown={() => (lastInteractRef.current = Date.now())}
+            role="group"
+            aria-roledescription="carousel"
+            aria-label={`${p.name} images`}
             className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
               const responsive = src ? buildResponsiveImage(src) : null;
               return (
-                <div key={i} data-slide data-idx={i} className="relative aspect-square w-full shrink-0 snap-center">
-                  {responsive ? (
-                    <picture>
-                      <img
-                        src={responsive.src}
-                        srcSet={responsive.srcSet}
-                        sizes={responsive.sizes}
-                        alt={p.name}
-                        width={800}
-                        height={800}
-                        draggable={false}
-                        className="h-full w-full select-none object-cover"
-                        loading={i === 0 ? "eager" : "lazy"}
-                        decoding={i === 0 ? "sync" : "async"}
-                        fetchPriority={i === 0 ? "high" : "auto"}
-                        style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          img.style.display = "none";
-                          const parent = img.parentElement?.parentElement;
-                          if (parent && !parent.querySelector("[data-img-fallback]")) {
-                            const fallback = document.createElement("div");
-                            fallback.setAttribute("data-img-fallback", "");
-                            fallback.className = "grid h-full w-full place-items-center bg-muted";
-                            fallback.innerHTML =
-                              '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" class="text-muted-foreground/40"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M3 9h18"/></svg>';
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      />
-                    </picture>
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-muted">
-                      <Gem className="h-16 w-16 text-muted-foreground/40" />
-                    </div>
+                <div
+                  key={src || "placeholder"}
+                  data-slide
+                  data-idx={i}
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`Image ${i + 1} of ${Math.max(gallery.length, 1)}`}
+                  className="relative aspect-square w-full shrink-0 snap-center"
+                >
+                  {/* Static fallback layer: revealed when the <img> hides after
+                      every candidate URL fails. Previously the error handler
+                      appended a raw DOM node into a React-managed subtree,
+                      which React could drop on the next render. */}
+                  <div className="absolute inset-0 grid place-items-center bg-muted">
+                    <Gem className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />
+                  </div>
+                  {responsive && (
+                    <img
+                      src={responsive.src}
+                      srcSet={responsive.srcSet || undefined}
+                      sizes={responsive.sizes}
+                      alt={
+                        i === 0 ? p.name : `${p.name} — image ${i + 1} of ${gallery.length}`
+                      }
+                      width={800}
+                      height={800}
+                      draggable={false}
+                      className="relative h-full w-full select-none object-cover"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      decoding={i === 0 ? "sync" : "async"}
+                      fetchPriority={i === 0 ? "high" : "auto"}
+                      style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                      // Shared handler: a missing WordPress crop retries the
+                      // original URL before giving up (the old handler hid the
+                      // slide on the first 404, losing a working image).
+                      onError={onImageSrcSetError}
+                    />
                   )}
                 </div>
               );
