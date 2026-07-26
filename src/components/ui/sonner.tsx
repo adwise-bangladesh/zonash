@@ -24,16 +24,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
       gap={8}
       duration={2000}
       visibleToasts={2}
+      // Sonner centres the *container*, and each toast fills it. Narrowing the
+      // container (rather than the toast) is what keeps the small pill centred
+      // — a `w-auto` toast would hang off the container's left edge.
+      style={{ "--width": "260px" } as React.CSSProperties}
       toastOptions={{
         // `!` on the layout utilities: sonner sets width/padding through inline
         // CSS variables on the element, which outrank plain classes.
         classNames: {
           toast:
-            "group toast !w-auto !max-w-[min(calc(100vw-48px),320px)] !mx-auto !gap-2 !rounded-full !border !px-3.5 !py-2 " +
-            "group-[.toaster]:bg-foreground group-[.toaster]:text-background " +
-            "group-[.toaster]:border-transparent group-[.toaster]:shadow-[0_10px_24px_-10px_rgb(0_0_0/0.45)]",
+            "group toast !w-full !justify-center !gap-2 !rounded-full !border !px-3.5 !py-2 !text-center " +
+            "!bg-foreground !text-background !border-transparent " +
+            "!shadow-[0_10px_24px_-10px_rgb(0_0_0/0.45)]",
+          content: "!w-auto !flex-none",
           title: "text-[13px] font-semibold leading-tight",
-          description: "group-[.toast]:text-background/70 text-[11px] leading-snug",
+          description: "!text-background/70 text-[11px] leading-snug",
           icon: "shrink-0 !mr-0 [&>svg]:h-4 [&>svg]:w-4",
           actionButton:
             "group-[.toast]:bg-background group-[.toast]:text-foreground group-[.toast]:rounded-full group-[.toast]:px-3 group-[.toast]:text-xs group-[.toast]:font-semibold",
