@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
@@ -296,7 +296,7 @@ function CartPage() {
   itemsRef.current = items;
   useEffect(() => {
     if (!repriced?.lines) return;
-    const bag = new Map(itemsRef.current.map((i) => [itemKey(i), i]));
+    const bag = new Map<string, CartItem>(itemsRef.current.map((i) => [itemKey(i), i] as const));
     const updates: { key: string; price: number; regularPrice?: number }[] = [];
     for (const l of repriced.lines) {
       if (l.price == null) continue;
