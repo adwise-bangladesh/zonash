@@ -1399,9 +1399,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
                   style={{ backgroundColor: meta.bg, color: meta.color }}
                   aria-label={`via ${meta.label}`}
                 >
-                  <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="currentColor" aria-hidden>
-                    <path d={meta.icon} />
-                  </svg>
+                  <meta.Icon className="h-2.5 w-2.5" aria-hidden />
                 </span>
               </div>
               <div className="min-w-0">
