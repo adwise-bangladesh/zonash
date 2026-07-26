@@ -322,9 +322,18 @@ export const repriceCartLines = createServerFn({ method: "POST" })
       .parse(raw),
   )
   .handler(async ({ data }) => {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    // Only used for the enumeration budget inside `repriceLines` — never
+    // stored, never returned.
+    const client =
+      getRequestHeader("cf-connecting-ip") ||
+      getRequestHeader("x-real-ip") ||
+      getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "";
     const { repriceLines } = await import("./reprice.server");
-    return { lines: await repriceLines(data.lines) };
+    return { lines: await repriceLines(data.lines, client) };
   });
+
 
 
 export type WooCategory = {
