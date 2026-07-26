@@ -149,7 +149,7 @@ function release() {
 
 
 const cache = new Map<string, Cached>();
-const inFlight = new Map<string, Promise<Cached["value"]>>();
+const inFlight = new Map<string, Promise<{ value: Cached["value"]; shed: boolean }>>();
 
 const keyOf = (l: RepriceLineInput) => `${l.productId}:${l.variationId ?? 0}`;
 
@@ -203,20 +203,26 @@ const UNKNOWN: Cached["value"] = {
   gone: false,
 };
 
-async function fetchOne(l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
+/** A fetch outcome that also says whether upstream was actually reached. */
+type Outcome = { value: Cached["value"]; shed: boolean };
+
+async function fetchOne(l: RepriceLineInput, priority = false): Promise<Outcome> {
   try {
     await acquire(priority);
   } catch {
     // Load shed: never queue past the admission limit. The caller keeps its
-    // own snapshot, exactly like an upstream blip.
-    return UNKNOWN;
+    // own snapshot, exactly like an upstream blip. Flagged as `shed` so it is
+    // neither negative-cached nor handed to a trusted caller as a real answer.
+    return { value: UNKNOWN, shed: true };
   }
 
+
   try {
-    return await fetchOneInner(l);
+    return { value: await fetchOneInner(l), shed: false };
   } finally {
     release();
   }
+
 }
 
 
@@ -312,38 +318,50 @@ function markBlip(key: string) {
   }
 }
 
-function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
+function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Outcome> {
   const running = inFlight.get(key);
   if (running) return running;
   const p = fetchOne(l, priority)
-    .then((value) => {
-      if (value.price !== null || value.gone) writeCache(key, value);
+    .then((out) => {
+      // A shed result never touched upstream: caching it as a "blip" would
+      // poison the key for every caller for 5s purely because the queue was
+      // momentarily deep.
+      if (out.shed) return out;
+      if (out.value.price !== null || out.value.gone) writeCache(key, out.value);
       else markBlip(key);
-      return value;
+      return out;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, p);
   return p;
 }
 
-function load(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
+async function load(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   const fresh = readCache(key);
-  if (fresh) return Promise.resolve(fresh);
+  if (fresh) return fresh;
 
   const stale = readStale(key);
   if (stale) {
     // Serve stale instantly, refresh once behind it. Without this, every hot
     // id expires for all concurrent visitors on the same tick.
     void refresh(key, l, priority).catch(() => {});
-    return Promise.resolve(stale);
+    return stale;
   }
 
   // The blip damper is a presentation-path optimisation only. A trusted caller
   // (order submission) must still try upstream: for it an "unknown" price is a
   // rejected order, not a harmless stale badge.
-  if (!priority && blipped(key)) return Promise.resolve(UNKNOWN);
-  return refresh(key, l, priority);
+  if (!priority && blipped(key)) return UNKNOWN;
+
+  const out = await refresh(key, l, priority);
+  // Priority inversion guard: a trusted caller may have joined an in-flight
+  // request that a *storefront* caller started and that got load-shed. Its
+  // shed result is not an answer, so retry once in the priority lane instead
+  // of failing a real order.
+  if (out.shed && priority) return (await fetchOne(l, true)).value;
+  return out.value;
 }
+
 
 
 export async function repriceLines(
