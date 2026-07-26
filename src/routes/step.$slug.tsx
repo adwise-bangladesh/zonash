@@ -570,8 +570,8 @@ function StepLandingPage() {
         <div
           ref={galleryRef}
           onScroll={onGalleryScroll}
-          onTouchStart={() => setPaused(true)}
-          onPointerDown={() => setPaused(true)}
+          onPointerDown={() => setPaused((p) => (p ? p : true))}
+
           className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Product images"
         >
