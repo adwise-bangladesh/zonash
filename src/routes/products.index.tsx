@@ -473,8 +473,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   // was actually looking at. Page 1 now refetches; a failed tail page (e.g.
   // "Load more" died on page 5) is still dropped and re-requested on its own
   // rather than replaying every page above it.
-  const busy = isFetchingNextPage || isRefetching;
   const retry = useCallback(() => {
+
     if (busy) return;
     const pages = data?.pages ?? [];
     if (pages.length <= 1) {
