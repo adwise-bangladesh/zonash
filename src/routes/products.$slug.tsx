@@ -751,11 +751,22 @@ function ProductDetail({ p }: { p: WooProduct }) {
     lines.push(`Quantity: ${qty}`);
     lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
     lines.push(`Link: ${url}`);
-
     lines.push("");
     lines.push("Please confirm my order 🙏");
     return lines.join("\n");
-  }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
+  }, [
+    p.name,
+    p.slug,
+    activeSku,
+    priceNum,
+    showOld,
+    oldPrice,
+    discount,
+    matchedVariation,
+    qty,
+    inStock,
+  ]);
+
 
   const waOrderUrl = waLink(detailsText);
 
