@@ -493,7 +493,9 @@ function StepLandingPage() {
       el?.scrollIntoView?.({ behavior: "smooth", block: "center" });
       return;
     }
+    busyRef.current = true;
     setSubmitting(true);
+
     try {
       const { first, last } = splitName(parsed.data.name);
       const tracking = await collectTracking({
