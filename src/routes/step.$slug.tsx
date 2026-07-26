@@ -1210,6 +1210,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
     return () => clearInterval(t);
   }, [paused, pages, onScreen]);
   const totalCount = fakeReviewCount(slug);
+  if (pages === 0) return null;
   const visible = reviews.slice(page * 2, page * 2 + 2);
   return (
     <div
