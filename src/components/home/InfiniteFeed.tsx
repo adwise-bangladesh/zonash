@@ -79,20 +79,30 @@ export function InfiniteFeed({
       retry: 1,
     });
 
+  // Latest fetch state is read through a ref so the observer is created ONCE
+  // per feed variant. Keying the effect on `isFetchingNextPage` tore the
+  // IntersectionObserver down and rebuilt it twice per page load (fetch start +
+  // fetch end); during that gap a fast scroller passed the sentinel with no
+  // observer attached and the feed stalled until the next scroll event.
+  const state = useRef({ hasNextPage, isFetchingNextPage, fetchNextPage });
+  state.current = { hasNextPage, isFetchingNextPage, fetchNextPage };
+
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || !hasNextPage) return;
+    if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          void fetchNextPage();
+        const s = state.current;
+        if (entries[0]?.isIntersecting && s.hasNextPage && !s.isFetchingNextPage) {
+          void s.fetchNextPage();
         }
       },
       { rootMargin: "600px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [queryKey]);
+
 
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
   // every render (scroll, hover, focus). Memoize on the page array identity so

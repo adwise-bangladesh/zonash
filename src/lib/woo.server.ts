@@ -33,14 +33,33 @@ type CacheEntry = { at: number; value: unknown };
 const GET_TTL_MS = 30_000;
 const EDGE_TTL_SECONDS = 60; // Cloudflare Cache API TTL (edge-shared)
 const MAX_CACHE_ENTRIES = 500;
+// Volatile (attacker-controllable) keys live in their own small partition.
+// `?q=<anything>` has unbounded cardinality: a crawler or a bot walking
+// `/products?q=aaa…` used to push 500 unique search payloads through the ONE
+// shared map, evicting the genuinely hot keys (feed page 1, taxonomy) that
+// every real visitor reads. Partitioning caps the damage: search churn can
+// only evict other search entries.
+const MAX_VOLATILE_ENTRIES = 80;
 // Negative cache: an upstream failure is remembered briefly so a WooCommerce
 // outage cannot be amplified into 1 000 origin requests per minute (each of
 // which would also retry). Short enough that recovery is near-instant.
 const ERROR_TTL_MS = 5_000;
 const MAX_ERROR_ENTRIES = 200;
 const getCache = new Map<string, CacheEntry>();
+const volatileCache = new Map<string, CacheEntry>();
 const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
+
+/** Search/sku lookups are user-controlled and unbounded — keep them apart. */
+function isVolatileKey(key: string): boolean {
+  return key.includes("search=") || key.includes("sku=");
+}
+function cacheFor(key: string): { map: Map<string, CacheEntry>; max: number } {
+  return isVolatileKey(key)
+    ? { map: volatileCache, max: MAX_VOLATILE_ENTRIES }
+    : { map: getCache, max: MAX_CACHE_ENTRIES };
+}
+
 
 
 // Synthetic origin for Cache API keys. Must be a valid absolute URL; the
@@ -58,31 +77,34 @@ function getEdgeCache(): Cache | null {
 
 
 function cacheGet(key: string): unknown | undefined {
-  const e = getCache.get(key);
+  const { map } = cacheFor(key);
+  const e = map.get(key);
   if (!e) return undefined;
   if (Date.now() - e.at > GET_TTL_MS) {
-    getCache.delete(key);
+    map.delete(key);
     return undefined;
   }
   return e.value;
 }
 function cacheSet(key: string, value: unknown) {
+  const { map, max } = cacheFor(key);
   // Delete-then-set so the Map's insertion order is a true recency order.
   // Without this, refreshing an existing hot key kept its original (oldest)
   // position, so the "drop oldest" sweep below evicted the *most requested*
   // entries first — exactly the ones a 100k-visitor burst re-reads.
-  getCache.delete(key);
-  if (getCache.size >= MAX_CACHE_ENTRIES) {
+  map.delete(key);
+  if (map.size >= max) {
     // Drop oldest ~10% to keep memory bounded.
-    const drop = Math.ceil(MAX_CACHE_ENTRIES * 0.1);
+    const drop = Math.ceil(max * 0.1);
     let i = 0;
-    for (const k of getCache.keys()) {
+    for (const k of map.keys()) {
       if (i++ >= drop) break;
-      getCache.delete(k);
+      map.delete(k);
     }
   }
-  getCache.set(key, { at: Date.now(), value });
+  map.set(key, { at: Date.now(), value });
 }
+
 
 function errorGet(key: string): unknown | undefined {
   const e = errorCache.get(key);

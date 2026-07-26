@@ -408,9 +408,16 @@ function FilteredResults(props: FilterProps) {
 
 function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   const queryClient = useQueryClient();
-  const options = searchProductsQuery(q ?? "", category, featured, sort);
+  // Memoized: a fresh options object (and therefore a fresh `queryKey` array)
+  // on every render invalidated the `useCallback` deps below, so `retry` and
+  // every memo depending on it were rebuilt on each fetch-state tick.
+  const options = useMemo(
+    () => searchProductsQuery(q ?? "", category, featured, sort),
+    [q, category, featured, sort],
+  );
   const { data, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(options);
+
 
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
   // on every fetch-state tick (isFetching flips) as the list grows. The
