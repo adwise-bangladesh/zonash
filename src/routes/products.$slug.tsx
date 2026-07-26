@@ -735,135 +735,20 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   return (
     <div className="min-h-[100dvh] bg-muted/30 pb-28">
-      {/* Floating transparent header — becomes solid on scroll */}
-      <header
-        className={`fixed inset-x-0 top-0 z-40 mx-auto flex h-11 max-w-[480px] items-center gap-1 px-3 transition-all ${
-          scrolled
-            ? "border-x border-b border-border bg-background/95 backdrop-blur"
-            : "bg-gradient-to-b from-black/40 to-transparent"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() =>
-            typeof window !== "undefined" && window.history.length > 1
-              ? window.history.back()
-              : navigate({ to: "/" })
-          }
-          aria-label="Back"
-          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
-            scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
-          }`}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <span
-          className={`min-w-0 flex-1 truncate text-sm font-semibold transition-opacity ${
-            scrolled ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          {p.name}
-        </span>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            aria-label="Share"
-            onClick={handleShare}
-            className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${
-              scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
-            }`}
-          >
-            <Share2 className="h-5 w-5" />
-          </button>
-          <Link
-            to="/cart"
-            aria-label="Cart"
-            className={`relative grid h-9 w-9 place-items-center rounded-full transition-colors ${
-              scrolled ? "hover:bg-muted" : "bg-black/25 text-white hover:bg-black/40"
-            }`}
-          >
-            <ShoppingBag className="h-5 w-5" />
-            {cartCount > 0 && (
-              <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                {cartCount > 9 ? "9+" : cartCount}
-              </span>
-            )}
-          </Link>
-        </div>
-      </header>
+      <FloatingHeader
+        title={p.name}
+        cartCount={cartCount}
+        onShare={handleShare}
+        onBack={() =>
+          typeof window !== "undefined" && window.history.length > 1
+            ? window.history.back()
+            : void navigate({ to: "/" })
+        }
+      />
 
       <div className="mx-auto max-w-md">
-        {/* Gallery */}
-        <div className="relative bg-background">
-          <div
-            ref={galleryRef}
-            onScroll={onGalleryScroll}
-            onTouchStart={() => (lastInteractRef.current = Date.now())}
-            onPointerDown={() => (lastInteractRef.current = Date.now())}
-            role="group"
-            aria-roledescription="carousel"
-            aria-label={`${p.name} images`}
-            className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {(gallery.length ? gallery : [""]).map((src: string, i: number) => {
-              const responsive = src ? buildResponsiveImage(src) : null;
-              return (
-                <div
-                  key={src || "placeholder"}
-                  data-slide
-                  data-idx={i}
-                  role="group"
-                  aria-roledescription="slide"
-                  aria-label={`Image ${i + 1} of ${Math.max(gallery.length, 1)}`}
-                  className="relative aspect-square w-full shrink-0 snap-center"
-                >
-                  {/* Static fallback layer: revealed when the <img> hides after
-                      every candidate URL fails. Previously the error handler
-                      appended a raw DOM node into a React-managed subtree,
-                      which React could drop on the next render. */}
-                  <div className="absolute inset-0 grid place-items-center bg-muted">
-                    <Gem className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />
-                  </div>
-                  {responsive && (
-                    <img
-                      src={responsive.src}
-                      srcSet={responsive.srcSet || undefined}
-                      sizes={responsive.sizes}
-                      alt={i === 0 ? p.name : `${p.name} — image ${i + 1} of ${gallery.length}`}
-                      width={800}
-                      height={800}
-                      draggable={false}
-                      className="relative h-full w-full select-none object-cover"
-                      loading={i === 0 ? "eager" : "lazy"}
-                      decoding={i === 0 ? "sync" : "async"}
-                      fetchPriority={i === 0 ? "high" : "auto"}
-                      style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
-                      // Shared handler: a missing WordPress crop retries the
-                      // original URL before giving up (the old handler hid the
-                      // slide on the first 404, losing a working image).
-                      onError={onImageSrcSetError}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {gallery.length > 1 && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1"
-            >
-              {gallery.map((src: string, i: number) => (
-                <span
-                  key={src}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <Gallery images={gallery} name={p.name} activeImage={activeImage} />
+
 
         {/* Info — blended hero block (gallery → title → variations → trust) */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
