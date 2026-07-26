@@ -376,15 +376,18 @@ export async function repriceLines(
         : [...cachedEntries, ...freshEntries.slice(0, allowed)];
   }
 
+  // No client id = trusted internal caller (order submission) => priority lane.
+  const priority = !client;
   const results = new Map<string, Cached["value"]>();
   let cursor = 0;
   const worker = async () => {
     while (cursor < entries.length) {
       const idx = cursor++;
       const [key, line] = entries[idx];
-      results.set(key, await load(key, line));
+      results.set(key, await load(key, line, priority));
     }
   };
+
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
 
   return lines.map((l) => {
