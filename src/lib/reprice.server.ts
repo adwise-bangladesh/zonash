@@ -38,10 +38,15 @@ export function enumAllowance(client: string, count: number): number {
   return grant;
 }
 
-/** True when the key is already memoised, i.e. costs no upstream request. */
+/**
+ * True when the key is served without a *blocking* upstream request — fresh
+ * or stale-within-grace both qualify, so a returning shopper is never charged
+ * enumeration budget for ids the process already knows.
+ */
 export function isCached(l: RepriceLineInput): boolean {
-  return readCache(keyOf(l)) !== undefined;
+  return readStale(keyOf(l)) !== undefined;
 }
+
 
 
 export type RepriceLineInput = { productId: number; variationId?: number };
