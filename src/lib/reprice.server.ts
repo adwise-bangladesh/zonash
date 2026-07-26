@@ -203,9 +203,9 @@ const UNKNOWN: Cached["value"] = {
   gone: false,
 };
 
-async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
+async function fetchOne(l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   try {
-    await acquire();
+    await acquire(priority);
   } catch {
     // Load shed: never queue past the admission limit. The caller keeps its
     // own snapshot, exactly like an upstream blip.
@@ -218,6 +218,7 @@ async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
     release();
   }
 }
+
 
 async function fetchOneInner(l: RepriceLineInput): Promise<Cached["value"]> {
   const path = l.variationId
