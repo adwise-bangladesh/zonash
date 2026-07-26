@@ -555,11 +555,13 @@ function StepLandingPage() {
       });
     } catch {
       toast.error("Could not place your order. Please try again.");
+      busyRef.current = false;
       setSubmitting(false);
       // Rotate the idempotency key so a retry after a hard failure isn't
       // silently deduped by the server-side cache as "same request".
       setIdem(genId());
     }
+
   };
 
   return (
