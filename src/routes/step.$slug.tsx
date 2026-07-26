@@ -293,6 +293,12 @@ function StepLandingPage() {
     return list;
   }, [product, selectedVar]);
 
+  // Memoized review count for header (avoid recomputing per render).
+  const reviewsCountDisplay = useMemo(
+    () => (product.rating_count > 0 ? product.rating_count : fakeReviewCount(slug)),
+    [product.rating_count, slug],
+  );
+
   // Gallery state (activeImg / paused / timers / rAF) lives inside the
   // memoized <Gallery> subcomponent below, so autoplay ticks don't
   // re-render this ~1000-line tree every 3.5s.
@@ -574,7 +580,7 @@ function StepLandingPage() {
 
       {/* Hero image gallery — isolated component so autoplay ticks don't
           re-render this whole page tree every 3.5s. */}
-      <Gallery images={gallery} resetKey={selectedVarId ?? 0} />
+      <Gallery images={gallery} resetKey={`${product.id}:${selectedVarId ?? 0}`} />
 
 
       {/* Title + price */}
@@ -596,7 +602,7 @@ function StepLandingPage() {
             ))}
           </span>
           <span className="font-semibold text-foreground">{parseFloat(product.average_rating) > 0 ? product.average_rating : "4.8"}</span>
-          <span>({(product.rating_count > 0 ? product.rating_count : fakeReviewCount(slug)).toLocaleString()}+ reviews)</span>
+          <span>({reviewsCountDisplay.toLocaleString()}+ reviews)</span>
           <span aria-hidden>·</span>
           <span className={inStock ? "font-semibold text-success" : "font-semibold text-destructive"}>
             {inStock ? "In stock" : "Out of stock"}
@@ -1084,7 +1090,7 @@ const Gallery = memo(function Gallery({
   resetKey,
 }: {
   images: GalleryImage[];
-  resetKey: number;
+  resetKey: string | number;
 }) {
   const [activeImg, setActiveImg] = useState(0);
   const [paused, setPaused] = useState(false);
