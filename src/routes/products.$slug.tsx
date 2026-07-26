@@ -693,7 +693,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const handleShare = useCallback(async () => {
     try {
-      const url = window.location.href;
+      // Deliberately NOT `window.location.href`: that carries whatever query
+      // string the visitor arrived with (utm_*, click IDs, an affiliate's
+      // params, or anything a third party appended) into the link they hand to
+      // friends, and preview hosts into shares from the preview domain.
+      const url = canonicalUrl(`/products/${p.slug}`);
+
       if (navigator.share) await navigator.share({ title: p.name, url });
       else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
