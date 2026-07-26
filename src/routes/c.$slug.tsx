@@ -6,10 +6,21 @@ import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { NotFoundView } from "@/components/NotFoundView";
+import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
 import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import type { WooProduct } from "@/lib/woo.server";
 
 const SITE = "https://zonash.lovable.app";
+
+const SORT_KEYS: SortKey[] = [
+  "recommended",
+  "new",
+  "price-asc",
+  "price-desc",
+  "rating",
+  "title",
+];
+
 
 const categoryQuery = (slug: string) =>
   queryOptions({
@@ -19,6 +30,13 @@ const categoryQuery = (slug: string) =>
   });
 
 export const Route = createFileRoute("/c/$slug")({
+  // A bad/stale `?sort=` must degrade to the default view, never blow up the route.
+  validateSearch: (search: Record<string, unknown>): { sort?: SortKey } => {
+    const raw = String(search.sort ?? "");
+    return SORT_KEYS.includes(raw as SortKey) && raw !== "recommended"
+      ? { sort: raw as SortKey }
+      : {};
+  },
   loader: async ({ params, context }) => {
     const res = await context.queryClient.ensureQueryData(categoryQuery(params.slug));
     // Upstream failure must surface as an error boundary (retryable), and an
@@ -84,6 +102,7 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CollectionPage() {
   const { slug } = Route.useParams();
+  const { sort = "recommended" } = Route.useSearch();
   const { data } = useSuspenseQuery(categoryQuery(slug));
   const parent = data.parent;
   const subs = data.subs;
@@ -99,11 +118,14 @@ function CollectionPage() {
           {subs.length > 0 && <SubcategoryStrip parentSlug={slug} subs={subs} />}
         </div>
 
-        <CategoryProductFeed categoryId={parent?.id ?? null} />
+        <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
+
+        <CategoryProductFeed categoryId={parent?.id ?? null} sort={sort} />
       </main>
     </div>
   );
 }
+
 
 
 function SubcategoryStrip({
@@ -191,13 +213,20 @@ function SubCard({
 }
 
 
-function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
+function CategoryProductFeed({
+  categoryId,
+  sort,
+}: {
+  categoryId: number | null;
+  sort: SortKey;
+}) {
   const sentinel = useRef<HTMLDivElement>(null);
   const enabled = !!categoryId;
+  const { orderby, order } = sortToWoo(sort);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
     useInfiniteQuery({
-      queryKey: ["collection", "feed", categoryId],
+      queryKey: ["collection", "feed", categoryId, sort],
       enabled,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
@@ -206,7 +235,8 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
             page: pageParam as number,
             perPage: 16,
             category: String(categoryId),
-            orderby: "date",
+            orderby,
+            order,
           },
         }),
       getNextPageParam: (last, all) =>

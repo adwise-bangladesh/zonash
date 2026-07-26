@@ -35,7 +35,16 @@ export function sortToWoo(sort: SortKey): {
   }
 }
 
-export function SortTabs({ active }: { active: SortKey }) {
+export function SortTabs({
+  active,
+  to = "/products",
+  params,
+}: {
+  active: SortKey;
+  /** Route the tabs link to; defaults to the shop listing. */
+  to?: string;
+  params?: Record<string, string>;
+}) {
   const scroller = useRef<HTMLDivElement>(null);
   // The sticky offset was hard-coded to 57px (the mobile header height). The
   // site header is 65px from `md` up (larger logo lockup), so on desktop the
@@ -82,7 +91,8 @@ export function SortTabs({ active }: { active: SortKey }) {
           return (
             <Link
               key={opt.key}
-              to="/products"
+              to={to as never}
+              params={params as never}
               // Function form: sorting inside a search/category view previously
               // replaced the whole search object, silently dropping `q`,
               // `category` and `featured` and dumping the shopper back into the
