@@ -91,12 +91,15 @@ function CartSkeleton() {
 const CartRow = memo(function CartRow({
   item,
   status,
+  stockQty,
   onSetQty,
   onRemove,
 }: {
   item: CartItem;
   /** Availability reported by the last server reprice. */
   status?: "oos" | "gone";
+  /** Remaining units when the store tracks stock for this line. */
+  stockQty?: number | null;
   onSetQty: (key: string, qty: number) => void;
   onRemove: (key: string) => void;
 }) {
@@ -106,7 +109,10 @@ const CartRow = memo(function CartRow({
   const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
   const lineSave = hasOld ? lineOld - lineTotal : 0;
   const pct = hasOld && lineOld > 0 ? Math.round((lineSave / lineOld) * 100) : 0;
-  const atMax = item.quantity >= MAX_QTY;
+  const cap = typeof stockQty === "number" && stockQty > 0 ? Math.min(MAX_QTY, stockQty) : MAX_QTY;
+  const atMax = item.quantity >= cap;
+  const overStock = item.quantity > cap;
+
 
   const thumb = item.image ? (
     <img
