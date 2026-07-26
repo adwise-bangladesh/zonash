@@ -341,12 +341,29 @@ function StepLandingPage() {
     } catch { /* ignore */ }
     router.preloadRoute({ to: "/verify-otp", search: { order: 1 } }).catch(() => {});
   }, [router]);
+  // Persist the draft. Debounce keystrokes at 250ms AND flush the latest
+  // value on unmount / tab hide — otherwise a keystroke within 250ms of
+  // navigation is silently lost when the cleanup clears the pending timer.
+  const formRef = useRef(form);
+  formRef.current = form;
   useEffect(() => {
     const t = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch { /* ignore */ }
     }, 250);
     return () => clearTimeout(t);
   }, [form]);
+  useEffect(() => {
+    const flush = () => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(formRef.current)); } catch { /* ignore */ }
+    };
+    const onVis = () => { if (document.hidden) flush(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      flush();
+    };
+  }, []);
+
 
   // Autofill from last order
   const policeFn = useServerFn(getPublicPoliceStations);
