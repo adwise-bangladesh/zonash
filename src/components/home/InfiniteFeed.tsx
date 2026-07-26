@@ -50,7 +50,12 @@ export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
  * Feed + suspense boundary. Keeps sort switches inside a local skeleton instead
  * of bubbling to the route-level pending component.
  */
-export function InfiniteFeedSection(props: { orderby?: Orderby; order?: Order; columns?: 2 | 3 }) {
+export function InfiniteFeedSection(props: {
+  orderby?: Orderby;
+  order?: Order;
+  columns?: 2 | 3;
+  recommended?: boolean;
+}) {
   return (
     <Suspense fallback={<FeedGridSkeleton columns={props.columns ?? 3} />}>
       <InfiniteFeed {...props} />
@@ -62,14 +67,23 @@ export function InfiniteFeed({
   orderby = "date",
   order,
   columns = 3,
+  recommended = false,
 }: {
   orderby?: Orderby;
   order?: Order;
   columns?: 2 | 3;
+  /**
+   * Curated ordering: featured products first, then best sellers. Used for
+   * "Recommended for you" surfaces, where newest-published was misleading.
+   */
+  recommended?: boolean;
 } = {}) {
   const sentinel = useRef<HTMLDivElement>(null);
 
-  const queryKey = useMemo(() => feedKeyFor(orderby, order), [orderby, order]);
+  const queryKey = useMemo(
+    () => (recommended ? recommendedFeedKey : feedKeyFor(orderby, order)),
+    [recommended, orderby, order],
+  );
 
   // Suspense (not `useInfiniteQuery`) so the server waits for the streamed
   // first page: rendering an empty feed on the server and a populated one on
@@ -79,13 +93,16 @@ export function InfiniteFeed({
       queryKey,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
-        listProducts({
-          data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
-        }),
+        recommended
+          ? fetchRecommendedPage(pageParam as number)
+          : listProducts({
+              data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
+            }),
       getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
       staleTime: 60_000,
       retry: 1,
     });
+
 
   // Latest fetch state is read through a ref so the observer is created ONCE
   // per feed variant. Keying the effect on `isFetchingNextPage` tore the
