@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { memo, useMemo } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
