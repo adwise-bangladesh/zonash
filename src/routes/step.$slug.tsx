@@ -293,7 +293,12 @@ function StepLandingPage() {
   }, [product, selectedVar]);
 
   const [activeImg, setActiveImg] = useState(0);
-  const programmaticScroll = useRef(false);
+  // Time window during which incoming scroll events belong to a programmatic
+  // (auto-slide) smooth-scroll and must NOT pause autoplay. A boolean flag
+  // fails because smooth-scroll fires many scroll events; the flag would flip
+  // after event #1 and subsequent events (still from the same animation)
+  // would be misread as user scrolls and kill autoplay after one tick.
+  const programmaticUntil = useRef(0);
   const [paused, setPaused] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
   const galleryVisible = useOnScreen(galleryRef, "100px");
@@ -303,7 +308,7 @@ function StepLandingPage() {
     setActiveImg(0);
     const el = galleryRef.current;
     if (el) {
-      programmaticScroll.current = true;
+      programmaticUntil.current = performance.now() + 700;
       el.scrollTo({ left: 0, behavior: "auto" });
     }
   }, [selectedVarId]);
@@ -317,8 +322,10 @@ function StepLandingPage() {
       setActiveImg((i) => {
         const next = (i + 1) % gallery.length;
         // Actually scroll the container — without this the visible image
-        // never advanced; only the dots did.
-        programmaticScroll.current = true;
+        // never advanced; only the dots did. Reserve ~800ms of scroll events
+        // as "programmatic" so the smooth-scroll animation doesn't get
+        // misidentified as a user gesture and stop autoplay after one tick.
+        programmaticUntil.current = performance.now() + 800;
         el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
         return next;
       });
@@ -330,14 +337,11 @@ function StepLandingPage() {
     if (!el) return;
     const idx = Math.round(el.scrollLeft / el.clientWidth);
     if (idx !== activeImg) setActiveImg(idx);
-    // Only user-initiated scrolls should pause autoplay. Programmatic scrolls
-    // triggered by the interval itself would otherwise stop autoplay on tick #1.
-    if (programmaticScroll.current) {
-      programmaticScroll.current = false;
-      return;
-    }
+    // Inside the programmatic scroll window → don't pause autoplay.
+    if (performance.now() < programmaticUntil.current) return;
     setPaused(true);
   };
+
 
   // Highlights from short_description (strip HTML → split lines)
   const highlights = useMemo(() => {
@@ -1034,8 +1038,9 @@ function StepLandingPage() {
           </a>
           <a
             href={`https://wa.me/8801926644575?text=${encodeURIComponent(
-              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}\n\nLink: ${product.permalink}`,
+              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}${product.permalink ? `\n\nLink: ${product.permalink}` : ""}`,
             )}`}
+
             target="_blank"
             rel="noopener noreferrer"
             className="group relative flex items-center gap-3 overflow-hidden rounded-[8px] border border-[#25D366]/30 bg-gradient-to-r from-[#25D366]/[0.10] via-[#25D366]/[0.04] to-transparent px-4 py-3 transition-all hover:border-[#25D366] hover:shadow-[var(--shadow-card)] active:scale-[0.99]"
@@ -1152,19 +1157,40 @@ function CountdownInline() {
     } catch {
       endsAt = Date.now() + COUNTDOWN_MS;
     }
-    const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
-    tick();
+    const compute = () => Math.max(0, endsAt - Date.now());
+    setRemaining(compute());
     if (!visible) return; // only tick while on-screen
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const left = Math.max(0, endsAt - Date.now());
-      setRemaining(left);
-      // Stop ticking once the offer window has expired — the paint doesn't
-      // change any more, so every subsequent setState is wasted work.
-      if (left <= 0) clearInterval(t);
-    }, 1000);
-    return () => clearInterval(t);
+
+    let t: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (t !== null) return;
+      t = setInterval(() => {
+        const left = compute();
+        setRemaining(left);
+        if (left <= 0 && t !== null) {
+          clearInterval(t);
+          t = null;
+        }
+      }, 1000);
+    };
+    const stop = () => {
+      if (t !== null) {
+        clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.hidden) stop();
+      else { setRemaining(compute()); start(); }
+    };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [visible]);
+
 
   const ms = remaining ?? COUNTDOWN_MS;
   const h = Math.floor(ms / 3_600_000);
@@ -1203,12 +1229,23 @@ function ReviewsCarousel({ slug }: { slug: string }) {
   const onScreen = useOnScreen(rootRef, "150px");
   useEffect(() => {
     if (paused || !onScreen || pages <= 1) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      setPage((p) => (p + 1) % pages);
-    }, 4500);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (t !== null) return;
+      t = setInterval(() => setPage((p) => (p + 1) % pages), 4500);
+    };
+    const stop = () => {
+      if (t !== null) { clearInterval(t); t = null; }
+    };
+    const onVis = () => { if (document.hidden) stop(); else start(); };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [paused, pages, onScreen]);
+
   const totalCount = fakeReviewCount(slug);
   if (pages === 0) return null;
   const visible = reviews.slice(page * 2, page * 2 + 2);
