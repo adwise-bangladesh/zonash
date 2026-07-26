@@ -196,7 +196,7 @@ function ProductPageSkeleton() {
 
         {/* Info hero — matches real layout: rating → title → price row */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
-          <div className="px-4 pb-5 pt-5">
+          <div className="px-4 pb-5 pt-2">
             <div className="mb-2 h-3 w-24 rounded bg-muted" />
             <div className="h-5 w-4/5 rounded bg-muted" />
             <div className="mt-1.5 h-5 w-2/3 rounded bg-muted" />
