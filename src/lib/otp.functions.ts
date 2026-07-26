@@ -164,33 +164,55 @@ const SMS_MAX_PER_PHONE_24H = 10;
 const SHIP_INSIDE_DHAKA = 80;
 const SHIP_OUTSIDE_DHAKA = 130;
 
-/** Fetch each product once, in parallel, and compute a trustworthy subtotal. */
-async function computeServerSubtotal(
-  items: { product_id: number; variation_id?: number; quantity: number }[],
-): Promise<number> {
-  const { wooFetch } = await import("./woo.server");
-  const prices = await Promise.all(
-    items.map(async (i) => {
-      try {
-        if (i.variation_id) {
-          const v = await wooFetch<{ price: string }>({
-            path: `/products/${i.product_id}/variations/${i.variation_id}`,
-            timeoutMs: 8000,
-          });
-          return Number(v.price) || 0;
-        }
-        const p = await wooFetch<{ price: string }>({
-          path: `/products/${i.product_id}`,
-          timeoutMs: 8000,
-        });
-        return Number(p.price) || 0;
-      } catch {
-        return 0;
-      }
-    }),
+type SubmitLine = { product_id: number; variation_id?: number; quantity: number };
+
+type PricedBag =
+  | { ok: true; subtotal: number }
+  | { ok: false; reason: "unavailable" | "unpriced" };
+
+/**
+ * Server-authoritative pricing AND availability for a submitted bag.
+ *
+ * This replaces the old `computeServerSubtotal`, which had two defects:
+ *  1. It issued one *uncached, full-payload* WooCommerce request per line on
+ *     every submit — an unbounded fan-out on the hottest path in the app,
+ *     duplicating work the cart had already done seconds earlier.
+ *  2. Any failed lookup fell back to price `0`, so a line whose product was
+ *     deleted (or whose fetch merely timed out) was silently added to the
+ *     order for free.
+ *
+ * Reusing `repriceLines` gets the 60s memo, per-key single-flight, `_fields`
+ * projection and the process-wide concurrency gate for free, and it returns
+ * stock/existence flags — so the cart's availability gate stops being purely
+ * presentational: an order posted straight at this endpoint is rejected here.
+ */
+async function priceAndValidateBag(items: SubmitLine[]): Promise<PricedBag> {
+  const { repriceLines } = await import("./reprice.server");
+  const lines = await repriceLines(
+    items.map((i) => ({ productId: i.product_id, variationId: i.variation_id })),
   );
-  return items.reduce((sum, i, idx) => sum + prices[idx] * i.quantity, 0);
+
+  let subtotal = 0;
+  for (let idx = 0; idx < items.length; idx++) {
+    const item = items[idx];
+    const r = lines[idx];
+    if (!r) return { ok: false, reason: "unpriced" };
+    // Deleted / unpublished / out of stock — never create the order.
+    if (r.gone || !r.inStock) return { ok: false, reason: "unavailable" };
+    // Store tracks units and the bag asks for more than exist.
+    if (typeof r.stockQty === "number" && item.quantity > r.stockQty) {
+      return { ok: false, reason: "unavailable" };
+    }
+    // `price === null` with `gone === false` is an upstream blip. Fail closed
+    // and let the customer retry rather than booking the line at zero.
+    if (typeof r.price !== "number" || !(r.price > 0)) {
+      return { ok: false, reason: "unpriced" };
+    }
+    subtotal += r.price * item.quantity;
+  }
+  return { ok: true, subtotal };
 }
+
 
 /** Server-authoritative shipping: matches thana against `police_stations` and
  *  returns 80 BDT inside Dhaka City, 130 BDT elsewhere. Falls back to the
