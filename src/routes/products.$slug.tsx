@@ -771,11 +771,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
         title={p.name}
         cartCount={cartCount}
         onShare={handleShare}
-        onBack={() =>
-          typeof window !== "undefined" && window.history.length > 1
-            ? window.history.back()
-            : void navigate({ to: "/" })
-        }
+        onBack={handleBack}
+
       />
 
       <div className="mx-auto max-w-md">
