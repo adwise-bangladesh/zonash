@@ -1157,19 +1157,40 @@ function CountdownInline() {
     } catch {
       endsAt = Date.now() + COUNTDOWN_MS;
     }
-    const tick = () => setRemaining(Math.max(0, endsAt - Date.now()));
-    tick();
+    const compute = () => Math.max(0, endsAt - Date.now());
+    setRemaining(compute());
     if (!visible) return; // only tick while on-screen
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      const left = Math.max(0, endsAt - Date.now());
-      setRemaining(left);
-      // Stop ticking once the offer window has expired — the paint doesn't
-      // change any more, so every subsequent setState is wasted work.
-      if (left <= 0) clearInterval(t);
-    }, 1000);
-    return () => clearInterval(t);
+
+    let t: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (t !== null) return;
+      t = setInterval(() => {
+        const left = compute();
+        setRemaining(left);
+        if (left <= 0 && t !== null) {
+          clearInterval(t);
+          t = null;
+        }
+      }, 1000);
+    };
+    const stop = () => {
+      if (t !== null) {
+        clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.hidden) stop();
+      else { setRemaining(compute()); start(); }
+    };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [visible]);
+
 
   const ms = remaining ?? COUNTDOWN_MS;
   const h = Math.floor(ms / 3_600_000);
