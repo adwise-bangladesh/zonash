@@ -639,6 +639,8 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
   const responsive = buildResponsiveImage(image?.src, {
     sizes: "(min-width: 480px) 240px, 50vw",
   });
+  const imgRef = useRef<HTMLImageElement>(null);
+
   return (
     <li>
       <Link
