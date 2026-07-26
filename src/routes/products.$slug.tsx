@@ -87,6 +87,38 @@ export const Route = createFileRoute("/products/$slug")({
     // Titles over ~60 chars get truncated in SERPs; trim the name, never the brand.
     const title = `${p.name.length > 46 ? `${p.name.slice(0, 45).trimEnd()}…` : p.name} — Zonash`;
     const price = (p.price || "").trim();
+    /**
+     * Variable products ship a single lowest-variation `price`, so the markup
+     * advertised "590 Tk" while the page could show 1,890 Tk. Google treats a
+     * structured-price/on-page-price mismatch as a rich-result violation and
+     * drops the price snippet. Variations are already awaited in the SSR loader,
+     * so the real range is available here.
+     */
+    const variationPrices = (
+      (
+        match.context?.queryClient.getQueryData(variationsQueryOptions(p.id).queryKey) as
+          | { variations?: WooVariation[] }
+          | undefined
+      )?.variations ?? []
+    )
+      .map((v) => parseFloat(v?.price ?? ""))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const availability =
+      p.stock_status === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+    const offers =
+      variationPrices.length > 1
+        ? {
+            "@type": "AggregateOffer",
+            url,
+            priceCurrency: "BDT",
+            lowPrice: String(Math.min(...variationPrices)),
+            highPrice: String(Math.max(...variationPrices)),
+            offerCount: variationPrices.length,
+            availability,
+          }
+        : price
+          ? { "@type": "Offer", url, priceCurrency: "BDT", price, availability }
+          : null;
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -104,21 +136,9 @@ export const Route = createFileRoute("/products/$slug")({
             },
           }
         : {}),
-      ...(price
-        ? {
-            offers: {
-              "@type": "Offer",
-              url,
-              priceCurrency: "BDT",
-              price,
-              availability:
-                p.stock_status === "instock"
-                  ? "https://schema.org/InStock"
-                  : "https://schema.org/OutOfStock",
-            },
-          }
-        : {}),
+      ...(offers ? { offers } : {}),
     };
+
     return {
       meta: [
         { title },
@@ -331,7 +351,12 @@ function ProductPage() {
       />
     );
   }
-  return <ProductDetail p={data.product} />;
+  // Keyed by product id: TanStack reuses one component instance across
+  // /products/a → /products/b (same route, different param), so `useState`
+  // initializers never re-ran and the previous product's variation selection,
+  // quantity and gallery index leaked onto the next product — a shopper could
+  // land on item B already showing item A's chosen size and qty 5.
+  return <ProductDetail key={data.product.id} p={data.product} />;
 }
 
 function ProductDetail({ p }: { p: WooProduct }) {
@@ -525,8 +550,14 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const lastInteractRef = useRef(0);
   const scrollRafRef = useRef(0);
+  // Set while a programmatic scroll is in flight. `scrollTo({behavior:"smooth"})`
+  // emits the same scroll events a finger does, so the handler below was
+  // stamping `lastInteractRef` on the slideshow's *own* animation: after the
+  // first auto-advance every later tick saw "user interacted <6s ago" and
+  // bailed, permanently freezing the carousel on slide 2.
+  const autoScrollUntilRef = useRef(0);
   const onGalleryScroll = () => {
-    lastInteractRef.current = Date.now();
+    if (Date.now() > autoScrollUntilRef.current) lastInteractRef.current = Date.now();
     if (scrollRafRef.current) return;
     scrollRafRef.current = window.requestAnimationFrame(() => {
       scrollRafRef.current = 0;
@@ -542,10 +573,19 @@ function ProductDetail({ p }: { p: WooProduct }) {
     },
     [],
   );
+  /** Respect the OS "reduce motion" setting for both auto-play and smoothing. */
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
   const scrollToImg = (i: number) => {
     const el = galleryRef.current;
     if (!el) return;
-    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+    autoScrollUntilRef.current = Date.now() + 1200;
+    el.scrollTo({
+      left: i * el.clientWidth,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
     setActiveImg(i);
   };
   // Auto-scroll gallery to the variation's image when it changes.
@@ -559,12 +599,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // Auto-advance slideshow (pauses ~6s after any user interaction).
   useEffect(() => {
     if (gallery.length < 2) return;
+    // Auto-playing carousels are a WCAG 2.2.2 failure for motion-sensitive
+    // users; honour the OS preference instead of animating unconditionally.
+    if (prefersReducedMotion()) return;
     const id = window.setInterval(() => {
       if (Date.now() - lastInteractRef.current < 6000) return;
       if (document.hidden) return;
       const el = galleryRef.current;
-      if (!el) return;
+      if (!el || el.clientWidth === 0) return;
       const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % gallery.length;
+      autoScrollUntilRef.current = Date.now() + 1200;
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
     }, 3500);
     return () => window.clearInterval(id);
@@ -707,7 +751,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
   }, [p.name]);
 
   const detailsText = useMemo(() => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    // Deterministic on both sides of hydration. Reading `window.location.href`
+    // here made the server render `href="…?text=…"` WITHOUT the "Link:" line and
+    // the client render one WITH it, so React hit an attribute mismatch on the
+    // WhatsApp anchor on every product view. It also leaked preview/UTM query
+    // strings into the message customers send us.
+    const url = canonicalUrl(`/products/${p.slug}`);
     const lines: string[] = [];
     lines.push(`🛍️ ${p.name}`);
     if (activeSku) lines.push(`SKU: ${activeSku}`);
@@ -719,11 +768,22 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
     lines.push(`Quantity: ${qty}`);
     lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
-    if (url) lines.push(`Link: ${url}`);
+    lines.push(`Link: ${url}`);
     lines.push("");
     lines.push("Please confirm my order 🙏");
     return lines.join("\n");
-  }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
+  }, [
+    p.name,
+    p.slug,
+    activeSku,
+    priceNum,
+    showOld,
+    oldPrice,
+    discount,
+    matchedVariation,
+    qty,
+    inStock,
+  ]);
 
   const waOrderUrl = waLink(detailsText);
 
