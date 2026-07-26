@@ -606,6 +606,7 @@ function StepLandingPage() {
           customer_note: `Landing: ${slug}`,
           tracking,
           idempotency_key: idem,
+          draft_order_id: draftIdRef.current ?? undefined,
         },
       });
     } catch {
