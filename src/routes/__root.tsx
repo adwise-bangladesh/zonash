@@ -148,10 +148,10 @@ function RootComponent() {
             <Outlet />
           </StorefrontFrame>
           <MobileBottomNav />
-          {/* Position/duration/width now live in the Toaster itself so every
-              call site gets the same treatment; only `richColors` (success and
-              error tinting) is opted into here. */}
-          <Toaster richColors />
+          {/* Position/size/duration live in the Toaster itself so every call
+              site gets the identical compact pill. `richColors` is deliberately
+              off: it would repaint the pill green/red per type. */}
+          <Toaster />
 
         </CartProvider>
       </CustomerSessionProvider>
