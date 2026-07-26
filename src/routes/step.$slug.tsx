@@ -1038,8 +1038,9 @@ function StepLandingPage() {
           </a>
           <a
             href={`https://wa.me/8801926644575?text=${encodeURIComponent(
-              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}\n\nLink: ${product.permalink}`,
+              `Hi Zonash, I'd like to order:\n\n${product.name}${selectedVar ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}` : ""}\nPrice: ${formatBDT(effectivePrice)}${product.permalink ? `\n\nLink: ${product.permalink}` : ""}`,
             )}`}
+
             target="_blank"
             rel="noopener noreferrer"
             className="group relative flex items-center gap-3 overflow-hidden rounded-[8px] border border-[#25D366]/30 bg-gradient-to-r from-[#25D366]/[0.10] via-[#25D366]/[0.04] to-transparent px-4 py-3 transition-all hover:border-[#25D366] hover:shadow-[var(--shadow-card)] active:scale-[0.99]"
