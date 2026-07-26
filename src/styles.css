@@ -310,6 +310,19 @@
     mix-blend-mode: normal;
   }
 
+  /* The toast layer must not ride the page slide. Without its own name it is
+     captured inside the root snapshot, so a toast fired right before a
+     navigation slides off-screen with the outgoing page. Naming it lifts it out
+     of the root group and keeps it pinned. */
+  [data-sonner-toaster] {
+    view-transition-name: app-toaster;
+  }
+  ::view-transition-group(app-toaster) {
+    animation-duration: 180ms;
+  }
+
+
+
   /* Page-level push (default / data-nav="forward"). */
   ::view-transition-old(root) {
     animation: navPushOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
