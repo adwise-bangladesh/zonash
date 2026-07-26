@@ -973,7 +973,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           style={{ contentVisibility: "auto", containIntrinsicSize: "1200px" }}
         >
           <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-            <InfiniteFeed />
+            <InfiniteFeed recommended />
           </Suspense>
         </div>
       </div>
