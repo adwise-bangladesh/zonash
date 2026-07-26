@@ -195,7 +195,6 @@ export const Route = createFileRoute("/products/$slug")({
           children: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         },
       ],
-
     };
   },
   component: ProductPage,
@@ -328,23 +327,31 @@ function sanitizeHtml(html: string): string {
   if (!html) return "";
   return (
     html
-      .replace(/<\s*(script|style|iframe|object|embed|link|meta|svg|math|base)\b[\s\S]*?<\/\s*\1\s*>/gi, "")
+      .replace(
+        /<\s*(script|style|iframe|object|embed|link|meta|svg|math|base)\b[\s\S]*?<\/\s*\1\s*>/gi,
+        "",
+      )
       .replace(/<\s*(script|style|iframe|object|embed|link|meta|svg|math|base)\b[^>]*\/?>/gi, "")
       .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
       // `srcset`/`formaction`/`style` were not covered: `srcset` fetches the
       // attacker's URL without ever touching `src`, `formaction` retargets a
       // form submit, and `style` carries `url()`/`expression()` payloads.
-      .replace(/\s(srcset|formaction|action|ping|style|background)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      .replace(
+        /\s(srcset|formaction|action|ping|style|background)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+        "",
+      )
       .replace(
         /(href|src|xlink:href)\s*=\s*(["'])\s*(?:javascript|data|vbscript|blob|file):[^"']*\2/gi,
         '$1="#"',
       )
       // Unquoted variant of the same — the quoted-only rule above let
       // `href=javascript:alert(1)` through untouched.
-      .replace(/(href|src|xlink:href)\s*=\s*(?:javascript|data|vbscript|blob|file):[^\s>]*/gi, '$1="#"')
+      .replace(
+        /(href|src|xlink:href)\s*=\s*(?:javascript|data|vbscript|blob|file):[^\s>]*/gi,
+        '$1="#"',
+      )
   );
 }
-
 
 /**
  * Attribute-name/option normalization key.
@@ -376,7 +383,6 @@ function nk(s: string): string {
 }
 
 function ProductPage() {
-
   const { slug } = Route.useParams();
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     ...productQuery(slug),
@@ -487,7 +493,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // `nk` is module-level + memoized (see below): it was previously re-created
   // on every render and re-lowercased/re-regexed the same few dozen strings
   // O(variations × attrs) times per keystroke-level state change.
-
 
   // Selected option per attribute, keyed and valued by normalized form.
   const [selected, setSelected] = useState<Record<string, string>>(() => {
@@ -600,7 +605,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // option grid, all collapsibles, the sticky bar). They now live inside
   // `FloatingHeader` and `Gallery`, so scrolling re-renders ~6 nodes instead.
   const [qty, setQty] = useState(1);
-
 
   const addLine = useCallback(() => {
     const variantSuffix = matchedVariation
@@ -758,7 +762,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
       <div className="mx-auto max-w-md">
         <Gallery images={gallery} name={p.name} activeImage={activeImage} />
-
 
         {/* Info — blended hero block (gallery → title → variations → trust) */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
@@ -1344,7 +1347,10 @@ const Gallery = memo(function Gallery({
     const el = galleryRef.current;
     if (idx < 0 || !el) return;
     autoScrollUntilRef.current = Date.now() + 1200;
-    el.scrollTo({ left: idx * el.clientWidth, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    el.scrollTo({
+      left: idx * el.clientWidth,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
     setActiveImg(idx);
   }, [activeImage, images]);
 
