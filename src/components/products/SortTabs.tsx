@@ -68,7 +68,7 @@ export function SortTabs({
   // paints. `document.querySelector("header")` also matched whichever <header>
   // came first in the DOM — scope the lookup to this nav's own ancestor tree
   // so a card-level <header> can never win.
-  useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     const root = scroller.current?.closest("div,main,body")?.parentElement ?? document.body;
     const header = root.querySelector("header") ?? document.querySelector("header");
     if (!header) return;
