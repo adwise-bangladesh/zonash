@@ -648,7 +648,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const readyToBuy =
     inStock &&
     priceNum > 0 &&
-    (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
+    (!isVariable || (variationAttrs.every((a) => !!selected[nk(a.name)]) && !!matchedVariation));
 
   // Two taps on "Buy now" before the route transition paints used to push two
   // identical lines into the cart. A ref gates synchronously (state updates are
