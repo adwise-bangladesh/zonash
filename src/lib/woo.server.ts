@@ -468,53 +468,157 @@ export function categorySlugMap(): Promise<Map<string, number>> {
 }
 
 /**
+ * Per-product memo for the derived "cheapest variation's regular price".
+ *
+ * Why a dedicated map instead of `cachedDerived`: that cache is capped at 100
+ * entries and holds the expensive shared singletons (`categories:index`, the
+ * slug map, the primary-category projection). Writing one entry per product id
+ * into it would evict a 5-call taxonomy walk to make room for a single card's
+ * strikethrough price.
+ *
+ * `null` is cached too — a product with no markdown is the common case, and
+ * without a negative entry every list render re-asked upstream the moment the
+ * 30s `wooFetch` window lapsed. Variation prices change on the order of days,
+ * so a 10-minute memo is both safe and ~20x longer-lived than the raw HTTP
+ * cache it sits on top of.
+ */
+const VAR_REGULAR_TTL_MS = 600_000;
+const MAX_VAR_REGULAR_ENTRIES = 1_000;
+const varRegularCache = new Map<number, { at: number; value: string | null }>();
+const varRegularInflight = new Map<number, Promise<string | null>>();
+
+/**
+ * Hard ceiling on how long enrichment may hold the SSR response.
+ *
+ * The old loop awaited `ceil(N/6)` sequential batches at a 6s timeout each: a
+ * 24-card page of variable products could add **24 seconds** to a single SSR
+ * render while a struggling variations endpoint timed out wave after wave. On
+ * Workers that occupies the request the whole time. Past the deadline the
+ * remaining products are returned un-enriched, which is exactly the existing
+ * per-product failure behaviour (no strikethrough) — no functional change,
+ * just a bounded tail.
+ */
+const ENRICH_DEADLINE_MS = 2_500;
+
+function varRegularGet(id: number): string | null | undefined {
+  const e = varRegularCache.get(id);
+  if (!e) return undefined;
+  if (Date.now() - e.at > VAR_REGULAR_TTL_MS) {
+    varRegularCache.delete(id);
+    return undefined;
+  }
+  return e.value;
+}
+
+function varRegularSet(id: number, value: string | null) {
+  varRegularCache.delete(id);
+  if (varRegularCache.size >= MAX_VAR_REGULAR_ENTRIES) {
+    const drop = Math.ceil(MAX_VAR_REGULAR_ENTRIES * 0.1);
+    let i = 0;
+    for (const k of varRegularCache.keys()) {
+      if (i++ >= drop) break;
+      varRegularCache.delete(k);
+    }
+  }
+  varRegularCache.set(id, { at: Date.now(), value });
+}
+
+async function fetchVarRegular(id: number): Promise<string | null> {
+  const vars = await wooFetch<WooVariation[]>({
+    path: `/products/${id}/variations`,
+    query: { per_page: 100, status: "publish", _fields: "price,regular_price" },
+    timeoutMs: 6000,
+  });
+  if (!Array.isArray(vars) || !vars.length) return null;
+  let best: { price: number; regular: number } | null = null;
+  for (const v of vars) {
+    const price = Number.parseFloat(v?.price ?? "");
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const reg = Number.parseFloat(v?.regular_price ?? "");
+    if (!best || price < best.price) {
+      best = { price, regular: Number.isFinite(reg) ? reg : 0 };
+    }
+  }
+  // Only meaningful when it is actually a markdown.
+  return best && best.regular > best.price ? String(best.regular) : null;
+}
+
+/** Memoized + single-flighted resolve of one product's regular price. */
+function resolveVarRegular(id: number): Promise<string | null> {
+  const pending = varRegularInflight.get(id);
+  if (pending) return pending;
+  const p = fetchVarRegular(id)
+    .then((value) => {
+      varRegularSet(id, value);
+      return value;
+    })
+    // A variation lookup failure just means no strikethrough on that card.
+    // Deliberately NOT memoized: `wooFetch`'s own 5s negative cache already
+    // absorbs the stampede, and a 10-minute negative entry would hide a real
+    // price for far too long after recovery.
+    .catch(() => null)
+    .finally(() => {
+      varRegularInflight.delete(id);
+    });
+  varRegularInflight.set(id, p);
+  return p;
+}
+
+/**
  * Fill `min_regular_price` for variable products in a list payload.
  *
  * Woo's `/products` response returns an empty `regular_price` and a plain
  * price range (no `<del>`) for variable products, so cards could only ever
- * render the sale price. Variations carry the real regular price; we fetch
- * them in small parallel batches. Every call goes through `wooFetch`, so
- * results are single-flighted and cached (memory + edge) — a warm feed page
- * costs zero extra origin requests.
+ * render the sale price. Variations carry the real regular price.
+ *
+ * Scale notes: this used to issue one upstream call per variable product on
+ * every list request, with only `wooFetch`'s 30s window in front of it, and no
+ * coalescing across the products of a single page. It is now backed by a
+ * 10-minute per-product memo (positive *and* negative), single-flighted per
+ * product id across concurrent requests, and bounded by an overall deadline.
  */
 export async function enrichVariableRegular(products: WooProduct[]): Promise<WooProduct[]> {
-  const targets = products.filter((p) => p?.type === "variable" && !p.min_regular_price);
-  if (!targets.length) return products;
-
   const found = new Map<number, string>();
-  const BATCH = 6;
-  for (let i = 0; i < targets.length; i += BATCH) {
-    await Promise.all(
-      targets.slice(i, i + BATCH).map(async (p) => {
-        try {
-          const vars = await wooFetch<WooVariation[]>({
-            path: `/products/${p.id}/variations`,
-            query: { per_page: 100, status: "publish", _fields: "price,regular_price" },
-            timeoutMs: 6000,
-          });
-          if (!Array.isArray(vars) || !vars.length) return;
-          let best: { price: number; regular: number } | null = null;
-          for (const v of vars) {
-            const price = Number.parseFloat(v?.price ?? "");
-            if (!Number.isFinite(price) || price <= 0) continue;
-            const reg = Number.parseFloat(v?.regular_price ?? "");
-            if (!best || price < best.price) {
-              best = { price, regular: Number.isFinite(reg) ? reg : 0 };
-            }
-          }
-          // Only meaningful when it is actually a markdown.
-          if (best && best.regular > best.price) found.set(p.id, String(best.regular));
-        } catch {
-          // A variation lookup failure just means no strikethrough on that card.
-        }
-      }),
-    );
+  const misses: number[] = [];
+  const seen = new Set<number>();
+
+  for (const p of products) {
+    if (p?.type !== "variable" || p.min_regular_price) continue;
+    // A page can legitimately repeat an id (SKU probe merged into text hits
+    // upstream of a de-dupe); resolving it twice cost two map lookups and, on
+    // a cold isolate, could race two inflight entries.
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    const memo = varRegularGet(p.id);
+    if (memo !== undefined) {
+      if (memo) found.set(p.id, memo);
+      continue;
+    }
+    misses.push(p.id);
   }
+
+  if (misses.length) {
+    const deadline = Date.now() + ENRICH_DEADLINE_MS;
+    const BATCH = 6;
+    for (let i = 0; i < misses.length; i += BATCH) {
+      // Stop starting new waves once the budget is spent; already-started work
+      // still populates the memo for the next request, so nothing is wasted.
+      if (Date.now() >= deadline) break;
+      const slice = misses.slice(i, i + BATCH);
+      const results = await Promise.all(slice.map((id) => resolveVarRegular(id)));
+      for (let j = 0; j < slice.length; j++) {
+        const value = results[j];
+        if (value) found.set(slice[j], value);
+      }
+    }
+  }
+
   if (!found.size) return products;
   return products.map((p) =>
     found.has(p.id) ? { ...p, min_regular_price: found.get(p.id) } : p,
   );
 }
+
 
 // ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
