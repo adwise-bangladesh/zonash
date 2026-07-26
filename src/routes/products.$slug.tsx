@@ -917,25 +917,38 @@ function ProductDetail({ p }: { p: WooProduct }) {
             <div className="space-y-5 px-4 pb-2 pt-1">
               {variationAttrs.map((attr) => {
                 const options = attr.options ?? [];
-                const current = selected[attr.name];
+                const attrKey = nk(attr.name);
+                const currentKey = selected[attrKey];
+                // Show the catalogue's own label, not the normalized key.
+                const currentLabel = options.find((o) => nk(o) === currentKey);
                 return (
                   <div key={attr.id + attr.name}>
                     <div className="mb-3 flex items-center gap-3">
                       <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      <span
+                        id={`attr-label-${attrKey}`}
+                        className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+                      >
                         Choose {attr.name}
                       </span>
-                      {current && (
+                      {currentLabel && (
                         <span className="ml-auto text-[11px] font-semibold text-primary">
-                          {current}
+                          {currentLabel}
                         </span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Radio semantics: the selected option was previously
+                        invisible to screen readers (plain buttons, no state). */}
+                    <div
+                      className="grid grid-cols-2 gap-2"
+                      role="radiogroup"
+                      aria-labelledby={`attr-label-${attrKey}`}
+                    >
                       {options.map((opt) => {
-                        const active = current === opt;
-                        const meta = optionMeta.get(attr.name)?.get(opt);
+                        const optKey = nk(opt);
+                        const active = currentKey === optKey;
+                        const meta = optionMeta.get(attrKey)?.get(optKey);
                         const enabled = variations.length === 0 ? true : !!meta?.enabled;
                         const best = meta?.best;
                         const bp = best ? parseFloat(best.price) || 0 : 0;
@@ -946,7 +959,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
                           <button
                             key={opt}
                             type="button"
-                            onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
+                            role="radio"
+                            aria-checked={active}
+                            aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
+                            onClick={() => setSelected((prev) => ({ ...prev, [attrKey]: optKey }))}
                             disabled={!enabled && !active}
                             className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
                               active
