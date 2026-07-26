@@ -20,7 +20,7 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
-import { canonicalUrl } from "@/lib/site";
+import { canonicalUrl, waLink } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
@@ -728,7 +728,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return lines.join("\n");
   }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
 
-  const waOrderUrl = `https://wa.me/8809610000000?text=${encodeURIComponent(detailsText)}`;
+  const waOrderUrl = waLink(detailsText);
 
   const handleCopyDetails = async () => {
     try {
