@@ -102,12 +102,19 @@ const waiters: (() => void)[] = [];
 
 class Shed extends Error {}
 
-async function acquire(): Promise<void> {
+/**
+ * Trusted internal callers (order submission) get a priority lane: they are
+ * never shed on queue depth and wait longer, because for them "unknown" is
+ * not a soft fallback — it rejects a real, paid-intent order.
+ */
+const PRIORITY_WAIT_MS = 8000;
+
+async function acquire(priority = false): Promise<void> {
   if (active < GLOBAL_CONCURRENCY) {
     active++;
     return;
   }
-  if (waiters.length >= MAX_QUEUE) throw new Shed();
+  if (!priority && waiters.length >= MAX_QUEUE) throw new Shed();
   await new Promise<void>((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -116,7 +123,7 @@ async function acquire(): Promise<void> {
       const i = waiters.indexOf(grant);
       if (i >= 0) waiters.splice(i, 1);
       reject(new Shed());
-    }, QUEUE_WAIT_MS);
+    }, priority ? PRIORITY_WAIT_MS : QUEUE_WAIT_MS);
     // The permit is handed over directly (see `release`), so the woken caller
     // must NOT increment `active` itself — doing so after an `await` opened a
     // window where a fresh caller saw `active < GLOBAL_CONCURRENCY` and the
@@ -127,9 +134,11 @@ async function acquire(): Promise<void> {
       clearTimeout(timer);
       resolve();
     }
-    waiters.push(grant);
+    if (priority) waiters.unshift(grant);
+    else waiters.push(grant);
   });
 }
+
 
 function release() {
   const next = waiters.shift();
@@ -194,9 +203,9 @@ const UNKNOWN: Cached["value"] = {
   gone: false,
 };
 
-async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
+async function fetchOne(l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   try {
-    await acquire();
+    await acquire(priority);
   } catch {
     // Load shed: never queue past the admission limit. The caller keeps its
     // own snapshot, exactly like an upstream blip.
@@ -209,6 +218,7 @@ async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
     release();
   }
 }
+
 
 async function fetchOneInner(l: RepriceLineInput): Promise<Cached["value"]> {
   const path = l.variationId
@@ -302,10 +312,10 @@ function markBlip(key: string) {
   }
 }
 
-function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+function refresh(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   const running = inFlight.get(key);
   if (running) return running;
-  const p = fetchOne(l)
+  const p = fetchOne(l, priority)
     .then((value) => {
       if (value.price !== null || value.gone) writeCache(key, value);
       else markBlip(key);
@@ -316,7 +326,7 @@ function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   return p;
 }
 
-function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+function load(key: string, l: RepriceLineInput, priority = false): Promise<Cached["value"]> {
   const fresh = readCache(key);
   if (fresh) return Promise.resolve(fresh);
 
@@ -324,13 +334,17 @@ function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   if (stale) {
     // Serve stale instantly, refresh once behind it. Without this, every hot
     // id expires for all concurrent visitors on the same tick.
-    void refresh(key, l).catch(() => {});
+    void refresh(key, l, priority).catch(() => {});
     return Promise.resolve(stale);
   }
 
-  if (blipped(key)) return Promise.resolve(UNKNOWN);
-  return refresh(key, l);
+  // The blip damper is a presentation-path optimisation only. A trusted caller
+  // (order submission) must still try upstream: for it an "unknown" price is a
+  // rejected order, not a harmless stale badge.
+  if (!priority && blipped(key)) return Promise.resolve(UNKNOWN);
+  return refresh(key, l, priority);
 }
+
 
 export async function repriceLines(
   lines: RepriceLineInput[],
@@ -362,15 +376,18 @@ export async function repriceLines(
         : [...cachedEntries, ...freshEntries.slice(0, allowed)];
   }
 
+  // No client id = trusted internal caller (order submission) => priority lane.
+  const priority = !client;
   const results = new Map<string, Cached["value"]>();
   let cursor = 0;
   const worker = async () => {
     while (cursor < entries.length) {
       const idx = cursor++;
       const [key, line] = entries[idx];
-      results.set(key, await load(key, line));
+      results.set(key, await load(key, line, priority));
     }
   };
+
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
 
   return lines.map((l) => {
