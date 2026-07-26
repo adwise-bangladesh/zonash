@@ -280,6 +280,20 @@ function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repriced, repriceLine]);
 
+  // Availability reported by the server. A line that is out of stock or gone
+  // cannot be ordered, so it must be surfaced here rather than failing inside
+  // WooCommerce order creation after the customer has typed their address.
+  const blocked = useMemo(() => {
+    const m = new Map<string, "oos" | "gone">();
+    for (const l of repriced?.lines ?? []) {
+      if (!l.gone && l.inStock) continue;
+      m.set(lineKey(l.productId, l.variationId ?? undefined), l.gone ? "gone" : "oos");
+    }
+    return m;
+  }, [repriced]);
+  const blockedCount = blocked.size;
+
+
 
   const savings = useMemo(
     () =>
