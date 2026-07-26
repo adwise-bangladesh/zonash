@@ -267,20 +267,64 @@ async function fetchOneInner(l: RepriceLineInput): Promise<Cached["value"]> {
 }
 
 
-function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
-  const cached = readCache(key);
-  if (cached) return Promise.resolve(cached);
+/**
+ * Short negative cache for upstream blips. Blips were deliberately never
+ * cached so they'd be retried — but during a real store outage that turns
+ * every single request into a fresh upstream attempt, which is precisely the
+ * moment the store can least afford it. A few seconds of damping keeps the
+ * retry behaviour while cutting outage fan-out by orders of magnitude.
+ */
+const BLIP_TTL_MS = 5_000;
+const BLIP_MAX = 2000;
+const blips = new Map<string, number>();
+
+function blipped(key: string): boolean {
+  const until = blips.get(key);
+  if (until === undefined) return false;
+  if (Date.now() > until) {
+    blips.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function markBlip(key: string) {
+  blips.set(key, Date.now() + BLIP_TTL_MS);
+  while (blips.size > BLIP_MAX) {
+    const oldest = blips.keys().next().value;
+    if (oldest === undefined) break;
+    blips.delete(oldest);
+  }
+}
+
+function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   const running = inFlight.get(key);
   if (running) return running;
   const p = fetchOne(l)
     .then((value) => {
-      // Never cache a blip — it must be retried on the next visit.
       if (value.price !== null || value.gone) writeCache(key, value);
+      else markBlip(key);
       return value;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, p);
   return p;
+}
+
+function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+  const fresh = readCache(key);
+  if (fresh) return Promise.resolve(fresh);
+
+  const stale = readStale(key);
+  if (stale) {
+    // Serve stale instantly, refresh once behind it. Without this, every hot
+    // id expires for all concurrent visitors on the same tick.
+    void refresh(key, l).catch(() => {});
+    return Promise.resolve(stale);
+  }
+
+  if (blipped(key)) return Promise.resolve(UNKNOWN);
+  return refresh(key, l);
 }
 
 export async function repriceLines(
@@ -301,10 +345,16 @@ export async function repriceLines(
     // Cached ids are free; only unseen ids consume the budget. Over-budget
     // ids are simply not looked up — they fall through to the "unknown"
     // shape below, which tells the client to keep its own snapshot.
-    const cachedEntries = entries.filter(([, l]) => isCached(l));
-    const freshEntries = entries.filter(([, l]) => !isCached(l));
+    // One partition pass, one cache probe per id (the previous two `filter`
+    // passes probed — and LRU-touched — every id twice).
+    const cachedEntries: typeof entries = [];
+    const freshEntries: typeof entries = [];
+    for (const e of entries) (isCached(e[1]) ? cachedEntries : freshEntries).push(e);
     const allowed = enumAllowance(client, freshEntries.length);
-    entries = [...cachedEntries, ...freshEntries.slice(0, allowed)];
+    entries =
+      allowed >= freshEntries.length
+        ? entries
+        : [...cachedEntries, ...freshEntries.slice(0, allowed)];
   }
 
   const results = new Map<string, Cached["value"]>();
@@ -318,16 +368,9 @@ export async function repriceLines(
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
 
-
   return lines.map((l) => {
-    const v = results.get(keyOf(l)) ?? {
-      stockQty: null,
-      price: null,
-
-      regularPrice: null,
-      inStock: true,
-      gone: false,
-    };
+    const v = results.get(keyOf(l)) ?? UNKNOWN;
     return { productId: l.productId, variationId: l.variationId ?? null, ...v };
   });
 }
+
