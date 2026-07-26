@@ -723,8 +723,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // navigate straight to the callback / review page.
     try {
       const { readCustomerSession } = await import("./customer-token.server");
-      const session = await readCustomerSession();
-      if (session?.phone && session.phone === phone) {
+      const sessionPhone = await readCustomerSession();
+      if (sessionPhone && sessionPhone === phone) {
         const clientGps = (data.tracking as { gps?: { lat?: number; lng?: number } } | undefined)?.gps;
         const verdict = await runVerificationDecision({
           order_id: created.id,
