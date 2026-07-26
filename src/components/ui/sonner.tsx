@@ -19,7 +19,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster group"
       position="top-center"
-      offset={12}
+      offset={16}
       gap={8}
       duration={2200}
       visibleToasts={2}
