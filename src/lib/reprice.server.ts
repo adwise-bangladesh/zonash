@@ -30,6 +30,29 @@ const MAX_ENTRIES = 2000;
  * memoised for a minute, coalesced per key, and run at a bounded concurrency.
  */
 const CONCURRENCY = 8;
+/**
+ * The per-call cap only bounds one visitor. Under real load (many carts
+ * opening at once) each in-flight request could add another 8 sockets to the
+ * store, so a process-wide gate bounds the total instead.
+ */
+const GLOBAL_CONCURRENCY = 16;
+
+let active = 0;
+const waiters: (() => void)[] = [];
+
+async function acquire(): Promise<void> {
+  if (active < GLOBAL_CONCURRENCY) {
+    active++;
+    return;
+  }
+  await new Promise<void>((resolve) => waiters.push(resolve));
+  active++;
+}
+
+function release() {
+  active--;
+  waiters.shift()?.();
+}
 
 const cache = new Map<string, Cached>();
 const inFlight = new Map<string, Promise<Cached["value"]>>();
@@ -59,6 +82,15 @@ function writeCache(key: string, value: Cached["value"]) {
 }
 
 async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
+  await acquire();
+  try {
+    return await fetchOneInner(l);
+  } finally {
+    release();
+  }
+}
+
+async function fetchOneInner(l: RepriceLineInput): Promise<Cached["value"]> {
   const path = l.variationId
     ? `/products/${l.productId}/variations/${l.variationId}`
     : `/products/${l.productId}`;
