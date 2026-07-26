@@ -251,10 +251,43 @@ const CartRow = memo(function CartRow({
 
 function CartPage() {
   const { items, subtotal, setQty, remove, repriceMany, hydrated } = useCart();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const policeFn = useServerFn(getPublicPoliceStations);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Warm the checkout screen while the customer is still reading their bag.
+  // `preload="intent"` only fires on hover/touchstart — on a phone that is the
+  // tap itself, so the route chunk download lands *inside* the navigation and
+  // the transition stutters. Fetching the chunk and the thana list up front
+  // makes the tap render instantly, like a native push.
+  const hasItems = hydrated && items.length > 0;
+  useEffect(() => {
+    if (!hasItems) return;
+    const idle =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (cb: () => void) => window.setTimeout(cb, 200);
+    const id = idle(() => {
+      router.preloadRoute({ to: "/checkout" }).catch(() => {});
+      queryClient
+        .prefetchQuery({
+          queryKey: ["checkout", "police-stations"],
+          queryFn: () => policeFn(),
+          staleTime: 24 * 60 * 60_000,
+        })
+        .catch(() => {});
+    });
+    return () => {
+      if (typeof window.cancelIdleCallback === "function" && typeof id === "number") {
+        window.cancelIdleCallback(id);
+      }
+    };
+  }, [hasItems, router, queryClient, policeFn]);
+
 
   // `setQty` already clamps to [0, MAX_QTY] and drops the line at 0, so the
   // page keeps no clamping rules of its own.
