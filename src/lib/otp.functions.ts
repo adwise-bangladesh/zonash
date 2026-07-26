@@ -778,8 +778,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           method: "POST",
           body: {
             note:
-              `🚫 Blocked identity matched (${blockedHit.kind}: ${blockedHit.value}). ` +
-              `Order held for review — OTP skipped, customer routed to review page.`,
+              `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
+              `Phone verification skipped; order held for manual review.`,
             customer_note: false,
           },
         });
