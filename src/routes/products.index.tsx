@@ -147,6 +147,12 @@ export const Route = createFileRoute("/products/")({
         { name: "description", content: description },
         ...(filtered ? [{ name: "robots", content: "noindex, follow" }] : []),
         { property: "og:type", content: "website" },
+        // Filtered variants emitted no og:url and no canonical at all, so every
+        // ?q= / ?category= permutation was a separate shareable URL with no
+        // signal pointing back to the shop page. `noindex` keeps them out of
+        // the index but does not consolidate link equity or social unfurls.
+        { property: "og:url", content: `${SITE_URL}/products` },
+
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { name: "twitter:card", content: "summary_large_image" },
