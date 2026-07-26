@@ -47,7 +47,14 @@ type CartActions = {
 type CartContextValue = CartState & CartActions;
 
 export const MAX_QTY = 99;
+/**
+ * Hard cap on distinct bag lines. `sanitize` has always trimmed to this on
+ * read, so without the same cap on write a bag could grow past it in memory
+ * and then silently lose its tail on the next page load.
+ */
+export const MAX_LINES = 200;
 const clampQty = (n: number) => Math.max(0, Math.min(MAX_QTY, Math.floor(n) || 0));
+
 
 const num = (v: unknown): number => {
   const n = typeof v === "string" ? Number.parseFloat(v) : typeof v === "number" ? v : NaN;
