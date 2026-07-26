@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
 import { repriceCartLines } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
@@ -90,13 +90,17 @@ function CartSkeleton() {
  */
 const CartRow = memo(function CartRow({
   item,
+  status,
   onSetQty,
   onRemove,
 }: {
   item: CartItem;
+  /** Availability reported by the last server reprice. */
+  status?: "oos" | "gone";
   onSetQty: (key: string, qty: number) => void;
   onRemove: (key: string) => void;
 }) {
+
   const lineTotal = item.price * item.quantity;
   const hasOld = !!item.regularPrice && item.regularPrice > item.price;
   const lineOld = hasOld ? item.regularPrice! * item.quantity : 0;
@@ -122,7 +126,12 @@ const CartRow = memo(function CartRow({
   );
 
   return (
-    <li className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5">
+    <li
+      className={`flex gap-2.5 rounded-[3px] border bg-background p-2.5 ${
+        status ? "border-destructive/40" : "border-border"
+      }`}
+    >
+
       <Link
         to="/products/$slug"
         params={{ slug: item.slug }}
@@ -154,6 +163,15 @@ const CartRow = memo(function CartRow({
             SKU: <span className="font-mono">{item.sku}</span>
           </div>
         )}
+        {status ? (
+          <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-destructive">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {status === "gone"
+              ? "No longer available — remove to continue"
+              : "Out of stock — remove to continue"}
+          </p>
+        ) : null}
+
         <div className="mt-auto flex items-center justify-between pt-0.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-bold text-primary tabular-nums">{formatBDT(lineTotal)}</span>
@@ -262,6 +280,20 @@ function CartPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repriced, repriceLine]);
 
+  // Availability reported by the server. A line that is out of stock or gone
+  // cannot be ordered, so it must be surfaced here rather than failing inside
+  // WooCommerce order creation after the customer has typed their address.
+  const blocked = useMemo(() => {
+    const m = new Map<string, "oos" | "gone">();
+    for (const l of repriced?.lines ?? []) {
+      if (!l.gone && l.inStock) continue;
+      m.set(lineKey(l.productId, l.variationId ?? undefined), l.gone ? "gone" : "oos");
+    }
+    return m;
+  }, [repriced]);
+  const blockedCount = blocked.size;
+
+
 
   const savings = useMemo(
     () =>
@@ -308,12 +340,27 @@ function CartPage() {
             Some prices were updated to the latest store price.
           </p>
         )}
+        {blockedCount > 0 && (
+          <p
+            role="alert"
+            className="mb-2.5 rounded-[3px] border border-destructive/40 bg-destructive/5 px-3 py-2 text-[11.5px] font-medium text-destructive"
+          >
+            {blockedCount === 1 ? "1 item is" : `${blockedCount} items are`} unavailable. Remove{" "}
+            {blockedCount === 1 ? "it" : "them"} to continue to checkout.
+          </p>
+        )}
         <ul className="space-y-2.5">
-
           {items.map((item) => (
-            <CartRow key={itemKey(item)} item={item} onSetQty={onSetQty} onRemove={onRemove} />
+            <CartRow
+              key={itemKey(item)}
+              item={item}
+              status={blocked.get(itemKey(item))}
+              onSetQty={onSetQty}
+              onRemove={onRemove}
+            />
           ))}
         </ul>
+
 
         <details className="mt-4 rounded-[3px] border border-border bg-background [&[open]>summary>span>svg]:rotate-180">
           <summary className="flex cursor-pointer list-none items-center justify-between p-4">
@@ -361,19 +408,32 @@ function CartPage() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          <Link
-            to="/checkout"
-            preload="intent"
-            className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
-          >
-            <span
-              aria-hidden="true"
-              className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]"
-            />
-            <Lock className="h-4 w-4" aria-hidden="true" />
-            Checkout · {formatBDT(subtotal)}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </Link>
+          {blockedCount > 0 ? (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-muted text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground"
+            >
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              Remove unavailable {blockedCount === 1 ? "item" : "items"}
+            </button>
+          ) : (
+            <Link
+              to="/checkout"
+              preload="intent"
+              className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]"
+              />
+              <Lock className="h-4 w-4" aria-hidden="true" />
+              Checkout · {formatBDT(subtotal)}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
+          )}
+
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
             No online payment · Pay when you receive
           </p>
