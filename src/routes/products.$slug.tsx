@@ -95,18 +95,16 @@ export const Route = createFileRoute("/products/$slug")({
      * so the real range is available here.
      */
     const variationPrices = (
-       (
-         match.context?.queryClient.getQueryData(
-           variationsQueryOptions(p.id).queryKey,
-         ) as { variations?: WooVariation[] } | undefined
-       )?.variations ?? []
-     )
+      (
+        match.context?.queryClient.getQueryData(variationsQueryOptions(p.id).queryKey) as
+          | { variations?: WooVariation[] }
+          | undefined
+      )?.variations ?? []
+    )
       .map((v) => parseFloat(v?.price ?? ""))
       .filter((n) => Number.isFinite(n) && n > 0);
     const availability =
-      p.stock_status === "instock"
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock";
+      p.stock_status === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
     const offers =
       variationPrices.length > 1
         ? {
@@ -359,7 +357,6 @@ function ProductPage() {
   // quantity and gallery index leaked onto the next product — a shopper could
   // land on item B already showing item A's chosen size and qty 5.
   return <ProductDetail key={data.product.id} p={data.product} />;
-
 }
 
 function ProductDetail({ p }: { p: WooProduct }) {
@@ -617,7 +614,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => window.clearInterval(id);
   }, [gallery.length]);
 
-
   // IntersectionObserver-based preload+decode for offscreen gallery slides.
   // When a slide gets within 1 viewport of scrolling in, fetch + decode its
   // image off the main thread so the swipe is a no-op paint.
@@ -788,7 +784,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
     qty,
     inStock,
   ]);
-
 
   const waOrderUrl = waLink(detailsText);
 
