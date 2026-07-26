@@ -79,8 +79,11 @@ export const Route = createFileRoute("/products/$slug")({
     const img = p.images?.[0]?.src;
     const responsive = buildResponsiveImage(img);
     const desc =
-      (p.short_description ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 155) ||
-      `Buy ${p.name} at Zonash. Cash on delivery across Bangladesh.`;
+      (p.short_description ?? "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 155) || `Buy ${p.name} at Zonash. Cash on delivery across Bangladesh.`;
     // Titles over ~60 chars get truncated in SERPs; trim the name, never the brand.
     const title = `${p.name.length > 46 ? `${p.name.slice(0, 45).trimEnd()}…` : p.name} — Zonash`;
     const price = (p.price || "").trim();
@@ -636,9 +639,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       busyRef.current = false;
       setBusy(false);
     }
-    // addLine closes over the current selection; recreating it per render is
-    // intentional and cheap — the guard is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyToBuy, inStock, addLine]);
 
   const handleBuyNow = useCallback(async () => {
@@ -661,7 +661,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
       busyRef.current = false;
       setBusy(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyToBuy, inStock, addLine, navigate]);
 
   const handleShare = useCallback(async () => {
@@ -803,9 +802,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
                       src={responsive.src}
                       srcSet={responsive.srcSet || undefined}
                       sizes={responsive.sizes}
-                      alt={
-                        i === 0 ? p.name : `${p.name} — image ${i + 1} of ${gallery.length}`
-                      }
+                      alt={i === 0 ? p.name : `${p.name} — image ${i + 1} of ${gallery.length}`}
                       width={800}
                       height={800}
                       draggable={false}
@@ -845,7 +842,6 @@ function ProductDetail({ p }: { p: WooProduct }) {
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
           {/* Title + price */}
           <div className="px-4 pb-5 pt-2">
-
             <div className="mb-2 flex items-center gap-2">
               {p.rating_count > 0 && (
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
