@@ -1148,10 +1148,10 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         method: "POST",
         body: {
           note:
-            `✅ OTP verified. Decision: ${decision.toUpperCase()} (status → ${appliedStatus}).\n` +
-            (decisionReason ? `Reason: ${decisionReason}\n` : "") +
+            `Phone verified via one-time code. Decision: ${decision}; status set to ${appliedStatus}.` +
+            (decisionReason ? ` Reason: ${decisionReason}.` : "") +
             (duplicates.length
-              ? `Duplicates: ${duplicates.map((d) => `#${d.number}`).join(", ")}`
+              ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
               : ""),
           customer_note: false,
         },
