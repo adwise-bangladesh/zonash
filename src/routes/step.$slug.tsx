@@ -294,6 +294,9 @@ function StepLandingPage() {
 
   const [activeImg, setActiveImg] = useState(0);
   const programmaticScroll = useRef(false);
+  const [paused, setPaused] = useState(false);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const galleryVisible = useOnScreen(galleryRef, "100px");
   // When the variation changes and a new image is prepended, reset both the
   // dot state AND the actual scroll position so they don't drift apart.
   useEffect(() => {
@@ -305,9 +308,6 @@ function StepLandingPage() {
     }
   }, [selectedVarId]);
   // Auto-slide (paused after user interaction OR when off-screen)
-  const [paused, setPaused] = useState(false);
-  const galleryRef = useRef<HTMLDivElement>(null);
-  const galleryVisible = useOnScreen(galleryRef, "100px");
   useEffect(() => {
     if (paused || gallery.length <= 1 || !galleryVisible) return;
     const t = setInterval(() => {
