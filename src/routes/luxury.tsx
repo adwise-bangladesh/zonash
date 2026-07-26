@@ -77,7 +77,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="The Luxury Edit" />
-      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-14 pt-3">{children}</main>
+      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-24 pt-3">{children}</main>
     </div>
   );
 }
