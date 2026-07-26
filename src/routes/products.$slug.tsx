@@ -291,13 +291,32 @@ function sanitizeHtml(html: string): string {
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const { data, isPending } = useQuery(productQuery(slug));
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+    ...productQuery(slug),
+    retry: 1,
+  });
   if (isPending) return <ProductPageSkeleton />;
+  // A transport failure is retryable and must not be reported as a 404 — the
+  // previous code collapsed both into "Product not found", which told shoppers
+  // a live product had been removed whenever the shop API blipped.
+  if (isError || (!data?.product && data?.error)) {
+    return (
+      <NotFoundView
+        variant="error"
+        title="Couldn't load product"
+        description={
+          data?.error ||
+          (error instanceof Error ? error.message : "The shop is taking longer than usual.")
+        }
+        onRetry={isFetching ? undefined : () => void refetch()}
+      />
+    );
+  }
   if (!data?.product) {
     return (
       <NotFoundView
         title="Product not found"
-        description={data?.error || "This piece may have been removed or the link is incorrect."}
+        description="This piece may have been removed or the link is incorrect."
         primaryLabel="Browse shop"
         primaryTo="/products"
       />
@@ -307,7 +326,20 @@ function ProductPage() {
 }
 
 function ProductDetail({ p }: { p: WooProduct }) {
-  const gallery = p.images.map((i) => i.src);
+  // Woo can return duplicate/blank image entries (a variation image repeated in
+  // the parent gallery); duplicates produced repeated slides and a dot strip
+  // that never matched the visible slide.
+  const gallery = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (p.images ?? [])
+            .map((i) => (typeof i?.src === "string" ? i.src.trim() : ""))
+            .filter((s) => s.length > 0),
+        ),
+      ),
+    [p.images],
+  );
   const { add, count: cartCount } = useCart();
   const navigate = useNavigate();
 
