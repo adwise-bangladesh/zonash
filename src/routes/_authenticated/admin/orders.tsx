@@ -17,6 +17,7 @@ import {
 import {
   Search, Loader2, ShoppingBag, X, Truck, ChevronDown, ChevronRight,
   User, Package, Receipt, Clock, Plus, Trash2, Save, Printer, Send,
+  MapPin, Copy, ExternalLink, Smartphone, Wifi, Globe, Fingerprint,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -1671,6 +1672,9 @@ function OrderDrawer({
               </label>
             </Section>
 
+            {/* Location & device — from _zonash_tracking meta */}
+            <LocationSection metaData={o.meta_data ?? []} />
+
             {/* Items — editable */}
             <Section
               title={`Items (${items.filter((i) => !i.removed).length})`}
@@ -1888,6 +1892,211 @@ function TotalRow({ label, children }: { label: string; children: ReactNode }) {
     <div className="flex items-center justify-between text-muted-foreground">
       <span>{label}</span>
       <span className="tabular-nums text-foreground">{children}</span>
+    </div>
+  );
+}
+
+
+/** Location & device — parses _zonash_tracking meta and renders a static map + details. */
+function LocationSection({ metaData }: { metaData: { key: string; value: unknown }[] }) {
+  const parsed = useMemo(() => {
+    const map = new Map<string, unknown>();
+    for (const m of metaData ?? []) map.set(m.key, m.value);
+    let tracking: Record<string, unknown> = {};
+    const raw = map.get("_zonash_tracking");
+    if (raw) {
+      try {
+        tracking = typeof raw === "string" ? JSON.parse(raw) : (raw as Record<string, unknown>);
+      } catch {
+        tracking = {};
+      }
+    }
+    const client = (tracking.client ?? {}) as Record<string, unknown>;
+    const server = (tracking.server ?? {}) as Record<string, unknown>;
+    const gps = client.gps as
+      | { lat?: number; lng?: number; accuracy?: number; ts?: string; error?: string }
+      | undefined;
+    const ip = String(map.get("_zonash_ip") ?? server.ip ?? "");
+    const ua = String(map.get("_zonash_ua") ?? client.user_agent ?? "");
+    const fp = String(map.get("_zonash_fingerprint") ?? client.fingerprint ?? "");
+    const conn = client.connection as
+      | { effective_type?: string; downlink?: number; rtt?: number }
+      | undefined;
+    return {
+      gps,
+      ip,
+      ua,
+      fp,
+      conn,
+      platform: String(client.platform ?? ""),
+      timezone: String(client.timezone ?? ""),
+      referrer: (client.referrer as string | null) ?? null,
+      pageUrl: String(client.page_url ?? ""),
+    };
+  }, [metaData]);
+
+  const hasFix =
+    parsed.gps && typeof parsed.gps.lat === "number" && typeof parsed.gps.lng === "number";
+
+  return (
+    <Section
+      title="Location & device"
+      icon={<MapPin className="h-3.5 w-3.5" />}
+      defaultOpen={false}
+      rightSlot={
+        hasFix ? (
+          <span className="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold text-emerald-700">
+            GPS locked
+          </span>
+        ) : (
+          <span className="rounded-full bg-muted px-1.5 py-[1px] text-[10px] font-semibold text-muted-foreground">
+            No GPS
+          </span>
+        )
+      }
+    >
+      {hasFix ? (
+        <LocationMap
+          lat={parsed.gps!.lat as number}
+          lng={parsed.gps!.lng as number}
+          accuracy={parsed.gps!.accuracy}
+          ts={parsed.gps!.ts}
+        />
+      ) : (
+        <div className="rounded-md border border-dashed border-input bg-muted/30 px-3 py-4 text-center text-[11.5px] text-muted-foreground">
+          {parsed.gps?.error
+            ? `Customer's device didn't share GPS (${parsed.gps.error}).`
+            : "No GPS fix was captured for this order."}
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+        {parsed.ip && <MetaKV icon={<Wifi className="h-3 w-3" />} label="IP address" value={parsed.ip} mono copyable />}
+        {parsed.fp && <MetaKV icon={<Fingerprint className="h-3 w-3" />} label="Fingerprint" value={parsed.fp} mono copyable />}
+        {parsed.platform && <MetaKV icon={<Smartphone className="h-3 w-3" />} label="Platform" value={parsed.platform} />}
+        {parsed.timezone && <MetaKV icon={<Globe className="h-3 w-3" />} label="Timezone" value={parsed.timezone} />}
+        {parsed.conn?.effective_type && (
+          <MetaKV
+            icon={<Wifi className="h-3 w-3" />}
+            label="Network"
+            value={`${parsed.conn.effective_type}${parsed.conn.downlink ? ` · ${parsed.conn.downlink}Mbps` : ""}`}
+          />
+        )}
+      </div>
+
+      {parsed.ua && (
+        <div className="mt-2 rounded-md border border-input bg-muted/20 px-2 py-1.5">
+          <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">User agent</div>
+          <div className="break-all font-mono text-[10.5px] leading-snug text-foreground/80">{parsed.ua}</div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function LocationMap({
+  lat, lng, accuracy, ts,
+}: { lat: number; lng: number; accuracy?: number; ts?: string }) {
+  const delta = 0.004;
+  const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
+  const embed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+  const view = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  const gmaps = `https://www.google.com/maps?q=${lat},${lng}`;
+  const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  const accHint =
+    typeof accuracy === "number"
+      ? accuracy < 25
+        ? "Very precise"
+        : accuracy < 100
+          ? "Precise"
+          : accuracy < 500
+            ? "Approximate"
+            : "Rough area"
+      : "";
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-input">
+      <div className="relative aspect-[16/10] w-full bg-muted">
+        <iframe
+          title="Order location"
+          src={embed}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="absolute inset-0 h-full w-full"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-input bg-muted/30 px-2.5 py-2">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-mono text-[11.5px] font-semibold text-foreground">{coords}</div>
+          <div className="text-[10.5px] text-muted-foreground">
+            {typeof accuracy === "number" ? `±${Math.round(accuracy)}m · ${accHint}` : "Accuracy unknown"}
+            {ts ? ` · ${new Date(ts).toLocaleString()}` : ""}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(coords).then(
+              () => toast.success("Coordinates copied"),
+              () => toast.error("Copy failed"),
+            );
+          }}
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted"
+        >
+          <Copy className="h-3 w-3" /> Copy
+        </button>
+        <a
+          href={gmaps}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted"
+        >
+          <ExternalLink className="h-3 w-3" /> Google
+        </a>
+        <a
+          href={view}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-input bg-background px-2 text-[11px] hover:bg-muted"
+        >
+          <ExternalLink className="h-3 w-3" /> OSM
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function MetaKV({
+  icon, label, value, mono, copyable,
+}: { icon: ReactNode; label: string; value: string; mono?: boolean; copyable?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5">
+      <div className="mb-0.5 flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        {icon} {label}
+      </div>
+      <div className="flex items-center gap-1">
+        <span
+          className={`min-w-0 flex-1 truncate ${mono ? "font-mono" : ""} text-[11.5px] text-foreground`}
+          title={value}
+        >
+          {value}
+        </span>
+        {copyable && (
+          <button
+            type="button"
+            onClick={() =>
+              navigator.clipboard.writeText(value).then(
+                () => toast.success("Copied"),
+                () => toast.error("Copy failed"),
+              )
+            }
+            className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted"
+            aria-label={`Copy ${label}`}
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

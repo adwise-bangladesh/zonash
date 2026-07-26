@@ -58,7 +58,7 @@ export function GpsGate() {
             /* ignore */
           }
         },
-        { enableHighAccuracy: false, timeout: 12_000, maximumAge: 300_000 },
+        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
       );
     };
 

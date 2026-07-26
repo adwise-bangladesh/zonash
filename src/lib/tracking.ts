@@ -156,7 +156,7 @@ async function tryGeo(timeoutMs = 2500): Promise<GpsFix | undefined> {
         clearTimeout(t);
         resolve({ error: err.message });
       },
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60_000 },
     );
   });
 }
