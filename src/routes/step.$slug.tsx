@@ -389,15 +389,28 @@ function StepLandingPage() {
       raw && opts.length
         ? (opts.find((o) => o.toLowerCase() === raw.toLowerCase()) ?? raw)
         : raw;
-    setForm((f) => ({
-      name: f.name || b.name || "",
-      phone: f.phone || b.phone || sessionPhone || "",
-      address: f.address || b.address || "",
-      thana: f.thana || canonicalThana || "",
-      email: f.email || b.email || "",
-    }));
-
+    setForm((f) => {
+      const next = {
+        name: f.name || b.name || "",
+        phone: f.phone || b.phone || sessionPhone || "",
+        address: f.address || b.address || "",
+        thana: f.thana || canonicalThana || "",
+        email: f.email || b.email || "",
+      };
+      // Bail out if nothing actually changed — otherwise React commits a
+      // new state object every time policeQ.data.items refetches or a new
+      // array reference lands, triggering a full parent re-render at scale.
+      if (
+        next.name === f.name &&
+        next.phone === f.phone &&
+        next.address === f.address &&
+        next.thana === f.thana &&
+        next.email === f.email
+      ) return f;
+      return next;
+    });
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
+
 
   // Stable identity — Field's onChange lands on stable inputs and doesn't
   // invalidate memoized children on every keystroke.
@@ -416,8 +429,14 @@ function StepLandingPage() {
     () => new Set((policeQ.data?.dhakaCity ?? []).map((s) => s.trim().toLowerCase())),
     [policeQ.data?.dhakaCity],
   );
-  const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
+  // trim() + toLowerCase() ran twice on every keystroke; memoize on `thana`
+  // so form typing on unrelated fields doesn't touch this at all.
+  const insideDhaka = useMemo(() => {
+    const t = form.thana.trim().toLowerCase();
+    return t.length > 0 && dhakaCitySet.has(t);
+  }, [form.thana, dhakaCitySet]);
   const shipping = insideDhaka ? 80 : 130;
+
   const subtotal = effectivePrice;
   const total = subtotal + shipping;
   const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
@@ -425,14 +444,17 @@ function StepLandingPage() {
   // Memoize the WhatsApp deep link. The template literal + encodeURIComponent
   // over ~200 chars runs on every parent render otherwise; at scale that's
   // significant JS work for a link most users won't click.
+  const selectedVarLabel = useMemo(
+    () => (selectedVar ? selectedVar.attributes.map((a) => a.option).join(" / ") : ""),
+    [selectedVar],
+  );
   const waHref = useMemo(() => {
-    const opts = selectedVar
-      ? ` — ${selectedVar.attributes.map((a) => a.option).join(" / ")}`
-      : "";
+    const opts = selectedVarLabel ? ` — ${selectedVarLabel}` : "";
     const link = product.permalink ? `\n\nLink: ${product.permalink}` : "";
     const text = `Hi Zonash, I'd like to order:\n\n${product.name}${opts}\nPrice: ${formatBDT(effectivePrice)}${link}`;
     return `https://wa.me/8801926644575?text=${encodeURIComponent(text)}`;
-  }, [product.name, product.permalink, selectedVar, effectivePrice]);
+  }, [product.name, product.permalink, selectedVarLabel, effectivePrice]);
+
 
 
   const orderRef = useRef<HTMLDivElement>(null);
@@ -440,9 +462,14 @@ function StepLandingPage() {
     orderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Real double-submit guard. React state updates are async, so a fast
+  // double-tap can pass the `submitting` check twice before the first
+  // setState commits. A ref flips synchronously.
+  const busyRef = useRef(false);
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting) return;
+    if (busyRef.current || submitting) return;
+
     if (isVariable && !selectedVar) {
       toast.error("Please select an option");
       return;
@@ -466,7 +493,9 @@ function StepLandingPage() {
       el?.scrollIntoView?.({ behavior: "smooth", block: "center" });
       return;
     }
+    busyRef.current = true;
     setSubmitting(true);
+
     try {
       const { first, last } = splitName(parsed.data.name);
       const tracking = await collectTracking({
@@ -502,9 +531,11 @@ function StepLandingPage() {
       });
       if (!res.ok) {
         toast.error(res.error || "Order failed");
+        busyRef.current = false;
         setSubmitting(false);
         return;
       }
+
       if (!res.sms_ok) {
         toast.message("Order created", {
           description: "We couldn't text your code — tap Resend on the next screen.",
@@ -524,11 +555,13 @@ function StepLandingPage() {
       });
     } catch {
       toast.error("Could not place your order. Please try again.");
+      busyRef.current = false;
       setSubmitting(false);
       // Rotate the idempotency key so a retry after a hard failure isn't
       // silently deduped by the server-side cache as "same request".
       setIdem(genId());
     }
+
   };
 
   return (
@@ -598,7 +631,7 @@ function StepLandingPage() {
             </span>
             {selectedVar && (
               <span className="ml-auto text-[11px] font-semibold text-primary">
-                {selectedVar.attributes.map((a) => a.option).join(" / ")}
+                {selectedVarLabel}
               </span>
             )}
           </div>
