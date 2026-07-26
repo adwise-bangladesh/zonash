@@ -24,6 +24,7 @@ export function ProductCard({ p }: { p: WooProduct }) {
       : undefined;
   const rating = parseFloat(p.average_rating as unknown as string);
   const queryClient = useQueryClient();
+  const imgRef = useRef<HTMLImageElement>(null);
   const seedProductCache = () => {
     queryClient.setQueryData(["product", p.slug], { product: p, error: null as string | null });
     // Warm variations in the background so the detail page renders instantly
@@ -42,7 +43,13 @@ export function ProductCard({ p }: { p: WooProduct }) {
       params={{ slug: p.slug }}
       preload="intent"
       onPointerDown={(e) => {
-        if (e.button === 0) seedProductCache();
+        if (e.button !== 0) return;
+        seedProductCache();
+        // Tag *this* image as the morph source. Done on pointerdown, before the
+        // router starts the transition, and scoped to one element — the same
+        // product can render twice on a page, and a duplicate
+        // view-transition-name aborts the whole animation.
+        beginProductPush(imgRef.current);
       }}
       onFocus={seedProductCache}
       className="group flex flex-col overflow-hidden bg-background transition-transform active:scale-[0.99]"
@@ -50,6 +57,7 @@ export function ProductCard({ p }: { p: WooProduct }) {
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {p.images[0] ? (
           <img
+            ref={imgRef}
             src={p.images[0].src}
             alt={p.images[0].alt || p.name}
             loading="lazy"
@@ -57,6 +65,7 @@ export function ProductCard({ p }: { p: WooProduct }) {
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
+
           <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
             <Gem className="h-10 w-10" />
           </div>
