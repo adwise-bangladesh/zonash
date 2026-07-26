@@ -509,47 +509,10 @@ function StepLandingPage() {
         Cash on Delivery · All over Bangladesh
       </div>
 
-      {/* Hero image gallery */}
-      <section className="relative">
-        <div
-          ref={galleryRef}
-          onScroll={onGalleryScroll}
-          onPointerDown={() => setPaused((p) => (p ? p : true))}
+      {/* Hero image gallery — isolated component so autoplay ticks don't
+          re-render this whole page tree every 3.5s. */}
+      <Gallery images={gallery} resetKey={selectedVarId ?? 0} />
 
-          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Product images"
-        >
-          {gallery.length === 0 ? (
-            <div className="aspect-square w-full shrink-0 bg-muted" />
-          ) : (
-            gallery.map((img, i) => (
-              <div key={img.src + i} className="relative aspect-square w-full shrink-0 snap-start bg-muted">
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  className="h-full w-full object-cover"
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  fetchPriority={i === 0 ? "high" : "auto"}
-                />
-              </div>
-            ))
-          )}
-        </div>
-        {/* Dots */}
-        {gallery.length > 1 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1">
-            {gallery.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === activeImg ? "w-4 bg-primary" : "w-1.5 bg-background/70"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Title + price */}
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
