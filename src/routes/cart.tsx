@@ -126,7 +126,12 @@ const CartRow = memo(function CartRow({
   );
 
   return (
-    <li className="flex gap-2.5 rounded-[3px] border border-border bg-background p-2.5">
+    <li
+      className={`flex gap-2.5 rounded-[3px] border bg-background p-2.5 ${
+        status ? "border-destructive/40" : "border-border"
+      }`}
+    >
+
       <Link
         to="/products/$slug"
         params={{ slug: item.slug }}
