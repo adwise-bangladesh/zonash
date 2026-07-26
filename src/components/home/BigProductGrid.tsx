@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
 import { beginProductPush } from "@/lib/nav-transition";
