@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
@@ -26,6 +27,8 @@ const BigCard = memo(function BigCard({
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
   const seed = () => onSeed(p);
+  const imgRef = useRef<HTMLImageElement>(null);
+
   // The storefront is capped at a 480px frame, so a card column never exceeds
   // ~240px. Without a srcset the browser downloaded the full-size WordPress
   // original (often 1000px+) for every card in the feed.
@@ -39,7 +42,12 @@ const BigCard = memo(function BigCard({
       params={{ slug: p.slug }}
       preload="intent"
       onPointerDown={(e) => {
-        if (e.button === 0) seed();
+        if (e.button !== 0) return;
+        seed();
+        // Morph this card's image into the product hero. Marked imperatively on
+        // pointerdown: the same product can appear in both Mega Sale and the
+        // feed, and two elements sharing a view-transition-name kills it.
+        beginProductPush(imgRef.current);
       }}
       onFocus={seed}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md"
@@ -47,7 +55,9 @@ const BigCard = memo(function BigCard({
       <div className="relative aspect-square overflow-hidden bg-surface-muted">
         {responsive ? (
           <img
+            ref={imgRef}
             src={responsive.src}
+
             srcSet={responsive.srcSet}
             sizes={responsive.sizes}
             alt={image?.alt || p.name || "Product"}

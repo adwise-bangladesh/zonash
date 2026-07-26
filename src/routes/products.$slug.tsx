@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef, useState, useEffect, lazy, memo, Suspense } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, useLayoutEffect, lazy, memo, Suspense } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -235,10 +235,12 @@ function ProductPageSkeleton() {
 
       <div className="mx-auto max-w-md">
         {/* Gallery */}
-        <div
-          className="aspect-square w-full bg-muted"
-          style={{ viewTransitionName: "product-hero" }}
-        />
+        {/* No `view-transition-name` here: the skeleton is a grey box, and
+            morphing a card thumbnail into a grey box then hard-swapping the
+            real photo in looks worse than a plain fade. The name is claimed by
+            the real hero image once it renders. */}
+        <div className="aspect-square w-full bg-muted" />
+
 
         {/* Info hero — matches real layout: rating → title → price row */}
         <div className="bg-gradient-to-b from-primary/[0.04] via-background to-background">
@@ -1185,7 +1187,13 @@ const FloatingHeader = memo(function FloatingHeader({
  * decode observer so a swipe (which fires scroll events at 60 Hz) repaints
  * only the dot strip instead of the whole product page.
  */
+// This page is server-rendered, and `useLayoutEffect` warns during SSR. The
+// effect below is purely a pre-paint DOM write, so falling back to `useEffect`
+// on the server (where it never runs) is exactly equivalent and silent.
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 const Gallery = memo(function Gallery({
+
   images,
   name,
   activeImage,
@@ -1314,6 +1322,30 @@ const Gallery = memo(function Gallery({
     lastInteractRef.current = Date.now();
   }, []);
 
+  /**
+   * Claim the shared `product-hero` name **only** while a card→product morph is
+   * actually running. Leaving it on permanently was worse than having no
+   * transition at all: on every other navigation (back to the grid, forward to
+   * checkout) the hero would be lifted out of the page snapshot and cross-fade
+   * on its own while the rest of the screen slid — the image visibly detaching
+   * from its own page. Gating on `data-nav="hero"` (set by the card on
+   * pointerdown) keeps the morph and removes the artifact everywhere else.
+   *
+   * `useLayoutEffect` matters: it runs inside the router's view-transition
+   * callback, before the browser snapshots the new state.
+   */
+  const heroRef = useRef<HTMLImageElement>(null);
+  useIsoLayoutEffect(() => {
+    const el = heroRef.current;
+    if (!el || document.documentElement.dataset.nav !== "hero") return;
+    el.style.viewTransitionName = "product-hero";
+    const t = setTimeout(() => {
+      el.style.viewTransitionName = "";
+    }, 420);
+    return () => clearTimeout(t);
+  }, []);
+
+
   return (
     <div className="relative bg-background">
       <div
@@ -1355,7 +1387,7 @@ const Gallery = memo(function Gallery({
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding={i === 0 ? "sync" : "async"}
                   fetchPriority={i === 0 ? "high" : "auto"}
-                  style={i === 0 ? { viewTransitionName: "product-hero" } : undefined}
+                  ref={i === 0 ? heroRef : undefined}
                   onError={onImageSrcSetError}
                 />
               )}

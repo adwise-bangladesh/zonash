@@ -280,13 +280,24 @@
 
 
 
-/* View Transitions — smooth morph from product card to product page.
- * A shared view-transition-name is set inline on the source (card image)
- * and destination (product hero first image); the browser cross-fades and
- * animates size/position between them. */
+/* ---------------------------------------------------------------------------
+ * View Transitions — native-app navigation feel.
+ *
+ * Direction is published by src/lib/nav-transition.ts on <html data-nav>:
+ *   forward  push  — new screen slides in from the right (default)
+ *   back     pop   — new screen slides in from the left, old screen slides out
+ *   hero     push with a shared element — the tapped product image morphs into
+ *                    the product hero, so the page itself must NOT slide; a
+ *                    sliding backdrop under a morphing image looks broken.
+ *
+ * `data-nav` is always present in practice, but the bare `::view-transition-*`
+ * rules below act as the forward default so a navigation that starts before
+ * the attribute is written still animates instead of hard-cutting.
+ * ------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
+  /* Shared element: the card image morphing into the product hero. */
   ::view-transition-group(product-hero) {
-    animation-duration: 320ms;
+    animation-duration: 340ms;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
   ::view-transition-image-pair(product-hero) {
@@ -294,18 +305,46 @@
   }
   ::view-transition-old(product-hero),
   ::view-transition-new(product-hero) {
-    animation-duration: 320ms;
+    animation-duration: 340ms;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     mix-blend-mode: normal;
   }
-  /* Page-level push: the outgoing screen fades and settles back slightly
-   * while the incoming one slides in from the right. Short and eased so it
-   * reads like a native stack push rather than a web page repaint. */
+
+  /* The toast layer must not ride the page slide. Without its own name it is
+     captured inside the root snapshot, so a toast fired right before a
+     navigation slides off-screen with the outgoing page. Naming it lifts it out
+     of the root group and keeps it pinned. */
+  [data-sonner-toaster] {
+    view-transition-name: app-toaster;
+  }
+  ::view-transition-group(app-toaster) {
+    animation-duration: 180ms;
+  }
+
+
+
+  /* Page-level push (default / data-nav="forward"). */
   ::view-transition-old(root) {
     animation: navPushOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
   }
   ::view-transition-new(root) {
-    animation: navPushIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: navPushIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Pop — mirrored, and slightly quicker, matching platform back gestures. */
+  html[data-nav="back"]::view-transition-old(root) {
+    animation: navPopOut 200ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  html[data-nav="back"]::view-transition-new(root) {
+    animation: navPopIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Shared-element push — the hero carries the motion, the page just fades. */
+  html[data-nav="hero"]::view-transition-old(root) {
+    animation: navFadeOut 180ms ease-out both;
+  }
+  html[data-nav="hero"]::view-transition-new(root) {
+    animation: navFadeIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 
@@ -316,6 +355,21 @@
   from { opacity: 0; transform: translate3d(6%, 0, 0); }
   to { opacity: 1; transform: none; }
 }
+@keyframes navPopOut {
+  to { opacity: 0; transform: translate3d(6%, 0, 0); }
+}
+@keyframes navPopIn {
+  from { opacity: 0; transform: translate3d(-3%, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes navFadeOut {
+  to { opacity: 0; }
+}
+@keyframes navFadeIn {
+  from { opacity: 0; transform: scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+
 
 /* Bangla text uses Tiro Bangla. `:lang(bn)` catches elements explicitly
  * marked with lang="bn". The `.font-bangla` utility is available for

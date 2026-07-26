@@ -17,6 +17,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
 import { CustomerSessionProvider } from "@/lib/customer-session";
+import { installBackGestureListener } from "@/lib/nav-transition";
+
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
 import { NotFoundView } from "@/components/NotFoundView";
@@ -121,6 +123,11 @@ function RootComponent() {
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
+  // Browser/gesture back must animate as a pop, not a push. `popstate` fires
+  // before the router commits, so flipping the direction flag there lands
+  // before the view transition takes its snapshot.
+  useEffect(() => installBackGestureListener(), []);
+
   // Persist product / variations queries to localStorage so returning users
   // get instant product-page renders with zero network wait.
   useEffect(() => {
@@ -131,6 +138,7 @@ function RootComponent() {
     return () => unsub?.();
   }, [queryClient]);
 
+
   return (
     <QueryClientProvider client={queryClient}>
       <CustomerSessionProvider>
@@ -140,7 +148,11 @@ function RootComponent() {
             <Outlet />
           </StorefrontFrame>
           <MobileBottomNav />
-          <Toaster richColors position="top-right" />
+          {/* Position/duration/width now live in the Toaster itself so every
+              call site gets the same treatment; only `richColors` (success and
+              error tinting) is opted into here. */}
+          <Toaster richColors />
+
         </CartProvider>
       </CustomerSessionProvider>
     </QueryClientProvider>

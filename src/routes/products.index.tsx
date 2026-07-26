@@ -7,9 +7,10 @@ import {
   infiniteQueryOptions,
 } from "@tanstack/react-query";
 
-import { Suspense, memo, useMemo, useCallback } from "react";
+import { Suspense, memo, useMemo, useCallback, useRef } from "react";
 import { z } from "zod";
 import { LayoutGrid, X } from "lucide-react";
+import { beginProductPush } from "@/lib/nav-transition";
 
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
@@ -539,8 +540,13 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                       // and cast `as never`, which silenced the real check —
                       // a typo'd key would have removed nothing at runtime.
                       search={(prev: SearchState) => ({ ...prev, [chip.key]: undefined })}
-
+                      // Removing a filter stays on this page — sliding the whole
+                      // screen would read as a page load rather than a list
+                      // refresh, so this one navigation opts out of the global
+                      // view transition.
+                      viewTransition={false}
                       aria-label={`Remove filter ${chip.label}`}
+
                       className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
                     >
                       <span className="truncate">{chip.label}</span>
@@ -633,18 +639,27 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
   const responsive = buildResponsiveImage(image?.src, {
     sizes: "(min-width: 480px) 240px, 50vw",
   });
+  const imgRef = useRef<HTMLImageElement>(null);
+
   return (
     <li>
       <Link
         to="/products/$slug"
         params={{ slug: p.slug }}
         preload="intent"
+        onPointerDown={(e) => {
+          // Shared-element push: this card's photo morphs into the product hero
+          // instead of the whole screen sliding over it.
+          if (e.button === 0) beginProductPush(imgRef.current);
+        }}
         className="group flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="block aspect-square w-full overflow-hidden bg-surface-muted">
           {responsive ? (
             <img
+              ref={imgRef}
               src={responsive.src}
+
               srcSet={responsive.srcSet}
               sizes={responsive.sizes}
               alt={image?.alt || p.name || "Product"}
