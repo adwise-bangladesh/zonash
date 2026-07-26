@@ -123,7 +123,7 @@ function SubcategoryStrip({
           {subs.map((s) => (
             <li
               key={s.id}
-              className="shrink-0 basis-[18%] snap-start md:basis-[14%] lg:basis-[10%]"
+              className="shrink-0 basis-[calc((100%-2.5rem)/5.4)] snap-start"
             >
               <SubCard parentSlug={parentSlug} sub={s} />
             </li>
@@ -339,7 +339,7 @@ function CollectionSkeleton() {
       <div className="bg-background pt-2">
         <div className="flex gap-2 overflow-hidden px-[5px] pb-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="basis-[18%] shrink-0">
+            <div key={i} className="basis-[calc((100%-2.5rem)/5.4)] shrink-0">
               <div className="aspect-square w-full skeleton-shimmer rounded-2xl" />
               <div className="mx-auto mt-1.5 h-2.5 w-3/4 skeleton-shimmer rounded" />
             </div>
