@@ -531,9 +531,11 @@ function StepLandingPage() {
       });
       if (!res.ok) {
         toast.error(res.error || "Order failed");
+        busyRef.current = false;
         setSubmitting(false);
         return;
       }
+
       if (!res.sms_ok) {
         toast.message("Order created", {
           description: "We couldn't text your code — tap Resend on the next screen.",
