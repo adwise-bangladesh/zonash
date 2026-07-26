@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
+
+/**
+ * `useLayoutEffect` warns when React renders on the server; this component is
+ * SSR'd on every shop route. Bind to the layout variant in the browser only.
+ */
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 
 export type SortKey = "recommended" | "new" | "price-asc" | "price-desc" | "rating" | "title";
 
