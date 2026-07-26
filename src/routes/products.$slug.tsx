@@ -199,7 +199,12 @@ export const Route = createFileRoute("/products/$slug")({
   },
   component: ProductPage,
   pendingComponent: ProductPageSkeleton,
-  pendingMs: 0,
+  // Delay the pending fallback so fast loads (SSR-warm / preloaded / cached)
+  // skip the skeleton entirely. The view transition then captures directly
+  // from the card thumbnail to the real product hero — one smooth morph
+  // instead of card → skeleton → content, which reads as two transitions.
+  pendingMs: 900,
+  pendingMinMs: 0,
   errorComponent: ({ error, reset }) => {
     const message =
       error instanceof Error ? error.message : "Something went wrong loading this product.";
