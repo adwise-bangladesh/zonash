@@ -57,10 +57,11 @@ function CallbackChoicePage() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-background via-muted/40 to-background">
+    <div className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-background via-muted/40 to-background pb-[calc(env(safe-area-inset-bottom)+72px)]">
       <CheckoutHeader title="Almost done" />
 
       <main className="relative flex flex-1 flex-col px-5 pb-4 pt-2">
+
         <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <FlowIcon variant="static" icon={ShieldCheck} />
 

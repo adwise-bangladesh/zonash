@@ -626,16 +626,38 @@ function StepLandingPage() {
       setSubmitting(false);
       return;
     }
+    // Skip-OTP path: trusted logged-in customer. Server already applied the
+    // Hoorin + duplicate verdict.
+    if (res.skip_otp) {
+      try {
+        if (res.decision === "confirmed") {
+          await navigate({
+            to: "/order-callback-choice",
+            search: { order: res.order_id, number: res.order_number } as never,
+          });
+        } else {
+          await navigate({
+            to: "/order-review",
+            search: {
+              order: res.order_id,
+              reason: res.reason ?? "",
+              duplicates: JSON.stringify(res.duplicates ?? []),
+            } as never,
+          });
+        }
+      } catch {
+        busyRef.current = false;
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (!res.sms_ok) {
       toast.message("Order created", {
         description: "We couldn't text your code — tap Resend on the next screen.",
       });
     }
 
-    // 2) Order exists server-side. Navigate — but if navigation itself
-    //    fails, do NOT show "order failed" and do NOT rotate the idem key.
-    //    Keep `submitting = true` through unmount; on nav failure, offer a
-    //    manual link into the OTP flow so the user can complete it.
     try {
       await navigate({
         to: "/verify-otp",
@@ -666,6 +688,7 @@ function StepLandingPage() {
       setSubmitting(false);
     }
   };
+
 
 
   return (

@@ -136,7 +136,22 @@ const draftSchema = z.object({
 // ---------- idempotency (short-TTL, in-worker dedup) ----------
 
 type SubmitResult =
-  | { ok: true; order_id: number; order_number: string; total: string; phone_masked: string; sms_ok: boolean }
+  | {
+      ok: true;
+      order_id: number;
+      order_number: string;
+      total: string;
+      phone_masked: string;
+      sms_ok: boolean;
+      // When true, the customer already has a verified session cookie for this
+      // phone — no OTP is required and the server has already run the
+      // Hoorin+duplicate verdict inline. The client should navigate directly
+      // to the callback page (decision=confirmed) or the review page.
+      skip_otp?: boolean;
+      decision?: "confirmed" | "review";
+      reason?: string;
+      duplicates?: Duplicate[];
+    }
   | { ok: false; error: string };
 
 const IDEMP_TTL_MS = 10 * 60_000; // 10 minutes
@@ -342,9 +357,165 @@ async function smsSendsLast24h(phone: string): Promise<number> {
 }
 
 
+// ---------- verification decision (shared by OTP + skip-OTP paths) ----------
+
+type WooLite = {
+  id: number;
+  number: string;
+  status: string;
+  date_created: string;
+  total: string;
+  billing?: { phone?: string; email?: string; address_1?: string };
+  meta_data?: { key: string; value: unknown }[];
+};
+
+export type Duplicate = {
+  id: number;
+  number: string;
+  status: string;
+  date_created: string;
+  total: string;
+  match: string[];
+};
+
+/** Haversine distance in metres between two lat/lng points. */
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+const DUP_GPS_METERS = 50;
+const DUP_WINDOW_MS = 48 * 60 * 60 * 1000;
+const DUP_STATUSES = ["pending", "on-hold", "processing", "confirmed"];
+
+/**
+ * Central verdict: (a) Hoorin rating check with the current thresholds, and
+ * (b) duplicate detection requiring ALL THREE of phone + fingerprint + GPS
+ * (within ~50m) to match another order in pending/on-hold/processing/confirmed
+ * over the last 48 hours. Hoorin unavailable / API error is treated as risky.
+ */
+async function runVerificationDecision(input: {
+  order_id: number;
+  phone: string;
+  fingerprint: string;
+  gps: { lat: number; lng: number } | null;
+}): Promise<{
+  decision: "confirmed" | "review";
+  decisionReason: string;
+  duplicates: Duplicate[];
+  hoorinReport: unknown;
+}> {
+  // ---------- Hoorin: fail-CLOSED (risky) on error ----------
+  let hoorinReport: unknown = null;
+  let ratingTrusted = false;
+  let ratingReason = "";
+  try {
+    const { hoorinSearch, hoorinConfigured } = await import("./hoorin.server");
+    if (!hoorinConfigured()) {
+      ratingReason = "Rating provider not configured — flagged for review";
+    } else {
+      const rep = await hoorinSearch(input.phone, { cache: "on", timeoutMs: 10_000 });
+      hoorinReport = rep;
+      const total = rep.overall?.total_parcels ?? 0;
+      const ratio = rep.overall?.success_ratio ?? 0; // 0-100
+      // Trust rules:
+      //   • no history at all           → trust (new customer)
+      //   • total < 3  AND ratio ≥ 50%  → trust
+      //   • total ≥ 3  AND ratio ≥ 60%  → trust
+      //   • anything else                → risky
+      if (total === 0) ratingTrusted = true;
+      else if (total < 3 && ratio >= 50) ratingTrusted = true;
+      else if (total >= 3 && ratio >= 60) ratingTrusted = true;
+      if (!ratingTrusted) {
+        ratingReason = `Courier rating ${ratio.toFixed(0)}% over ${total} parcels below threshold`;
+      }
+    }
+  } catch (e) {
+    console.error("Hoorin lookup failed — treating as risky", e);
+    ratingReason = "Rating provider unreachable — flagged for review";
+  }
+
+  // ---------- Duplicate detection (ALL THREE must match, 48h window) ----------
+  const duplicates: Duplicate[] = [];
+  try {
+    const { wooFetch } = await import("./woo.server");
+    const after = new Date(Date.now() - DUP_WINDOW_MS).toISOString();
+    const orders = await wooFetch<WooLite[]>({
+      path: "/orders",
+      query: {
+        search: input.phone,
+        per_page: 30,
+        status: DUP_STATUSES.join(","),
+        after,
+        orderby: "date",
+        order: "desc",
+      },
+      timeoutMs: 12_000,
+    });
+    const tail = input.phone.slice(-10);
+    for (const o of orders) {
+      if (o.id === input.order_id) continue;
+      const otherPhone = (o.billing?.phone ?? "").replace(/\D/g, "");
+      const meta = Object.fromEntries((o.meta_data ?? []).map((m) => [m.key, m.value]));
+      const otherFp = String(meta["_zonash_fingerprint"] ?? "");
+      let otherGps: { lat: number; lng: number } | null = null;
+      try {
+        const rawTracking = meta["_zonash_tracking"];
+        if (typeof rawTracking === "string" && rawTracking) {
+          const parsed = JSON.parse(rawTracking) as {
+            client?: { gps?: { lat?: number; lng?: number } };
+          };
+          const g = parsed?.client?.gps;
+          if (g && typeof g.lat === "number" && typeof g.lng === "number") {
+            otherGps = { lat: g.lat, lng: g.lng };
+          }
+        }
+      } catch { /* ignore */ }
+
+      const phoneMatch = otherPhone.endsWith(tail);
+      const fpMatch = !!(input.fingerprint && otherFp && otherFp === input.fingerprint);
+      const gpsMatch =
+        !!(input.gps && otherGps && haversineMeters(input.gps, otherGps) <= DUP_GPS_METERS);
+
+      if (phoneMatch && fpMatch && gpsMatch) {
+        duplicates.push({
+          id: o.id,
+          number: o.number,
+          status: o.status,
+          date_created: o.date_created,
+          total: o.total,
+          match: ["phone", "device", "location"],
+        });
+      }
+    }
+  } catch (e) {
+    console.error("duplicate check failed — continuing", e);
+  }
+
+  let decision: "confirmed" | "review" = "confirmed";
+  let decisionReason = "";
+  if (!ratingTrusted) {
+    decision = "review";
+    decisionReason = ratingReason;
+  } else if (duplicates.length > 0) {
+    decision = "review";
+    decisionReason = `Identical device + location + number matched ${duplicates.length} recent order(s): ${duplicates
+      .map((d: Duplicate) => `#${d.number}`)
+      .join(", ")}`;
+  }
+
+  return { decision, decisionReason, duplicates, hoorinReport };
+}
 
 
 // ---------- submitPendingOrder ----------
+
 
 export const submitPendingOrder = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => submitSchema.parse(raw))
@@ -532,14 +703,90 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
 
-    // Log successful submit for future velocity checks (fire-and-forget).
-    void recordOrderSubmit({
-      ip: server.ip ?? "",
-      fingerprint: clientFingerprint,
-      phone,
-      meta: { order_id: created.id, score: assessment.score, signals: assessment.signals },
-    });
+    // Draft-vs-live audit note.
+    try {
+      const { wooFetch } = await import("./woo.server");
+      await wooFetch({
+        path: `/orders/${created.id}/notes`,
+        method: "POST",
+        body: {
+          note: `📥 Order submitted (${data.draft_order_id ? "promoted from checkout-draft" : "new"}). Awaiting OTP verification.`,
+          customer_note: false,
+        },
+      });
+    } catch { /* ignore */ }
 
+    // ---------- Logged-in shortcut: skip OTP ----------
+    // If the customer already has a signed session cookie AND the phone on
+    // this order matches that session, we don't need to re-verify by SMS.
+    // We run the same Hoorin+duplicate verdict inline and let the client
+    // navigate straight to the callback / review page.
+    try {
+      const { readCustomerSession } = await import("./customer-token.server");
+      const sessionPhone = await readCustomerSession();
+      if (sessionPhone && sessionPhone === phone) {
+        const clientGps = (data.tracking as { gps?: { lat?: number; lng?: number } } | undefined)?.gps;
+        const verdict = await runVerificationDecision({
+          order_id: created.id,
+          phone,
+          fingerprint: clientFingerprint,
+          gps:
+            clientGps && typeof clientGps.lat === "number" && typeof clientGps.lng === "number"
+              ? { lat: clientGps.lat, lng: clientGps.lng }
+              : null,
+        });
+
+        try {
+          const { wooFetch } = await import("./woo.server");
+          await wooFetch({
+            path: `/orders/${created.id}`,
+            method: "PUT",
+            body: {
+              meta_data: [
+                { key: "_zonash_otp_state", value: "skipped_session" },
+                { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+                { key: "_zonash_decision", value: verdict.decision },
+                { key: "_zonash_decision_reason", value: verdict.decisionReason },
+                { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
+                { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+                { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
+              ],
+            },
+            timeoutMs: 12_000,
+          });
+          await wooFetch({
+            path: `/orders/${created.id}/notes`,
+            method: "POST",
+            body: {
+              note:
+                `🔓 OTP skipped (trusted session). Decision: ${verdict.decision.toUpperCase()}.\n` +
+                (verdict.decisionReason ? `Reason: ${verdict.decisionReason}\n` : "") +
+                (verdict.duplicates.length
+                  ? `Duplicates: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}`
+                  : ""),
+              customer_note: false,
+            },
+          });
+        } catch (e) {
+          console.error("skip-OTP meta write failed", e);
+        }
+
+        return {
+          ok: true,
+          order_id: created.id,
+          order_number: created.number,
+          total: created.total,
+          phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
+          sms_ok: false,
+          skip_otp: true,
+          decision: verdict.decision,
+          reason: verdict.decisionReason,
+          duplicates: verdict.duplicates,
+        };
+      }
+    } catch (e) {
+      console.error("session lookup failed — falling back to OTP", e);
+    }
 
 
     // 2) Persist OTP in Supabase.
@@ -569,11 +816,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       if (error) console.error("order_otps upsert error", error);
     } catch (e) {
       console.error("order_otps write failed", e);
-      // Non-fatal: order exists in Woo, admins can still process manually.
     }
 
-    // 3) Send SMS (fail-open — don't block customer, they can resend).
-    //    Enforce a per-phone 24h SMS cap first to protect BDBulkSMS spend.
     let smsOk = false;
     const smsSentSoFar = await smsSendsLast24h(phone);
     if (smsSentSoFar >= SMS_MAX_PER_PHONE_24H) {
@@ -592,9 +836,6 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       }
     }
 
-    // 4) Record coupon redemption (best-effort) — enforces max_uses /
-    //    max_per_phone on subsequent attempts. Unique (coupon_code, wc_order_id)
-    //    makes this idempotent under retry.
     if (validCoupon && validDiscount > 0) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -609,8 +850,6 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       }
     }
 
-
-
     return {
       ok: true,
       order_id: created.id,
@@ -620,6 +859,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       sms_ok: smsOk,
     };
     };
+
 
     const promise = run();
     idempStore.set(idempKey, { promise, expiresAt: Date.now() + IDEMP_TTL_MS });
@@ -699,24 +939,7 @@ export const resendOrderOtp = createServerFn({ method: "POST" })
 
 // ---------- verifyOrderOtp ----------
 
-type WooLite = {
-  id: number;
-  number: string;
-  status: string;
-  date_created: string;
-  total: string;
-  billing?: { phone?: string; email?: string; address_1?: string };
-  meta_data?: { key: string; value: unknown }[];
-};
 
-export type Duplicate = {
-  id: number;
-  number: string;
-  status: string;
-  date_created: string;
-  total: string;
-  match: string[];
-};
 
 export const verifyOrderOtp = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) =>
@@ -793,105 +1016,30 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
 
 
     // ===== OTP is correct. Run rating + duplicate detection. =====
+    const clientTracking =
+      (row.tracking as { client?: Record<string, unknown> } | null)?.client ?? {};
+    const clientFp = String((clientTracking as { fingerprint?: string }).fingerprint ?? "");
+    const clientGps = (clientTracking as { gps?: { lat?: number; lng?: number } }).gps;
+    const verdict = await runVerificationDecision({
+      order_id: data.order_id,
+      phone: row.phone,
+      fingerprint: clientFp,
+      gps: clientGps && typeof clientGps.lat === "number" && typeof clientGps.lng === "number"
+        ? { lat: clientGps.lat, lng: clientGps.lng }
+        : null,
+    });
+    const { decision, decisionReason, duplicates, hoorinReport } = verdict;
+
+    // Apply verdict + audit note to Woo. Confirmed orders stay `pending` until
+    // the customer picks a callback preference in `finalizeOrderChoice`.
     const { wooFetch } = await import("./woo.server");
-    const clientFp =
-      (row.tracking as { client?: { fingerprint?: string } } | null)?.client?.fingerprint ?? "";
-
-    // Hoorin rating (fail-open).
-    let hoorinReport: unknown = null;
-    let ratingBlock = false;
-    let ratingReason = "";
-    try {
-      const { hoorinSearch, hoorinConfigured } = await import("./hoorin.server");
-      if (hoorinConfigured()) {
-        const rep = await hoorinSearch(row.phone, { cache: "on", timeoutMs: 10_000 });
-        hoorinReport = rep;
-        const total = rep.overall?.total_parcels ?? 0;
-        const ratio = rep.overall?.success_ratio ?? 0; // 0-100
-        let allow = true;
-        if (total < 3) allow = true;
-        else if (total <= 5) allow = ratio >= 50;
-        else if (total <= 10) allow = ratio >= 60;
-        else allow = ratio >= 70;
-        if (!allow) {
-          ratingBlock = true;
-          ratingReason = `Courier rating ${ratio.toFixed(0)}% over ${total} parcels below threshold`;
-        }
-      } else {
-        ratingReason = "Rating unavailable (Hoorin not configured)";
-      }
-    } catch (e) {
-      console.error("Hoorin lookup failed — failing open", e);
-      ratingReason = "Rating provider unreachable — allowed";
-    }
-
-    // Duplicate detection across active statuses.
-    const duplicates: Duplicate[] = [];
-    try {
-      const statuses = ["pending", "on-hold", "processing", "confirmed"].join(",");
-      const orders = await wooFetch<WooLite[]>({
-        path: "/orders",
-        query: {
-          search: row.phone,
-          per_page: 30,
-          status: statuses,
-          orderby: "date",
-          order: "desc",
-        },
-        timeoutMs: 12_000,
-      });
-      const tail = row.phone.slice(-10);
-      for (const o of orders) {
-        if (o.id === data.order_id) continue;
-        const otherPhone = (o.billing?.phone ?? "").replace(/\D/g, "");
-        const meta = Object.fromEntries((o.meta_data ?? []).map((m) => [m.key, m.value]));
-        const otherFp = String(meta["_zonash_fingerprint"] ?? "");
-        const otherIp = String(meta["_zonash_ip"] ?? "");
-        const match: string[] = [];
-        if (otherPhone.endsWith(tail)) match.push("phone");
-        if (clientFp && otherFp && otherFp === clientFp) match.push("device");
-        if (row.ip_address && otherIp && otherIp === row.ip_address) match.push("ip");
-        // Phone or device alone = strong signal; IP alone is discarded (NAT).
-        const strong = match.includes("phone") || match.includes("device");
-        if (strong) {
-          duplicates.push({
-            id: o.id,
-            number: o.number,
-            status: o.status,
-            date_created: o.date_created,
-            total: o.total,
-            match,
-          });
-        }
-      }
-    } catch (e) {
-      console.error("duplicate check failed — continuing", e);
-    }
-
-    let decision: "confirmed" | "review" = "confirmed";
-    let decisionReason = "";
-    if (ratingBlock) {
-      decision = "review";
-      decisionReason = ratingReason;
-    } else if (duplicates.length > 0) {
-      decision = "review";
-      decisionReason = `Duplicate signals against ${duplicates.length} active order(s): ${duplicates
-        .map((d) => `#${d.number} (${d.match.join("+")})`)
-        .join(", ")}`;
-    }
-
-    // Persist decision meta on Woo. Duplicates / low-rating orders stay in
-    // `pending` (flagged via _zonash_decision meta for admin review) instead
-    // of being moved to `on-hold`. Confirmed orders also remain `pending`
-    // until the customer picks a call preference in `finalizeOrderChoice`.
-    const wantedStatus = "pending";
-    let appliedStatus = wantedStatus;
+    const appliedStatus = "pending";
     try {
       await wooFetch({
         path: `/orders/${data.order_id}`,
         method: "PUT",
         body: {
-          status: wantedStatus,
+          status: appliedStatus,
           meta_data: [
             { key: "_zonash_otp_state", value: "verified" },
             { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
@@ -905,12 +1053,9 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         timeoutMs: 12_000,
       });
     } catch (e) {
-      console.error(`Woo PUT ${wantedStatus} failed — falling back`, e);
-      appliedStatus = "pending";
+      console.error("Woo PUT pending failed", e);
     }
 
-
-    // Private note audit trail.
     try {
       await wooFetch({
         path: `/orders/${data.order_id}/notes`,
@@ -920,7 +1065,7 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
             `✅ OTP verified. Decision: ${decision.toUpperCase()} (status → ${appliedStatus}).\n` +
             (decisionReason ? `Reason: ${decisionReason}\n` : "") +
             (duplicates.length
-              ? `Duplicates: ${duplicates.map((d) => `#${d.number} [${d.match.join(",")}]`).join(", ")}`
+              ? `Duplicates: ${duplicates.map((d) => `#${d.number}`).join(", ")}`
               : ""),
           customer_note: false,
         },
@@ -928,6 +1073,7 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
     } catch {
       /* ignore */
     }
+
 
     await supabaseAdmin
       .from("order_otps" as never)

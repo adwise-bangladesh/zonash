@@ -334,21 +334,40 @@ function CheckoutPage() {
         setSubmitting(false);
         return;
       }
-      if (!res.sms_ok) {
-        toast.message("Order created", {
-          description: "We couldn't text your code — tap Resend on the next screen.",
+      // Trusted session → server already ran Hoorin + duplicate checks and
+      // skipped OTP. Route straight to callback (confirmed) or review (risky).
+      if (res.skip_otp) {
+        if (res.decision === "confirmed") {
+          await navigate({
+            to: "/order-callback-choice",
+            search: { order: res.order_id, number: res.order_number } as never,
+          });
+        } else {
+          await navigate({
+            to: "/order-review",
+            search: {
+              order: res.order_id,
+              reason: res.reason ?? "",
+              duplicates: JSON.stringify(res.duplicates ?? []),
+            } as never,
+          });
+        }
+      } else {
+        if (!res.sms_ok) {
+          toast.message("Order created", {
+            description: "We couldn't text your code — tap Resend on the next screen.",
+          });
+        }
+        await navigate({
+          to: "/verify-otp",
+          search: {
+            order: res.order_id,
+            number: res.order_number,
+            phone: res.phone_masked,
+          } as never,
         });
       }
-      // Navigate FIRST so we don't flash the empty-cart state between
-      // clear() and route change. Clear the cart after navigation kicks off.
-      await navigate({
-        to: "/verify-otp",
-        search: {
-          order: res.order_id,
-          number: res.order_number,
-          phone: res.phone_masked,
-        } as never,
-      });
+
       // Defer cart clear one tick so the checkout tree unmounts first.
       setTimeout(() => { try { clear(); } catch { /* ignore */ } }, 0);
       // Rotate idempotency key for any future submission from this tab.
