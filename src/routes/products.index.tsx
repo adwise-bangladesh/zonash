@@ -644,12 +644,19 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
         to="/products/$slug"
         params={{ slug: p.slug }}
         preload="intent"
+        onPointerDown={(e) => {
+          // Shared-element push: this card's photo morphs into the product hero
+          // instead of the whole screen sliding over it.
+          if (e.button === 0) beginProductPush(imgRef.current);
+        }}
         className="group flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="block aspect-square w-full overflow-hidden bg-surface-muted">
           {responsive ? (
             <img
+              ref={imgRef}
               src={responsive.src}
+
               srcSet={responsive.srcSet}
               sizes={responsive.sizes}
               alt={image?.alt || p.name || "Product"}
