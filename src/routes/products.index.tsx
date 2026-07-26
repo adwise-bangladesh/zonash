@@ -496,12 +496,13 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                 {chips.map((chip) => (
                   <li key={chip.key}>
                     <Link
-                      to="/products"
-                      search={(prev: Record<string, unknown>) => {
-                        const next = { ...prev };
-                        delete next[chip.key];
-                        return next as never;
-                      }}
+                      from={Route.fullPath}
+                      to="."
+                      // Route-scoped (`from` + `to`) so the updater's type is
+                      // inferred. It was annotated `Record<string, unknown>`
+                      // and cast `as never`, which silenced the real check —
+                      // a typo'd key would have removed nothing at runtime.
+                      search={(prev) => ({ ...prev, [chip.key]: undefined })}
                       aria-label={`Remove filter ${chip.label}`}
                       className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
                     >
@@ -528,12 +529,13 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               <button
                 type="button"
                 onClick={retry}
-                disabled={isFetchingNextPage}
-                aria-busy={isFetchingNextPage}
+                disabled={busy}
+                aria-busy={busy}
                 className="rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60"
               >
-                {isFetchingNextPage ? "Retrying…" : "Try again"}
+                {busy ? "Retrying…" : "Try again"}
               </button>
+
             </div>
           )}
 
