@@ -1303,7 +1303,7 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
         path: `/orders/${data.order_id}/notes`,
         method: "POST",
         body: {
-          note: `✅ Customer confirmed via storefront — no call requested. Status → ${applied}.`,
+          note: `Customer confirmed the order from the storefront and declined a callback. Status set to ${applied}.`,
           customer_note: false,
         },
       });
