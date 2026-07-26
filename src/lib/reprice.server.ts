@@ -218,10 +218,11 @@ async function fetchOne(l: RepriceLineInput, priority = false): Promise<Outcome>
 
 
   try {
-    return await fetchOneInner(l);
+    return { value: await fetchOneInner(l), shed: false };
   } finally {
     release();
   }
+
 }
 
 
