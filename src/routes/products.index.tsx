@@ -505,7 +505,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
 
           <div className="mb-3 flex items-center justify-between gap-2">
             {chips.length > 0 && (
-              <ul className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <ul aria-label="Active filters" className="flex min-w-0 flex-wrap items-center gap-1.5">
+
                 {chips.map((chip) => (
                   <li key={chip.key}>
                     <Link
