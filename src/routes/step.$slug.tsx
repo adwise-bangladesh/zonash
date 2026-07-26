@@ -277,15 +277,10 @@ function StepLandingPage() {
     const inStock = isVariable
       ? (selectedVar ? selectedVar.stock_status !== "outofstock" : false)
       : product.stock_status !== "outofstock";
-    const sku = selectedVar?.sku || product.sku || "";
     const showStrike = regular > price && regular > 0;
-    const savings = showStrike ? Math.max(0, regular - price) : 0;
-    return { price, regular, inStock, sku, showStrike, savings };
+    return { price, regular, inStock, showStrike };
   }, [isVariable, selectedVar, product]);
-  const effectivePrice = active.price;
-  const effectiveRegular = active.regular;
-  const showStrike = active.showStrike;
-  const inStock = active.inStock;
+  const { price: effectivePrice, regular: effectiveRegular, showStrike, inStock } = active;
 
   // Gallery
   const gallery = useMemo(() => {
