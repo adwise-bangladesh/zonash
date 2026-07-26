@@ -1,10 +1,13 @@
+import { useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star, Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { beginProductPush } from "@/lib/nav-transition";
 import { parsePriceHtmlMin } from "@/lib/price-range";
 import { getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 export function ProductCard({ p }: { p: WooProduct }) {
   const isVariable = p.type === "variable";
