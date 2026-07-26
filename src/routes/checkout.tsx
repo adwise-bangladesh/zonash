@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ const MAX_QTY = 99;
 import { formatBDT } from "@/lib/format";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
-import { submitPendingOrder } from "@/lib/otp.functions";
+import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
 import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
@@ -85,6 +85,10 @@ function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clear, hydrated, setQty, remove } = useCart();
   const submitFn = useServerFn(submitPendingOrder);
+  const draftFn = useServerFn(saveDraftOrder);
+  const draftIdRef = useRef<number | null>(null);
+  const draftInFlightRef = useRef(false);
+  const lastDraftSigRef = useRef<string>("");
 
   const [form, setForm] = useState<FormData>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -125,6 +129,66 @@ function CheckoutPage() {
     }, 250);
     return () => clearTimeout(t);
   }, [form]);
+
+  // Save abandoned-checkout DRAFT to WooCommerce once name+phone+address
+  // are valid. Debounced 1.5s; also fires when the tab hides. Best-effort:
+  // failures are silent so the confirm path is unaffected.
+  useEffect(() => {
+    if (submitting || items.length === 0) return;
+    const name = form.name.trim();
+    const phone = normalizeBdPhone(form.phone);
+    const address = form.address.trim();
+    if (!name || name.length < 2 || !isValidBdPhone(phone) || address.length < 5) return;
+    const itemsSig = items.map((i) => `${i.productId}:${i.variationId ?? 0}:${i.quantity}`).sort().join("|");
+    const sig = `${name}|${phone}|${address}|${form.thana}|${itemsSig}`;
+    if (sig === lastDraftSigRef.current) return;
+    let cancelled = false;
+    const run = async () => {
+      if (draftInFlightRef.current) return;
+      draftInFlightRef.current = true;
+      try {
+        const tracking = await collectTracking({ name, phone, email: form.email || undefined });
+        const { first, last } = splitName(name);
+        const res = await draftFn({
+          data: {
+            draft_order_id: draftIdRef.current ?? undefined,
+            items: items.map((i) => ({
+              product_id: i.productId,
+              variation_id: i.variationId,
+              quantity: i.quantity,
+            })),
+            billing: {
+              first_name: first,
+              last_name: last || "",
+              email: form.email || "",
+              phone,
+              address_1: address,
+              address_2: "",
+              city: form.thana || "",
+              country: "BD",
+            },
+            customer_note: form.notes || "",
+            tracking,
+          },
+        });
+        if (!cancelled && res.ok) {
+          draftIdRef.current = res.draft_order_id;
+          lastDraftSigRef.current = sig;
+        }
+      } catch { /* silent */ }
+      finally { draftInFlightRef.current = false; }
+    };
+    const t = setTimeout(run, 1500);
+    const onHide = () => { if (document.hidden) void run(); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [form.name, form.phone, form.address, form.thana, form.email, form.notes, items, submitting, draftFn]);
+
+
 
   // Autofill from the customer's most recent order if signed in.
   const { phone: sessionPhone } = useCustomerSession();
@@ -262,6 +326,7 @@ function CheckoutPage() {
           customer_note: notePieces.length ? notePieces.join(" | ") : "",
           tracking,
           idempotency_key: idempotencyKey,
+          draft_order_id: draftIdRef.current ?? undefined,
         },
       });
       if (!res.ok) {
