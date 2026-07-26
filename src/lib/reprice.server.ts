@@ -81,22 +81,58 @@ const CONCURRENCY = 8;
  */
 const GLOBAL_CONCURRENCY = 16;
 
+/**
+ * Depth of the admission queue behind the global gate. At 100k visitors an
+ * unbounded queue is a memory leak *and* a latency trap: callers pile up for
+ * minutes behind a slow store and every one of them is holding a request
+ * alive. Past this depth we shed instead — the caller gets the "unknown"
+ * shape and keeps its own snapshot, which is exactly the upstream-blip path.
+ */
+const MAX_QUEUE = 256;
+/** A queued caller never waits longer than this before shedding. */
+const QUEUE_WAIT_MS = 1500;
+
 let active = 0;
 const waiters: (() => void)[] = [];
+
+class Shed extends Error {}
 
 async function acquire(): Promise<void> {
   if (active < GLOBAL_CONCURRENCY) {
     active++;
     return;
   }
-  await new Promise<void>((resolve) => waiters.push(resolve));
-  active++;
+  if (waiters.length >= MAX_QUEUE) throw new Shed();
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const i = waiters.indexOf(grant);
+      if (i >= 0) waiters.splice(i, 1);
+      reject(new Shed());
+    }, QUEUE_WAIT_MS);
+    // The permit is handed over directly (see `release`), so the woken caller
+    // must NOT increment `active` itself — doing so after an `await` opened a
+    // window where a fresh caller saw `active < GLOBAL_CONCURRENCY` and the
+    // gate briefly admitted more than 16 upstream sockets.
+    function grant() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    }
+    waiters.push(grant);
+  });
 }
 
 function release() {
-  active--;
-  waiters.shift()?.();
+  const next = waiters.shift();
+  // Transfer the permit rather than free-then-reacquire; `active` stays put.
+  if (next) next();
+  else active--;
 }
+
 
 const cache = new Map<string, Cached>();
 const inFlight = new Map<string, Promise<Cached["value"]>>();
