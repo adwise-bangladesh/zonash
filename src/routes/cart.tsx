@@ -408,19 +408,32 @@ function CartPage() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto w-full max-w-md px-3 pt-2.5 pb-3">
-          <Link
-            to="/checkout"
-            preload="intent"
-            className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
-          >
-            <span
-              aria-hidden="true"
-              className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]"
-            />
-            <Lock className="h-4 w-4" aria-hidden="true" />
-            Checkout · {formatBDT(subtotal)}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </Link>
+          {blockedCount > 0 ? (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-[4px] bg-muted text-sm font-bold uppercase tracking-[0.08em] text-muted-foreground"
+            >
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              Remove unavailable {blockedCount === 1 ? "item" : "items"}
+            </button>
+          ) : (
+            <Link
+              to="/checkout"
+              preload="intent"
+              className="group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[4px] bg-gradient-to-r from-primary via-primary to-primary/90 text-sm font-bold uppercase tracking-[0.08em] text-primary-foreground shadow-[var(--shadow-glow)] transition-all active:scale-[0.99]"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 -left-16 w-16 -skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-[140%]"
+              />
+              <Lock className="h-4 w-4" aria-hidden="true" />
+              Checkout · {formatBDT(subtotal)}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
+          )}
+
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
             No online payment · Pay when you receive
           </p>
