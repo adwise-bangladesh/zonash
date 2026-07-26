@@ -315,9 +315,39 @@ function CartPage() {
   }, [repriced]);
   const blockedCount = blocked.size;
 
+  // Remaining units per line when the store tracks stock. "In stock" is not
+  // enough: a bag asking for 5 of a 2-unit line fails inside WooCommerce.
+  const stockCaps = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of repriced?.lines ?? []) {
+      if (typeof l.stockQty !== "number" || l.stockQty <= 0) continue;
+      m.set(lineKey(l.productId, l.variationId ?? undefined), l.stockQty);
+    }
+    return m;
+  }, [repriced]);
 
+  const overStockKeys = useMemo(() => {
+    const out: { key: string; cap: number }[] = [];
+    for (const i of items) {
+      const key = itemKey(i);
+      if (blocked.has(key)) continue;
+      const cap = stockCaps.get(key);
+      if (cap !== undefined && i.quantity > cap) out.push({ key, cap });
+    }
+    return out;
+  }, [items, stockCaps, blocked]);
+
+  // The "unavailable items" CTA used to be a disabled dead end: it told the
+  // customer what to do but could not do it. It now performs the fix.
+  const resolveIssues = useCallback(() => {
+    for (const key of blocked.keys()) remove(key);
+    for (const { key, cap } of overStockKeys) setQty(key, cap);
+  }, [blocked, overStockKeys, remove, setQty]);
+
+  const issueCount = blockedCount + overStockKeys.length;
 
   const savings = useMemo(
+
     () =>
       Math.max(
         0,
