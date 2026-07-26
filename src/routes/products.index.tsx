@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   useSuspenseInfiniteQuery,
@@ -14,7 +14,7 @@ import { LayoutGrid, X } from "lucide-react";
 import { listProducts, listPrimaryCategories, type WooCategory } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { InfiniteFeedSection, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
-import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
+import { SortTabs, sortToWoo, SORT_KEYS, type SortKey } from "@/components/products/SortTabs";
 import { NotFoundView } from "@/components/NotFoundView";
 import { formatBDT } from "@/lib/format";
 import { resolveCardPrices } from "@/lib/price-range";
@@ -29,8 +29,6 @@ const primaryCategoriesQuery = queryOptions({
   queryFn: () => listPrimaryCategories(),
   staleTime: 5 * 60_000,
 });
-
-const SORT_KEYS = ["recommended", "new", "price-asc", "price-desc", "rating", "title"] as const;
 
 /**
  * Every field is individually `.catch()`-ed: `validateSearch` throwing on a
@@ -193,7 +191,7 @@ export const Route = createFileRoute("/products/")({
     };
   },
   loader: async ({ context, deps }) => {
-    const sort = deps.sort as SortKey;
+    const { sort } = deps;
     void context.queryClient.prefetchQuery(primaryCategoriesQuery).catch(() => undefined);
     if (deps.q || deps.featured || deps.category) {
       await context.queryClient
@@ -257,20 +255,29 @@ function ShopPending() {
 }
 
 function ShopError({ reset }: { reset: () => void }) {
+  const router = useRouter();
+  // `reset()` alone only clears the boundary UI — the loader never re-runs, so
+  // "Try again" re-rendered the same failed state. Invalidate first so the
+  // route actually refetches.
+  const retry = useCallback(() => {
+    void router.invalidate();
+    reset();
+  }, [router, reset]);
   return (
     <NotFoundView
       variant="error"
       title="Shop is temporarily unavailable"
       description="We couldn't load the collection right now. Please try again."
       primaryLabel="Try again"
-      onRetry={reset}
+      onRetry={retry}
     />
   );
 }
 
+
 function Products() {
   const { q, category, featured, sort } = Route.useSearch();
-  const activeSort = (sort ?? "recommended") as SortKey;
+  const activeSort: SortKey = sort ?? "recommended";
   if (q || featured || category) {
     return <FilteredResults q={q} category={category} featured={featured} sort={activeSort} />;
   }
@@ -340,6 +347,7 @@ function PrimaryCategoryStrip() {
                     <img
                       src={thumb.src}
                       srcSet={thumb.srcSet}
+                      sizes="96px"
                       alt=""
                       width={96}
                       height={96}
@@ -415,7 +423,7 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     () => searchProductsQuery(q ?? "", category, featured, sort),
     [q, category, featured, sort],
   );
-  const { data, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(options);
 
 
@@ -446,14 +454,18 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   }, [q, category, featured]);
 
   const loadMore = useCallback(() => {
+    // Guard as well as `disabled`: a queued keyboard repeat can fire again in
+    // the same tick before React re-renders the disabled state.
+    if (isFetchingNextPage || !hasNextPage) return;
     void fetchNextPage();
-  }, [fetchNextPage]);
+  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
   // Retry ONLY the failed trailing page. `refetch()` on an infinite query
   // re-runs every page it holds, so a "Load more" that failed on page 5 fired
   // five upstream WooCommerce requests to recover one — and briefly blanked
   // already-rendered results. Dropping the errored tail page and calling
   // `fetchNextPage()` re-requests exactly that page.
   const retry = useCallback(() => {
+    if (isFetchingNextPage) return;
     queryClient.setQueryData(options.queryKey, (prev) => {
       if (!prev || prev.pages.length <= 1) return prev;
       if (!prev.pages[prev.pages.length - 1]?.error) return prev;
@@ -461,7 +473,7 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     });
 
     void fetchNextPage();
-  }, [queryClient, options.queryKey, fetchNextPage]);
+  }, [queryClient, options.queryKey, fetchNextPage, isFetchingNextPage]);
 
   return (
     <div className="px-[5px] pb-24 pt-3">
@@ -491,7 +503,7 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               </ul>
             )}
 
-            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite">
+            <p className="ml-auto text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
               {products.length}
               {hasNextPage ? "+" : ""} result{products.length === 1 && !hasNextPage ? "" : "s"}
             </p>
@@ -506,10 +518,11 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               <button
                 type="button"
                 onClick={retry}
-                disabled={isFetching}
+                disabled={isFetchingNextPage}
+                aria-busy={isFetchingNextPage}
                 className="rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60"
               >
-                {isFetching ? "Retrying…" : "Try again"}
+                {isFetchingNextPage ? "Retrying…" : "Try again"}
               </button>
             </div>
           )}

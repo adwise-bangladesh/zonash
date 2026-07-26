@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 
-
 export type SortKey = "recommended" | "new" | "price-asc" | "price-desc" | "rating" | "title";
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
@@ -13,6 +12,10 @@ export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "rating", label: "Top Rated" },
   { key: "title", label: "A–Z" },
 ];
+
+/** Single source of truth for URL validation — kept in sync with SORT_OPTIONS. */
+export const SORT_KEYS = SORT_OPTIONS.map((o) => o.key) as [SortKey, ...SortKey[]];
+
 
 export function sortToWoo(sort: SortKey): {
   orderby: "date" | "price" | "popularity" | "rating" | "title";

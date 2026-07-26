@@ -6,20 +6,12 @@ import { getCategoryWithSubs, listProducts } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { BigProductGrid } from "@/components/home/BigProductGrid";
 import { NotFoundView } from "@/components/NotFoundView";
-import { SortTabs, sortToWoo, type SortKey } from "@/components/products/SortTabs";
+import { SortTabs, sortToWoo, SORT_KEYS, type SortKey } from "@/components/products/SortTabs";
 import { buildThumbImage, onImageSrcSetError } from "@/lib/product-image";
 import type { WooProduct } from "@/lib/woo.server";
 
 const SITE = "https://zonash.lovable.app";
 
-const SORT_KEYS: SortKey[] = [
-  "recommended",
-  "new",
-  "price-asc",
-  "price-desc",
-  "rating",
-  "title",
-];
 
 
 const categoryQuery = (slug: string) =>
