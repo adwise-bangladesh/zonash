@@ -749,6 +749,57 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       });
     } catch { /* ignore */ }
 
+    // ---------- Blocked identity → route to /order-review ----------
+    // Order exists as `pending`. We skip OTP + SMS (no signal to the user
+    // that they're flagged, no SMS spend on a blocked phone) and hand the
+    // client a "review" decision. The admin dashboard sees the block hit
+    // via the private note + meta.
+    if (blockedHit) {
+      try {
+        const { wooFetch } = await import("./woo.server");
+        await wooFetch({
+          path: `/orders/${created.id}`,
+          method: "PUT",
+          body: {
+            meta_data: [
+              { key: "_zonash_otp_state", value: "skipped_blocked" },
+              { key: "_zonash_decision", value: "review" },
+              { key: "_zonash_decision_reason", value: "account-review" },
+              { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
+              { key: "_zonash_awaiting_call_choice", value: "0" },
+            ],
+          },
+          timeoutMs: 12_000,
+        });
+        await wooFetch({
+          path: `/orders/${created.id}/notes`,
+          method: "POST",
+          body: {
+            note:
+              `🚫 Blocked identity matched (${blockedHit.kind}: ${blockedHit.value}). ` +
+              `Order held for review — OTP skipped, customer routed to review page.`,
+            customer_note: false,
+          },
+        });
+      } catch (e) {
+        console.error("blocked-review meta write failed", e);
+      }
+      return {
+        ok: true,
+        order_id: created.id,
+        order_number: created.number,
+        total: created.total,
+        phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
+        sms_ok: false,
+        skip_otp: true,
+        decision: "review",
+        reason: "account-review",
+        duplicates: [],
+      };
+    }
+
+
+
     // ---------- Logged-in shortcut: skip OTP ----------
     // If the customer already has a signed session cookie AND the phone on
     // this order matches that session, we don't need to re-verify by SMS.
