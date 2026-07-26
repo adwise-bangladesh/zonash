@@ -147,9 +147,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== STORAGE_KEY) return;
       try {
-        setItems(e.newValue ? sanitize(JSON.parse(e.newValue)) : []);
+        const next = e.newValue ? sanitize(JSON.parse(e.newValue)) : [];
+        // Record what storage already holds so adopting another tab's bag
+        // does not bounce the identical payload straight back out.
+        lastWritten.current = JSON.stringify(next);
+        setItems(next);
       } catch { /* ignore malformed cross-tab payload */ }
     };
+
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
