@@ -1033,10 +1033,10 @@ function StepLandingPage() {
             </span>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#128C7E]">
-                Order on WhatsApp
+                WhatsApp
               </div>
               <div className="text-[15px] font-extrabold text-foreground">
-                Chat with us instantly
+                Chat with us now
               </div>
             </div>
             <svg className="h-4 w-4 shrink-0 text-[#128C7E]/70 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
