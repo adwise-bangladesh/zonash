@@ -98,11 +98,13 @@ export function releaseSharedHero(): void {
 }
 
 /**
- * Convenience for product-card links: marks direction + shared element from the
- * event target. Attach to `onPointerDown` so the DOM write happens before the
- * router starts the transition on click.
+ * Convenience for product-card links: marks the shared element and picks the
+ * matching page animation. When the image is found we use the "hero" mode so
+ * the page stays put and the image carries the motion; when it isn't (no
+ * product image), we fall back to an ordinary push. Attach to `onPointerDown`
+ * so the DOM write lands before the router starts the transition on click.
  */
 export function beginProductPush(el: HTMLElement | null | undefined): void {
-  setNavDirection("forward");
-  markSharedHero(el);
+  setNavDirection(markSharedHero(el) ? "hero" : "forward");
 }
+
