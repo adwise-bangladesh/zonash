@@ -9,6 +9,10 @@ import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 
+/** Max ids the reprice server function accepts per call. */
+const REPRICE_CHUNK = 50;
+type RepricedLine = Awaited<ReturnType<typeof repriceCartLines>>["lines"][number];
+
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
