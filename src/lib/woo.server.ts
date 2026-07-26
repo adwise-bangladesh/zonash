@@ -516,7 +516,7 @@ export async function enrichVariableRegular(products: WooProduct[]): Promise<Woo
   );
 }
 
-
+// ---------- Types (partial, only what we use) ----------
 export type WooProduct = {
   id: number;
   name: string;
