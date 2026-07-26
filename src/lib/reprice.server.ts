@@ -139,16 +139,35 @@ const inFlight = new Map<string, Promise<Cached["value"]>>();
 
 const keyOf = (l: RepriceLineInput) => `${l.productId}:${l.variationId ?? 0}`;
 
+/**
+ * Stale-while-revalidate window. With a hard 60s TTL every hot product id
+ * expires for *all* concurrent visitors at the same instant, so the second
+ * after expiry is a synchronised stampede straight through the global gate.
+ * Inside the grace window the stale value is served immediately and a single
+ * refresh runs behind it.
+ */
+const STALE_GRACE_MS = 120_000;
+
 function readCache(key: string): Cached["value"] | undefined {
   const hit = cache.get(key);
   if (!hit) return undefined;
-  if (Date.now() - hit.at > TTL_MS) {
-    cache.delete(key);
-    return undefined;
-  }
+  if (Date.now() - hit.at > TTL_MS) return undefined;
   // refresh LRU position
   cache.delete(key);
   cache.set(key, hit);
+  return hit.value;
+}
+
+/** Expired but still inside the grace window — usable while we refresh. */
+function readStale(key: string): Cached["value"] | undefined {
+  const hit = cache.get(key);
+  if (!hit) return undefined;
+  const age = Date.now() - hit.at;
+  if (age <= TTL_MS) return hit.value;
+  if (age > TTL_MS + STALE_GRACE_MS) {
+    cache.delete(key);
+    return undefined;
+  }
   return hit.value;
 }
 
@@ -161,8 +180,24 @@ function writeCache(key: string, value: Cached["value"]) {
   }
 }
 
+/** Result used when we deliberately do not call upstream (shed / over budget). */
+const UNKNOWN: Cached["value"] = {
+  price: null,
+  regularPrice: null,
+  inStock: true,
+  stockQty: null,
+  gone: false,
+};
+
 async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
-  await acquire();
+  try {
+    await acquire();
+  } catch {
+    // Load shed: never queue past the admission limit. The caller keeps its
+    // own snapshot, exactly like an upstream blip.
+    return UNKNOWN;
+  }
+
   try {
     return await fetchOneInner(l);
   } finally {
