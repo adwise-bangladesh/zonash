@@ -326,10 +326,14 @@ function StepLandingPage() {
 
   // ---------- form state ----------
   const submitFn = useServerFn(submitPendingOrder);
+  const draftFn = useServerFn(saveDraftOrder);
   const [form, setForm] = useState<FormShape>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [idem, setIdem] = useState(genId);
+  const draftIdRef = useRef<number | null>(null);
+  const draftInFlightRef = useRef(false);
+  const lastDraftSigRef = useRef<string>("");
 
 
   // Restore + persist. Uses a functional updater so a late autofill from
