@@ -331,7 +331,13 @@ function ProductPage() {
       />
     );
   }
-  return <ProductDetail p={data.product} />;
+  // Keyed by product id: TanStack reuses one component instance across
+  // /products/a → /products/b (same route, different param), so `useState`
+  // initializers never re-ran and the previous product's variation selection,
+  // quantity and gallery index leaked onto the next product — a shopper could
+  // land on item B already showing item A's chosen size and qty 5.
+  return <ProductDetail key={data.product.id} p={data.product} />;
+
 }
 
 function ProductDetail({ p }: { p: WooProduct }) {
