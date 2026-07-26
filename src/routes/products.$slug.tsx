@@ -1314,6 +1314,30 @@ const Gallery = memo(function Gallery({
     lastInteractRef.current = Date.now();
   }, []);
 
+  /**
+   * Claim the shared `product-hero` name **only** while a card→product morph is
+   * actually running. Leaving it on permanently was worse than having no
+   * transition at all: on every other navigation (back to the grid, forward to
+   * checkout) the hero would be lifted out of the page snapshot and cross-fade
+   * on its own while the rest of the screen slid — the image visibly detaching
+   * from its own page. Gating on `data-nav="hero"` (set by the card on
+   * pointerdown) keeps the morph and removes the artifact everywhere else.
+   *
+   * `useLayoutEffect` matters: it runs inside the router's view-transition
+   * callback, before the browser snapshots the new state.
+   */
+  const heroRef = useRef<HTMLImageElement>(null);
+  useLayoutEffect(() => {
+    const el = heroRef.current;
+    if (!el || document.documentElement.dataset.nav !== "hero") return;
+    el.style.viewTransitionName = "product-hero";
+    const t = setTimeout(() => {
+      el.style.viewTransitionName = "";
+    }, 420);
+    return () => clearTimeout(t);
+  }, []);
+
+
   return (
     <div className="relative bg-background">
       <div
