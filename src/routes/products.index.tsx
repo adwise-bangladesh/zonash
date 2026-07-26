@@ -255,16 +255,25 @@ function ShopPending() {
 }
 
 function ShopError({ reset }: { reset: () => void }) {
+  const router = useRouter();
+  // `reset()` alone only clears the boundary UI — the loader never re-runs, so
+  // "Try again" re-rendered the same failed state. Invalidate first so the
+  // route actually refetches.
+  const retry = useCallback(() => {
+    void router.invalidate();
+    reset();
+  }, [router, reset]);
   return (
     <NotFoundView
       variant="error"
       title="Shop is temporarily unavailable"
       description="We couldn't load the collection right now. Please try again."
       primaryLabel="Try again"
-      onRetry={reset}
+      onRetry={retry}
     />
   );
 }
+
 
 function Products() {
   const { q, category, featured, sort } = Route.useSearch();
