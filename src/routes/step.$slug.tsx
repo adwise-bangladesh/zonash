@@ -1229,12 +1229,23 @@ function ReviewsCarousel({ slug }: { slug: string }) {
   const onScreen = useOnScreen(rootRef, "150px");
   useEffect(() => {
     if (paused || !onScreen || pages <= 1) return;
-    const t = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      setPage((p) => (p + 1) % pages);
-    }, 4500);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (t !== null) return;
+      t = setInterval(() => setPage((p) => (p + 1) % pages), 4500);
+    };
+    const stop = () => {
+      if (t !== null) { clearInterval(t); t = null; }
+    };
+    const onVis = () => { if (document.hidden) stop(); else start(); };
+    if (typeof document === "undefined" || !document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [paused, pages, onScreen]);
+
   const totalCount = fakeReviewCount(slug);
   if (pages === 0) return null;
   const visible = reviews.slice(page * 2, page * 2 + 2);
