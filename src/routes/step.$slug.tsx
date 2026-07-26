@@ -891,7 +891,7 @@ function StepLandingPage() {
                 rows={2}
                 value={form.address}
                 onChange={(e) => update({ address: e.target.value })}
-                placeholder="Flat, house, holding, road, area — then thana"
+                placeholder="e.g. House 12, Road 5, Block C, Bashundhara R/A"
                 autoComplete="street-address"
                 maxLength={300}
                 className={textareaCls(errors.address)}
