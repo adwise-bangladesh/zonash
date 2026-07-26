@@ -557,6 +557,49 @@ export const listProductsByCategorySlug = createServerFn({ method: "GET" })
 
 
 
+/**
+ * Real "related products": items sharing a category with the product being
+ * viewed, ordered by popularity, with the current product excluded upstream so
+ * the grid never has to render-and-filter it.
+ */
+export const listRelatedProducts = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        productId: z.number().int().positive(),
+        categoryIds: z.array(z.number().int().positive()).min(1).max(5),
+        perPage: z.number().int().min(1).max(24).default(12),
+      })
+      .parse(raw ?? {}),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { wooFetch, trimProducts, enrichVariableRegular } = await import("./woo.server");
+      const products = await wooFetch<WooProduct[]>({
+        path: "/products",
+        query: {
+          // Woo ORs multiple category IDs, which is what "related" should mean.
+          category: data.categoryIds.join(","),
+          exclude: String(data.productId),
+          per_page: data.perPage,
+          orderby: "popularity",
+          order: "desc",
+          status: "publish",
+          _fields: CARD_PRODUCT_FIELDS,
+        },
+        timeoutMs: 8000,
+      });
+      return {
+        products: await enrichVariableRegular(trimProducts(products)),
+        error: null as string | null,
+      };
+    } catch (e) {
+      console.error("listRelatedProducts failed", e);
+      return { products: [] as WooProduct[], error: "Products are temporarily unavailable." };
+    }
+  });
+
+
 // -------------------- Checkout (public) --------------------
 
 const createOrderSchema = z.object({
