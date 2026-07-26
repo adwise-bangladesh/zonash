@@ -429,8 +429,14 @@ function StepLandingPage() {
     () => new Set((policeQ.data?.dhakaCity ?? []).map((s) => s.trim().toLowerCase())),
     [policeQ.data?.dhakaCity],
   );
-  const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
+  // trim() + toLowerCase() ran twice on every keystroke; memoize on `thana`
+  // so form typing on unrelated fields doesn't touch this at all.
+  const insideDhaka = useMemo(() => {
+    const t = form.thana.trim().toLowerCase();
+    return t.length > 0 && dhakaCitySet.has(t);
+  }, [form.thana, dhakaCitySet]);
   const shipping = insideDhaka ? 80 : 130;
+
   const subtotal = effectivePrice;
   const total = subtotal + shipping;
   const savings = showStrike ? Math.max(0, effectiveRegular - effectivePrice) : 0;
