@@ -71,10 +71,20 @@ export function resolveCardPrices(p: {
   sale_price?: string;
   price_html?: string;
   on_sale?: boolean;
+  min_regular_price?: string;
 }): { sell: number | string | undefined; regular: number | string | undefined } {
   if (p.type === "variable") {
     const parsed = parsePriceHtmlMin(p.price_html);
-    return { sell: parsed.sale ?? p.price, regular: parsed.regular ?? undefined };
+    const sell = parsed.sale ?? p.price;
+    // Woo's variable `price_html` range has no <del>, so the strikethrough
+    // comes from the cheapest variation's regular price when available.
+    const enriched = Number.parseFloat(p.min_regular_price ?? "");
+    const sellNum = typeof sell === "string" ? Number.parseFloat(sell) : sell;
+    const fallback =
+      Number.isFinite(enriched) && (!Number.isFinite(sellNum as number) || enriched > (sellNum as number))
+        ? p.min_regular_price
+        : undefined;
+    return { sell, regular: parsed.regular ?? fallback };
   }
   return {
     sell: p.on_sale && p.sale_price ? p.sale_price : p.price,
