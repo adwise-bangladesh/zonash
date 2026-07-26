@@ -13,8 +13,18 @@
 // drops srcset/sizes and falls back to the original URL instead of showing a
 // broken image.
 
-/** WordPress/WooCommerce default generated widths (square crops in this store). */
-const WP_SIZES = [150, 300, 600, 768, 1024] as const;
+/**
+ * WordPress/WooCommerce generated square crops this store reliably produces.
+ *
+ * 768/1024 square crops were also advertised, but WordPress only generates
+ * `-768x768`/`-1024x1024` when the source is big enough AND square cropping is
+ * configured for those sizes — on this store many uploads have neither, so the
+ * browser picked a 404 candidate on high-DPR phones and painted a broken image
+ * before the fallback could run. The original URL still caps the srcset, so
+ * large slots keep full quality.
+ */
+const WP_SIZES = [150, 300, 600] as const;
+
 
 const SIZED_SUFFIX = /-(\d+)x(\d+)(?=\.[a-z0-9]+$)/i;
 
