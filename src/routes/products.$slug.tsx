@@ -733,7 +733,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
   }, [p.name]);
 
   const detailsText = useMemo(() => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    // Deterministic on both sides of hydration. Reading `window.location.href`
+    // here made the server render `href="…?text=…"` WITHOUT the "Link:" line and
+    // the client render one WITH it, so React hit an attribute mismatch on the
+    // WhatsApp anchor on every product view. It also leaked preview/UTM query
+    // strings into the message customers send us.
+    const url = canonicalUrl(`/products/${p.slug}`);
     const lines: string[] = [];
     lines.push(`🛍️ ${p.name}`);
     if (activeSku) lines.push(`SKU: ${activeSku}`);
@@ -745,7 +750,8 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
     lines.push(`Quantity: ${qty}`);
     lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
-    if (url) lines.push(`Link: ${url}`);
+    lines.push(`Link: ${url}`);
+
     lines.push("");
     lines.push("Please confirm my order 🙏");
     return lines.join("\n");
