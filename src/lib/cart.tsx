@@ -2,6 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 export type CartItem = {
   productId: number;
+  /**
+   * WooCommerce variation id for variable products. The parent `productId`
+   * is always the real product id, so an order line can be submitted as
+   * `{ product_id, variation_id }` exactly the way the REST API expects.
+   */
+  variationId?: number;
   name: string;
   slug: string;
   sku?: string;
@@ -10,6 +16,17 @@ export type CartItem = {
   image?: string;
   quantity: number;
 };
+
+/**
+ * Identity of a bag line. Two variations of the same variable product are
+ * distinct lines, so the key is the (product, variation) pair — never the
+ * product id alone.
+ */
+export function lineKey(productId: number, variationId?: number): string {
+  return `${productId}:${variationId ?? 0}`;
+}
+export const itemKey = (i: Pick<CartItem, "productId" | "variationId">) =>
+  lineKey(i.productId, i.variationId);
 
 type CartState = {
   items: CartItem[];
@@ -20,8 +37,10 @@ type CartState = {
 
 type CartActions = {
   add: (item: Omit<CartItem, "quantity">, qty?: number) => void;
-  remove: (productId: number) => void;
-  setQty: (productId: number, qty: number) => void;
+  remove: (key: string) => void;
+  setQty: (key: string, qty: number) => void;
+  /** Reconcile a line with server-authoritative pricing. */
+  repriceLine: (key: string, price: number, regularPrice?: number) => void;
   clear: () => void;
 };
 
@@ -42,21 +61,26 @@ const num = (v: unknown): number => {
  */
 function sanitize(raw: unknown): CartItem[] {
   if (!Array.isArray(raw)) return [];
-  const seen = new Set<number>();
+  const seen = new Set<string>();
   const out: CartItem[] = [];
   for (const r of raw) {
     if (!r || typeof r !== "object") continue;
     const o = r as Record<string, unknown>;
     const productId = Number(o.productId);
     const slug = typeof o.slug === "string" ? o.slug : "";
-    if (!Number.isFinite(productId) || productId <= 0 || !slug || seen.has(productId)) continue;
+    if (!Number.isFinite(productId) || productId <= 0 || !slug) continue;
+    const rawVar = Number(o.variationId);
+    const variationId = Number.isFinite(rawVar) && rawVar > 0 ? rawVar : undefined;
+    const key = lineKey(productId, variationId);
+    if (seen.has(key)) continue;
     const quantity = clampQty(Number(o.quantity));
     if (quantity <= 0) continue;
-    seen.add(productId);
+    seen.add(key);
     const price = num(o.price);
     const regular = num(o.regularPrice);
     out.push({
       productId,
+      variationId,
       slug,
       name: typeof o.name === "string" && o.name ? o.name : slug,
       sku: typeof o.sku === "string" ? o.sku : undefined,
@@ -77,7 +101,11 @@ function sanitize(raw: unknown): CartItem[] {
 const CartStateContext = createContext<CartState | null>(null);
 const CartActionsContext = createContext<CartActions | null>(null);
 
-const STORAGE_KEY = "zonash.cart.v1";
+// v2: lines carry a real `productId` + optional `variationId`. v1 bags stored
+// the variation id (or a synthetic composite) in `productId`, which could not
+// be submitted to WooCommerce, so they are discarded rather than migrated.
+const STORAGE_KEY = "zonash.cart.v2";
+const LEGACY_KEYS = ["zonash.cart.v1"];
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -87,6 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setItems(sanitize(JSON.parse(raw)));
+      for (const k of LEGACY_KEYS) localStorage.removeItem(k);
     } catch { /* corrupt or unavailable storage — start empty */ }
     setHydrated(true);
 
@@ -111,13 +140,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Stable action refs — functional setState means these never need to
   // close over `items`, so we can freeze them for the provider's lifetime.
   const add = useCallback<CartActions["add"]>((item, qty = 1) => {
-    if (!item || !Number.isFinite(item.productId) || !item.slug) return;
+    if (!item || !Number.isFinite(item.productId) || item.productId <= 0 || !item.slug) return;
+    const variationId =
+      Number.isFinite(item.variationId) && (item.variationId ?? 0) > 0 ? item.variationId : undefined;
+    const key = lineKey(item.productId, variationId);
     setItems((cur) => {
-      if (cur.some((i) => i.productId === item.productId)) {
+      if (cur.some((i) => itemKey(i) === key)) {
         return cur.map((i) =>
-          i.productId === item.productId
-            ? { ...i, quantity: clampQty(i.quantity + qty) }
-            : i,
+          itemKey(i) === key ? { ...i, quantity: clampQty(i.quantity + qty) } : i,
         );
       }
       const price = num(item.price);
@@ -126,6 +156,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...cur,
         {
           ...item,
+          variationId,
           price,
           regularPrice: regular > price ? regular : undefined,
           quantity: clampQty(qty || 1),
@@ -135,24 +166,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const remove = useCallback<CartActions["remove"]>((id) => {
-    setItems((cur) => cur.filter((i) => i.productId !== id));
+  const remove = useCallback<CartActions["remove"]>((key) => {
+    setItems((cur) => cur.filter((i) => itemKey(i) !== key));
   }, []);
 
-  const setQty = useCallback<CartActions["setQty"]>((id, qty) => {
+  const setQty = useCallback<CartActions["setQty"]>((key, qty) => {
     setItems((cur) => {
       const next = clampQty(qty);
       return next <= 0
-        ? cur.filter((i) => i.productId !== id)
-        : cur.map((i) => (i.productId === id ? { ...i, quantity: next } : i));
+        ? cur.filter((i) => itemKey(i) !== key)
+        : cur.map((i) => (itemKey(i) === key ? { ...i, quantity: next } : i));
+    });
+  }, []);
+
+  const repriceLine = useCallback<CartActions["repriceLine"]>((key, price, regularPrice) => {
+    const p = num(price);
+    const r = num(regularPrice);
+    setItems((cur) => {
+      let changed = false;
+      const next = cur.map((i) => {
+        if (itemKey(i) !== key) return i;
+        const reg = r > p ? r : undefined;
+        if (i.price === p && i.regularPrice === reg) return i;
+        changed = true;
+        return { ...i, price: p, regularPrice: reg };
+      });
+      return changed ? next : cur;
     });
   }, []);
 
   const clear = useCallback<CartActions["clear"]>(() => setItems([]), []);
 
   const actions = useMemo<CartActions>(
-    () => ({ add, remove, setQty, clear }),
-    [add, remove, setQty, clear],
+    () => ({ add, remove, setQty, repriceLine, clear }),
+    [add, remove, setQty, repriceLine, clear],
   );
 
   const state = useMemo<CartState>(
