@@ -120,6 +120,10 @@ const CartRow = memo(function CartRow({
 
   const thumb = item.image ? (
     <img
+      // Keyed by src: React would otherwise reuse the same DOM node when the
+      // line's image changes, and the imperative `visibility:hidden` set by a
+      // single transient load failure would stick to the new image forever.
+      key={item.image}
       src={item.image}
       alt=""
       width={64}
@@ -127,10 +131,14 @@ const CartRow = memo(function CartRow({
       className="h-full w-full object-cover"
       loading="lazy"
       decoding="async"
+      onLoad={(e) => {
+        e.currentTarget.style.visibility = "";
+      }}
       onError={(e) => {
         e.currentTarget.style.visibility = "hidden";
       }}
     />
+
   ) : (
     <span className="block h-full w-full bg-muted" />
   );
