@@ -578,7 +578,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return () => io.disconnect();
   }, [gallery]);
 
-  const addLine = () => {
+  const addLine = useCallback(() => {
     const variantSuffix = matchedVariation
       ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
       : "";
@@ -595,7 +595,20 @@ function ProductDetail({ p }: { p: WooProduct }) {
       },
       qty,
     );
-  };
+  }, [
+    add,
+    matchedVariation,
+    p.id,
+    p.name,
+    p.slug,
+    activeSku,
+    priceNum,
+    showOld,
+    oldPrice,
+    activeImage,
+    gallery,
+    qty,
+  ]);
   const readyToBuy =
     inStock &&
     priceNum > 0 &&
