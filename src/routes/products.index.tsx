@@ -68,6 +68,8 @@ const searchSchema = z.object({
     .catch(undefined),
 });
 
+type SearchState = z.infer<typeof searchSchema>;
+
 const FILTER_PER_PAGE = 24;
 
 /**
@@ -423,8 +425,9 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     () => searchProductsQuery(q ?? "", category, featured, sort),
     [q, category, featured, sort],
   );
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching } =
     useSuspenseInfiniteQuery(options);
+
 
 
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
@@ -459,13 +462,21 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     if (isFetchingNextPage || !hasNextPage) return;
     void fetchNextPage();
   }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
-  // Retry ONLY the failed trailing page. `refetch()` on an infinite query
-  // re-runs every page it holds, so a "Load more" that failed on page 5 fired
-  // five upstream WooCommerce requests to recover one — and briefly blanked
-  // already-rendered results. Dropping the errored tail page and calling
-  // `fetchNextPage()` re-requests exactly that page.
+  // Two distinct recovery paths — the previous single path was dead for the
+  // most common failure. When page 1 is the failed page there is no tail to
+  // drop and `fetchNextPage()` either no-ops or appends page 2 on top of an
+  // empty page 1, so "Try again" never re-requested the results the shopper
+  // was actually looking at. Page 1 now refetches; a failed tail page (e.g.
+  // "Load more" died on page 5) is still dropped and re-requested on its own
+  // rather than replaying every page above it.
+  const busy = isFetchingNextPage || isRefetching;
   const retry = useCallback(() => {
-    if (isFetchingNextPage) return;
+    if (busy) return;
+    const pages = data?.pages ?? [];
+    if (pages.length <= 1) {
+      void refetch();
+      return;
+    }
     queryClient.setQueryData(options.queryKey, (prev) => {
       if (!prev || prev.pages.length <= 1) return prev;
       if (!prev.pages[prev.pages.length - 1]?.error) return prev;
@@ -473,7 +484,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     });
 
     void fetchNextPage();
-  }, [queryClient, options.queryKey, fetchNextPage, isFetchingNextPage]);
+  }, [queryClient, options.queryKey, fetchNextPage, refetch, busy, data?.pages]);
+
 
   return (
     <div className="px-[5px] pb-24 pt-3">
@@ -486,12 +498,14 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                 {chips.map((chip) => (
                   <li key={chip.key}>
                     <Link
-                      to="/products"
-                      search={(prev: Record<string, unknown>) => {
-                        const next = { ...prev };
-                        delete next[chip.key];
-                        return next as never;
-                      }}
+                      from="/products/"
+                      to="."
+                      // Route-scoped (`from` + `to`) so the updater's type is
+                      // inferred. It was annotated `Record<string, unknown>`
+                      // and cast `as never`, which silenced the real check —
+                      // a typo'd key would have removed nothing at runtime.
+                      search={(prev: SearchState) => ({ ...prev, [chip.key]: undefined })}
+
                       aria-label={`Remove filter ${chip.label}`}
                       className={`inline-flex max-w-[60vw] items-center gap-1.5 truncate rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-ink ${chip.capitalize ? "capitalize" : ""}`}
                     >
@@ -518,12 +532,13 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
               <button
                 type="button"
                 onClick={retry}
-                disabled={isFetchingNextPage}
-                aria-busy={isFetchingNextPage}
+                disabled={busy}
+                aria-busy={busy}
                 className="rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors hover:bg-surface-muted disabled:opacity-60"
               >
-                {isFetchingNextPage ? "Retrying…" : "Try again"}
+                {busy ? "Retrying…" : "Try again"}
               </button>
+
             </div>
           )}
 
