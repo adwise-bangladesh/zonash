@@ -70,38 +70,55 @@ async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
       stock_status: string;
       status?: string;
       purchasable?: boolean;
+      manage_stock?: boolean | string;
+      stock_quantity?: number | null;
+      backorders_allowed?: boolean;
     }>({
       path,
-      query: { _fields: "price,regular_price,sale_price,stock_status,status,purchasable" },
+      query: {
+        _fields:
+          "price,regular_price,sale_price,stock_status,status,purchasable,manage_stock,stock_quantity,backorders_allowed",
+      },
       timeoutMs: 6000,
     });
 
     // A draft/private/trashed product is still readable over the authenticated
     // REST API but cannot be ordered — treat it exactly like a deleted one.
     if (p.status && p.status !== "publish") {
-      return { price: null, regularPrice: null, inStock: false, gone: true };
+      return { price: null, regularPrice: null, inStock: false, stockQty: null, gone: true };
     }
 
     const sale = Number(p.sale_price) || 0;
     const base = Number(p.price) || 0;
     const price = sale > 0 ? sale : base;
     const regular = Number(p.regular_price) || 0;
+
+    // A line can be "in stock" and still be un-orderable at the requested
+    // quantity. Only report a cap when the store actually tracks units and
+    // does not accept backorders.
+    const managed = p.manage_stock === true || p.manage_stock === "parent";
+    const qty = typeof p.stock_quantity === "number" ? p.stock_quantity : null;
+    const stockQty =
+      managed && qty !== null && !p.backorders_allowed ? Math.max(0, Math.floor(qty)) : null;
+
     return {
       price: price > 0 ? price : null,
       regularPrice: regular > price ? regular : null,
-      inStock: p.stock_status !== "outofstock" && p.purchasable !== false,
+      inStock: p.stock_status !== "outofstock" && p.purchasable !== false && stockQty !== 0,
+      stockQty,
       gone: false,
     };
   } catch (err) {
     // 404/410 means the product is really gone — say so instead of letting the
     // customer carry a phantom line all the way into a failing order.
     if (err instanceof WooError && (err.status === 404 || err.status === 410)) {
-      return { price: null, regularPrice: null, inStock: false, gone: true };
+      return { price: null, regularPrice: null, inStock: false, stockQty: null, gone: true };
     }
     // Any other failure is an upstream blip: keep the client's snapshot.
-    return { price: null, regularPrice: null, inStock: true, gone: false };
+    return { price: null, regularPrice: null, inStock: true, stockQty: null, gone: false };
   }
 }
+
 
 function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   const cached = readCache(key);
