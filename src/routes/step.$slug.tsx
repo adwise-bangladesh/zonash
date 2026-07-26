@@ -1363,15 +1363,15 @@ function ReviewsCarousel({ slug }: { slug: string }) {
           <div className="mt-1 flex justify-end -space-x-1" aria-hidden>
             {(Object.keys(SOURCE_META) as ReviewSource[]).map((source) => {
               const meta = SOURCE_META[source];
+              const Icon = meta.Icon;
               return (
                 <span
                   key={source}
                   className="grid h-5 w-5 place-items-center rounded-full border border-background"
                   style={{ backgroundColor: meta.bg, color: meta.color }}
+                  aria-label={meta.label}
                 >
-                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden>
-                    <path d={meta.icon} />
-                  </svg>
+                  <Icon className="h-3 w-3" aria-hidden />
                 </span>
               );
             })}
@@ -1399,9 +1399,7 @@ function ReviewsCarousel({ slug }: { slug: string }) {
                   style={{ backgroundColor: meta.bg, color: meta.color }}
                   aria-label={`via ${meta.label}`}
                 >
-                  <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="currentColor" aria-hidden>
-                    <path d={meta.icon} />
-                  </svg>
+                  <meta.Icon className="h-2.5 w-2.5" aria-hidden />
                 </span>
               </div>
               <div className="min-w-0">
