@@ -462,9 +462,14 @@ function StepLandingPage() {
     orderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Real double-submit guard. React state updates are async, so a fast
+  // double-tap can pass the `submitting` check twice before the first
+  // setState commits. A ref flips synchronously.
+  const busyRef = useRef(false);
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting) return;
+    if (busyRef.current || submitting) return;
+
     if (isVariable && !selectedVar) {
       toast.error("Please select an option");
       return;
