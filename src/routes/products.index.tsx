@@ -460,13 +460,21 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     if (isFetchingNextPage || !hasNextPage) return;
     void fetchNextPage();
   }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
-  // Retry ONLY the failed trailing page. `refetch()` on an infinite query
-  // re-runs every page it holds, so a "Load more" that failed on page 5 fired
-  // five upstream WooCommerce requests to recover one — and briefly blanked
-  // already-rendered results. Dropping the errored tail page and calling
-  // `fetchNextPage()` re-requests exactly that page.
+  // Two distinct recovery paths — the previous single path was dead for the
+  // most common failure. When page 1 is the failed page there is no tail to
+  // drop and `fetchNextPage()` either no-ops or appends page 2 on top of an
+  // empty page 1, so "Try again" never re-requested the results the shopper
+  // was actually looking at. Page 1 now refetches; a failed tail page (e.g.
+  // "Load more" died on page 5) is still dropped and re-requested on its own
+  // rather than replaying every page above it.
+  const busy = isFetchingNextPage || isRefetching;
   const retry = useCallback(() => {
-    if (isFetchingNextPage) return;
+    if (busy) return;
+    const pages = data?.pages ?? [];
+    if (pages.length <= 1) {
+      void refetch();
+      return;
+    }
     queryClient.setQueryData(options.queryKey, (prev) => {
       if (!prev || prev.pages.length <= 1) return prev;
       if (!prev.pages[prev.pages.length - 1]?.error) return prev;
@@ -474,7 +482,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     });
 
     void fetchNextPage();
-  }, [queryClient, options.queryKey, fetchNextPage, isFetchingNextPage]);
+  }, [queryClient, options.queryKey, fetchNextPage, refetch, busy, data?.pages]);
+
 
   return (
     <div className="px-[5px] pb-24 pt-3">
