@@ -7,7 +7,8 @@ import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
 import { InfiniteFeed } from "@/components/home/InfiniteFeed";
 import { TrustRow } from "@/components/home/TrustRow";
-import { getFeedNextPageParam, FEED_PER_PAGE, feedQueryKey } from "@/lib/home-feed";
+import { getFeedNextPageParam, FEED_PER_PAGE, recommendedFeedKey } from "@/lib/home-feed";
+import { fetchRecommendedPage } from "@/lib/recommended-feed";
 import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -113,12 +114,9 @@ export const Route = createFileRoute("/")({
       context.queryClient.ensureQueryData(catQuery).catch(() => undefined),
       context.queryClient
         .prefetchInfiniteQuery({
-          queryKey: [...feedQueryKey],
+          queryKey: [...recommendedFeedKey],
           initialPageParam: 1,
-          queryFn: ({ pageParam }) =>
-            listProducts({
-              data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby: "date" },
-            }),
+          queryFn: ({ pageParam }) => fetchRecommendedPage(pageParam as number),
           getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
             getFeedNextPageParam(last, all, FEED_PER_PAGE),
           staleTime: 60_000,
@@ -278,7 +276,7 @@ function Home() {
           <DealsStrip products={dealsProducts} />
         </div>
 
-        <InfiniteFeed columns={2} />
+        <InfiniteFeed columns={2} recommended />
 
         <TrustRow />
 
