@@ -855,24 +855,7 @@ export const resendOrderOtp = createServerFn({ method: "POST" })
 
 // ---------- verifyOrderOtp ----------
 
-type WooLite = {
-  id: number;
-  number: string;
-  status: string;
-  date_created: string;
-  total: string;
-  billing?: { phone?: string; email?: string; address_1?: string };
-  meta_data?: { key: string; value: unknown }[];
-};
 
-export type Duplicate = {
-  id: number;
-  number: string;
-  status: string;
-  date_created: string;
-  total: string;
-  match: string[];
-};
 
 export const verifyOrderOtp = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) =>
