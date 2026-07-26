@@ -116,6 +116,12 @@ const searchProductsQuery = (
     // Every distinct search term creates a cache entry; without a bounded
     // gcTime a long browsing session retains every result set it ever saw.
     gcTime: 5 * 60_000,
+    // Upstream failures already come back as a soft `{ error }` payload, so a
+    // *thrown* error here means the transport died. Three exponential retries
+    // just held the shopper on a skeleton for ~7s before the retry affordance
+    // appeared, and tripled origin load during an outage.
+    retry: 1,
+
   });
 };
 
