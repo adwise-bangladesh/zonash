@@ -981,7 +981,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
           </CollapsibleSection>
         </div>
 
-        <RelatedFeed />
+        <RelatedFeed excludeId={p.id} />
       </div>
 
       {/* Mobile sticky action bar */}
@@ -1574,7 +1574,7 @@ const DescriptionBlock = memo(function DescriptionBlock({ html }: { html: string
  * dozens of product cards, and it was being re-rendered by every unrelated
  * state change in the page above it.
  */
-const RelatedFeed = memo(function RelatedFeed() {
+const RelatedFeed = memo(function RelatedFeed({ excludeId }: { excludeId?: number }) {
   return (
     <div
       className="mt-4 pb-24"
@@ -1582,9 +1582,10 @@ const RelatedFeed = memo(function RelatedFeed() {
     >
       {/* The related feed is optional: a rejected suspense query inside it
           would otherwise take the whole product page to its errorComponent. */}
+      <h2 className="px-[5px] pb-2 pt-1 text-[15px] font-bold text-ink">You may also like</h2>
       <SoftBoundary>
         <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
-          <InfiniteFeed recommended />
+          <InfiniteFeed recommended excludeId={excludeId} />
         </Suspense>
       </SoftBoundary>
     </div>
