@@ -38,10 +38,15 @@ export function enumAllowance(client: string, count: number): number {
   return grant;
 }
 
-/** True when the key is already memoised, i.e. costs no upstream request. */
+/**
+ * True when the key is served without a *blocking* upstream request — fresh
+ * or stale-within-grace both qualify, so a returning shopper is never charged
+ * enumeration budget for ids the process already knows.
+ */
 export function isCached(l: RepriceLineInput): boolean {
-  return readCache(keyOf(l)) !== undefined;
+  return readStale(keyOf(l)) !== undefined;
 }
+
 
 
 export type RepriceLineInput = { productId: number; variationId?: number };
@@ -81,38 +86,93 @@ const CONCURRENCY = 8;
  */
 const GLOBAL_CONCURRENCY = 16;
 
+/**
+ * Depth of the admission queue behind the global gate. At 100k visitors an
+ * unbounded queue is a memory leak *and* a latency trap: callers pile up for
+ * minutes behind a slow store and every one of them is holding a request
+ * alive. Past this depth we shed instead — the caller gets the "unknown"
+ * shape and keeps its own snapshot, which is exactly the upstream-blip path.
+ */
+const MAX_QUEUE = 256;
+/** A queued caller never waits longer than this before shedding. */
+const QUEUE_WAIT_MS = 1500;
+
 let active = 0;
 const waiters: (() => void)[] = [];
+
+class Shed extends Error {}
 
 async function acquire(): Promise<void> {
   if (active < GLOBAL_CONCURRENCY) {
     active++;
     return;
   }
-  await new Promise<void>((resolve) => waiters.push(resolve));
-  active++;
+  if (waiters.length >= MAX_QUEUE) throw new Shed();
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const i = waiters.indexOf(grant);
+      if (i >= 0) waiters.splice(i, 1);
+      reject(new Shed());
+    }, QUEUE_WAIT_MS);
+    // The permit is handed over directly (see `release`), so the woken caller
+    // must NOT increment `active` itself — doing so after an `await` opened a
+    // window where a fresh caller saw `active < GLOBAL_CONCURRENCY` and the
+    // gate briefly admitted more than 16 upstream sockets.
+    function grant() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    }
+    waiters.push(grant);
+  });
 }
 
 function release() {
-  active--;
-  waiters.shift()?.();
+  const next = waiters.shift();
+  // Transfer the permit rather than free-then-reacquire; `active` stays put.
+  if (next) next();
+  else active--;
 }
+
 
 const cache = new Map<string, Cached>();
 const inFlight = new Map<string, Promise<Cached["value"]>>();
 
 const keyOf = (l: RepriceLineInput) => `${l.productId}:${l.variationId ?? 0}`;
 
+/**
+ * Stale-while-revalidate window. With a hard 60s TTL every hot product id
+ * expires for *all* concurrent visitors at the same instant, so the second
+ * after expiry is a synchronised stampede straight through the global gate.
+ * Inside the grace window the stale value is served immediately and a single
+ * refresh runs behind it.
+ */
+const STALE_GRACE_MS = 120_000;
+
 function readCache(key: string): Cached["value"] | undefined {
   const hit = cache.get(key);
   if (!hit) return undefined;
-  if (Date.now() - hit.at > TTL_MS) {
-    cache.delete(key);
-    return undefined;
-  }
+  if (Date.now() - hit.at > TTL_MS) return undefined;
   // refresh LRU position
   cache.delete(key);
   cache.set(key, hit);
+  return hit.value;
+}
+
+/** Expired but still inside the grace window — usable while we refresh. */
+function readStale(key: string): Cached["value"] | undefined {
+  const hit = cache.get(key);
+  if (!hit) return undefined;
+  const age = Date.now() - hit.at;
+  if (age <= TTL_MS) return hit.value;
+  if (age > TTL_MS + STALE_GRACE_MS) {
+    cache.delete(key);
+    return undefined;
+  }
   return hit.value;
 }
 
@@ -125,8 +185,24 @@ function writeCache(key: string, value: Cached["value"]) {
   }
 }
 
+/** Result used when we deliberately do not call upstream (shed / over budget). */
+const UNKNOWN: Cached["value"] = {
+  price: null,
+  regularPrice: null,
+  inStock: true,
+  stockQty: null,
+  gone: false,
+};
+
 async function fetchOne(l: RepriceLineInput): Promise<Cached["value"]> {
-  await acquire();
+  try {
+    await acquire();
+  } catch {
+    // Load shed: never queue past the admission limit. The caller keeps its
+    // own snapshot, exactly like an upstream blip.
+    return UNKNOWN;
+  }
+
   try {
     return await fetchOneInner(l);
   } finally {
@@ -196,20 +272,64 @@ async function fetchOneInner(l: RepriceLineInput): Promise<Cached["value"]> {
 }
 
 
-function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
-  const cached = readCache(key);
-  if (cached) return Promise.resolve(cached);
+/**
+ * Short negative cache for upstream blips. Blips were deliberately never
+ * cached so they'd be retried — but during a real store outage that turns
+ * every single request into a fresh upstream attempt, which is precisely the
+ * moment the store can least afford it. A few seconds of damping keeps the
+ * retry behaviour while cutting outage fan-out by orders of magnitude.
+ */
+const BLIP_TTL_MS = 5_000;
+const BLIP_MAX = 2000;
+const blips = new Map<string, number>();
+
+function blipped(key: string): boolean {
+  const until = blips.get(key);
+  if (until === undefined) return false;
+  if (Date.now() > until) {
+    blips.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function markBlip(key: string) {
+  blips.set(key, Date.now() + BLIP_TTL_MS);
+  while (blips.size > BLIP_MAX) {
+    const oldest = blips.keys().next().value;
+    if (oldest === undefined) break;
+    blips.delete(oldest);
+  }
+}
+
+function refresh(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
   const running = inFlight.get(key);
   if (running) return running;
   const p = fetchOne(l)
     .then((value) => {
-      // Never cache a blip — it must be retried on the next visit.
       if (value.price !== null || value.gone) writeCache(key, value);
+      else markBlip(key);
       return value;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, p);
   return p;
+}
+
+function load(key: string, l: RepriceLineInput): Promise<Cached["value"]> {
+  const fresh = readCache(key);
+  if (fresh) return Promise.resolve(fresh);
+
+  const stale = readStale(key);
+  if (stale) {
+    // Serve stale instantly, refresh once behind it. Without this, every hot
+    // id expires for all concurrent visitors on the same tick.
+    void refresh(key, l).catch(() => {});
+    return Promise.resolve(stale);
+  }
+
+  if (blipped(key)) return Promise.resolve(UNKNOWN);
+  return refresh(key, l);
 }
 
 export async function repriceLines(
@@ -230,10 +350,16 @@ export async function repriceLines(
     // Cached ids are free; only unseen ids consume the budget. Over-budget
     // ids are simply not looked up — they fall through to the "unknown"
     // shape below, which tells the client to keep its own snapshot.
-    const cachedEntries = entries.filter(([, l]) => isCached(l));
-    const freshEntries = entries.filter(([, l]) => !isCached(l));
+    // One partition pass, one cache probe per id (the previous two `filter`
+    // passes probed — and LRU-touched — every id twice).
+    const cachedEntries: typeof entries = [];
+    const freshEntries: typeof entries = [];
+    for (const e of entries) (isCached(e[1]) ? cachedEntries : freshEntries).push(e);
     const allowed = enumAllowance(client, freshEntries.length);
-    entries = [...cachedEntries, ...freshEntries.slice(0, allowed)];
+    entries =
+      allowed >= freshEntries.length
+        ? entries
+        : [...cachedEntries, ...freshEntries.slice(0, allowed)];
   }
 
   const results = new Map<string, Cached["value"]>();
@@ -247,16 +373,9 @@ export async function repriceLines(
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, entries.length) }, worker));
 
-
   return lines.map((l) => {
-    const v = results.get(keyOf(l)) ?? {
-      stockQty: null,
-      price: null,
-
-      regularPrice: null,
-      inStock: true,
-      gone: false,
-    };
+    const v = results.get(keyOf(l)) ?? UNKNOWN;
     return { productId: l.productId, variationId: l.variationId ?? null, ...v };
   });
 }
+
