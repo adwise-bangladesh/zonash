@@ -631,7 +631,7 @@ function StepLandingPage() {
             </span>
             {selectedVar && (
               <span className="ml-auto text-[11px] font-semibold text-primary">
-                {selectedVar.attributes.map((a) => a.option).join(" / ")}
+                {selectedVarLabel}
               </span>
             )}
           </div>
