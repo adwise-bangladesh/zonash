@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Lock, ShoppingBag, Tag, Check, X, ArrowRight, Loader2, Minus, Plus, Trash2 } from "lucide-react";
-import { useCart } from "@/lib/cart";
+import { itemKey, useCart } from "@/lib/cart";
 
 const MAX_QTY = 99;
 import { formatBDT } from "@/lib/format";
@@ -240,7 +240,11 @@ function CheckoutPage() {
 
       const res = await submitFn({
         data: {
-          items: items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
+          items: items.map((i) => ({
+            product_id: i.productId,
+            variation_id: i.variationId,
+            quantity: i.quantity,
+          })),
           billing: {
             first_name: first,
             last_name: last || "",
@@ -490,7 +494,7 @@ function CheckoutPage() {
                 const lineOld = hasOld ? i.regularPrice! * i.quantity : 0;
                 const pct = hasOld ? Math.round(((lineOld - lineTotal) / lineOld) * 100) : 0;
                 return (
-                  <li key={i.productId} className="flex gap-2.5 py-3">
+                  <li key={itemKey(i)} className="flex gap-2.5 py-3">
                     <Link
                       to="/products/$slug"
                       params={{ slug: i.slug }}
@@ -523,7 +527,7 @@ function CheckoutPage() {
                         <button
                           type="button"
                           aria-label={`Remove ${i.name}`}
-                          onClick={() => remove(i.productId)}
+                          onClick={() => remove(itemKey(i))}
                           className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -552,7 +556,7 @@ function CheckoutPage() {
                           <button
                             type="button"
                             aria-label="Decrease quantity"
-                            onClick={() => setQty(i.productId, i.quantity - 1)}
+                            onClick={() => setQty(itemKey(i), i.quantity - 1)}
                             className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
                           >
                             <Minus className="h-3 w-3" />
@@ -567,7 +571,7 @@ function CheckoutPage() {
                           <button
                             type="button"
                             aria-label="Increase quantity"
-                            onClick={() => setQty(i.productId, Math.min(MAX_QTY, i.quantity + 1))}
+                            onClick={() => setQty(itemKey(i), Math.min(MAX_QTY, i.quantity + 1))}
                             disabled={i.quantity >= MAX_QTY}
                             className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
                           >

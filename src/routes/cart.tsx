@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { MAX_QTY, useCart, type CartItem } from "@/lib/cart";
+import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
+import { repriceCartLines } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
@@ -91,8 +94,8 @@ const CartRow = memo(function CartRow({
   onRemove,
 }: {
   item: CartItem;
-  onSetQty: (id: number, qty: number) => void;
-  onRemove: (id: number) => void;
+  onSetQty: (key: string, qty: number) => void;
+  onRemove: (key: string) => void;
 }) {
   const lineTotal = item.price * item.quantity;
   const hasOld = !!item.regularPrice && item.regularPrice > item.price;
@@ -140,7 +143,7 @@ const CartRow = memo(function CartRow({
           <button
             type="button"
             aria-label={`Remove ${item.name}`}
-            onClick={() => onRemove(item.productId)}
+            onClick={() => onRemove(itemKey(item))}
             className="-mr-1 -mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[3px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -173,7 +176,7 @@ const CartRow = memo(function CartRow({
                   ? `Remove ${item.name}`
                   : `Decrease quantity of ${item.name}`
               }
-              onClick={() => onSetQty(item.productId, item.quantity - 1)}
+              onClick={() => onSetQty(itemKey(item), item.quantity - 1)}
               className="grid h-7 w-7 place-items-center text-muted-foreground active:scale-95"
             >
               <Minus className="h-3 w-3" aria-hidden="true" />
@@ -187,7 +190,7 @@ const CartRow = memo(function CartRow({
             <button
               type="button"
               aria-label={`Increase quantity of ${item.name}`}
-              onClick={() => onSetQty(item.productId, item.quantity + 1)}
+              onClick={() => onSetQty(itemKey(item), item.quantity + 1)}
               disabled={atMax}
               aria-disabled={atMax}
               className="grid h-7 w-7 place-items-center text-primary active:scale-95 disabled:opacity-40"
@@ -202,7 +205,7 @@ const CartRow = memo(function CartRow({
 });
 
 function CartPage() {
-  const { items, subtotal, setQty, remove, hydrated } = useCart();
+  const { items, subtotal, setQty, remove, repriceLine, hydrated } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -211,10 +214,54 @@ function CartPage() {
   // `setQty` already clamps to [0, MAX_QTY] and drops the line at 0, so the
   // page keeps no clamping rules of its own.
   const onSetQty = useCallback(
-    (id: number, qty: number) => setQty(id, qty),
+    (key: string, qty: number) => setQty(key, qty),
     [setQty],
   );
-  const onRemove = useCallback((id: number) => remove(id), [remove]);
+  const onRemove = useCallback((key: string) => remove(key), [remove]);
+
+  // Bag prices are snapshots. Re-check them against WooCommerce once the bag
+  // is hydrated so the customer never sees a price that checkout will change.
+  const repriceFn = useServerFn(repriceCartLines);
+  const lineIds = useMemo(
+    () => items.map((i) => `${i.productId}:${i.variationId ?? 0}`).join(","),
+    [items],
+  );
+  const { data: repriced } = useQuery({
+    queryKey: ["cart-reprice", lineIds],
+    queryFn: () =>
+      repriceFn({
+        data: {
+          lines: items.slice(0, 50).map((i) => ({
+            productId: i.productId,
+            variationId: i.variationId,
+          })),
+        },
+      }),
+    enabled: hydrated && items.length > 0,
+    staleTime: 60_000,
+    retry: 0,
+  });
+
+  const [priceChanged, setPriceChanged] = useState(false);
+  useEffect(() => {
+    if (!repriced?.lines) return;
+    let changed = false;
+    for (const l of repriced.lines) {
+      if (l.price == null) continue;
+      const key = lineKey(l.productId, l.variationId ?? undefined);
+      const cur = items.find((i) => itemKey(i) === key);
+      if (!cur) continue;
+      if (cur.price !== l.price || (cur.regularPrice ?? 0) !== (l.regularPrice ?? 0)) {
+        changed = true;
+        repriceLine(key, l.price, l.regularPrice ?? undefined);
+      }
+    }
+    if (changed) setPriceChanged(true);
+    // `items` is intentionally excluded — repriceLine is a no-op when the line
+    // already matches, and including it would loop on every write.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repriced, repriceLine]);
+
 
   const savings = useMemo(
     () =>
@@ -253,9 +300,18 @@ function CartPage() {
       <CheckoutHeader title="My Cart" count={items.length} />
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
+        {priceChanged && (
+          <p
+            role="status"
+            className="mb-2.5 rounded-[3px] border border-border bg-background px-3 py-2 text-[11.5px] text-muted-foreground"
+          >
+            Some prices were updated to the latest store price.
+          </p>
+        )}
         <ul className="space-y-2.5">
+
           {items.map((item) => (
-            <CartRow key={item.productId} item={item} onSetQty={onSetQty} onRemove={onRemove} />
+            <CartRow key={itemKey(item)} item={item} onSetQty={onSetQty} onRemove={onRemove} />
           ))}
         </ul>
 

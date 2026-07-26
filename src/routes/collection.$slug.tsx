@@ -15,7 +15,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 
 import { formatBDT } from "@/lib/format";
-import { useCart } from "@/lib/cart";
+import { itemKey, lineKey, useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
 import type { WooProduct } from "@/lib/woo.server";
 import { QuickCard, VARIATIONS_STALE_MS } from "@/components/collection/QuickCard";
@@ -157,12 +157,16 @@ function ProductFeed({ categoryId }: { categoryId: number }) {
     return `${n}:${products[0].id}:${products[n - 1].id}`;
   }, [products]);
 
-  // O(1) cart lookup — index by productId (which for variable products
-  // is the resolved variation id). Fallback walk over p.variations
-  // handles the case where the card hasn't resolved its default yet.
-  const byId = useMemo(() => {
-    const m = new Map<number, CartItem>();
-    for (const it of items) m.set(it.productId, it);
+  // O(1) cart lookup — index by (product, variation) pair, plus a
+  // product-only bucket so a card can find its line before its default
+  // variation has resolved.
+  const byKey = useMemo(() => {
+    const m = new Map<string, CartItem>();
+    for (const it of items) {
+      m.set(itemKey(it), it);
+      const bucket = `p:${it.productId}`;
+      if (!m.has(bucket)) m.set(bucket, it);
+    }
     return m;
   }, [items]);
 
@@ -262,19 +266,9 @@ function ProductFeed({ categoryId }: { categoryId: number }) {
         style={{ contentVisibility: "auto", containIntrinsicSize: "800px" } as React.CSSProperties}
       >
         {products.map((p) => {
-          // Variable products may have their line keyed by any variation id.
-          // Walk the (usually short) variations list only when the direct
-          // product-id lookup misses.
-          let line = byId.get(p.id);
-          if (!line && p.variations?.length) {
-            for (const vid of p.variations) {
-              const hit = byId.get(vid);
-              if (hit) {
-                line = hit;
-                break;
-              }
-            }
-          }
+          // Simple products key exactly; variable products fall back to the
+          // product bucket until the card resolves its default variation.
+          const line = byKey.get(lineKey(p.id)) ?? byKey.get(`p:${p.id}`);
           return <QuickCard key={p.id} p={p} cartLine={line} />;
         })}
       </div>

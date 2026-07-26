@@ -297,6 +297,75 @@ export const getProductVariations = createServerFn({ method: "GET" })
     }
   });
 
+/**
+ * Server-authoritative re-pricing for bag lines.
+ *
+ * Cart prices are snapshotted at add-time and can drift while the bag sits in
+ * localStorage. Checkout already recomputes totals server-side, so this exists
+ * purely so the customer never *sees* a stale price. Read-only, no PII, and
+ * capped so it cannot be used to fan out WooCommerce requests.
+ */
+export const repriceCartLines = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        lines: z
+          .array(
+            z.object({
+              productId: z.number().int().positive(),
+              variationId: z.number().int().positive().optional(),
+            }),
+          )
+          .min(1)
+          .max(50),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { wooFetch } = await import("./woo.server");
+    const prices = await Promise.all(
+      data.lines.map(async (l) => {
+        try {
+          const path = l.variationId
+            ? `/products/${l.productId}/variations/${l.variationId}`
+            : `/products/${l.productId}`;
+          const p = await wooFetch<{
+            price: string;
+            regular_price: string;
+            sale_price: string;
+            stock_status: string;
+          }>({
+            path,
+            query: { _fields: "price,regular_price,sale_price,stock_status" },
+            timeoutMs: 6000,
+          });
+          const sale = Number(p.sale_price) || 0;
+          const base = Number(p.price) || 0;
+          const price = sale > 0 ? sale : base;
+          const regular = Number(p.regular_price) || 0;
+          return {
+            productId: l.productId,
+            variationId: l.variationId ?? null,
+            price: price > 0 ? price : null,
+            regularPrice: regular > price ? regular : null,
+            inStock: p.stock_status !== "outofstock",
+          };
+        } catch {
+          // Woo blip — return nothing for this line so the client keeps its
+          // snapshot instead of zeroing a real price.
+          return {
+            productId: l.productId,
+            variationId: l.variationId ?? null,
+            price: null,
+            regularPrice: null,
+            inStock: true,
+          };
+        }
+      }),
+    );
+    return { lines: prices };
+  });
+
 export type WooCategory = {
   id: number;
   name: string;

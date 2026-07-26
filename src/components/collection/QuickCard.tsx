@@ -15,7 +15,7 @@ import { parsePriceHtmlMin } from "@/lib/price-range";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { pickDefaultVariation } from "@/lib/pick-default-variation";
 import type { CartItem } from "@/lib/cart";
-import { useCartActions } from "@/lib/cart";
+import { lineKey, useCartActions } from "@/lib/cart";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 
 // Lazy — Lightbox is only loaded when the user taps the eye button.
@@ -108,7 +108,7 @@ function QuickCardImpl({
     [cardImage],
   );
 
-  const trackedId = isVariable ? (defaultVariation?.id ?? -1) : p.id;
+  const trackedKey = lineKey(p.id, isVariable ? defaultVariation?.id : undefined);
   const inCart = !!cartLine;
 
   // Availability ----------------------------------------------------
@@ -172,7 +172,8 @@ function QuickCardImpl({
         const price = salePrice > 0 ? salePrice : parseFloat(v.price || "0");
         const regular = parseFloat(v.regular_price || "0");
         add({
-          productId: v.id,
+          productId: p.id,
+          variationId: v.id,
           name: p.name,
           slug: p.slug,
           sku: v.sku || p.sku,
@@ -285,8 +286,8 @@ function QuickCardImpl({
               }
               onClick={(e) => {
                 e.stopPropagation();
-                if (cartLine.quantity <= 1) remove(trackedId);
-                else setQty(trackedId, cartLine.quantity - 1);
+                if (cartLine.quantity <= 1) remove(trackedKey);
+                else setQty(trackedKey, cartLine.quantity - 1);
               }}
               className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25 active:scale-90"
             >
@@ -308,7 +309,7 @@ function QuickCardImpl({
               aria-label="Increase quantity"
               onClick={(e) => {
                 e.stopPropagation();
-                setQty(trackedId, cartLine.quantity + 1);
+                setQty(trackedKey, cartLine.quantity + 1);
               }}
               className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white/25 active:scale-90"
             >
