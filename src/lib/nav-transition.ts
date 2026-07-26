@@ -76,17 +76,19 @@ export function installBackGestureListener(): () => void {
  * stays mounted (back-navigation into a cached grid) would otherwise collide
  * with the next tap's element and silently kill the transition.
  */
-export function markSharedHero(el: HTMLElement | null | undefined): void {
-  if (!canAnimate()) return;
+export function markSharedHero(el: HTMLElement | null | undefined): boolean {
+  if (!canAnimate()) return false;
   releaseSharedHero();
-  if (!el) return;
+  if (!el) return false;
   el.style.viewTransitionName = HERO_NAME;
   markedHero = el;
   // The element usually unmounts with the outgoing page, but not always: the
   // shop grid stays mounted behind a modal-ish route in some flows. Releasing
   // on a timer guarantees we never leave a duplicate name behind.
   setTimeout(releaseSharedHero, CLEANUP_MS);
+  return true;
 }
+
 
 export function releaseSharedHero(): void {
   if (markedHero) {
