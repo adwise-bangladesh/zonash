@@ -793,80 +793,19 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
 
 
     // ===== OTP is correct. Run rating + duplicate detection. =====
-    const { wooFetch } = await import("./woo.server");
-    const clientFp =
-      (row.tracking as { client?: { fingerprint?: string } } | null)?.client?.fingerprint ?? "";
-
-    // Hoorin rating (fail-open).
-    let hoorinReport: unknown = null;
-    let ratingBlock = false;
-    let ratingReason = "";
-    try {
-      const { hoorinSearch, hoorinConfigured } = await import("./hoorin.server");
-      if (hoorinConfigured()) {
-        const rep = await hoorinSearch(row.phone, { cache: "on", timeoutMs: 10_000 });
-        hoorinReport = rep;
-        const total = rep.overall?.total_parcels ?? 0;
-        const ratio = rep.overall?.success_ratio ?? 0; // 0-100
-        let allow = true;
-        if (total < 3) allow = true;
-        else if (total <= 5) allow = ratio >= 50;
-        else if (total <= 10) allow = ratio >= 60;
-        else allow = ratio >= 70;
-        if (!allow) {
-          ratingBlock = true;
-          ratingReason = `Courier rating ${ratio.toFixed(0)}% over ${total} parcels below threshold`;
-        }
-      } else {
-        ratingReason = "Rating unavailable (Hoorin not configured)";
-      }
-    } catch (e) {
-      console.error("Hoorin lookup failed — failing open", e);
-      ratingReason = "Rating provider unreachable — allowed";
-    }
-
-    // Duplicate detection across active statuses.
-    const duplicates: Duplicate[] = [];
-    try {
-      const statuses = ["pending", "on-hold", "processing", "confirmed"].join(",");
-      const orders = await wooFetch<WooLite[]>({
-        path: "/orders",
-        query: {
-          search: row.phone,
-          per_page: 30,
-          status: statuses,
-          orderby: "date",
-          order: "desc",
-        },
-        timeoutMs: 12_000,
-      });
-      const tail = row.phone.slice(-10);
-      for (const o of orders) {
-        if (o.id === data.order_id) continue;
-        const otherPhone = (o.billing?.phone ?? "").replace(/\D/g, "");
-        const meta = Object.fromEntries((o.meta_data ?? []).map((m) => [m.key, m.value]));
-        const otherFp = String(meta["_zonash_fingerprint"] ?? "");
-        const otherIp = String(meta["_zonash_ip"] ?? "");
-        const match: string[] = [];
-        if (otherPhone.endsWith(tail)) match.push("phone");
-        if (clientFp && otherFp && otherFp === clientFp) match.push("device");
-        if (row.ip_address && otherIp && otherIp === row.ip_address) match.push("ip");
-        // Phone or device alone = strong signal; IP alone is discarded (NAT).
-        const strong = match.includes("phone") || match.includes("device");
-        if (strong) {
-          duplicates.push({
-            id: o.id,
-            number: o.number,
-            status: o.status,
-            date_created: o.date_created,
-            total: o.total,
-            match,
-          });
-        }
-      }
-    } catch (e) {
-      console.error("duplicate check failed — continuing", e);
-    }
+    const clientTracking =
+      (row.tracking as { client?: Record<string, unknown> } | null)?.client ?? {};
+    const clientFp = String((clientTracking as { fingerprint?: string }).fingerprint ?? "");
+    const clientGps = (clientTracking as { gps?: { lat?: number; lng?: number } }).gps;
+    const verdict = await runVerificationDecision({
+      order_id: data.order_id,
+      phone: row.phone,
+      fingerprint: clientFp,
+      gps: clientGps && typeof clientGps.lat === "number" && typeof clientGps.lng === "number"
+        ? { lat: clientGps.lat, lng: clientGps.lng }
+        : null,
+    });
+    const { decision, decisionReason, duplicates, hoorinReport } = verdict;
 
     let decision: "confirmed" | "review" = "confirmed";
     let decisionReason = "";
