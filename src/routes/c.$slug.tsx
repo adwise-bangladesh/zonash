@@ -213,13 +213,20 @@ function SubCard({
 }
 
 
-function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
+function CategoryProductFeed({
+  categoryId,
+  sort,
+}: {
+  categoryId: number | null;
+  sort: SortKey;
+}) {
   const sentinel = useRef<HTMLDivElement>(null);
   const enabled = !!categoryId;
+  const { orderby, order } = sortToWoo(sort);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
     useInfiniteQuery({
-      queryKey: ["collection", "feed", categoryId],
+      queryKey: ["collection", "feed", categoryId, sort],
       enabled,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
@@ -228,7 +235,8 @@ function CategoryProductFeed({ categoryId }: { categoryId: number | null }) {
             page: pageParam as number,
             perPage: 16,
             category: String(categoryId),
-            orderby: "date",
+            orderby,
+            order,
           },
         }),
       getNextPageParam: (last, all) =>
