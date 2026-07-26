@@ -220,10 +220,8 @@ const CartRow = memo(function CartRow({
             >
               <Minus className="h-3 w-3" aria-hidden="true" />
             </button>
-            <span
-              aria-label={`Quantity ${item.quantity}`}
-              className="w-7 text-center text-xs font-semibold tabular-nums"
-            >
+            <span className="w-7 text-center text-xs font-semibold tabular-nums">
+              <span className="sr-only">Quantity: </span>
               {item.quantity}
             </span>
             <button
