@@ -283,7 +283,10 @@ function StepLandingPage() {
   }, [isVariable, selectedVar, product]);
   const { price: effectivePrice, regular: effectiveRegular, showStrike, inStock } = active;
 
-  // Gallery
+  // Gallery — depend only on the fields that actually shape the list.
+  // Using the whole `product` object invalidates on every react-query
+  // background refetch, rebuilding the list (and its object identities)
+  // even when images and name are byte-identical.
   const gallery = useMemo(() => {
     const list: { src: string; alt: string }[] = [];
     if (selectedVar?.image?.src) list.push({ src: selectedVar.image.src, alt: product.name });
@@ -291,7 +294,7 @@ function StepLandingPage() {
       if (!list.some((x) => x.src === img.src)) list.push({ src: img.src, alt: img.alt || product.name });
     }
     return list;
-  }, [product, selectedVar]);
+  }, [product.images, product.name, selectedVar]);
 
   // Memoized review count for header (avoid recomputing per render).
   const reviewsCountDisplay = useMemo(
