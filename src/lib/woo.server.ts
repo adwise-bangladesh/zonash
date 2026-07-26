@@ -50,10 +50,24 @@ const volatileCache = new Map<string, CacheEntry>();
 const errorCache = new Map<string, { at: number; error: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
 
-/** Search/sku lookups are user-controlled and unbounded — keep them apart. */
+/**
+ * Search/sku lookups are user-controlled and unbounded — keep them apart.
+ *
+ * `page` is user-controlled too and was NOT partitioned: the schema accepts
+ * `page` up to 500, so a crawler walking `/products?page=1..500` (no search
+ * term needed) minted 500 distinct entries in the SHARED map and evicted the
+ * hot keys — feed page 1, the taxonomy snapshot — that every real visitor
+ * reads. That is the exact eviction attack the search partition exists to
+ * stop, reachable through a different parameter. Real browsing never runs
+ * deeper than a handful of pages, so anything past page 5 is treated as
+ * volatile: still cached, but only able to evict other deep pages.
+ */
 function isVolatileKey(key: string): boolean {
-  return key.includes("search=") || key.includes("sku=");
+  if (key.includes("search=") || key.includes("sku=")) return true;
+  const page = /[?&]page=(\d+)/.exec(key);
+  return page ? Number(page[1]) > 5 : false;
 }
+
 function cacheFor(key: string): { map: Map<string, CacheEntry>; max: number } {
   return isVolatileKey(key)
     ? { map: volatileCache, max: MAX_VOLATILE_ENTRIES }
