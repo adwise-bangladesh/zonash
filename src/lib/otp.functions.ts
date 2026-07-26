@@ -342,9 +342,165 @@ async function smsSendsLast24h(phone: string): Promise<number> {
 }
 
 
+// ---------- verification decision (shared by OTP + skip-OTP paths) ----------
+
+type WooLite = {
+  id: number;
+  number: string;
+  status: string;
+  date_created: string;
+  total: string;
+  billing?: { phone?: string; email?: string; address_1?: string };
+  meta_data?: { key: string; value: unknown }[];
+};
+
+export type Duplicate = {
+  id: number;
+  number: string;
+  status: string;
+  date_created: string;
+  total: string;
+  match: string[];
+};
+
+/** Haversine distance in metres between two lat/lng points. */
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+const DUP_GPS_METERS = 50;
+const DUP_WINDOW_MS = 48 * 60 * 60 * 1000;
+const DUP_STATUSES = ["pending", "on-hold", "processing", "confirmed"];
+
+/**
+ * Central verdict: (a) Hoorin rating check with the current thresholds, and
+ * (b) duplicate detection requiring ALL THREE of phone + fingerprint + GPS
+ * (within ~50m) to match another order in pending/on-hold/processing/confirmed
+ * over the last 48 hours. Hoorin unavailable / API error is treated as risky.
+ */
+async function runVerificationDecision(input: {
+  order_id: number;
+  phone: string;
+  fingerprint: string;
+  gps: { lat: number; lng: number } | null;
+}): Promise<{
+  decision: "confirmed" | "review";
+  decisionReason: string;
+  duplicates: Duplicate[];
+  hoorinReport: unknown;
+}> {
+  // ---------- Hoorin: fail-CLOSED (risky) on error ----------
+  let hoorinReport: unknown = null;
+  let ratingTrusted = false;
+  let ratingReason = "";
+  try {
+    const { hoorinSearch, hoorinConfigured } = await import("./hoorin.server");
+    if (!hoorinConfigured()) {
+      ratingReason = "Rating provider not configured — flagged for review";
+    } else {
+      const rep = await hoorinSearch(input.phone, { cache: "on", timeoutMs: 10_000 });
+      hoorinReport = rep;
+      const total = rep.overall?.total_parcels ?? 0;
+      const ratio = rep.overall?.success_ratio ?? 0; // 0-100
+      // Trust rules:
+      //   • no history at all           → trust (new customer)
+      //   • total < 3  AND ratio ≥ 50%  → trust
+      //   • total ≥ 3  AND ratio ≥ 60%  → trust
+      //   • anything else                → risky
+      if (total === 0) ratingTrusted = true;
+      else if (total < 3 && ratio >= 50) ratingTrusted = true;
+      else if (total >= 3 && ratio >= 60) ratingTrusted = true;
+      if (!ratingTrusted) {
+        ratingReason = `Courier rating ${ratio.toFixed(0)}% over ${total} parcels below threshold`;
+      }
+    }
+  } catch (e) {
+    console.error("Hoorin lookup failed — treating as risky", e);
+    ratingReason = "Rating provider unreachable — flagged for review";
+  }
+
+  // ---------- Duplicate detection (ALL THREE must match, 48h window) ----------
+  const duplicates: Duplicate[] = [];
+  try {
+    const { wooFetch } = await import("./woo.server");
+    const after = new Date(Date.now() - DUP_WINDOW_MS).toISOString();
+    const orders = await wooFetch<WooLite[]>({
+      path: "/orders",
+      query: {
+        search: input.phone,
+        per_page: 30,
+        status: DUP_STATUSES.join(","),
+        after,
+        orderby: "date",
+        order: "desc",
+      },
+      timeoutMs: 12_000,
+    });
+    const tail = input.phone.slice(-10);
+    for (const o of orders) {
+      if (o.id === input.order_id) continue;
+      const otherPhone = (o.billing?.phone ?? "").replace(/\D/g, "");
+      const meta = Object.fromEntries((o.meta_data ?? []).map((m) => [m.key, m.value]));
+      const otherFp = String(meta["_zonash_fingerprint"] ?? "");
+      let otherGps: { lat: number; lng: number } | null = null;
+      try {
+        const rawTracking = meta["_zonash_tracking"];
+        if (typeof rawTracking === "string" && rawTracking) {
+          const parsed = JSON.parse(rawTracking) as {
+            client?: { gps?: { lat?: number; lng?: number } };
+          };
+          const g = parsed?.client?.gps;
+          if (g && typeof g.lat === "number" && typeof g.lng === "number") {
+            otherGps = { lat: g.lat, lng: g.lng };
+          }
+        }
+      } catch { /* ignore */ }
+
+      const phoneMatch = otherPhone.endsWith(tail);
+      const fpMatch = !!(input.fingerprint && otherFp && otherFp === input.fingerprint);
+      const gpsMatch =
+        !!(input.gps && otherGps && haversineMeters(input.gps, otherGps) <= DUP_GPS_METERS);
+
+      if (phoneMatch && fpMatch && gpsMatch) {
+        duplicates.push({
+          id: o.id,
+          number: o.number,
+          status: o.status,
+          date_created: o.date_created,
+          total: o.total,
+          match: ["phone", "device", "location"],
+        });
+      }
+    }
+  } catch (e) {
+    console.error("duplicate check failed — continuing", e);
+  }
+
+  let decision: "confirmed" | "review" = "confirmed";
+  let decisionReason = "";
+  if (!ratingTrusted) {
+    decision = "review";
+    decisionReason = ratingReason;
+  } else if (duplicates.length > 0) {
+    decision = "review";
+    decisionReason = `Identical device + location + number matched ${duplicates.length} recent order(s): ${duplicates
+      .map((d: Duplicate) => `#${d.number}`)
+      .join(", ")}`;
+  }
+
+  return { decision, decisionReason, duplicates, hoorinReport };
+}
 
 
 // ---------- submitPendingOrder ----------
+
 
 export const submitPendingOrder = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => submitSchema.parse(raw))
