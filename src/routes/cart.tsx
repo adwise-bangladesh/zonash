@@ -300,7 +300,16 @@ function CartPage() {
       <CheckoutHeader title="My Cart" count={items.length} />
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-3 pt-3">
+        {priceChanged && (
+          <p
+            role="status"
+            className="mb-2.5 rounded-[3px] border border-border bg-background px-3 py-2 text-[11.5px] text-muted-foreground"
+          >
+            Some prices were updated to the latest store price.
+          </p>
+        )}
         <ul className="space-y-2.5">
+
           {items.map((item) => (
             <CartRow key={itemKey(item)} item={item} onSetQty={onSetQty} onRemove={onRemove} />
           ))}
