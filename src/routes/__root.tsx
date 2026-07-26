@@ -148,7 +148,11 @@ function RootComponent() {
             <Outlet />
           </StorefrontFrame>
           <MobileBottomNav />
-          <Toaster richColors position="top-right" />
+          {/* Position/duration/width now live in the Toaster itself so every
+              call site gets the same treatment; only `richColors` (success and
+              error tinting) is opted into here. */}
+          <Toaster richColors />
+
         </CartProvider>
       </CustomerSessionProvider>
     </QueryClientProvider>
