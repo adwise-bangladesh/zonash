@@ -59,41 +59,96 @@ export const Route = createFileRoute("/products/$slug")({
     return { id: params.slug };
   },
   head: ({ match }) => {
+    const url = canonicalUrl(`/products/${match.params.slug}`);
     const detail = match.context?.queryClient.getQueryData(
       productQuery(match.params.slug).queryKey,
     ) as { product: WooProduct | null } | undefined;
     const p = detail?.product;
-    if (!p) return { meta: [{ title: "Product — Zonash" }] };
+    if (!p) {
+      return {
+        meta: [{ title: "Product — Zonash" }],
+        links: [{ rel: "canonical", href: url }],
+      };
+    }
     const img = p.images?.[0]?.src;
     const responsive = buildResponsiveImage(img);
     const desc =
-      (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
-      `Buy ${p.name} at Zonash.`;
+      (p.short_description ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 155) ||
+      `Buy ${p.name} at Zonash. Cash on delivery across Bangladesh.`;
+    // Titles over ~60 chars get truncated in SERPs; trim the name, never the brand.
+    const title = `${p.name.length > 46 ? `${p.name.slice(0, 45).trimEnd()}…` : p.name} — Zonash`;
+    const price = (p.price || "").trim();
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: p.name,
+      description: desc,
+      ...(img ? { image: [img] } : {}),
+      ...(p.sku ? { sku: p.sku } : {}),
+      brand: { "@type": "Brand", name: "Zonash" },
+      ...(p.rating_count > 0 && parseFloat(p.average_rating) > 0
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: p.average_rating,
+              reviewCount: p.rating_count,
+            },
+          }
+        : {}),
+      ...(price
+        ? {
+            offers: {
+              "@type": "Offer",
+              url,
+              priceCurrency: "BDT",
+              price,
+              availability:
+                p.stock_status === "instock"
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+            },
+          }
+        : {}),
+    };
     return {
       meta: [
-        { title: `${p.name} — ${p.price} Tk` },
+        { title },
         { name: "description", content: desc },
         { property: "og:type", content: "product" },
-        { property: "og:title", content: p.name },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
-        ...(img ? [{ property: "og:image", content: img } as const] : []),
-        { name: "twitter:card", content: "summary_large_image" },
-        ...(img ? [{ name: "twitter:image", content: img } as const] : []),
+        { property: "og:url", content: url },
+        ...(img && /^https:\/\//.test(img)
+          ? ([
+              { property: "og:image", content: img },
+              { name: "twitter:image", content: img },
+            ] as const)
+          : []),
+        { name: "twitter:card", content: img ? "summary_large_image" : "summary" },
       ],
       // Preload the hero image responsively — the browser picks the smallest
       // srcset candidate that fits the viewport × DPR before React hydrates.
-      links: responsive
-        ? [
-            {
-              rel: "preload",
-              as: "image",
-              href: responsive.src,
-              imagesrcset: responsive.srcSet,
-              imagesizes: responsive.sizes,
-              fetchpriority: "high",
-            } as const,
-          ]
-        : [],
+      links: [
+        { rel: "canonical", href: url },
+        ...(responsive
+          ? [
+              {
+                rel: "preload",
+                as: "image",
+                href: responsive.src,
+                imagesrcset: responsive.srcSet,
+                imagesizes: responsive.sizes,
+                fetchpriority: "high",
+              } as const,
+            ]
+          : []),
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(jsonLd),
+        },
+      ],
     };
   },
   component: ProductPage,
