@@ -146,10 +146,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  /**
+   * Persisting the bag is a synchronous, main-thread `JSON.stringify` +
+   * storage write. Holding down "+" fires one per tap, which janks the row
+   * animation on low-end phones, so writes are coalesced to the next idle
+   * slot and skipped entirely when the serialised bag is unchanged (the
+   * common case right after hydration, which used to write the file back
+   * verbatim on every page load).
+   */
+  const lastWritten = useRef<string | null>(null);
+  const pendingWrite = useRef<string | null>(null);
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushWrite = useCallback(() => {
+    if (writeTimer.current !== null) {
+      clearTimeout(writeTimer.current);
+      writeTimer.current = null;
+    }
+    const payload = pendingWrite.current;
+    pendingWrite.current = null;
+    if (payload === null || payload === lastWritten.current) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, payload);
+      lastWritten.current = payload;
+    } catch { /* quota / private mode */ }
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* quota / private mode */ }
-  }, [items, hydrated]);
+    const payload = JSON.stringify(items);
+    if (payload === lastWritten.current) return;
+    pendingWrite.current = payload;
+    if (writeTimer.current !== null) clearTimeout(writeTimer.current);
+    writeTimer.current = setTimeout(flushWrite, 250);
+  }, [items, hydrated, flushWrite]);
+
+  // A coalesced write must never be lost to a navigation or tab close.
+  useEffect(() => {
+    const onHide = () => flushWrite();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+      flushWrite();
+    };
+  }, [flushWrite]);
+
 
 
   // Stable action refs — functional setState means these never need to
