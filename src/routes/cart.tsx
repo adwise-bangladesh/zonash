@@ -202,7 +202,7 @@ const CartRow = memo(function CartRow({
 });
 
 function CartPage() {
-  const { items, subtotal, setQty, remove, hydrated } = useCart();
+  const { items, subtotal, setQty, remove, repriceLine, hydrated } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -211,10 +211,54 @@ function CartPage() {
   // `setQty` already clamps to [0, MAX_QTY] and drops the line at 0, so the
   // page keeps no clamping rules of its own.
   const onSetQty = useCallback(
-    (id: number, qty: number) => setQty(id, qty),
+    (key: string, qty: number) => setQty(key, qty),
     [setQty],
   );
-  const onRemove = useCallback((id: number) => remove(id), [remove]);
+  const onRemove = useCallback((key: string) => remove(key), [remove]);
+
+  // Bag prices are snapshots. Re-check them against WooCommerce once the bag
+  // is hydrated so the customer never sees a price that checkout will change.
+  const repriceFn = useServerFn(repriceCartLines);
+  const lineIds = useMemo(
+    () => items.map((i) => `${i.productId}:${i.variationId ?? 0}`).join(","),
+    [items],
+  );
+  const { data: repriced } = useQuery({
+    queryKey: ["cart-reprice", lineIds],
+    queryFn: () =>
+      repriceFn({
+        data: {
+          lines: items.slice(0, 50).map((i) => ({
+            productId: i.productId,
+            variationId: i.variationId,
+          })),
+        },
+      }),
+    enabled: hydrated && items.length > 0,
+    staleTime: 60_000,
+    retry: 0,
+  });
+
+  const [priceChanged, setPriceChanged] = useState(false);
+  useEffect(() => {
+    if (!repriced?.lines) return;
+    let changed = false;
+    for (const l of repriced.lines) {
+      if (l.price == null) continue;
+      const key = lineKey(l.productId, l.variationId ?? undefined);
+      const cur = items.find((i) => itemKey(i) === key);
+      if (!cur) continue;
+      if (cur.price !== l.price || (cur.regularPrice ?? 0) !== (l.regularPrice ?? 0)) {
+        changed = true;
+        repriceLine(key, l.price, l.regularPrice ?? undefined);
+      }
+    }
+    if (changed) setPriceChanged(true);
+    // `items` is intentionally excluded — repriceLine is a no-op when the line
+    // already matches, and including it would loop on every write.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repriced, repriceLine]);
+
 
   const savings = useMemo(
     () =>
