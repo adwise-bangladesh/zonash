@@ -17,6 +17,7 @@ import { Route as OrderReviewRouteImport } from './routes/order-review'
 import { Route as OrderPendingRouteImport } from './routes/order-pending'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
 import { Route as OrderCallbackChoiceRouteImport } from './routes/order-callback-choice'
+import { Route as OrderBlockedRouteImport } from './routes/order-blocked'
 import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -81,6 +82,11 @@ const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
 const OrderCallbackChoiceRoute = OrderCallbackChoiceRouteImport.update({
   id: '/order-callback-choice',
   path: '/order-callback-choice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderBlockedRoute = OrderBlockedRouteImport.update({
+  id: '/order-blocked',
+  path: '/order-blocked',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LuxuryRoute = LuxuryRouteImport.update({
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-blocked': typeof OrderBlockedRoute
   '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-blocked': typeof OrderBlockedRoute
   '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
+  '/order-blocked': typeof OrderBlockedRoute
   '/order-callback-choice': typeof OrderCallbackChoiceRoute
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-blocked'
     | '/order-callback-choice'
     | '/order-confirmed'
     | '/order-pending'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-blocked'
     | '/order-callback-choice'
     | '/order-confirmed'
     | '/order-pending'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/checkout'
     | '/luxury'
+    | '/order-blocked'
     | '/order-callback-choice'
     | '/order-confirmed'
     | '/order-pending'
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   CheckoutRoute: typeof CheckoutRoute
   LuxuryRoute: typeof LuxuryRoute
+  OrderBlockedRoute: typeof OrderBlockedRoute
   OrderCallbackChoiceRoute: typeof OrderCallbackChoiceRoute
   OrderConfirmedRoute: typeof OrderConfirmedRoute
   OrderPendingRoute: typeof OrderPendingRoute
@@ -505,6 +518,13 @@ declare module '@tanstack/react-router' {
       path: '/order-callback-choice'
       fullPath: '/order-callback-choice'
       preLoaderRoute: typeof OrderCallbackChoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-blocked': {
+      id: '/order-blocked'
+      path: '/order-blocked'
+      fullPath: '/order-blocked'
+      preLoaderRoute: typeof OrderBlockedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/luxury': {
@@ -734,6 +754,7 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   CheckoutRoute: CheckoutRoute,
   LuxuryRoute: LuxuryRoute,
+  OrderBlockedRoute: OrderBlockedRoute,
   OrderCallbackChoiceRoute: OrderCallbackChoiceRoute,
   OrderConfirmedRoute: OrderConfirmedRoute,
   OrderPendingRoute: OrderPendingRoute,
@@ -754,13 +775,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
