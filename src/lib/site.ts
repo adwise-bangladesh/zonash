@@ -15,3 +15,17 @@ export function canonicalUrl(path = "/"): string {
 
 /** Public-facing returns policy label — single source of truth for all copy. */
 export const RETURNS_LABEL = "Instant Return";
+
+/**
+ * Support contact — single source of truth.
+ *
+ * The product page shipped a placeholder WhatsApp number (8809610000000) that
+ * routed customer "order via WhatsApp" taps to a non-existent account.
+ */
+export const SUPPORT_WA_NUMBER = "8801926644575";
+export const SUPPORT_TEL = `+${SUPPORT_WA_NUMBER}`;
+
+/** WhatsApp deep link with an optional prefilled message. */
+export function waLink(message?: string): string {
+  return `https://wa.me/${SUPPORT_WA_NUMBER}${message ? `?text=${encodeURIComponent(message)}` : ""}`;
+}
