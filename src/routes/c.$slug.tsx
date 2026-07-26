@@ -133,13 +133,16 @@ function CollectionPage() {
 function SubcategoryStrip({
   parentSlug,
   subs,
+  label = "Subcategories",
 }: {
   parentSlug: string;
   subs: { id: number; name: string; slug: string; image: { src: string; alt: string } | null }[];
+  label?: string;
 }) {
   const many = subs.length > 5;
   return (
-    <nav aria-label="Subcategories" className="pb-4">
+    <nav aria-label={label} className="pb-4">
+
       {many ? (
         <ul
           className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
