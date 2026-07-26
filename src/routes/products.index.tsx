@@ -423,8 +423,9 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     () => searchProductsQuery(q ?? "", category, featured, sort),
     [q, category, featured, sort],
   );
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching } =
     useSuspenseInfiniteQuery(options);
+
 
 
   // Flattening + de-duping is O(pages x perPage); without memoization it re-ran
