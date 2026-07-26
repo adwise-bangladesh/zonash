@@ -341,11 +341,21 @@ function StepLandingPage() {
   const [idem, setIdem] = useState(genId);
 
 
-  // Restore + persist
+  // Restore + persist. Uses a functional updater so a late autofill from
+  // `lastOrderQ` (which can land before this mount effect if the query was
+  // already cached) is not silently clobbered by an empty stored draft.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setForm({ ...EMPTY, ...JSON.parse(raw) });
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<FormShape>;
+      setForm((prev) => ({
+        name: prev.name || parsed.name || "",
+        phone: prev.phone || parsed.phone || "",
+        address: prev.address || parsed.address || "",
+        thana: prev.thana || parsed.thana || "",
+        email: prev.email || parsed.email || "",
+      }));
     } catch { /* ignore */ }
     router.preloadRoute({ to: "/verify-otp", search: { order: 1 } }).catch(() => {});
   }, [router]);
@@ -390,7 +400,9 @@ function StepLandingPage() {
 
   }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
 
-  const update = (patch: Partial<FormShape>) => {
+  // Stable identity — Field's onChange lands on stable inputs and doesn't
+  // invalidate memoized children on every keystroke.
+  const update = useCallback((patch: Partial<FormShape>) => {
     setForm((f) => ({ ...f, ...patch }));
     setErrors((prev) => {
       if (!Object.keys(prev).length) return prev;
@@ -398,7 +410,7 @@ function StepLandingPage() {
       for (const k of Object.keys(patch)) delete n[k];
       return n;
     });
-  };
+  }, []);
 
   // Shipping — 80 inside Dhaka City, 130 elsewhere
   const dhakaCitySet = useMemo(
