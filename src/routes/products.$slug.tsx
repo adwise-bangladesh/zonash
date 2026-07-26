@@ -444,11 +444,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
    * i.e. the wrong price and SKU reached checkout. Every comparison below goes
    * through this key; labels shown to the user stay untouched.
    */
-  const nk = (s: string) =>
-    (s ?? "")
-      .toLowerCase()
-      .replace(/[\s_-]+/g, "")
-      .trim();
+  // `nk` is module-level + memoized (see below): it was previously re-created
+  // on every render and re-lowercased/re-regexed the same few dozen strings
+  // O(variations × attrs) times per keystroke-level state change.
+
 
   // Selected option per attribute, keyed and valued by normalized form.
   const [selected, setSelected] = useState<Record<string, string>>(() => {
