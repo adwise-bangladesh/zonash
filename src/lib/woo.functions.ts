@@ -360,7 +360,20 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
     z.object({ slug: z.string().min(1).max(96).regex(/^[a-z0-9-]+$/) }).parse(raw),
   )
   .handler(async ({ data }) => {
-    type SubsResult = { parent: WooCategory | null; subs: WooCategory[]; error: string | null };
+    type SubsResult = {
+      parent: WooCategory | null;
+      subs: WooCategory[];
+      /** Same-level categories, used as a navigation strip when `subs` is empty. */
+      siblings: WooCategory[];
+      error: string | null;
+    };
+    const slim = (c: WooCategory) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      count: c.count,
+      image: c.image,
+    });
     try {
       const { wooFetch, cachedDerived, trimCategories, categoryIndex } = await import("./woo.server");
       return await cachedDerived<SubsResult>(`categories:subs:${data.slug}`, 300_000, async () => {
@@ -368,12 +381,19 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
         // taxonomy snapshot — zero upstream calls once it is warm.
         const all = await categoryIndex();
         const indexed = all.find((c) => c.slug === data.slug) ?? null;
+        // A leaf category has no children, which used to leave the page with no
+        // browse strip at all. Fall back to its siblings so shoppers can hop
+        // sideways instead of hitting a dead end.
+        const siblingsOf = (cat: WooCategory | null) =>
+          cat
+            ? all
+                .filter((c) => c.parent === cat.parent && c.id !== cat.id && c.slug !== "uncategorized")
+                .map(slim)
+            : [];
         if (indexed) {
-          const subs = all
-            .filter((c) => c.parent === indexed.id)
-            .map((s) => ({ id: s.id, name: s.name, slug: s.slug, count: s.count, image: s.image }));
+          const subs = all.filter((c) => c.parent === indexed.id).map(slim);
           if (subs.length > 0) {
-            return { parent: indexed, subs, error: null };
+            return { parent: indexed, subs, siblings: [], error: null };
           }
         }
 
@@ -389,25 +409,33 @@ export const getCategoryWithSubs = createServerFn({ method: "GET" })
               }),
             );
         const parent = parents[0] ?? null;
-        if (!parent) return { parent: null, subs: [], error: null };
+        if (!parent) return { parent: null, subs: [], siblings: [], error: null };
         const subs = await wooFetch<WooCategory[]>({
           path: "/products/categories",
           query: { parent: parent.id, per_page: 50, hide_empty: false, orderby: "name", order: "asc", _fields: CATEGORY_FIELDS },
           timeoutMs: 8000,
         }).catch(() => [] as WooCategory[]);
+        const trimmed = trimCategories(subs).map(slim);
         return {
           parent,
           // Only the fields the UI renders leave the server.
-          subs: trimCategories(subs).map((s) => ({ id: s.id, name: s.name, slug: s.slug, count: s.count, image: s.image })),
+          subs: trimmed,
+          siblings: trimmed.length === 0 ? siblingsOf(parent) : [],
           error: null,
         };
       });
 
     } catch (e) {
       console.error("getCategoryWithSubs failed", e);
-      return { parent: null, subs: [] as WooCategory[], error: "Category is temporarily unavailable." };
+      return {
+        parent: null,
+        subs: [] as WooCategory[],
+        siblings: [] as WooCategory[],
+        error: "Category is temporarily unavailable.",
+      };
     }
   });
+
 
 
 
