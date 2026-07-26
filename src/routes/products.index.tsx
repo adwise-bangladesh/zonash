@@ -147,13 +147,19 @@ export const Route = createFileRoute("/products/")({
         { name: "description", content: description },
         ...(filtered ? [{ name: "robots", content: "noindex, follow" }] : []),
         { property: "og:type", content: "website" },
+        // Filtered variants emitted no og:url and no canonical at all, so every
+        // ?q= / ?category= permutation was a separate shareable URL with no
+        // signal pointing back to the shop page. `noindex` keeps them out of
+        // the index but does not consolidate link equity or social unfurls.
+        { property: "og:url", content: `${SITE_URL}/products` },
+
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
       ],
-      links: filtered ? [] : [{ rel: "canonical", href: `${SITE_URL}/products` }],
+      links: [{ rel: "canonical", href: `${SITE_URL}/products` }],
       // The canonical shop page was the only indexable variant of this route
       // and shipped no structured data at all, so search engines had no
       // breadcrumb or collection signal for it. Filtered views stay clean —
@@ -456,12 +462,16 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
     return list;
   }, [q, category, featured]);
 
+  const busy = isFetchingNextPage || isRefetching;
   const loadMore = useCallback(() => {
-    // Guard as well as `disabled`: a queued keyboard repeat can fire again in
-    // the same tick before React re-renders the disabled state.
-    if (isFetchingNextPage || !hasNextPage) return;
+    // Gate on `busy`, not just `isFetchingNextPage`: while "Try again" runs a
+    // page-1 `refetch()`, "Load more" stayed enabled and could queue a second
+    // concurrent request against the same key — two in-flight Woo calls per
+    // shopper and a page appended on top of results that were being replaced.
+    if (busy || !hasNextPage) return;
     void fetchNextPage();
-  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
+  }, [fetchNextPage, busy, hasNextPage]);
+
   // Two distinct recovery paths — the previous single path was dead for the
   // most common failure. When page 1 is the failed page there is no tail to
   // drop and `fetchNextPage()` either no-ops or appends page 2 on top of an
@@ -469,8 +479,8 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
   // was actually looking at. Page 1 now refetches; a failed tail page (e.g.
   // "Load more" died on page 5) is still dropped and re-requested on its own
   // rather than replaying every page above it.
-  const busy = isFetchingNextPage || isRefetching;
   const retry = useCallback(() => {
+
     if (busy) return;
     const pages = data?.pages ?? [];
     if (pages.length <= 1) {
@@ -573,11 +583,12 @@ function FilteredResultsBody({ q, category, featured, sort }: FilterProps) {
                   <button
                     type="button"
                     onClick={loadMore}
-                    disabled={isFetchingNextPage}
-                    aria-busy={isFetchingNextPage}
+                    disabled={busy}
+                    aria-busy={busy}
                     className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
                   >
-                    {isFetchingNextPage ? "Loading…" : "Load more"}
+                    {busy ? "Loading…" : "Load more"}
+
                   </button>
                 </div>
               )}
