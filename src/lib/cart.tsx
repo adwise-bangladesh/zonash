@@ -157,8 +157,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           itemKey(i) === key ? { ...i, quantity: clampQty(i.quantity + qty) } : i,
         );
       }
+      // Refuse silently rather than accepting a line that would be dropped
+      // again by `sanitize` on the next load.
+      if (cur.length >= MAX_LINES) return cur;
       const price = num(item.price);
       const regular = num(item.regularPrice);
+
       return [
         ...cur,
         {
