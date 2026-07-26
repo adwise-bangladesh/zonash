@@ -1,7 +1,6 @@
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
-const SUPPORT_TEL = "+8801926644575";
-const SUPPORT_WA_NUMBER = "8801926644575";
+import { SUPPORT_TEL, SUPPORT_WA_NUMBER } from "@/lib/site";
 
 /**
  * Slim support strip used on checkout / verification flow pages.

@@ -20,7 +20,7 @@ import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
-import { canonicalUrl } from "@/lib/site";
+import { canonicalUrl, waLink } from "@/lib/site";
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
@@ -391,10 +391,28 @@ function ProductDetail({ p }: { p: WooProduct }) {
     [p.attributes],
   );
 
-  // Selected option per attribute name. Seed from default_attributes.
+  /**
+   * WooCommerce is not consistent about attribute casing across endpoints:
+   * `default_attributes` frequently returns the slug ("1-pcs") while
+   * `attributes[].options` returns the label ("1 Pcs"), and variation rows can
+   * differ again in spacing ("2Pcs" vs "2 pcs"). Exact string comparison
+   * therefore silently failed to match a variation — the page fell back to the
+   * parent's price range and added the item to the cart with no `variationId`,
+   * i.e. the wrong price and SKU reached checkout. Every comparison below goes
+   * through this key; labels shown to the user stay untouched.
+   */
+  const nk = (s: string) =>
+    (s ?? "")
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "")
+      .trim();
+
+  // Selected option per attribute, keyed and valued by normalized form.
   const [selected, setSelected] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
-    for (const d of p.default_attributes ?? []) init[d.name] = d.option;
+    for (const d of p.default_attributes ?? []) {
+      if (d?.name && d?.option) init[nk(d.name)] = nk(d.option);
+    }
     return init;
   });
 
@@ -407,20 +425,28 @@ function ProductDetail({ p }: { p: WooProduct }) {
       const next = { ...prev };
       let changed = false;
       for (const a of first.attributes) {
-        if (!next[a.name]) {
-          next[a.name] = a.option;
+        const key = nk(a.name);
+        if (!next[key]) {
+          next[key] = nk(a.option);
           changed = true;
         }
       }
       return changed ? next : prev;
     });
+    // `nk` is a pure module-level-style helper; excluded intentionally.
   }, [isVariable, variations]);
 
   const matchedVariation: WooVariation | null = useMemo(() => {
     if (!isVariable || variations.length === 0) return null;
     return (
-      variations.find((v) => v.attributes.every((a) => (selected[a.name] ?? "") === a.option)) ??
-      null
+      variations.find((v) =>
+        v.attributes.every((a) => {
+          const want = selected[nk(a.name)];
+          // An empty variation option means "Any" in Woo — it matches anything.
+          if (!a.option) return true;
+          return want != null && want === nk(a.option);
+        }),
+      ) ?? null
     );
   }, [isVariable, variations, selected]);
 
@@ -439,20 +465,24 @@ function ProductDetail({ p }: { p: WooProduct }) {
     for (const v of variations) {
       const attrs = v.attributes;
       for (const a of attrs) {
-        const compatible = attrs.every(
-          (o) => o.name === a.name || !selected[o.name] || selected[o.name] === o.option,
-        );
+        const compatible = attrs.every((o) => {
+          if (nk(o.name) === nk(a.name) || !o.option) return true;
+          const want = selected[nk(o.name)];
+          return !want || want === nk(o.option);
+        });
         if (!compatible) continue;
-        let byOpt = map.get(a.name);
+        const attrKey = nk(a.name);
+        let byOpt = map.get(attrKey);
         if (!byOpt) {
           byOpt = new Map();
-          map.set(a.name, byOpt);
+          map.set(attrKey, byOpt);
         }
-        const entry = byOpt.get(a.option) ?? { enabled: false, best: undefined };
+        const optKey = nk(a.option);
+        const entry = byOpt.get(optKey) ?? { enabled: false, best: undefined };
         const inStockV = v.stock_status === "instock";
         if (inStockV) entry.enabled = true;
         if (!entry.best || (inStockV && entry.best.stock_status !== "instock")) entry.best = v;
-        byOpt.set(a.option, entry);
+        byOpt.set(optKey, entry);
       }
     }
     return map;
@@ -615,7 +645,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const readyToBuy =
     inStock &&
     priceNum > 0 &&
-    (!isVariable || (variationAttrs.every((a) => !!selected[a.name]) && !!matchedVariation));
+    (!isVariable || (variationAttrs.every((a) => !!selected[nk(a.name)]) && !!matchedVariation));
 
   // Two taps on "Buy now" before the route transition paints used to push two
   // identical lines into the cart. A ref gates synchronously (state updates are
@@ -695,7 +725,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return lines.join("\n");
   }, [p.name, activeSku, priceNum, showOld, oldPrice, discount, matchedVariation, qty, inStock]);
 
-  const waOrderUrl = `https://wa.me/8809610000000?text=${encodeURIComponent(detailsText)}`;
+  const waOrderUrl = waLink(detailsText);
 
   const handleCopyDetails = async () => {
     try {
@@ -884,25 +914,38 @@ function ProductDetail({ p }: { p: WooProduct }) {
             <div className="space-y-5 px-4 pb-2 pt-1">
               {variationAttrs.map((attr) => {
                 const options = attr.options ?? [];
-                const current = selected[attr.name];
+                const attrKey = nk(attr.name);
+                const currentKey = selected[attrKey];
+                // Show the catalogue's own label, not the normalized key.
+                const currentLabel = options.find((o) => nk(o) === currentKey);
                 return (
                   <div key={attr.id + attr.name}>
                     <div className="mb-3 flex items-center gap-3">
                       <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      <span
+                        id={`attr-label-${attrKey}`}
+                        className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+                      >
                         Choose {attr.name}
                       </span>
-                      {current && (
+                      {currentLabel && (
                         <span className="ml-auto text-[11px] font-semibold text-primary">
-                          {current}
+                          {currentLabel}
                         </span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Radio semantics: the selected option was previously
+                        invisible to screen readers (plain buttons, no state). */}
+                    <div
+                      className="grid grid-cols-2 gap-2"
+                      role="radiogroup"
+                      aria-labelledby={`attr-label-${attrKey}`}
+                    >
                       {options.map((opt) => {
-                        const active = current === opt;
-                        const meta = optionMeta.get(attr.name)?.get(opt);
+                        const optKey = nk(opt);
+                        const active = currentKey === optKey;
+                        const meta = optionMeta.get(attrKey)?.get(optKey);
                         const enabled = variations.length === 0 ? true : !!meta?.enabled;
                         const best = meta?.best;
                         const bp = best ? parseFloat(best.price) || 0 : 0;
@@ -913,7 +956,10 @@ function ProductDetail({ p }: { p: WooProduct }) {
                           <button
                             key={opt}
                             type="button"
-                            onClick={() => setSelected((prev) => ({ ...prev, [attr.name]: opt }))}
+                            role="radio"
+                            aria-checked={active}
+                            aria-label={`${opt}${enabled ? "" : " — out of stock"}`}
+                            onClick={() => setSelected((prev) => ({ ...prev, [attrKey]: optKey }))}
                             disabled={!enabled && !active}
                             className={`group relative overflow-hidden rounded-xl border p-2.5 text-left transition-all ${
                               active
