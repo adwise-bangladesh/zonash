@@ -603,7 +603,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
 
   const addLine = useCallback(() => {
     const variantSuffix = matchedVariation
-      ? " — " + matchedVariation.attributes.map((a) => a.option).join(" / ")
+      ? " — " +
+        matchedVariation.attributes
+          .map((a) => optionLabel(p, a.name, a.option))
+          .filter(Boolean)
+          .join(" / ")
+
       : "";
     add(
       {
