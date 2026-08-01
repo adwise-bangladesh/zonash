@@ -26,6 +26,7 @@ import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
+import { optionLabel } from "@/lib/attr-key";
 import { buildResponsiveImage } from "@/lib/product-image";
 import {
   SOURCE_META,
@@ -526,8 +527,14 @@ function StepLandingPage() {
   // over ~200 chars runs on every parent render otherwise; at scale that's
   // significant JS work for a link most users won't click.
   const selectedVarLabel = useMemo(
-    () => (selectedVar ? selectedVar.attributes.map((a) => a.option).join(" / ") : ""),
-    [selectedVar],
+    () =>
+      selectedVar
+        ? selectedVar.attributes
+            .map((a) => optionLabel(product, a.name, a.option))
+            .filter(Boolean)
+            .join(" / ")
+        : "",
+    [selectedVar, product],
   );
   const waHref = useMemo(() => {
     const opts = selectedVarLabel ? ` — ${selectedVarLabel}` : "";
@@ -775,7 +782,10 @@ function StepLandingPage() {
               const save = r > p ? r - p : 0;
               const pct = discountPercent(p, r);
               const optLabel =
-                v.attributes?.map((a) => a.option).filter(Boolean).join(" · ") || `Option ${v.id}`;
+                v.attributes
+                  ?.map((a) => optionLabel(product, a.name, a.option))
+                  .filter(Boolean)
+                  .join(" · ") || `Option ${v.id}`;
               const oos = v.stock_status === "outofstock";
               const isBestDeal = v.id === bestDealId;
               return (

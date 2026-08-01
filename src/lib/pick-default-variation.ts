@@ -1,4 +1,5 @@
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
+import { attrKey, attrNameKey } from "@/lib/attr-key";
 
 /**
  * Select the WooCommerce "default" variation for display.
@@ -15,7 +16,7 @@ export function pickDefaultVariation(
 ): WooVariation | undefined {
   if (variations.length === 0) return undefined;
 
-  const norm = (s: string) => s.toLowerCase().trim();
+
   const priceOf = (v: WooVariation) => {
     const sale = parseFloat(v.sale_price || "0");
     const base = parseFloat(v.price || "0");
@@ -48,7 +49,9 @@ export function pickDefaultVariation(
       let matched = 0;
       for (const d of defaults) {
         const hit = v.attributes.some(
-          (a) => norm(a.name) === norm(d.name) && norm(a.option) === norm(d.option),
+          (a) =>
+            attrNameKey(a.name) === attrNameKey(d.name) &&
+            attrKey(a.option) === attrKey(d.option),
         );
         if (hit) matched++;
       }
