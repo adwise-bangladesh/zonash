@@ -21,6 +21,8 @@ import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { canonicalUrl, waLink } from "@/lib/site";
+import { attrKey, optionLabel } from "@/lib/attr-key";
+
 
 // Below-the-fold related-products feed — split out of the critical bundle so
 // it doesn't compete with the hero image for main-thread time.
