@@ -721,7 +721,9 @@ function ProductDetail({ p }: { p: WooProduct }) {
     lines.push(`Price: ${formatBDT(priceNum)}`);
     if (showOld) lines.push(`Regular: ${formatBDT(oldPrice)} (Save ${discount}%)`);
     if (matchedVariation) {
-      const opts = matchedVariation.attributes.map((a) => `${a.name}: ${a.option}`).join(", ");
+      const opts = matchedVariation.attributes
+        .map((a) => `${a.name}: ${optionLabel(p, a.name, a.option)}`)
+        .join(", ");
       if (opts) lines.push(`Variation: ${opts}`);
     }
     lines.push(`Quantity: ${qty}`);
@@ -894,7 +896,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
               )}
               {matchedVariation &&
                 matchedVariation.attributes.map((a) => (
-                  <InfoRow key={a.id + a.name} label={a.name} value={a.option} />
+                  <InfoRow key={a.id + a.name} label={a.name} value={optionLabel(p, a.name, a.option)} />
                 ))}
               {p.weight && <InfoRow label="Weight" value={`${p.weight} kg`} />}
               {p.dimensions &&
