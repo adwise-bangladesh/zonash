@@ -11,9 +11,27 @@
  */
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import { FEED_PER_PAGE } from "@/lib/home-feed";
+import { FEED_PER_PAGE, getFeedNextPageParam, recommendedFeedKey } from "@/lib/home-feed";
 
 export type RecommendedPage = { products: WooProduct[]; error?: string | null; rawCount?: number };
+
+/**
+ * Single source of truth for the recommended infinite query.
+ *
+ * The homepage loader prefetches it and the feed component subscribes to it;
+ * when those two configs were written out separately any drift (key, page size,
+ * staleTime) silently turned the awaited SSR prefetch into a different cache
+ * entry and every visitor paid for a duplicate WooCommerce round trip.
+ */
+export const recommendedInfiniteOptions = {
+  queryKey: [...recommendedFeedKey],
+  initialPageParam: 1,
+  queryFn: ({ pageParam }: { pageParam: number }) => fetchRecommendedPage(pageParam),
+  getNextPageParam: (last: RecommendedPage, all: RecommendedPage[]) =>
+    getFeedNextPageParam(last, all, FEED_PER_PAGE),
+  staleTime: 60_000,
+  retry: 1,
+} as const;
 
 /** How many curated/featured products may lead the feed. */
 const FEATURED_LIMIT = FEED_PER_PAGE;
