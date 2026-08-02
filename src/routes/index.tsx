@@ -9,8 +9,7 @@ import { InfiniteFeedSection } from "@/components/home/InfiniteFeed";
 import { SoftBoundary } from "@/components/SoftBoundary";
 
 import { TrustRow } from "@/components/home/TrustRow";
-import { getFeedNextPageParam, FEED_PER_PAGE, recommendedFeedKey } from "@/lib/home-feed";
-import { fetchRecommendedPage } from "@/lib/recommended-feed";
+import { recommendedInfiniteOptions } from "@/lib/recommended-feed";
 import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
