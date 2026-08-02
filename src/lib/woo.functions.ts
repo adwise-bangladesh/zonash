@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { WooProduct, WooVariation } from "./woo.server";
+import type { WooOrder, WooProduct, WooVariation } from "./woo.server";
 
 /** Guard every WooCommerce list response — upstream may return an error object. */
 /** Category fields the storefront renders; the raw payload adds descriptions, image EXIF dates and HAL links. */
