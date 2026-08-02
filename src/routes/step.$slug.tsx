@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
-import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
