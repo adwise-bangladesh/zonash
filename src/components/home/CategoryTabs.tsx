@@ -1,9 +1,25 @@
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Zap } from "lucide-react";
 import type { WooCategory } from "@/lib/woo.functions";
 
+/** Slugs that already have a hand-built tab — kept out of the dynamic list. */
+const PINNED = new Set(["new-arrivals", "bestsellers", "mega-sale", "uncategorized"]);
+
 export function CategoryTabs({ categories }: { categories: WooCategory[] | undefined }) {
-  const list = (categories ?? []).filter((c) => c?.slug).slice(0, 8);
+  const list = useMemo(() => {
+    const seen = new Set<string>();
+    const out: WooCategory[] = [];
+    for (const c of categories ?? []) {
+      const slug = c?.slug;
+      if (!slug || PINNED.has(slug) || seen.has(slug)) continue;
+      seen.add(slug);
+      out.push(c);
+      if (out.length === 8) break;
+    }
+    return out;
+  }, [categories]);
+
   return (
     <nav
       aria-label="Category tabs"
