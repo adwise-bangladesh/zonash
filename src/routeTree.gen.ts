@@ -15,6 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as OrderReviewRouteImport } from './routes/order-review'
 import { Route as OrderPendingRouteImport } from './routes/order-pending'
 import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
@@ -62,6 +63,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderStatusRoute = OrderStatusRouteImport.update({
+  id: '/order-status',
+  path: '/order-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderReviewRoute = OrderReviewRouteImport.update({
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/order-confirmed': typeof OrderConfirmedRoute
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/order-confirmed'
     | '/order-pending'
     | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -326,6 +338,7 @@ export interface RootRouteChildren {
   OrderConfirmedRoute: typeof OrderConfirmedRoute
   OrderPendingRoute: typeof OrderPendingRoute
   OrderReviewRoute: typeof OrderReviewRoute
+  OrderStatusRoute: typeof OrderStatusRoute
   OrdersRoute: typeof OrdersRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
@@ -384,6 +397,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-status': {
+      id: '/order-status'
+      path: '/order-status'
+      fullPath: '/order-status'
+      preLoaderRoute: typeof OrderStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-review': {
@@ -526,6 +546,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrderConfirmedRoute: OrderConfirmedRoute,
   OrderPendingRoute: OrderPendingRoute,
   OrderReviewRoute: OrderReviewRoute,
+  OrderStatusRoute: OrderStatusRoute,
   OrdersRoute: OrdersRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
@@ -544,13 +565,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
