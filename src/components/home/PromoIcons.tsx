@@ -5,7 +5,9 @@ import type { LucideIcon } from "lucide-react";
 
 type Promo =
   | { label: string; icon: LucideIcon; tint: string; to: "/c/$slug"; slug: string }
-  | { label: string; icon: LucideIcon; tint: string; to: "/luxury" };
+  | { label: string; icon: LucideIcon; tint: string; to: "/luxury" }
+  | { label: string; icon: LucideIcon; tint: string; to: "/products"; q: string };
+
 
 const promos: Promo[] = [
   {
