@@ -356,7 +356,7 @@ function PrimaryCategoryStrip() {
         {cats.map((c) => {
           // Category tiles render at ~70px; the raw Woo URL is the full-size
           // original (often >1 MB), so point at the generated crop instead.
-          const thumb = buildThumbImage(c.image?.src, 96);
+          const thumb = buildThumbImage(c.image, 96);
           return (
             <li key={c.id} className="shrink-0 basis-[18%] snap-start">
               <Link
@@ -636,7 +636,7 @@ const ResultCard = memo(function ResultCard({ p, priority }: { p: WooProduct; pr
   // derives the real min/sale price the same way the feed does.
   const { sell, regular } = resolveCardPrices(p);
   const image = p.images?.[0];
-  const responsive = buildResponsiveImage(image?.src, {
+  const responsive = buildResponsiveImage(image, {
     sizes: "(min-width: 480px) 240px, 50vw",
   });
   const imgRef = useRef<HTMLImageElement>(null);

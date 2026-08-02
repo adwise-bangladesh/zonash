@@ -137,8 +137,9 @@ function ProductCard({ product }: { product: WooProduct }) {
   const price = priceNum(product.on_sale && product.sale_price ? product.sale_price : product.price);
   const regular = priceNum(product.regular_price);
   const showStrike = regular > price && regular > 0;
-  const img = product.images?.[0]?.src;
-  const responsive = img ? buildResponsiveImage(img) : null;
+  const imgObj = product.images?.[0];
+  const img = imgObj?.src;
+  const responsive = imgObj ? buildResponsiveImage(imgObj) : null;
   const outOfStock = product.stock_status === "outofstock";
 
   return (

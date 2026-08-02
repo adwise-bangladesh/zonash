@@ -650,7 +650,7 @@ const OrderCard = memo(function OrderCard({
 }) {
   const items = order.line_items ?? [];
   const first = items[0];
-  const thumb = buildThumbImage(first?.image?.src, 80);
+  const thumb = buildThumbImage(first?.image, 80);
   const rest = Math.max(0, items.length - 1);
 
   const itemCount = items.reduce((n, li) => n + (li.quantity ?? 1), 0);
@@ -901,7 +901,7 @@ function OrderDetailBody({ order, onClose }: { order: OrderRow; onClose: () => v
           <ul className="divide-y divide-border">
             {items.map((li, i) => {
               const lineTotal = num(li.total);
-              const liThumb = buildThumbImage(li.image?.src, 56);
+              const liThumb = buildThumbImage(li.image, 56);
               return (
                 <li key={li.id ?? `${li.sku ?? li.name}-${i}`} className="flex items-center gap-3 px-4 py-3">
                   <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">

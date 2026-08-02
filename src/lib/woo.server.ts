@@ -379,10 +379,31 @@ export const PRODUCT_FIELDS = [
   "rating_count",
 ].join(",");
 
+/**
+ * Extract the real `-WxH` generated sizes from a WordPress `srcset` string.
+ * Returns e.g. `"240x300 600x750 768x960 820x1024"`, or `""` when unknown.
+ */
+function compactGeneratedSizes(srcset: string | undefined): string {
+  if (!srcset) return "";
+  const out = new Set<string>();
+  for (const m of srcset.matchAll(/-(\d{2,5})x(\d{2,5})\.[a-z0-9]+/gi)) {
+    out.add(`${m[1]}x${m[2]}`);
+  }
+  return [...out].sort((a, b) => parseInt(a) - parseInt(b)).join(" ");
+}
+
 export function trimProduct(p: WooProduct): WooProduct {
   return {
     ...p,
-    images: (p.images ?? []).slice(0, 8).map((i) => ({ id: i.id, src: i.src, alt: i.alt ?? "" })),
+    images: (p.images ?? []).slice(0, 8).map((i) => ({
+      id: i.id,
+      src: i.src,
+      alt: i.alt ?? "",
+      // Compact list of the generated sizes WordPress ACTUALLY produced for
+      // this upload ("240x300 600x750 …"). ~35 bytes per image, and it stops
+      // the client from guessing square crops that 404 on portrait uploads.
+      ...(compactGeneratedSizes(i.srcset) ? { w: compactGeneratedSizes(i.srcset) } : {}),
+    })),
     categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
     tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
   };
@@ -705,7 +726,7 @@ export type WooProduct = {
   backorders_allowed?: boolean;
   short_description: string;
   description: string;
-  images: { id: number; src: string; alt: string }[];
+  images: { id: number; src: string; alt: string; srcset?: string; w?: string }[];
   categories: { id: number; name: string; slug: string }[];
   tags?: { id: number; name: string; slug: string }[];
   weight?: string;
@@ -732,7 +753,7 @@ export type WooVariation = {
   regular_price: string;
   sale_price: string;
   stock_status: string;
-  image?: { id: number; src: string; alt: string };
+  image?: { id: number; src: string; alt: string; srcset?: string; w?: string };
   attributes: { id: number; name: string; option: string }[];
   menu_order?: number;
 };

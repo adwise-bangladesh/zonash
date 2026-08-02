@@ -27,7 +27,7 @@ import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
 import { optionLabel } from "@/lib/attr-key";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, registerProductImages } from "@/lib/product-image";
 import {
   SOURCE_META,
   fakeReviewCount,
@@ -69,8 +69,9 @@ export const Route = createFileRoute("/step/$slug")({
     ) as { product: WooProduct | null } | undefined;
     const p = data?.product;
     if (!p) return { meta: [{ title: "Order now — Zonash" }] };
-    const img = p.images?.[0]?.src;
-    const responsive = buildResponsiveImage(img);
+    const imgObj = p.images?.[0];
+    const img = imgObj?.src;
+    const responsive = buildResponsiveImage(imgObj);
     const desc =
       (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
       `Order ${p.name} — Cash on delivery, nationwide.`;
@@ -290,6 +291,8 @@ function StepLandingPage() {
   // even when images and name are byte-identical.
   const gallery = useMemo(() => {
     const list: { src: string; alt: string }[] = [];
+    registerProductImages(product.images);
+    if (selectedVar?.image) registerProductImages([selectedVar.image]);
     if (selectedVar?.image?.src) list.push({ src: selectedVar.image.src, alt: product.name });
     for (const img of product.images ?? []) {
       if (!list.some((x) => x.src === img.src)) list.push({ src: img.src, alt: img.alt || product.name });

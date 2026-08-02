@@ -181,7 +181,7 @@ function SubCard({
 }) {
   // A sub tile is ~70–90 CSS px wide inside the 480px frame; without a sized
   // srcSet the browser pulled the full-size WordPress original per tile.
-  const thumb = buildThumbImage(sub.image?.src, 96);
+  const thumb = buildThumbImage(sub.image, 96);
   return (
     <Link
       to="/c/$slug"

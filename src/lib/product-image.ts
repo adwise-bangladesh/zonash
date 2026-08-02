@@ -2,30 +2,20 @@
 //
 // IMPORTANT: this store's origin (zonash.com behind Cloudflare) does NOT resize
 // via `?w=`/`?quality=` query parameters — it returns the full-size original AND
-// the extra query string turns a Cloudflare cache HIT into a MISS, so the
-// previous query-param approach made images strictly slower (full bytes, from
-// origin, uncached). WordPress itself already stores generated sizes next to the
-// original (`image-300x300.jpg`, `image-600x600.jpg`, …), which are cached edge
-// objects, so we build the srcset from those instead.
+// the extra query string turns a Cloudflare cache HIT into a MISS. WordPress
+// itself already stores generated sizes next to the original
+// (`image-600x750.jpg`, …), which are cached edge objects, so we build the
+// srcset from those instead.
 //
-// A generated size can be absent for an unusual aspect ratio, so consumers
-// should render with `onImageSrcSetError` as the `<img onError>` handler: it
-// drops srcset/sizes and falls back to the original URL instead of showing a
-// broken image.
+// We NEVER guess which generated sizes exist. Square crops (`-600x600`) only
+// exist for square-ish uploads; portrait uploads get `-240x300`, `-820x1024`,
+// `-768x960`, `-600x750`, … Guessing produced 404 candidates that the browser
+// sometimes picked (DPR/viewport dependent), which is why an image looked broken
+// on one render and fine on the next. The server now ships the real generated
+// sizes for each image (`image.w`, e.g. "240x300 600x750"), and when that list
+// is missing we simply serve the original — correct, never broken.
 
-/**
- * WordPress/WooCommerce generated square crops this store reliably produces.
- *
- * 768/1024 square crops were also advertised, but WordPress only generates
- * `-768x768`/`-1024x1024` when the source is big enough AND square cropping is
- * configured for those sizes — on this store many uploads have neither, so the
- * browser picked a 404 candidate on high-DPR phones and painted a broken image
- * before the fallback could run. The original URL still caps the srcset, so
- * large slots keep full quality.
- */
-const WP_SIZES = [150, 300, 600] as const;
-
-
+/** WordPress `-WxH` filename suffix. */
 const SIZED_SUFFIX = /-(\d+)x(\d+)(?=\.[a-z0-9]+$)/i;
 
 /** Strip an existing `-WxH` suffix so we always start from the original asset. */
@@ -33,14 +23,92 @@ function toOriginal(src: string): string {
   return src.replace(SIZED_SUFFIX, "");
 }
 
-function withSize(src: string, size: number): string {
-  return src.replace(/(\.[a-z0-9]+)$/i, `-${size}x${size}$1`);
+function withSuffix(src: string, wxh: string): string {
+  return src.replace(/(\.[a-z0-9]+)$/i, `-${wxh}$1`);
+}
+
+/** An image as the server projects it, or a bare URL. */
+export type ImageLike =
+  | string
+  | { src?: string | null; w?: string | null; srcset?: string | null }
+  | null
+  | undefined;
+
+type Candidate = { wxh: string; w: number };
+
+/**
+ * Registry of "original URL -> real generated sizes", populated from the
+ * server-projected `image.w` field.
+ *
+ * Several surfaces (product gallery, quick-add card, category tiles) carry only
+ * the image URL as a string. Instead of guessing sizes for those — the bug that
+ * made portrait uploads flicker as broken images — they resolve the real sizes
+ * recorded here, and fall back to the untouched original when unknown.
+ */
+const SIZE_REGISTRY = new Map<string, string>();
+const REGISTRY_LIMIT = 2000;
+
+function rememberSizes(src: string, w: string) {
+  if (!src || !w) return;
+  if (SIZE_REGISTRY.get(src) === w) return;
+  if (SIZE_REGISTRY.size >= REGISTRY_LIMIT) SIZE_REGISTRY.clear();
+  SIZE_REGISTRY.set(src, w);
+}
+
+/** Record the real generated sizes for a product's images (safe to call in render). */
+export function registerProductImages(
+  images: ReadonlyArray<{ src?: string | null; w?: string | null } | null | undefined> | null | undefined,
+) {
+  if (!images) return;
+  for (const img of images) {
+    if (!img?.src) continue;
+    const w = img.w || undefined;
+    if (w) rememberSizes(toOriginal(img.src), w);
+  }
+}
+
+
+function normalizeInput(input: ImageLike): { src: string; candidates: Candidate[] } | null {
+  if (!input) return null;
+  const raw = typeof input === "string" ? input : input.src;
+  if (!raw) return null;
+  const src = toOriginal(raw);
+  const isWpUpload =
+    /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png|webp)$/i.test(src);
+  if (!isWpUpload) return { src: raw, candidates: [] };
+
+  const list: Candidate[] = [];
+  const seen = new Set<string>();
+  const push = (wxh: string) => {
+    const w = parseInt(wxh, 10);
+    if (!Number.isFinite(w) || w <= 0 || seen.has(wxh)) return;
+    seen.add(wxh);
+    list.push({ wxh, w });
+  };
+
+  let sizeList = typeof input === "string" ? undefined : input.w || undefined;
+  if (typeof input !== "string" && !sizeList && input.srcset) {
+    const fromSrcset = new Set<string>();
+    for (const m of input.srcset.matchAll(/-(\d{2,5})x(\d{2,5})\.[a-z0-9]+/gi)) {
+      fromSrcset.add(`${m[1]}x${m[2]}`);
+    }
+    if (fromSrcset.size) sizeList = [...fromSrcset].join(" ");
+  }
+  if (sizeList) rememberSizes(src, sizeList);
+  else sizeList = SIZE_REGISTRY.get(src);
+
+  if (sizeList) {
+    for (const token of sizeList.split(/\s+/)) if (/^\d+x\d+$/.test(token)) push(token);
+  }
+
+  list.sort((a, b) => a.w - b.w);
+  return { src, candidates: list };
 }
 
 export type ResponsiveImage = {
   /** Original (largest) URL — also the safe fallback. */
   src: string;
-  /** WordPress generated-size candidates plus the original. */
+  /** Generated-size candidates plus the original. Empty when unknown. */
   srcSet: string;
   sizes: string;
 };
@@ -48,46 +116,38 @@ export type ResponsiveImage = {
 const DEFAULT_SIZES = "(min-width: 768px) 480px, 100vw";
 
 export function buildResponsiveImage(
-  originalSrc: string | undefined | null,
+  image: ImageLike,
   opts: { sizes?: string } = {},
 ): ResponsiveImage | null {
-  if (!originalSrc) return null;
-  const src = toOriginal(originalSrc);
-  const isWpUpload = /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png|webp)$/i.test(src);
+  const norm = normalizeInput(image);
+  if (!norm) return null;
   const sizes = opts.sizes ?? DEFAULT_SIZES;
+  const { src, candidates } = norm;
 
-  if (!isWpUpload) {
-    // Unknown host/format (e.g. SVG, external CDN): serve as-is, no guessing.
-    return { src: originalSrc, srcSet: "", sizes };
+  if (!candidates.length) {
+    // Unknown host/format, or no generated sizes reported: serve the original.
+    return { src, srcSet: "", sizes };
   }
 
   const srcSet = [
-    ...WP_SIZES.map((w) => `${withSize(src, w)} ${w}w`),
+    ...candidates.map((c) => `${withSuffix(src, c.wxh)} ${c.w}w`),
     // Cap with the original so very wide viewports/DPR still get full quality.
-    `${src} 1600w`,
+    `${src} ${Math.max(1600, candidates[candidates.length - 1].w + 1)}w`,
   ].join(", ");
 
   return { src, srcSet, sizes };
 }
 
 /**
- * `<img onError>` guard: if a generated WordPress size is missing (404), fall
- * back to the original URL instead of leaving a broken image on screen.
- *
- * Two failure modes the previous version could not recover from:
- *  1. `img.src` was already the original URL (we render `src=original` +
- *     `srcSet=sized candidates`), so re-assigning the identical string is a
- *     no-op in Chromium/WebKit and the broken sized candidate stayed painted.
- *     The attribute is removed first to force a fresh fetch.
- *  2. `srcset` had already been cleared by a first error, so the early return
- *     left a permanently broken <img>. The element is now hidden after the
- *     original itself fails, revealing the card's neutral placeholder box.
+ * `<img onError>` guard: if a generated WordPress size is unexpectedly missing
+ * (404, purged, migrated), fall back to the original URL instead of leaving a
+ * broken image on screen; if the original fails too, hide the <img> and reveal
+ * the card's neutral placeholder box.
  */
 export function onImageSrcSetError(event: React.SyntheticEvent<HTMLImageElement>) {
   const img = event.currentTarget;
   const stage = img.dataset.imgFallback;
   if (stage) {
-    // The original URL failed too — nothing left to try.
     img.dataset.imgFallback = "failed";
     img.style.visibility = "hidden";
     return;
@@ -102,31 +162,30 @@ export function onImageSrcSetError(event: React.SyntheticEvent<HTMLImageElement>
   img.src = original;
 }
 
-
 /**
  * Small fixed-size thumbnail (category tiles, avatars).
  *
- * WooCommerce returns the full-size original — often 1–2 MB — which is wasteful
- * for a 40–160 px slot. WordPress already stores generated square crops next to
- * it, so we point at the nearest one and offer a 2× candidate for retina.
- * Pair with `onImageSrcSetError` so a missing crop falls back to the original.
+ * Picks the smallest real generated size that still covers the slot (and a 2×
+ * candidate for retina). When the generated sizes are unknown we serve the
+ * original rather than guessing a URL that may not exist.
  */
 export function buildThumbImage(
-  originalSrc: string | undefined | null,
+  image: ImageLike,
   slotPx: number,
 ): { src: string; srcSet: string } | null {
-  if (!originalSrc) return null;
-  const src = toOriginal(originalSrc);
-  const isWpUpload = /\/wp-content\/uploads\//i.test(src) && /\.(jpe?g|png|webp)$/i.test(src);
-  if (!isWpUpload) return { src: originalSrc, srcSet: "" };
+  const norm = normalizeInput(image);
+  if (!norm) return null;
+  const { src, candidates } = norm;
+  if (!candidates.length) return { src, srcSet: "" };
 
   const pick = (target: number) =>
-    WP_SIZES.find((w) => w >= target) ?? WP_SIZES[WP_SIZES.length - 1];
+    candidates.find((c) => c.w >= target) ?? candidates[candidates.length - 1];
   const base = pick(slotPx);
   const retina = pick(slotPx * 2);
+  const baseUrl = withSuffix(src, base.wxh);
   const srcSet =
-    retina === base
-      ? `${withSize(src, base)} 1x`
-      : `${withSize(src, base)} 1x, ${withSize(src, retina)} 2x`;
-  return { src: withSize(src, base), srcSet };
+    retina.wxh === base.wxh
+      ? `${baseUrl} 1x`
+      : `${baseUrl} 1x, ${withSuffix(src, retina.wxh)} 2x`;
+  return { src: baseUrl, srcSet };
 }
