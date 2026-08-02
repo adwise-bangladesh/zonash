@@ -282,7 +282,14 @@ function Home() {
         <div className="bg-background">
           <PromoIcons />
 
-          <DealsStrip products={dealsProducts} />
+          {/*
+            The deals row is optional chrome: if its data throws, the strip is
+            dropped exactly as it is when the category is empty. No fallback
+            text, so the page keeps the same silhouette.
+          */}
+          <SoftBoundary label="deals">
+            <DealsStrip products={dealsProducts} />
+          </SoftBoundary>
         </div>
 
         {/*
@@ -292,14 +299,12 @@ function Home() {
           blast radius inside this section.
         */}
         <SoftBoundary
-          fallback={
-            <div className="container-page py-10 text-center text-sm text-muted-foreground">
-              Products couldn't be loaded right now.
-            </div>
-          }
+          label="recommended-feed"
+          fallback={(retry) => <FeedFallback onRetry={retry} />}
         >
           <InfiniteFeedSection columns={2} recommended />
         </SoftBoundary>
+
 
         <TrustRow />
 
