@@ -10,7 +10,7 @@ import {
   feedKeyFor,
   recommendedFeedKey,
 } from "@/lib/home-feed";
-import { fetchRecommendedPage } from "@/lib/recommended-feed";
+import { recommendedInfiniteOptions } from "@/lib/recommended-feed";
 import { BigProductGrid } from "./BigProductGrid";
 
 type Orderby = "date" | "price" | "popularity" | "rating" | "title";
@@ -104,21 +104,26 @@ export function InfiniteFeed({
   // first page: rendering an empty feed on the server and a populated one on
   // the client made React discard and re-render the entire tree on hydration.
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
-    useSuspenseInfiniteQuery({
-      // Config below mirrors `recommendedInfiniteOptions` (same key, page size
-      // and staleTime) so the awaited SSR prefetch hydrates this exact entry.
-      queryKey,
-      initialPageParam: 1,
-      queryFn: ({ pageParam }) =>
-        recommended
-          ? fetchRecommendedPage(pageParam as number)
-          : listProducts({
-              data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
-            }),
-      getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
-      staleTime: 60_000,
-      retry: 1,
-    });
+    useSuspenseInfiniteQuery(
+      recommended
+        ? // Reuse the SSR-prefetched config verbatim. Re-declaring it here (as
+          // this component used to) meant the recommended feed's paging rules
+          // lived in two places; the cursor rewrite would have left the client
+          // walking page numbers while the server handed it row offsets.
+          recommendedInfiniteOptions
+        : {
+            queryKey,
+            initialPageParam: 1,
+            queryFn: ({ pageParam }) =>
+              listProducts({
+                data: { page: pageParam as number, perPage: FEED_PER_PAGE, orderby, order },
+              }),
+            getNextPageParam: (last, all) => getFeedNextPageParam(last, all, FEED_PER_PAGE),
+            staleTime: 60_000,
+            retry: 1,
+          },
+    );
+
 
   // Latest fetch state is read through a ref so the observer is created ONCE
   // per feed variant. Keying the effect on `isFetchingNextPage` tore the
