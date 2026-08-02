@@ -36,6 +36,38 @@ export type ImageLike =
 
 type Candidate = { wxh: string; w: number };
 
+/**
+ * Registry of "original URL -> real generated sizes", populated from the
+ * server-projected `image.w` field.
+ *
+ * Several surfaces (product gallery, quick-add card, category tiles) carry only
+ * the image URL as a string. Instead of guessing sizes for those — the bug that
+ * made portrait uploads flicker as broken images — they resolve the real sizes
+ * recorded here, and fall back to the untouched original when unknown.
+ */
+const SIZE_REGISTRY = new Map<string, string>();
+const REGISTRY_LIMIT = 2000;
+
+function rememberSizes(src: string, w: string) {
+  if (!src || !w) return;
+  if (SIZE_REGISTRY.get(src) === w) return;
+  if (SIZE_REGISTRY.size >= REGISTRY_LIMIT) SIZE_REGISTRY.clear();
+  SIZE_REGISTRY.set(src, w);
+}
+
+/** Record the real generated sizes for a product's images (safe to call in render). */
+export function registerProductImages(
+  images: ReadonlyArray<{ src?: string | null; w?: string | null } | null | undefined> | null | undefined,
+) {
+  if (!images) return;
+  for (const img of images) {
+    if (!img?.src) continue;
+    const w = img.w || undefined;
+    if (w) rememberSizes(toOriginal(img.src), w);
+  }
+}
+
+
 function normalizeInput(input: ImageLike): { src: string; candidates: Candidate[] } | null {
   if (!input) return null;
   const raw = typeof input === "string" ? input : input.src;
@@ -54,13 +86,19 @@ function normalizeInput(input: ImageLike): { src: string; candidates: Candidate[
     list.push({ wxh, w });
   };
 
-  if (typeof input !== "string") {
-    if (input.w) for (const token of input.w.split(/\s+/)) if (/^\d+x\d+$/.test(token)) push(token);
-    if (!list.length && input.srcset) {
-      for (const m of input.srcset.matchAll(/-(\d{2,5})x(\d{2,5})\.[a-z0-9]+/gi)) {
-        push(`${m[1]}x${m[2]}`);
-      }
+  let sizeList = typeof input === "string" ? undefined : input.w || undefined;
+  if (typeof input !== "string" && !sizeList && input.srcset) {
+    const fromSrcset = new Set<string>();
+    for (const m of input.srcset.matchAll(/-(\d{2,5})x(\d{2,5})\.[a-z0-9]+/gi)) {
+      fromSrcset.add(`${m[1]}x${m[2]}`);
     }
+    if (fromSrcset.size) sizeList = [...fromSrcset].join(" ");
+  }
+  if (sizeList) rememberSizes(src, sizeList);
+  else sizeList = SIZE_REGISTRY.get(src);
+
+  if (sizeList) {
+    for (const token of sizeList.split(/\s+/)) if (/^\d+x\d+$/.test(token)) push(token);
   }
 
   list.sort((a, b) => a.w - b.w);
