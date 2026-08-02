@@ -12,7 +12,7 @@
  */
 import { describe, expect, it, beforeAll } from "vitest";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:8080";
+const BASE = process.env.BASE_URL || "http://localhost:8080";
 
 /** Customer-facing routes that must render. */
 const PUBLIC_ROUTES = [
