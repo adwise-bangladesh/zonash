@@ -160,6 +160,25 @@ export function InfiniteFeed({
     return () => io.disconnect();
   }, [queryKey]);
 
+  // Self-priming pass after every page lands.
+  //
+  // IntersectionObserver only reports *transitions*. With a 600px rootMargin and
+  // a tall viewport the sentinel is frequently still inside the margin after a
+  // page is appended — no transition, no callback, so the feed stalls until the
+  // user scrolls again. (The older code hid this by tearing down and rebuilding
+  // the observer on every fetch, which re-fired for already-intersecting
+  // sentinels; keeping one stable observer removed that accidental priming.)
+  // Measuring the sentinel directly restores it without touching the observer.
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const el = sentinel.current;
+    if (!el || typeof window === "undefined") return;
+    if (el.getBoundingClientRect().top <= window.innerHeight + 600) {
+      void fetchNextPage();
+    }
+  }, [data?.pages, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
   // every render (scroll, hover, focus). Memoize on the page array identity so
   // it only runs when a new page actually lands.
