@@ -56,18 +56,20 @@ async def main():
         check(bool(title), f"product page renders: {title[:48]!r}")
         await page.screenshot(path=str(SHOTS / "2_pdp.png"))
 
-        # 4. Add to cart.
-        add = page.locator(
-            "button:has-text('Add to cart'), button:has-text('Add to Cart'), "
-            "button:has-text('cart'), button:has-text('Order')"
-        )
+        # 4. Add to cart (pick the first variation when the product has some).
+        await page.wait_for_timeout(2500)  # let hydration attach the handlers
+        variants = page.locator("button:has-text('Save')")
+        if await variants.count() > 0:
+            await variants.first.click()
+            await page.wait_for_timeout(400)
+        add = page.locator("button:has-text('add to cart')")
         check(await add.count() > 0, "product page exposes an add-to-cart control")
         await add.first.click()
-        await page.wait_for_timeout(1200)
+        await page.wait_for_timeout(1500)
         await page.goto(BASE + "/cart", wait_until="domcontentloaded")
-        await page.wait_for_timeout(800)
+        await page.wait_for_timeout(1500)
         cart_text = await page.locator("body").inner_text()
-        check("empty" not in cart_text.lower(), "cart holds the added item")
+        check("your bag is empty" not in cart_text.lower(), "cart holds the added item")
         await page.screenshot(path=str(SHOTS / "3_cart.png"))
 
         # 5. Checkout form is reachable and asks for name/phone/address.
