@@ -29,6 +29,7 @@ import { Route as StepIndexRouteImport } from './routes/step.index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as StepSlugRouteImport } from './routes/step.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as DevVrSkeletonsRouteImport } from './routes/dev-vr.skeletons'
 import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
@@ -134,6 +135,11 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   path: '/products/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevVrSkeletonsRoute = DevVrSkeletonsRouteImport.update({
+  id: '/dev-vr/skeletons',
+  path: '/dev-vr/skeletons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CollectionSlugRoute = CollectionSlugRouteImport.update({
   id: '/collection/$slug',
   path: '/collection/$slug',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
   '/collection/$slug': typeof CollectionSlugRoute
+  '/dev-vr/skeletons': typeof DevVrSkeletonsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
   '/collection/$slug': typeof CollectionSlugRoute
+  '/dev-vr/skeletons': typeof DevVrSkeletonsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
   '/collection/$slug': typeof CollectionSlugRoute
+  '/dev-vr/skeletons': typeof DevVrSkeletonsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/c/$slug'
     | '/collection/$slug'
+    | '/dev-vr/skeletons'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/c/$slug'
     | '/collection/$slug'
+    | '/dev-vr/skeletons'
     | '/products/$slug'
     | '/step/$slug'
     | '/products'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/verify-otp'
     | '/c/$slug'
     | '/collection/$slug'
+    | '/dev-vr/skeletons'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
@@ -335,6 +347,7 @@ export interface RootRouteChildren {
   VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
   CollectionSlugRoute: typeof CollectionSlugRoute
+  DevVrSkeletonsRoute: typeof DevVrSkeletonsRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
@@ -485,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev-vr/skeletons': {
+      id: '/dev-vr/skeletons'
+      path: '/dev-vr/skeletons'
+      fullPath: '/dev-vr/skeletons'
+      preLoaderRoute: typeof DevVrSkeletonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/collection/$slug': {
       id: '/collection/$slug'
       path: '/collection/$slug'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,
   CollectionSlugRoute: CollectionSlugRoute,
+  DevVrSkeletonsRoute: DevVrSkeletonsRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
@@ -545,13 +566,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
