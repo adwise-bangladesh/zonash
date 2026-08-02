@@ -151,6 +151,13 @@ type SubmitResult =
       decision?: "confirmed" | "review" | "blocked";
       reason?: string;
       duplicates?: Duplicate[];
+      /**
+       * Set when a coupon code was sent but the server refused it (unknown
+       * code, global cap, per-phone cap). The client shows the reason so the
+       * customer is never surprised by a full-price total.
+       */
+      coupon_rejected?: string;
+
     }
   | { ok: false; error: string };
 
@@ -616,11 +623,16 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
     const serverSubtotal = priced.subtotal;
-    const { code: validCoupon, discount: validDiscount } = await resolveCouponDiscount(
-      data.coupon_code,
-      serverSubtotal,
-      phone,
-    );
+    const {
+      code: validCoupon,
+      discount: validDiscount,
+      reason: couponReason,
+    } = await resolveCouponDiscount(data.coupon_code, serverSubtotal, phone);
+    // Surfaced to the client so the customer learns *why* a coupon they saw
+    // applied in the UI was dropped, instead of silently paying full price.
+    const coupon_rejected =
+      data.coupon_code && !validCoupon ? (couponReason ?? "invalid") : undefined;
+
 
 
     const serverShipping = await computeServerShipping(data.billing.city);
