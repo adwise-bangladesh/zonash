@@ -547,6 +547,9 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // onto the /order-status timeline ("we will call to confirm"). Admins see the
     // block hit as a private note and can action it from the dashboard.
     let blockedHit: { kind: string; value: string } | null = null;
+    // Never-block allowlist: trusted/test numbers that must always be able to
+    // order, even if a block row for them exists.
+    const ALWAYS_ALLOW_PHONES = ["01926644566"];
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const email = (data.billing?.email ?? "").trim().toLowerCase();
@@ -556,7 +559,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       if (email) wants.push({ kind: "email", value: email });
       if (ip) wants.push({ kind: "ip", value: ip });
       if (clientFingerprint) wants.push({ kind: "fingerprint", value: clientFingerprint });
-      if (wants.length > 0) {
+      if (wants.length > 0 && !ALWAYS_ALLOW_PHONES.includes(phone)) {
         const { data: blocks } = await supabaseAdmin
           .from("blocked_identities")
           .select("kind,value")
