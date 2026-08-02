@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OrdersRouteImport } from './routes/orders'
@@ -53,6 +54,11 @@ const VerifyOtpRoute = VerifyOtpRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/c/$slug': typeof CSlugRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -353,6 +362,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/support'
     | '/verify-otp'
     | '/admin'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/support'
     | '/verify-otp'
     | '/c/$slug'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/support'
     | '/verify-otp'
     | '/_authenticated/admin'
@@ -463,6 +475,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   CSlugRoute: typeof CSlugRoute
@@ -489,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -782,6 +802,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   CSlugRoute: CSlugRoute,
@@ -796,3 +817,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
