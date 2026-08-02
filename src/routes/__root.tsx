@@ -70,8 +70,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Zonash — Fine Jewelry, Timeless Design" },
       { name: "twitter:description", content: "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e4166066-98dc-4480-8947-60ed7107caa3/id-preview-e28e3bf3--c1019e6e-9ce4-4035-a58d-b94909a34398.lovable.app-1784372534496.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e4166066-98dc-4480-8947-60ed7107caa3/id-preview-e28e3bf3--c1019e6e-9ce4-4035-a58d-b94909a34398.lovable.app-1784372534496.png" },
+      // No og:image/twitter:image here: the root default was a stale Lovable
+      // preview screenshot that overrode every page's real cover. Leaf routes
+      // supply their own product/category image; pages without one fall back
+      // to the hosting-generated preview.
+
     ],
     links: [
       { rel: "stylesheet", href: appCss },
