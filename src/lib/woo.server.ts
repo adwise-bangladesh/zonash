@@ -205,13 +205,10 @@ function errorSet(key: string, error: unknown) {
 
 
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const wooKey = process.env.WOOCOMMERCE_API_KEY;
-  if (!lovableKey || !wooKey) {
-    throw new Error("WooCommerce connector env vars are not configured");
-  }
+  const target = resolveWooTarget();
 
-  const url = new URL(`${GATEWAY_URL}${req.path.startsWith("/") ? req.path : `/${req.path}`}`);
+  const url = new URL(`${target.base}${req.path.startsWith("/") ? req.path : `/${req.path}`}`);
+
   if (req.query) {
     for (const [k, v] of Object.entries(req.query)) {
       if (v === undefined || v === null || v === "") continue;
