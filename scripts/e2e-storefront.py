@@ -57,9 +57,11 @@ async def main():
         await page.screenshot(path=str(SHOTS / "2_pdp.png"))
 
         # 4. Add to cart.
-        add = page.get_by_role("button", name=lambda n: n and "cart" in n.lower())
-        if await add.count() == 0:
-            add = page.locator("button:has-text('Add to cart')")
+        add = page.locator(
+            "button:has-text('Add to cart'), button:has-text('Add to Cart'), "
+            "button:has-text('cart'), button:has-text('Order')"
+        )
+        check(await add.count() > 0, "product page exposes an add-to-cart control")
         await add.first.click()
         await page.wait_for_timeout(1200)
         await page.goto(BASE + "/cart", wait_until="domcontentloaded")
