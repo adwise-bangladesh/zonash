@@ -18,6 +18,14 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/woocommerce";
 
 type WooTarget = { base: string; headers: Record<string, string> };
 
+import {
+  allowRequest,
+  recordFailure,
+  recordSuccess,
+  WooCircuitOpenError,
+} from "@/lib/woo-breaker";
+
+
 /** Resolve transport + auth headers from env. Called per request (Workers inject env at call time). */
 function resolveWooTarget(): WooTarget {
   const storeUrl = process.env.WC_STORE_URL;
@@ -146,16 +154,34 @@ function getEdgeCache(): Cache | null {
 }
 
 
+// How long an expired entry may still be served when the breaker is open.
+// A slightly stale product price beats an error page during an origin outage.
+const STALE_MAX_MS = 10 * 60_000;
+
 function cacheGet(key: string): unknown | undefined {
   const { map } = cacheFor(key);
   const e = map.get(key);
   if (!e) return undefined;
   if (Date.now() - e.at > GET_TTL_MS) {
+    // Kept (not deleted) so `staleGet` can still serve it while the origin is
+    // failing; the normal LRU sweep in `cacheSet` reclaims it.
+    return undefined;
+  }
+  return e.value;
+}
+
+/** Expired-but-recent value, used only on the circuit-open path. */
+function staleGet(key: string): unknown | undefined {
+  const { map } = cacheFor(key);
+  const e = map.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.at > STALE_MAX_MS) {
     map.delete(key);
     return undefined;
   }
   return e.value;
 }
+
 function cacheSet(key: string, value: unknown) {
   const { map, max } = cacheFor(key);
   // Delete-then-set so the Map's insertion order is a true recency order.
@@ -232,7 +258,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     // Replay a very recent failure instead of hammering a struggling origin.
     const recentError = errorGet(cacheKey);
     if (recentError !== undefined) throw recentError;
+    // Global breaker: while WooCommerce is unhealthy, prefer a slightly stale
+    // payload and otherwise fail instantly (no 8s timeout per request, no
+    // origin traffic) instead of letting every distinct URL discover the
+    // outage on its own.
+    if (!allowRequest()) {
+      const stale = staleGet(cacheKey);
+      if (stale !== undefined) return stale as T;
+      throw new WooCircuitOpenError();
+    }
+  } else if (!allowRequest()) {
+    // Writes are not cacheable and must not be silently swallowed, but there is
+    // no point posting into a dead origin either.
+    throw new WooCircuitOpenError();
   }
+
 
 
   const run = async (): Promise<T> => {
@@ -290,8 +330,15 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     const text = await res.text();
     if (!res.ok) {
       console.error(`WooCommerce request failed [${res.status}]: ${text.slice(0, 500)}`);
-      throw new WooError(res.status, text);
+      const wooErr = new WooError(res.status, text);
+      // 429/5xx feed the breaker; 4xx (missing slug, bad param) do not — a
+      // healthy origin answering "not found" must never trip it.
+      recordFailure(wooErr);
+      throw wooErr;
     }
+    // A real 2xx from origin: the breaker counts this toward recovery.
+    recordSuccess();
+
     try {
       const parsed = text ? (JSON.parse(text) as T) : (undefined as T);
       if (cacheable) {
@@ -322,9 +369,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     }
   };
 
-  if (!cacheable) return run();
+  /**
+   * Transport-level failures (DNS, TLS, connection reset, 8s timeout abort)
+   * never reach the `!res.ok` branch, so they are counted here. HTTP failures
+   * are already counted at their throw site — re-counting them would trip the
+   * breaker at half the configured threshold.
+   */
+  const guarded = (): Promise<T> =>
+    run().catch((err: unknown) => {
+      if (!(err instanceof WooError)) recordFailure(err);
+      throw err;
+    });
 
-  const p = run()
+  if (!cacheable) return guarded();
+
+  const p = guarded()
     .catch((err: unknown) => {
       errorSet(cacheKey, err);
       throw err;
@@ -332,6 +391,7 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     .finally(() => {
       inflight.delete(cacheKey);
     });
+
   // Attach a no-op rejection handler so a coalesced failure never surfaces as
   // an unhandled rejection when the awaiting caller has already bailed out.
   p.catch(() => {});
