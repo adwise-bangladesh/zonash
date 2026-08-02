@@ -77,6 +77,16 @@ describe("document cache", () => {
     expect(await hit!.text()).toBe("<html>home</html>");
   });
 
+  it("stores without Vary (Workers Cache API only honours Accept-Encoding) but still sends it", async () => {
+    const out = putCachedDocument(req(), doc(), null);
+    await flushPendingDocumentPuts();
+    expect(out.headers.get("vary")).toBe("Cookie");
+    expect(fake.store.get("https://z.test/")!.headers.get("vary")).toBeNull();
+    const hit = await getCachedDocument(req());
+    expect(hit!.headers.get("vary")).toBe("Cookie");
+    expect(hit!.headers.get("cache-control")).toContain("s-maxage=15");
+  });
+
   it("refuses to store a response that sets a cookie", async () => {
     putCachedDocument(req(), doc("<html>me</html>", { headers: { "content-type": "text/html", "set-cookie": "zonash_cs=x" } }), null);
     await flushPendingDocumentPuts();
