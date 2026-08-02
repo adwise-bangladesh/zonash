@@ -65,6 +65,7 @@ describe("isShareableDocumentRequest", () => {
 describe("document cache", () => {
   it("stores a miss and serves the next request from cache", async () => {
     const out = putCachedDocument(req(), doc(), null);
+    await flushPendingDocumentPuts();
     expect(out.headers.get("x-zonash-html-cache")).toBe("miss");
     expect(out.headers.get("cache-control")).toContain("s-maxage=15");
     // Response body must still be readable by the visitor.
