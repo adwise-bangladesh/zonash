@@ -34,7 +34,7 @@ import {
   type ReviewSource,
 } from "@/lib/step-reviews";
 import { useOnScreen } from "@/hooks/use-on-screen";
-import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, type DeliveryZone } from "@/components/checkout/DeliveryZone";
+import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, DEFAULT_ZONE, zoneFromAddress, cachedGpsZone, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { NotFoundView } from "@/components/NotFoundView";
 
 // ---------- data ----------
@@ -160,7 +160,7 @@ const formSchema = z.object({
   email: z.string().trim().max(120).email("Please enter a valid email address.").optional().or(z.literal("")),
 });
 type FormShape = { name: string; phone: string; address: string; zone: DeliveryZone | ""; email?: string };
-const EMPTY: FormShape = { name: "", phone: "", address: "", zone: "", email: "" };
+const EMPTY: FormShape = { name: "", phone: "", address: "", zone: DEFAULT_ZONE, email: "" };
 
 const STORAGE_KEY = "zonash:step:form";
 
@@ -331,6 +331,7 @@ function StepLandingPage() {
   const submitFn = useServerFn(submitPendingOrder);
   const draftFn = useServerFn(saveDraftOrder);
   const [form, setForm] = useState<FormShape>(EMPTY);
+  const zoneTouchedRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [idem, setIdem] = useState(genId);
@@ -489,6 +490,14 @@ function StepLandingPage() {
     });
   }, [lastOrderQ.data, sessionPhone]);
 
+
+  // Auto-detect the zone from a cached GPS fix, then from the typed address.
+  // Stops as soon as the shopper picks a zone themselves.
+  useEffect(() => {
+    if (zoneTouchedRef.current) return;
+    const detected = zoneFromAddress(form.address) ?? cachedGpsZone();
+    if (detected && detected !== form.zone) setForm((f) => ({ ...f, zone: detected }));
+  }, [form.address, form.zone]);
 
   // Stable identity — Field's onChange lands on stable inputs and doesn't
   // invalidate memoized children on every keystroke.
@@ -1001,7 +1010,7 @@ function StepLandingPage() {
               <div id="step-zone" tabIndex={-1} className="outline-none">
                 <DeliveryZonePicker
                   value={form.zone}
-                  onChange={(zone) => update({ zone })}
+                  onChange={(zone) => { zoneTouchedRef.current = true; update({ zone }); }}
                   invalid={!!errors.zone}
                 />
               </div>

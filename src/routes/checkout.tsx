@@ -14,7 +14,7 @@ import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { useCustomerSession } from "@/lib/customer-session";
-import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, type DeliveryZone } from "@/components/checkout/DeliveryZone";
+import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, DEFAULT_ZONE, zoneFromAddress, cachedGpsZone, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { toast } from "sonner";
 import { COUPONS, couponDiscount, couponRejectionMessage } from "@/lib/coupons";
 
@@ -67,7 +67,7 @@ const schema = z.object({
 });
 
 type FormData = { name: string; phone: string; email: string; address: string; zone: DeliveryZone | ""; notes: string };
-const EMPTY: FormData = { name: "", phone: "", email: "", address: "", zone: "", notes: "" };
+const EMPTY: FormData = { name: "", phone: "", email: "", address: "", zone: DEFAULT_ZONE, notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
 // Coupon catalogue is shared with the server pricing path (see
@@ -93,6 +93,7 @@ function CheckoutPage() {
   const lastDraftSigRef = useRef<string>("");
 
   const [form, setForm] = useState<FormData>(EMPTY);
+  const zoneTouchedRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   // Stable idempotency key for this checkout attempt. Reused across retries
@@ -217,6 +218,14 @@ function CheckoutPage() {
     }));
   }, [lastOrderQ.data, sessionPhone]);
 
+
+  // Auto-detect the zone from a cached GPS fix, then from the typed address.
+  // Stops as soon as the shopper picks a zone themselves.
+  useEffect(() => {
+    if (zoneTouchedRef.current) return;
+    const detected = zoneFromAddress(form.address) ?? cachedGpsZone();
+    if (detected && detected !== form.zone) setForm((f) => ({ ...f, zone: detected }));
+  }, [form.address, form.zone]);
 
   const update = (patch: Partial<FormData>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -471,7 +480,7 @@ function CheckoutPage() {
             <div id="checkout-zone" tabIndex={-1} className="outline-none">
               <DeliveryZonePicker
                 value={form.zone}
-                onChange={(zone) => update({ zone })}
+                onChange={(zone) => { zoneTouchedRef.current = true; update({ zone }); }}
                 invalid={!!errors.zone}
               />
             </div>
