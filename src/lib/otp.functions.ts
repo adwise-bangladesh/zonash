@@ -285,29 +285,32 @@ async function resolveCouponDiscount(
   phone: string,
 ): Promise<{ code: string | null; discount: number; reason?: string }> {
   if (!code) return { code: null, discount: 0 };
-  const key = code.trim().toUpperCase();
-  const c = SERVER_COUPONS[key];
-  if (!c || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+  const { findCoupon, couponDiscount } = await import("./coupons");
+  const hit = findCoupon(code);
+  if (!hit || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+  const { key, coupon } = hit;
 
   try {
+    const { COUPON_CAPS } = await import("./coupons.server");
+    const caps = COUPON_CAPS[key] ?? {};
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (c.max_uses != null) {
+    if (caps.max_uses != null) {
       const { count } = await supabaseAdmin
         .from("coupon_usage" as never)
         .select("id", { head: true, count: "exact" })
         .eq("coupon_code", key);
-      if ((count ?? 0) >= c.max_uses) {
+      if ((count ?? 0) >= caps.max_uses) {
         return { code: null, discount: 0, reason: "max_uses_reached" };
       }
     }
-    if (c.max_per_phone != null && phone) {
+    if (caps.max_per_phone != null && phone) {
       const { count } = await supabaseAdmin
         .from("coupon_usage" as never)
         .select("id", { head: true, count: "exact" })
         .eq("coupon_code", key)
         .eq("phone", phone);
-      if ((count ?? 0) >= c.max_per_phone) {
+      if ((count ?? 0) >= caps.max_per_phone) {
         return { code: null, discount: 0, reason: "max_per_phone_reached" };
       }
     }
@@ -317,9 +320,9 @@ async function resolveCouponDiscount(
     return { code: null, discount: 0, reason: "cap_check_failed" };
   }
 
-  const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
-  return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
+  return { code: key, discount: couponDiscount(coupon, subtotal) };
 }
+
 
 /**
  * Count how many OTP SMS have been sent to this phone in the last 24h,
