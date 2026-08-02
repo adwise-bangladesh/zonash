@@ -186,20 +186,10 @@ async function deriveIdempotencyKey(
   return `d:${await sha256Hex(`${phone}::${norm}::${fingerprint}`)}`;
 }
 
-// Server-side coupon table (source of truth). Keep in sync with UI copy in
-// src/routes/checkout.tsx; if it drifts, this authoritative version wins.
-// `max_uses` = global cap; `max_per_phone` = per-customer cap. Omit either
-// (or set to null) to skip that limit.
-type CouponRule = {
-  type: "percent" | "flat";
-  value: number;
-  max_uses?: number | null;
-  max_per_phone?: number | null;
-};
-const SERVER_COUPONS: Record<string, CouponRule> = {
-  ZONASH10: { type: "percent", value: 10, max_uses: 1000, max_per_phone: 3 },
-  SAVE50:   { type: "flat",    value: 50, max_uses: 500,  max_per_phone: 1 },
-};
+// Coupon code/label/value now live in the shared, client-safe catalogue
+// (`src/lib/coupons.ts`) so the checkout UI and this server pricing path can
+// never drift apart. Usage caps stay server-side in `coupons.server.ts`.
+
 
 // SMS cost cap per phone per rolling 24h. Prevents runaway BDBulkSMS bills
 // from a customer (or bot) that keeps re-triggering OTP sends.
