@@ -34,11 +34,21 @@ export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
           style={{ animationDelay: `${i * 45}ms` }}
         >
           <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-          <div className="flex flex-col gap-1.5 p-2">
-            <div className="h-3 w-[92%] skeleton-shimmer rounded" />
-            <div className="h-3 w-[70%] skeleton-shimmer rounded" />
-            <div className="mt-1 h-3.5 w-12 skeleton-shimmer rounded" />
+          {/*
+            Geometry mirrors `BigCard`'s body exactly (see BigProductGrid):
+            `p-2.5` + `gap-1.5`, a fixed 34px two-line title box and a
+            `mt-0.5` price row at the real 13px/md:15px leading-none height.
+            The previous `p-2` + 12/12/14px bars stood 11px shorter than the
+            card it replaced, so every swap nudged the whole feed upward.
+          */}
+          <div className="flex flex-col gap-1.5 p-2.5">
+            <div className="flex h-[34px] flex-col justify-between">
+              <div className="h-3 w-[92%] skeleton-shimmer rounded" />
+              <div className="h-3 w-[70%] skeleton-shimmer rounded" />
+            </div>
+            <div className="mt-0.5 h-[13px] w-12 skeleton-shimmer rounded md:h-[15px]" />
           </div>
+
         </div>
       ))}
     </div>
