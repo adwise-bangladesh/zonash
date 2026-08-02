@@ -50,6 +50,16 @@ export function isShareableDocumentRequest(request: Request): boolean {
   if (request.method !== "GET") return false;
   // Any cookie at all (session, phone, consent) means "possibly personalized".
   if (request.headers.get("cookie")) return false;
+  // A hard reload (Cmd-Shift-R) or an explicit revalidation must reach the
+  // origin; otherwise a visitor reporting "the homepage looks stale" has no way
+  // to prove it to themselves, and neither do we while debugging.
+  const cc = request.headers.get("cache-control") ?? "";
+  if (/\bno-cache\b|\bno-store\b/i.test(cc)) return false;
+  if (/\bno-cache\b/i.test(request.headers.get("pragma") ?? "")) return false;
+  // Only real document navigations. Fetch/XHR (`Accept: application/json`) share
+  // the same path but a different body shape and must never seed the HTML entry.
+  const accept = request.headers.get("accept");
+  if (accept && !accept.includes("text/html") && !accept.includes("*/*")) return false;
   try {
     return CACHEABLE_PATHS.has(new URL(request.url).pathname);
   } catch {
