@@ -1,7 +1,51 @@
-// Server-only helper for calling WooCommerce through the Lovable connector gateway.
-// Never import from client code. Consumer key/secret never touch the browser.
+// Server-only helper for calling WooCommerce. Never import from client code —
+// the consumer key/secret must never touch the browser.
+//
+// Two transports are supported so the same code runs on Lovable hosting and on
+// a self-hosted Docker box:
+//
+//   1. Direct  — set WC_STORE_URL + WC_CONSUMER_KEY + WC_CONSUMER_SECRET.
+//                Talks straight to <store>/wp-json/wc/v3 with Basic auth.
+//                This is the mode to use on your own server: no dependency on
+//                Lovable infrastructure.
+//   2. Gateway — set LOVABLE_API_KEY + WOOCOMMERCE_API_KEY (Lovable hosting
+//                default, injected by the WooCommerce connector).
+//
+// Direct mode wins when configured, so a self-hosted deploy never silently
+// falls back to the gateway.
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/woocommerce";
+
+type WooTarget = { base: string; headers: Record<string, string> };
+
+/** Resolve transport + auth headers from env. Called per request (Workers inject env at call time). */
+function resolveWooTarget(): WooTarget {
+  const storeUrl = process.env.WC_STORE_URL;
+  const ck = process.env.WC_CONSUMER_KEY;
+  const cs = process.env.WC_CONSUMER_SECRET;
+  if (storeUrl && ck && cs) {
+    const basic = btoa(`${ck}:${cs}`);
+    return {
+      base: `${storeUrl.replace(/\/+$/, "")}/wp-json/wc/v3`,
+      headers: { Authorization: `Basic ${basic}` },
+    };
+  }
+
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  const wooKey = process.env.WOOCOMMERCE_API_KEY;
+  if (lovableKey && wooKey) {
+    return {
+      base: GATEWAY_URL,
+      headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": wooKey },
+    };
+  }
+
+  throw new Error(
+    "WooCommerce is not configured. Set WC_STORE_URL + WC_CONSUMER_KEY + WC_CONSUMER_SECRET (direct) " +
+      "or LOVABLE_API_KEY + WOOCOMMERCE_API_KEY (connector gateway).",
+  );
+}
+
 
 type WooRequest = {
   path: string; // starts with /
@@ -161,13 +205,10 @@ function errorSet(key: string, error: unknown) {
 
 
 export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const wooKey = process.env.WOOCOMMERCE_API_KEY;
-  if (!lovableKey || !wooKey) {
-    throw new Error("WooCommerce connector env vars are not configured");
-  }
+  const target = resolveWooTarget();
 
-  const url = new URL(`${GATEWAY_URL}${req.path.startsWith("/") ? req.path : `/${req.path}`}`);
+  const url = new URL(`${target.base}${req.path.startsWith("/") ? req.path : `/${req.path}`}`);
+
   if (req.query) {
     for (const [k, v] of Object.entries(req.query)) {
       if (v === undefined || v === null || v === "") continue;
@@ -217,11 +258,11 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
         return await fetch(url.toString(), {
           method,
           headers: {
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": wooKey,
+            ...target.headers,
             "Content-Type": "application/json",
             Accept: "application/json",
           },
+
           body: req.body ? JSON.stringify(req.body) : undefined,
           signal: controller.signal,
         });

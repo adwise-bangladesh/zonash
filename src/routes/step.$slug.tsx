@@ -35,7 +35,7 @@ import {
   type ReviewSource,
 } from "@/lib/step-reviews";
 import { useOnScreen } from "@/hooks/use-on-screen";
-import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
+import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
 import { NotFoundView } from "@/components/NotFoundView";
 
 // ---------- data ----------

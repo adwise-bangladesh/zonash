@@ -1,0 +1,28 @@
+services:
+  storefront:
+    build:
+      context: .
+      args:
+        # Client-bundle values — must be present at BUILD time.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    image: zonash-storefront:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+    ports:
+      # Bind to loopback and terminate TLS in nginx/Caddy/Traefik in front.
+      - "127.0.0.1:3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
