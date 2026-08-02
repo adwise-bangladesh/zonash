@@ -46,23 +46,7 @@ const promos: Promo[] = [
   },
 ];
 
-/** Slugs that already own a tab in `CategoryTabs` or are not browsable. */
-const NOT_SHORTCUTTABLE = new Set([
-  "new-arrivals",
-  "bestsellers",
-  "mega-sale",
-  "uncategorized",
-]);
 
-/** Icon/tint palette for tiles backfilled from the real category list. */
-const FILL_STYLES: { icon: LucideIcon; tint: string }[] = [
-  { icon: Sparkles, tint: "bg-rose-50 text-rose-600 ring-rose-100" },
-  { icon: Gem, tint: "bg-sky-50 text-sky-600 ring-sky-100" },
-  { icon: Heart, tint: "bg-amber-50 text-amber-600 ring-amber-100" },
-  { icon: Star, tint: "bg-emerald-50 text-emerald-600 ring-emerald-100" },
-];
-
-const SLOTS = 5;
 
 /**
  * Shortcut row.
