@@ -180,17 +180,3 @@ export function sfStatusByTracking(code: string): Promise<DeliveryStatusResponse
 export function steadfastConfigured(): boolean {
   return Boolean(process.env.STEADFAST_API_KEY && process.env.STEADFAST_SECRET_KEY);
 }
-
-// ---------- Police stations ----------
-
-export type PoliceStationsResponse = {
-  status?: number;
-  message?: string;
-  data?: unknown;
-  police_stations?: unknown;
-};
-
-export function sfGetPoliceStations(): Promise<PoliceStationsResponse> {
-  return request<PoliceStationsResponse>("/police_stations", { timeoutMs: 20_000 });
-}
-
