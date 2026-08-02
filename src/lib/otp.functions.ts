@@ -257,27 +257,15 @@ async function priceAndValidateBag(items: SubmitLine[]): Promise<PricedBag> {
 }
 
 
-/** Server-authoritative shipping: matches thana against `police_stations` and
- *  returns 80 BDT inside Dhaka City, 130 BDT elsewhere. Falls back to the
- *  higher rate when the thana is unknown so we never under-charge. */
-async function computeServerShipping(thana: string): Promise<{ amount: number; label: string; insideDhaka: boolean }> {
-  const t = (thana || "").trim();
-  if (!t) return { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("police_stations" as never)
-      .select("is_dhaka_city")
-      .ilike("name", t)
-      .limit(1)
-      .maybeSingle();
-    const inside = !!(data as { is_dhaka_city?: boolean } | null)?.is_dhaka_city;
-    return inside
-      ? { amount: SHIP_INSIDE_DHAKA, label: "Delivery (Inside Dhaka)", insideDhaka: true }
-      : { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
-  } catch {
-    return { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
-  }
+/** Server-authoritative shipping: the customer picks a delivery zone
+ *  ("Inside Dhaka" / "Outside Dhaka") which arrives in `billing.city`.
+ *  80 BDT inside Dhaka, 130 BDT elsewhere. Anything unrecognised falls back to
+ *  the higher rate so we never under-charge. */
+function computeServerShipping(zone: string): { amount: number; label: string; insideDhaka: boolean } {
+  const inside = /inside/i.test((zone || "").trim());
+  return inside
+    ? { amount: SHIP_INSIDE_DHAKA, label: "Delivery (Inside Dhaka)", insideDhaka: true }
+    : { amount: SHIP_OUTSIDE_DHAKA, label: "Delivery (Outside Dhaka)", insideDhaka: false };
 }
 
 /**
