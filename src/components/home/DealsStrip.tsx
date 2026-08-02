@@ -89,6 +89,8 @@ const DealCard = memo(function DealCard({
       params={{ slug: p.slug }}
       preload="intent"
       aria-label={p.name}
+      data-vr="deal-card-live"
+
       onPointerDown={(e) => {
         if (e.button === 0) seed();
       }}
