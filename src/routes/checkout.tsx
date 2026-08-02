@@ -67,7 +67,7 @@ const schema = z.object({
 });
 
 type FormData = { name: string; phone: string; email: string; address: string; zone: DeliveryZone | ""; notes: string };
-const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: "", notes: "" };
+const EMPTY: FormData = { name: "", phone: "", email: "", address: "", zone: "", notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
 // Coupon catalogue is shared with the server pricing path (see
