@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Flame, Gift, CreditCard, TrendingUp, Crown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -43,12 +44,35 @@ const promos: Promo[] = [
   },
 ];
 
-export function PromoIcons() {
+/**
+ * Shortcut row.
+ *
+ * The slugs are hand-curated, but a hand-curated slug can be renamed, emptied
+ * or deleted in WooCommerce at any time — and then the tile stayed on the
+ * homepage and dropped visitors on an empty category page (a dead end on the
+ * most trafficked screen, and a crawlable soft-404). When the category list is
+ * available, tiles are matched against it and unknown slugs are hidden; during
+ * a taxonomy outage the list arrives empty and every tile is kept, so a blip
+ * cannot blank the row.
+ */
+export function PromoIcons({ categories }: { categories?: { slug?: string }[] }) {
+  const visible = useMemo(() => {
+    const known = new Set((categories ?? []).map((c) => c?.slug).filter(Boolean) as string[]);
+    if (!known.size) return promos;
+    const list = promos.filter((p) => p.to === "/luxury" || known.has(p.slug));
+    // Never render an empty row: fall back to the full set rather than
+    // collapsing the layout if nothing matched (e.g. a partial payload).
+    return list.length ? list : promos;
+  }, [categories]);
+
   return (
     <section aria-label="Shortcuts" className="bg-background pb-4 pt-2">
       <div className="container-page">
-        <div className="mx-auto grid max-w-3xl grid-cols-5 gap-2 md:gap-6">
-          {promos.map((promo) => {
+        <div
+          className="mx-auto grid max-w-3xl gap-2 md:gap-6"
+          style={{ gridTemplateColumns: `repeat(${visible.length}, minmax(0, 1fr))` }}
+        >
+          {visible.map((promo) => {
             const { label, icon: Icon, tint } = promo;
             const linkProps =
               promo.to === "/luxury"
