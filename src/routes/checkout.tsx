@@ -53,7 +53,7 @@ const ERR = {
   phone: "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX).",
   email: "Please enter a valid email address.",
   address: "Please enter a valid delivery address.",
-  thana: "Please select your thana / upazila.",
+  zone: "Please choose your delivery area.",
   notes: "Delivery notes are too long.",
 } as const;
 
@@ -62,11 +62,11 @@ const schema = z.object({
   phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), ERR.phone),
   email: z.string().trim().max(120).email(ERR.email).optional().or(z.literal("")),
   address: z.string().max(300).refine(isValidAddress, ERR.address),
-  thana: z.string().trim().min(1, ERR.thana).max(80),
+  zone: z.enum(["inside", "outside"], { message: ERR.zone }),
   notes: z.string().trim().max(500, ERR.notes).optional().or(z.literal("")),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormData = { name: string; phone: string; email: string; address: string; zone: DeliveryZone | ""; notes: string };
 const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: "", notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
