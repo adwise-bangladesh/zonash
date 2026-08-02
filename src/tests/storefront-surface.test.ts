@@ -79,10 +79,15 @@ describe("customer routes stay available", () => {
 
 describe("legacy admin/auth URLs are gone", () => {
   it.each(REMOVED_ROUTES)("GET %s is not reachable", async (path) => {
-    const res = await get(path);
-    // 404 only: a 3xx would mean the route still exists behind a guard.
-    expect(res.status, `${path} -> ${res.status}`).toBe(404);
+    // Follow redirects: trailing-slash normalisation is fine, but wherever the
+    // URL lands must be a 404 — a 200 would mean the route still exists.
+    const res = await fetch(`${BASE}${path}`);
+    expect(res.status, `${path} -> ${res.status} (${res.url})`).toBe(404);
+    const html = await res.text();
+    // And the 404 body must not be the dashboard shell.
+    expect(html).not.toMatch(/Operations console|AdminShell|Global search/i);
   });
+
 
   it("no customer page links to /admin or /auth", async () => {
     for (const path of ["/", "/products", "/categories", "/cart", "/support"]) {
