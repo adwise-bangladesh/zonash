@@ -12,10 +12,9 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
-import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { useCustomerSession } from "@/lib/customer-session";
-import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
+import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { toast } from "sonner";
 import { COUPONS, couponDiscount, couponRejectionMessage } from "@/lib/coupons";
 
