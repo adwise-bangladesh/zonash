@@ -142,7 +142,7 @@ function OrderStatusPage() {
                 reference #{ref}.
               </p>
               <Link
-                to="/login"
+                to="/orders"
                 className="mt-3 flex h-11 items-center justify-center rounded-2xl border border-border text-sm font-semibold"
               >
                 Verify my number
