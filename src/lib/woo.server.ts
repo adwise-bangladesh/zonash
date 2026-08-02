@@ -146,16 +146,34 @@ function getEdgeCache(): Cache | null {
 }
 
 
+// How long an expired entry may still be served when the breaker is open.
+// A slightly stale product price beats an error page during an origin outage.
+const STALE_MAX_MS = 10 * 60_000;
+
 function cacheGet(key: string): unknown | undefined {
   const { map } = cacheFor(key);
   const e = map.get(key);
   if (!e) return undefined;
   if (Date.now() - e.at > GET_TTL_MS) {
+    // Kept (not deleted) so `staleGet` can still serve it while the origin is
+    // failing; the normal LRU sweep in `cacheSet` reclaims it.
+    return undefined;
+  }
+  return e.value;
+}
+
+/** Expired-but-recent value, used only on the circuit-open path. */
+function staleGet(key: string): unknown | undefined {
+  const { map } = cacheFor(key);
+  const e = map.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.at > STALE_MAX_MS) {
     map.delete(key);
     return undefined;
   }
   return e.value;
 }
+
 function cacheSet(key: string, value: unknown) {
   const { map, max } = cacheFor(key);
   // Delete-then-set so the Map's insertion order is a true recency order.
