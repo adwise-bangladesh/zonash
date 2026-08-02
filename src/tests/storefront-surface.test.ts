@@ -12,7 +12,9 @@
  */
 import { describe, expect, it, beforeAll } from "vitest";
 
-const BASE = process.env.BASE_URL || "http://localhost:8080";
+// Note: BASE_URL is reserved by Vite (it injects "/"), so use our own name.
+const BASE = process.env.STOREFRONT_URL || "http://localhost:8080";
+
 
 /** Customer-facing routes that must render. */
 const PUBLIC_ROUTES = [
