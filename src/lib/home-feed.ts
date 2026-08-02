@@ -34,6 +34,13 @@ export type FeedProduct = { id: number };
 export type FeedPage<P extends FeedProduct = FeedProduct> = {
   products: P[];
   error?: string | null;
+  /**
+   * How many products WooCommerce actually returned before local filtering
+   * (e.g. dropping Mega Sale items already shown in the deals strip).
+   * Pagination must key off this, not the filtered length, or a page where
+   * most items were filtered out would look like the tail and stop the feed.
+   */
+  rawCount?: number;
 };
 
 /**
@@ -52,7 +59,7 @@ export function getFeedNextPageParam<P extends FeedProduct>(
   allPages: FeedPage<P>[],
   perPage: number,
 ): number | undefined {
-  const n = last?.products?.length ?? 0;
+  const n = last?.rawCount ?? last?.products?.length ?? 0;
   if (n === 0 || n < perPage) return undefined;
   return allPages.length + 1;
 }
