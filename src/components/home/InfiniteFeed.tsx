@@ -93,6 +93,7 @@ export function InfiniteFeed({
   // the client made React discard and re-render the entire tree on hydration.
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useSuspenseInfiniteQuery({
+      ...(recommended ? recommendedInfiniteOptions : {}),
       queryKey,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
