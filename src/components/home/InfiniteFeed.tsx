@@ -21,6 +21,7 @@ export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
   return (
     <div
       aria-hidden="true"
+      data-vr="feed-grid"
       className={
         columns === 3
           ? "grid grid-cols-3 gap-1.5 px-[5px] pb-6"
@@ -30,9 +31,11 @@ export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
       {Array.from({ length: columns === 3 ? 9 : 8 }).map((_, i) => (
         <div
           key={i}
+          data-vr="feed-card"
           className="skeleton-row-fade flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60"
           style={{ animationDelay: `${i * 45}ms` }}
         >
+
           <div className="aspect-square w-full skeleton-shimmer rounded-none" />
           {/*
             Geometry mirrors `BigCard`'s body exactly (see BigProductGrid):
