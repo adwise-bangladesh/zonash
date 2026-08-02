@@ -128,16 +128,7 @@ export const Route = createFileRoute("/")({
     await Promise.all([
       context.queryClient.ensureQueryData(dealsQuery).catch(() => undefined),
       context.queryClient.ensureQueryData(catQuery).catch(() => undefined),
-      context.queryClient
-        .prefetchInfiniteQuery({
-          queryKey: [...recommendedFeedKey],
-          initialPageParam: 1,
-          queryFn: ({ pageParam }) => fetchRecommendedPage(pageParam as number),
-          getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
-            getFeedNextPageParam(last, all, FEED_PER_PAGE),
-          staleTime: 60_000,
-        })
-        .catch(() => undefined),
+      context.queryClient.prefetchInfiniteQuery(recommendedInfiniteOptions).catch(() => undefined),
     ]);
   },
 
