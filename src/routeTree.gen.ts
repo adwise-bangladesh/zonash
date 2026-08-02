@@ -24,8 +24,6 @@ import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CartRouteImport } from './routes/cart'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StepIndexRouteImport } from './routes/step.index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
@@ -33,16 +31,6 @@ import { Route as StepSlugRouteImport } from './routes/step.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
-import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
-import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
-import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
-import { Route as AuthenticatedAdminProfileRouteImport } from './routes/_authenticated/admin/profile'
-import { Route as AuthenticatedAdminPosRouteImport } from './routes/_authenticated/admin/pos'
-import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
-import { Route as AuthenticatedAdminBackfillRouteImport } from './routes/_authenticated/admin/backfill'
-import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
-import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
 import { Route as ApiPublicWebhooksSteadfastRouteImport } from './routes/api/public/webhooks/steadfast'
 
@@ -121,15 +109,6 @@ const CartRoute = CartRouteImport.update({
   path: '/cart',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -165,62 +144,6 @@ const CSlugRoute = CSlugRouteImport.update({
   path: '/c/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedAdminRouteRoute,
-} as any)
-const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AuthenticatedAdminRouteRoute,
-} as any)
-const AuthenticatedAdminSettingsRoute =
-  AuthenticatedAdminSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminProfileRoute =
-  AuthenticatedAdminProfileRouteImport.update({
-    id: '/profile',
-    path: '/profile',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminPosRoute = AuthenticatedAdminPosRouteImport.update({
-  id: '/pos',
-  path: '/pos',
-  getParentRoute: () => AuthenticatedAdminRouteRoute,
-} as any)
-const AuthenticatedAdminOrdersRoute =
-  AuthenticatedAdminOrdersRouteImport.update({
-    id: '/orders',
-    path: '/orders',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminBackfillRoute =
-  AuthenticatedAdminBackfillRouteImport.update({
-    id: '/backfill',
-    path: '/backfill',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminAnalyticsRoute =
-  AuthenticatedAdminAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAccountOrdersRoute =
-  AuthenticatedAccountOrdersRouteImport.update({
-    id: '/account/orders',
-    path: '/account/orders',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const ApiPublicWebhooksWooRoute = ApiPublicWebhooksWooRouteImport.update({
   id: '/api/public/webhooks/woo',
   path: '/api/public/webhooks/woo',
@@ -235,7 +158,6 @@ const ApiPublicWebhooksSteadfastRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
@@ -251,28 +173,17 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
-  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/collection/$slug': typeof CollectionSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/step/': typeof StepIndexRoute
-  '/account/orders': typeof AuthenticatedAccountOrdersRoute
-  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
-  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
-  '/admin/pos': typeof AuthenticatedAdminPosRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRoute
-  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
@@ -294,23 +205,12 @@ export interface FileRoutesByTo {
   '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
   '/step': typeof StepIndexRoute
-  '/account/orders': typeof AuthenticatedAccountOrdersRoute
-  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/admin/backfill': typeof AuthenticatedAdminBackfillRoute
-  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
-  '/admin/pos': typeof AuthenticatedAdminPosRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRoute
-  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/checkout': typeof CheckoutRoute
@@ -326,22 +226,12 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/c/$slug': typeof CSlugRoute
   '/collection/$slug': typeof CollectionSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/step/': typeof StepIndexRoute
-  '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
-  '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/_authenticated/admin/backfill': typeof AuthenticatedAdminBackfillRoute
-  '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
-  '/_authenticated/admin/pos': typeof AuthenticatedAdminPosRoute
-  '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRoute
-  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
@@ -349,7 +239,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/auth'
     | '/cart'
     | '/categories'
     | '/checkout'
@@ -365,28 +254,17 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/verify-otp'
-    | '/admin'
     | '/c/$slug'
     | '/collection/$slug'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
     | '/step/'
-    | '/account/orders'
-    | '/admin/analytics'
-    | '/admin/backfill'
-    | '/admin/orders'
-    | '/admin/pos'
-    | '/admin/profile'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/admin/'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/auth'
     | '/cart'
     | '/categories'
     | '/checkout'
@@ -408,22 +286,11 @@ export interface FileRouteTypes {
     | '/step/$slug'
     | '/products'
     | '/step'
-    | '/account/orders'
-    | '/admin/analytics'
-    | '/admin/backfill'
-    | '/admin/orders'
-    | '/admin/pos'
-    | '/admin/profile'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/admin'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   id:
     | '__root__'
     | '/'
-    | '/_authenticated'
-    | '/auth'
     | '/cart'
     | '/categories'
     | '/checkout'
@@ -439,30 +306,18 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/verify-otp'
-    | '/_authenticated/admin'
     | '/c/$slug'
     | '/collection/$slug'
     | '/products/$slug'
     | '/step/$slug'
     | '/products/'
     | '/step/'
-    | '/_authenticated/account/orders'
-    | '/_authenticated/admin/analytics'
-    | '/_authenticated/admin/backfill'
-    | '/_authenticated/admin/orders'
-    | '/_authenticated/admin/pos'
-    | '/_authenticated/admin/profile'
-    | '/_authenticated/admin/settings'
-    | '/_authenticated/admin/users'
-    | '/_authenticated/admin/'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
   CategoriesRoute: typeof CategoriesRoute
   CheckoutRoute: typeof CheckoutRoute
@@ -595,20 +450,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -658,76 +499,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/': {
-      id: '/_authenticated/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/users': {
-      id: '/_authenticated/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/settings': {
-      id: '/_authenticated/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/profile': {
-      id: '/_authenticated/admin/profile'
-      path: '/profile'
-      fullPath: '/admin/profile'
-      preLoaderRoute: typeof AuthenticatedAdminProfileRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/pos': {
-      id: '/_authenticated/admin/pos'
-      path: '/pos'
-      fullPath: '/admin/pos'
-      preLoaderRoute: typeof AuthenticatedAdminPosRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/orders': {
-      id: '/_authenticated/admin/orders'
-      path: '/orders'
-      fullPath: '/admin/orders'
-      preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/backfill': {
-      id: '/_authenticated/admin/backfill'
-      path: '/backfill'
-      fullPath: '/admin/backfill'
-      preLoaderRoute: typeof AuthenticatedAdminBackfillRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/admin/analytics': {
-      id: '/_authenticated/admin/analytics'
-      path: '/analytics'
-      fullPath: '/admin/analytics'
-      preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/account/orders': {
-      id: '/_authenticated/account/orders'
-      path: '/account/orders'
-      fullPath: '/account/orders'
-      preLoaderRoute: typeof AuthenticatedAccountOrdersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/api/public/webhooks/woo': {
       id: '/api/public/webhooks/woo'
       path: '/api/public/webhooks/woo'
@@ -745,51 +516,8 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminRouteRouteChildren {
-  AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
-  AuthenticatedAdminBackfillRoute: typeof AuthenticatedAdminBackfillRoute
-  AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
-  AuthenticatedAdminPosRoute: typeof AuthenticatedAdminPosRoute
-  AuthenticatedAdminProfileRoute: typeof AuthenticatedAdminProfileRoute
-  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
-  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
-  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
-}
-
-const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
-  {
-    AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
-    AuthenticatedAdminBackfillRoute: AuthenticatedAdminBackfillRoute,
-    AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
-    AuthenticatedAdminPosRoute: AuthenticatedAdminPosRoute,
-    AuthenticatedAdminProfileRoute: AuthenticatedAdminProfileRoute,
-    AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
-    AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
-    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
-  }
-
-const AuthenticatedAdminRouteRouteWithChildren =
-  AuthenticatedAdminRouteRoute._addFileChildren(
-    AuthenticatedAdminRouteRouteChildren,
-  )
-
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
-  AuthenticatedAccountOrdersRoute: typeof AuthenticatedAccountOrdersRoute
-}
-
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
-  AuthenticatedAccountOrdersRoute: AuthenticatedAccountOrdersRoute,
-}
-
-const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
   CartRoute: CartRoute,
   CategoriesRoute: CategoriesRoute,
   CheckoutRoute: CheckoutRoute,
