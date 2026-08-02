@@ -254,13 +254,20 @@ function Home() {
           <PromoIcons />
 
           {/*
-            The deals row is optional chrome: if its data throws, the strip is
-            dropped exactly as it is when the category is empty. No fallback
-            text, so the page keeps the same silhouette.
+            Optional chrome, two independent guards:
+            - Suspense: while the deals query is in flight (client navigation,
+              a cache miss after the 60s staleTime) the strip's exact footprint
+              is held by the skeleton instead of collapsing to 0px and shoving
+              the feed up.
+            - SoftBoundary: if it throws, the strip is dropped exactly as it is
+              when the category is empty — no error text, same silhouette.
           */}
           <SoftBoundary label="deals">
-            <DealsSection />
+            <Suspense fallback={<DealsStripSkeleton />}>
+              <DealsSection />
+            </Suspense>
           </SoftBoundary>
+
         </div>
 
         {/*
