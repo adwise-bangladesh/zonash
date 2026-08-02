@@ -254,12 +254,16 @@ function HomeSkeleton() {
   );
 }
 
+const EMPTY_PRODUCTS: WooProduct[] = [];
+
 function Home() {
   const { data: deals } = useSuspenseQuery(dealsQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
-  const dealsProducts = deals?.products ?? [];
-  const categories = catData?.categories ?? [];
-  const errorMessage = deals?.error ?? catData?.error ?? null;
+  // Stable identities: a fresh `[]` per render defeated the memoized cards
+  // downstream (DealsStrip / CategoryTabs recompute prices + srcsets).
+  const dealsProducts = deals?.products?.length ? deals.products : EMPTY_PRODUCTS;
+  const categories = catData?.categories;
+  const errorMessage = deals?.error ?? (categories?.length ? null : (catData?.error ?? null));
 
   return (
     <div className="min-h-dvh bg-surface-muted/40">
@@ -281,7 +285,21 @@ function Home() {
           <DealsStrip products={dealsProducts} />
         </div>
 
-        <InfiniteFeed columns={2} recommended />
+        {/*
+          The feed reads through a suspense query: a rejected page throws during
+          render and previously escalated to the route errorComponent, replacing
+          the whole (otherwise healthy) homepage with a full-page error. Keep the
+          blast radius inside this section.
+        */}
+        <SoftBoundary
+          fallback={
+            <div className="container-page py-10 text-center text-sm text-muted-foreground">
+              Products couldn't be loaded right now.
+            </div>
+          }
+        >
+          <InfiniteFeedSection columns={2} recommended />
+        </SoftBoundary>
 
         <TrustRow />
 
@@ -295,6 +313,9 @@ function Home() {
             </div>
           </div>
         )}
+      </main>
+    </div>
+
       </main>
     </div>
   );
