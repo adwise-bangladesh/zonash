@@ -379,6 +379,19 @@ export const PRODUCT_FIELDS = [
   "rating_count",
 ].join(",");
 
+/**
+ * Extract the real `-WxH` generated sizes from a WordPress `srcset` string.
+ * Returns e.g. `"240x300 600x750 768x960 820x1024"`, or `""` when unknown.
+ */
+function compactGeneratedSizes(srcset: string | undefined): string {
+  if (!srcset) return "";
+  const out = new Set<string>();
+  for (const m of srcset.matchAll(/-(\d{2,5})x(\d{2,5})\.[a-z0-9]+/gi)) {
+    out.add(`${m[1]}x${m[2]}`);
+  }
+  return [...out].sort((a, b) => parseInt(a) - parseInt(b)).join(" ");
+}
+
 export function trimProduct(p: WooProduct): WooProduct {
   return {
     ...p,
