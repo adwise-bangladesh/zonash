@@ -162,97 +162,28 @@ function HomeError() {
 }
 
 /**
- * HomeSkeleton — pixel-mirrors the rendered Home layout so the transition
- * from placeholder to real content is imperceptible. Every block matches
- * the corresponding component's dimensions, spacing and radius.
+ * HomeSkeleton — composed from the very same skeleton components the live
+ * sections fall back to, so the placeholder can never drift out of alignment
+ * with the rendered layout (the earlier inline copies had to be kept in sync
+ * by hand). `pl-[5px]` gutters, sticky offsets, radii and ring colours all
+ * come from one place.
  */
 function HomeSkeleton() {
   return (
     <div className="min-h-dvh bg-surface-muted/40" aria-busy="true" aria-live="polite">
-      {/* Header (mirrors SiteHeader h-14 / md:h-16) */}
-      <div className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
-        <div className="container-page flex h-14 items-center justify-between gap-3 md:h-16">
-          <div className="h-6 w-28 skeleton-shimmer rounded-md md:h-7 md:w-32" />
-          <div className="flex items-center gap-1">
-            <div className="h-9 w-9 skeleton-shimmer rounded-full md:h-10 md:w-10" />
-            <div className="hidden h-10 w-10 skeleton-shimmer rounded-full md:block" />
-            <div className="h-9 w-9 skeleton-shimmer rounded-full md:h-10 md:w-10" />
-          </div>
-        </div>
-      </div>
+      <AppHeaderSkeleton />
 
       <div className="bg-background">
-        {/* CategoryTabs (sticky bar, gap-4 py-2, pl-[5px]) */}
-        <div className="sticky top-14 z-30 border-b border-border bg-background/95 backdrop-blur md:top-16">
-          <div className="flex gap-4 py-2 pl-[5px] pr-4 md:pl-4">
-            {[64, 92, 78, 70, 82, 74, 90].map((w, i) => (
-              <div
-                key={i}
-                className="h-4 shrink-0 skeleton-shimmer rounded-full"
-                style={{ width: w }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* PromoIcons (5 shortcuts, h-14 rounded-2xl + label) */}
-        <section className="pb-4 pt-2">
-          <div className="container-page">
-            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-2 md:gap-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <div className="h-14 w-14 skeleton-shimmer rounded-2xl md:h-16 md:w-16" />
-                  <div className="h-2.5 w-12 skeleton-shimmer rounded" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* DealsStrip (banner + row of 58/84px cards) */}
-        <section className="pb-3">
-          <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
-            <div className="flex items-stretch gap-2">
-              <div className="h-[86px] w-[58px] shrink-0 skeleton-shimmer rounded-lg md:h-[116px] md:w-[84px]" />
-              <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-white md:w-[84px]"
-                    style={{ animationDelay: `${i * 40}ms` }}
-                  >
-                    <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-                    <div className="flex h-6 items-center justify-center md:h-7">
-                      <div className="h-2.5 w-8 skeleton-shimmer rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <CategoryTabsSkeleton />
+        <PromoIconsSkeleton />
+        <DealsStripSkeleton />
       </div>
 
-      {/* Product grid (matches BigProductGrid — 2 columns for the feed) */}
-      <div className="grid grid-cols-2 gap-2 px-[5px]">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="skeleton-row-fade flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60"
-            style={{ animationDelay: `${i * 45}ms` }}
-          >
-            <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-            <div className="flex flex-col gap-1.5 p-2">
-              <div className="h-3 w-[92%] skeleton-shimmer rounded" />
-              <div className="h-3 w-[70%] skeleton-shimmer rounded" />
-              <div className="mt-1 h-3.5 w-12 skeleton-shimmer rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <FeedGridSkeleton columns={2} />
     </div>
   );
 }
+
 
 const EMPTY_PRODUCTS: WooProduct[] = [];
 
