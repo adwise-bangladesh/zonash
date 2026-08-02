@@ -63,8 +63,15 @@ export const recommendedInfiniteOptions = {
   retry: 1,
 } as const;
 
-/** How many curated/featured products may lead the feed. */
-const FEATURED_LIMIT = FEED_PER_PAGE;
+/**
+ * How many curated/featured products may lead the feed.
+ *
+ * Half a screenful, deliberately: if the curated list could fill page 1 on its
+ * own the page would consume ZERO popularity rows, the cursor would not advance
+ * and the feed would end after one screen. Featured products are ordinary
+ * products, so anything past this cap still surfaces in the popularity walk.
+ */
+const FEATURED_LIMIT = Math.floor(FEED_PER_PAGE / 2);
 
 /**
  * Mega Sale products own the deals strip at the top of the homepage; repeating
@@ -125,7 +132,7 @@ export async function fetchRecommendedPage(cursor: number): Promise<RecommendedP
   // page also rendered a visibly denser first screen. Instead of DROPPING the
   // overflow, we record how many popularity rows were actually consumed so the
   // next request continues from that row.
-  const merged = featured.slice(0, FEED_PER_PAGE);
+  const merged = featured.slice(0, FEATURED_LIMIT);
   let popConsumed = 0;
   for (const p of rawRest) {
     if (merged.length >= FEED_PER_PAGE) break;
