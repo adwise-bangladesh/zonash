@@ -128,10 +128,7 @@ const DealCard = memo(function DealCard({
 
 export function DealsStrip({ products }: { products: WooProduct[] | undefined }) {
   const seedProduct = useSeedProductCache();
-  const list = useMemo(
-    () => (products ?? []).filter((p) => p && p.slug).slice(0, 12),
-    [products],
-  );
+  const list = useMemo(() => (products ?? []).filter((p) => p && p.slug).slice(0, 12), [products]);
   if (!list.length) return null;
 
   return (
@@ -172,4 +169,3 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
     </section>
   );
 }
-

@@ -9,8 +9,7 @@ import { InfiniteFeedSection } from "@/components/home/InfiniteFeed";
 import { SoftBoundary } from "@/components/SoftBoundary";
 
 import { TrustRow } from "@/components/home/TrustRow";
-import { getFeedNextPageParam, FEED_PER_PAGE, recommendedFeedKey } from "@/lib/home-feed";
-import { fetchRecommendedPage } from "@/lib/recommended-feed";
+import { recommendedInfiniteOptions } from "@/lib/recommended-feed";
 import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
@@ -45,10 +44,12 @@ const dealsQuery = queryOptions<DealsData>({
     const mega = await listProductsByCategorySlug({
       data: { slug: "mega-sale", perPage: 16 },
     }).catch(() => DEALS_UNAVAILABLE);
-    const products = mega.products ?? [];
+    // Defensive: a malformed/partial payload must not reach `shuffle`.
+    const raw = Array.isArray(mega?.products) ? mega.products : [];
+    const products = raw.filter((p) => p && typeof p.id === "number" && !!p.slug);
     // No mega-sale products => no section at all. Only a real transport error
     // is surfaced; an empty category is a valid, silent "hide me".
-    if (!products.length) return { products: [], error: mega.error ?? null };
+    if (!products.length) return { products: [], error: mega?.error ?? null };
     return { products: shuffle(products), error: null };
   },
   staleTime: 60_000,
@@ -126,16 +127,7 @@ export const Route = createFileRoute("/")({
     await Promise.all([
       context.queryClient.ensureQueryData(dealsQuery).catch(() => undefined),
       context.queryClient.ensureQueryData(catQuery).catch(() => undefined),
-      context.queryClient
-        .prefetchInfiniteQuery({
-          queryKey: [...recommendedFeedKey],
-          initialPageParam: 1,
-          queryFn: ({ pageParam }) => fetchRecommendedPage(pageParam as number),
-          getNextPageParam: (last: { products: WooProduct[] }, all: { products: WooProduct[] }[]) =>
-            getFeedNextPageParam(last, all, FEED_PER_PAGE),
-          staleTime: 60_000,
-        })
-        .catch(() => undefined),
+      context.queryClient.prefetchInfiniteQuery(recommendedInfiniteOptions).catch(() => undefined),
     ]);
   },
 
@@ -244,7 +236,6 @@ function HomeSkeleton() {
       {/* Product grid (matches BigProductGrid — 2 columns for the feed) */}
       <div className="grid grid-cols-2 gap-2 px-[5px]">
         {Array.from({ length: 8 }).map((_, i) => (
-
           <div
             key={i}
             className="skeleton-row-fade flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60"
