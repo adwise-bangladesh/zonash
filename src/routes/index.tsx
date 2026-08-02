@@ -15,9 +15,10 @@ import { SITE_URL, canonicalUrl } from "@/lib/site";
 import type { WooProduct } from "@/lib/woo.server";
 
 /**
- * Deals row: the "mega-sale" category is the source of truth. Only when it is
- * empty do we pay for a second request (popular products) — previously both
- * calls ran on every homepage render.
+ * Deals row: the "mega-sale" category is the only source of truth. When that
+ * category has no published products the section is removed entirely (no
+ * substitute products), and it reappears automatically once products are added.
+ * Order is randomised per fetch so the strip rotates between visits.
  */
 type DealsData = { products: WooProduct[]; error: string | null };
 const DEALS_UNAVAILABLE: DealsData = {
@@ -25,24 +26,30 @@ const DEALS_UNAVAILABLE: DealsData = {
   error: "Products are temporarily unavailable.",
 };
 
+/** Fisher-Yates on a copy — runs once per fetch (server-side for SSR), so the
+ * hydrated cache and the SSR HTML always agree. */
+function shuffle<T>(input: readonly T[]): T[] {
+  const out = input.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = out[i]!;
+    out[i] = out[j]!;
+    out[j] = tmp;
+  }
+  return out;
+}
+
 const dealsQuery = queryOptions<DealsData>({
   queryKey: ["home", "deals"],
   queryFn: async (): Promise<DealsData> => {
     const mega = await listProductsByCategorySlug({
       data: { slug: "mega-sale", perPage: 16 },
     }).catch(() => DEALS_UNAVAILABLE);
-    if (mega.products?.length) return { products: mega.products, error: null };
-
-    const fallback = await listProducts({
-      data: { page: 1, perPage: 16, orderby: "popularity" },
-    }).catch(() => DEALS_UNAVAILABLE);
-    const products = fallback.products ?? [];
-    return {
-      // A mega-sale hiccup that the popularity fallback covered is not a user
-      // facing failure — surfacing it printed an alert above a full strip.
-      products,
-      error: products.length ? null : (fallback.error ?? mega.error ?? null),
-    };
+    const products = mega.products ?? [];
+    // No mega-sale products => no section at all. Only a real transport error
+    // is surfaced; an empty category is a valid, silent "hide me".
+    if (!products.length) return { products: [], error: mega.error ?? null };
+    return { products: shuffle(products), error: null };
   },
   staleTime: 60_000,
 });
