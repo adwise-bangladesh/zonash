@@ -50,6 +50,7 @@ const TARGETS = [
   "src/routes/step.index.tsx",
   "src/routes/support.tsx",
   "src/routes/verify-otp.tsx",
+  "src/routes/_authenticated/account.orders.tsx",
   "src/routes/robots[.]txt.ts",
   "src/routes/sitemap[.]xml.ts",
 
@@ -88,6 +89,56 @@ const TARGETS = [
   ".dockerignore",
   "DEPLOY.md",
 ];
+
+/** Dashboard-only 404 screen: the storefront one pulls in the shop header. */
+const NOT_FOUND_VIEW = `import { Link } from "@tanstack/react-router";
+
+export function NotFoundView({
+  variant = "not-found",
+  title,
+  description,
+  onRetry,
+}: {
+  variant?: "not-found" | "error";
+  title?: string;
+  description?: string;
+  onRetry?: () => void;
+}) {
+  const isError = variant === "error";
+  return (
+    <div className="grid min-h-[100dvh] place-items-center bg-muted/30 px-6">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+        <h1 className="text-lg font-semibold tracking-tight">
+          {title ?? (isError ? "Something went wrong" : "Page not found")}
+        </h1>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {description ??
+            (isError
+              ? "This screen failed to load. Try again or return to the console."
+              : "That screen does not exist in the operations console.")}
+        </p>
+        <div className="mt-5 flex justify-center gap-2">
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-md border border-border px-3 py-2 text-[12px] font-semibold"
+            >
+              Try again
+            </button>
+          )}
+          <Link
+            to="/admin"
+            className="rounded-md bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground"
+          >
+            Go to dashboard
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
 
 /** After deleting `/`, the dashboard needs its own root route. */
 const INDEX_ROUTE = `import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -132,7 +183,12 @@ function patchRootRoute(apply) {
 
 const survivors = scanSources().filter((f) => {
   const rel = relative(ROOT, f);
-  if (rel === "src/routes/__root.tsx" || rel === "src/routes/index.tsx") return false;
+  if (
+    rel === "src/routes/__root.tsx" ||
+    rel === "src/routes/index.tsx" ||
+    rel === "src/components/NotFoundView.tsx"
+  )
+    return false;
   return ![...removedRel].some((r) => rel === r || rel.startsWith(`${r}/`));
 });
 
@@ -152,6 +208,7 @@ console.log(`${APPLY ? "Removing" : "Would remove"} ${removedPaths.length} path(
 for (const p of removedPaths) console.log(`  - ${relative(ROOT, p)}`);
 if (patchRootRoute(false)) console.log("  ~ src/routes/__root.tsx (drop MobileBottomNav)");
 console.log("  + src/routes/index.tsx (redirect / -> /admin)");
+console.log("  + src/components/NotFoundView.tsx (dashboard 404)");
 
 if (dangling.length) {
   console.error("\nBlocked: staff-facing files still import storefront-only modules:");
@@ -168,4 +225,5 @@ if (!APPLY) {
 for (const p of removedPaths) rmSync(p, { recursive: true, force: true });
 patchRootRoute(true);
 writeFileSync(join(ROOT, "src/routes/index.tsx"), INDEX_ROUTE);
+writeFileSync(join(ROOT, "src/components/NotFoundView.tsx"), NOT_FOUND_VIEW);
 console.log("\nDone. Now run: bun install && bun run build");
