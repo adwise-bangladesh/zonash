@@ -799,6 +799,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         total: created.total,
         phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
         sms_ok: false,
+        coupon_rejected,
+
         skip_otp: true,
         decision: "blocked",
         reason: "account-blocked",
@@ -870,6 +872,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           total: created.total,
           phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
           sms_ok: false,
+          coupon_rejected,
+
           skip_otp: true,
           decision: verdict.decision,
           reason: verdict.decisionReason,
@@ -949,6 +953,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       total: created.total,
       phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
       sms_ok: smsOk,
+      coupon_rejected,
+
     };
     };
 
