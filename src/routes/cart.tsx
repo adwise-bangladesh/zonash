@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
@@ -252,7 +252,6 @@ const CartRow = memo(function CartRow({
 function CartPage() {
   const { items, subtotal, setQty, remove, repriceMany, hydrated } = useCart();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     window.scrollTo(0, 0);
