@@ -337,6 +337,15 @@ function CheckoutPage() {
         setSubmitting(false);
         return;
       }
+      // The server prices authoritatively and may refuse a coupon the UI
+      // showed as applied (usage cap hit between preview and submit). Tell the
+      // customer instead of silently charging full price.
+      if (res.coupon_rejected) {
+        toast.message("Coupon not applied", {
+          description: couponRejectionMessage(res.coupon_rejected),
+        });
+      }
+
       // Trusted session → server already ran Hoorin + duplicate checks and
       // skipped OTP. Route straight to callback (confirmed) or review (risky).
       if (res.skip_otp) {
