@@ -139,18 +139,10 @@ function VerifyOtpPage() {
       if (verifiedPhone) setPhone(verifiedPhone);
 
 
-      if (res.decision === "confirmed") {
-        navigate({ to: "/order-callback-choice", search: { order, number: number ?? String(order) } as never });
-      } else {
-        navigate({
-          to: "/order-review",
-          search: {
-            order,
-            reason: res.reason ?? "",
-            duplicates: JSON.stringify(res.duplicates ?? []),
-          } as never,
-        });
-      }
+      navigate({
+        to: "/order-status",
+        search: { order, number: number ?? String(order) } as never,
+      });
     } catch {
       setError("Verification failed. Please try again.");
       setSubmitting(false);
