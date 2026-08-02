@@ -27,9 +27,8 @@ export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const hidden =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/auth") ||
     pathname.startsWith("/cart") ||
+
     pathname.startsWith("/collection/") ||
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/step/") ||
