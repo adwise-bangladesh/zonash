@@ -41,6 +41,8 @@ const BigCard = memo(function BigCard({
       to="/products/$slug"
       params={{ slug: p.slug }}
       preload="intent"
+      data-vr="feed-card-live"
+
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         seed();
