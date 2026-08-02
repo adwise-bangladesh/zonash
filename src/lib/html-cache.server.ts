@@ -76,6 +76,8 @@ export async function getCachedDocument(request: Request): Promise<Response | nu
     const hit = await cache.match(key);
     if (!hit || !hit.ok) return null;
     const res = new Response(hit.body, hit);
+    res.headers.set("Cache-Control", CACHE_CONTROL);
+    res.headers.set("Vary", "Cookie");
     res.headers.set("x-zonash-html-cache", "hit");
     return res;
   } catch {
@@ -99,9 +101,14 @@ export function putCachedDocument(request: Request, response: Response, ctx: unk
     const copy = response.clone();
     const headers = new Headers(copy.headers);
     headers.set("Cache-Control", CACHE_CONTROL);
-    // Cookie-bearing requests never read this entry, but be explicit for any
-    // CDN layer sitting in front of the worker.
-    headers.set("Vary", "Cookie");
+    // The STORED copy must not carry `Vary`. The Workers Cache API only honours
+    // `Vary: Accept-Encoding`; any other `Vary` makes it refuse or ignore the
+    // entry, which would have turned every single request into a silent miss and
+    // left the whole micro-cache doing nothing. Correctness does not depend on
+    // it: the key is cookie-less by construction and cookie-bearing requests
+    // never read the cache. `Vary: Cookie` is still sent to the client (and to
+    // any CDN in front of the worker) on both hits and misses.
+    headers.delete("Vary");
     const stored = new Response(copy.body, { status: 200, headers });
     // Retained in `pendingPuts` as well as handed to `waitUntil`: an unreferenced
     // floating promise can be dropped when the request context tears down, which
