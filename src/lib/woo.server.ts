@@ -18,6 +18,14 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/woocommerce";
 
 type WooTarget = { base: string; headers: Record<string, string> };
 
+import {
+  allowRequest,
+  recordFailure,
+  recordSuccess,
+  WooCircuitOpenError,
+} from "@/lib/woo-breaker";
+
+
 /** Resolve transport + auth headers from env. Called per request (Workers inject env at call time). */
 function resolveWooTarget(): WooTarget {
   const storeUrl = process.env.WC_STORE_URL;
