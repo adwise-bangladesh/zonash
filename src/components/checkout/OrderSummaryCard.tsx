@@ -93,7 +93,7 @@ function OrderSummaryInner({ order }: { order: PublicOrder }) {
       <Collapsible
         icon={<MapPin className="h-3.5 w-3.5" />}
         label="Delivery information"
-        meta={order.billing.thana || undefined}
+        meta={order.billing.area || undefined}
       >
         <dl className="grid grid-cols-[86px_1fr] gap-y-1.5 pt-1 text-[12px]">
           <dt className="text-muted-foreground">Name</dt>
@@ -109,7 +109,7 @@ function OrderSummaryInner({ order }: { order: PublicOrder }) {
           <dt className="text-muted-foreground">Address</dt>
           <dd className="font-medium">{order.billing.address || "—"}</dd>
           <dt className="text-muted-foreground">Area</dt>
-          <dd className="font-medium">{order.billing.thana || "—"}</dd>
+          <dd className="font-medium">{order.billing.area || "—"}</dd>
           <dt className="text-muted-foreground">Payment</dt>
           <dd className="font-medium">
             {order.payment_method_title || "Cash on Delivery"}

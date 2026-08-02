@@ -201,11 +201,11 @@ function CheckoutPage() {
   useEffect(() => {
     const b = lastOrderQ.data?.billing;
     if (!b) return;
-    // The previous order stored the zone label in `city`; anything else (legacy
-    // thana values) is treated as unknown so the shopper picks explicitly.
-    const prevZone: DeliveryZone | "" = /inside/i.test(b.thana || "")
+    // The previous order stored the zone label in `city`; anything else is
+    // treated as unknown so the shopper picks explicitly.
+    const prevZone: DeliveryZone | "" = /inside/i.test(b.area || "")
       ? "inside"
-      : /outside/i.test(b.thana || "")
+      : /outside/i.test(b.area || "")
         ? "outside"
         : "";
     setForm((f) => ({

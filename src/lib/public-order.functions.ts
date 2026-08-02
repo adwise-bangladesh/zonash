@@ -40,7 +40,7 @@ export type PublicOrder = {
     phone: string;
     email?: string;
     address: string;
-    thana: string;
+    area: string;
   };
 };
 
@@ -129,7 +129,7 @@ export const getPublicOrderById = createServerFn({ method: "GET" })
             phone: String(b.phone ?? ""),
             email: b.email ? String(b.email) : undefined,
             address: String(b.address_1 ?? ""),
-            thana: String(b.city ?? ""),
+            area: String(b.city ?? ""),
           },
         },
       };

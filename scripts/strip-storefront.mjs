@@ -71,7 +71,7 @@ const TARGETS = [
   "src/components/checkout/OrderSummaryCard.tsx",
   "src/components/checkout/SupportFooter.tsx",
 
-  // Storefront-only logic. (ThanaCombobox, woo/*, format, customer-history
+  // Storefront-only logic. (woo/*, format, customer-history
   // and the Steadfast/Hoorin/SMS layers stay — the dashboard uses them.)
   "src/lib/home-feed.ts",
   "src/lib/home-feed.test.ts",

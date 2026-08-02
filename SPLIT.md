@@ -38,7 +38,7 @@ scaffolding. Then it rewrites:
 
 Shared modules stay in both trees on purpose: `src/lib/woo.*`, `format`,
 `customer-history.functions`, the Steadfast / Hoorin / SMS layers, and
-`components/checkout/ThanaCombobox` (the POS and order drawer use it).
+
 
 ## 3. In this project: keep only the storefront
 

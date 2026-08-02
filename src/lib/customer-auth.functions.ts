@@ -645,7 +645,7 @@ export const getLastOrderByPhone = createServerFn({ method: "GET" })
           email: (b.email ?? "").trim(),
           phone: (b.phone ?? "").trim(),
           address: (b.address_1 ?? "").trim(),
-          thana: (b.city ?? "").trim(),
+          area: (b.city ?? "").trim(),
         },
       };
     } catch (e) {
