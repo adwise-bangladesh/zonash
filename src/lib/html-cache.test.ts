@@ -3,6 +3,7 @@ import {
   getCachedDocument,
   isShareableDocumentRequest,
   putCachedDocument,
+  flushPendingDocumentPuts,
 } from "./html-cache.server";
 
 /** Minimal stand-in for Cloudflare's `caches.default`. */
@@ -77,24 +78,29 @@ describe("document cache", () => {
 
   it("refuses to store a response that sets a cookie", async () => {
     putCachedDocument(req(), doc("<html>me</html>", { headers: { "content-type": "text/html", "set-cookie": "zonash_cs=x" } }), null);
+    await flushPendingDocumentPuts();
     expect(await getCachedDocument(req())).toBeNull();
   });
 
   it("refuses to store non-200 or non-HTML responses", async () => {
     putCachedDocument(req(), new Response("boom", { status: 500, headers: { "content-type": "text/html" } }), null);
+    await flushPendingDocumentPuts();
     expect(await getCachedDocument(req())).toBeNull();
     putCachedDocument(req(), Response.json({ a: 1 }), null);
+    await flushPendingDocumentPuts();
     expect(await getCachedDocument(req())).toBeNull();
   });
 
   it("never caches query-string variants", async () => {
     putCachedDocument(req("https://z.test/?utm_source=fb"), doc(), null);
+    await flushPendingDocumentPuts();
     expect(await getCachedDocument(req("https://z.test/?utm_source=fb"))).toBeNull();
   });
 
   it("degrades to a pass-through when no Cache API exists", async () => {
     delete g.caches;
     const out = putCachedDocument(req(), doc(), null);
+    await flushPendingDocumentPuts();
     expect(await out.text()).toBe("<html>home</html>");
     expect(await getCachedDocument(req())).toBeNull();
   });
