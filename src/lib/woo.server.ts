@@ -382,7 +382,15 @@ export const PRODUCT_FIELDS = [
 export function trimProduct(p: WooProduct): WooProduct {
   return {
     ...p,
-    images: (p.images ?? []).slice(0, 8).map((i) => ({ id: i.id, src: i.src, alt: i.alt ?? "" })),
+    images: (p.images ?? []).slice(0, 8).map((i) => ({
+      id: i.id,
+      src: i.src,
+      alt: i.alt ?? "",
+      // Compact list of the generated sizes WordPress ACTUALLY produced for
+      // this upload ("240x300 600x750 …"). ~35 bytes per image, and it stops
+      // the client from guessing square crops that 404 on portrait uploads.
+      ...(compactGeneratedSizes(i.srcset) ? { w: compactGeneratedSizes(i.srcset) } : {}),
+    })),
     categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
     tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
   };
@@ -705,7 +713,7 @@ export type WooProduct = {
   backorders_allowed?: boolean;
   short_description: string;
   description: string;
-  images: { id: number; src: string; alt: string }[];
+  images: { id: number; src: string; alt: string; srcset?: string; w?: string }[];
   categories: { id: number; name: string; slug: string }[];
   tags?: { id: number; name: string; slug: string }[];
   weight?: string;
