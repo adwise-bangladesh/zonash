@@ -256,6 +256,31 @@ function HomeSkeleton() {
 
 const EMPTY_PRODUCTS: WooProduct[] = [];
 
+/**
+ * Feed failure state. React Query caches the rejection, so remounting alone
+ * would replay the same throw — reset the feed's cache entry first, then let
+ * the boundary re-render the section.
+ */
+function FeedFallback({ onRetry }: { onRetry: () => void }) {
+  const queryClient = useQueryClient();
+  return (
+    <div className="container-page py-10 text-center">
+      <p className="text-sm text-muted-foreground">Products couldn&apos;t be loaded right now.</p>
+      <button
+        type="button"
+        onClick={() => {
+          void queryClient.resetQueries({ queryKey: recommendedInfiniteOptions.queryKey });
+          onRetry();
+        }}
+        className="mt-3 rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+
 function Home() {
   const { data: deals } = useSuspenseQuery(dealsQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
