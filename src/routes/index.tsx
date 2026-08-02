@@ -325,7 +325,6 @@ function Home() {
           </SoftBoundary>
         </div>
 
-
         {/*
           The feed reads through a suspense query: a rejected page throws during
           render and previously escalated to the route errorComponent, replacing
@@ -338,7 +337,6 @@ function Home() {
         >
           <InfiniteFeedSection columns={2} recommended />
         </SoftBoundary>
-
 
         <TrustRow />
 
