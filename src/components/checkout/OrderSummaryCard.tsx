@@ -108,7 +108,7 @@ function OrderSummaryInner({ order }: { order: PublicOrder }) {
           )}
           <dt className="text-muted-foreground">Address</dt>
           <dd className="font-medium">{order.billing.address || "—"}</dd>
-          <dt className="text-muted-foreground">Thana</dt>
+          <dt className="text-muted-foreground">Area</dt>
           <dd className="font-medium">{order.billing.thana || "—"}</dd>
           <dt className="text-muted-foreground">Payment</dt>
           <dd className="font-medium">

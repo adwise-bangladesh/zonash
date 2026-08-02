@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
-import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
@@ -35,7 +34,7 @@ import {
   type ReviewSource,
 } from "@/lib/step-reviews";
 import { useOnScreen } from "@/hooks/use-on-screen";
-import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
+import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { NotFoundView } from "@/components/NotFoundView";
 
 // ---------- data ----------
@@ -157,11 +156,11 @@ const formSchema = z.object({
   name: z.string().max(120).refine(isValidName, "Please enter a valid full name."),
   phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX)."),
   address: z.string().max(300).refine(isValidAddress, "Please enter a valid delivery address."),
-  thana: z.string().trim().min(1, "Please select your thana / upazila.").max(80),
+  zone: z.enum(["inside", "outside"], { message: "Please choose your delivery area." }),
   email: z.string().trim().max(120).email("Please enter a valid email address.").optional().or(z.literal("")),
 });
-type FormShape = z.infer<typeof formSchema>;
-const EMPTY: FormShape = { name: "", phone: "", address: "", thana: "", email: "" };
+type FormShape = { name: string; phone: string; address: string; zone: DeliveryZone | ""; email?: string };
+const EMPTY: FormShape = { name: "", phone: "", address: "", zone: "", email: "" };
 
 const STORAGE_KEY = "zonash:step:form";
 
@@ -352,7 +351,7 @@ function StepLandingPage() {
         name: prev.name || parsed.name || "",
         phone: prev.phone || parsed.phone || "",
         address: prev.address || parsed.address || "",
-        thana: prev.thana || parsed.thana || "",
+        zone: prev.zone || parsed.zone || "",
         email: prev.email || parsed.email || "",
       }));
     } catch { /* ignore */ }
@@ -392,7 +391,7 @@ function StepLandingPage() {
     const name = form.name.trim();
     const phone = normalizeBdPhone(form.phone);
     const address = form.address.trim();
-    const thana = form.thana.trim();
+    const zoneLabel = form.zone ? ZONE_LABEL[form.zone] : "";
     if (
       !name ||
       name.length < 2 ||
@@ -402,7 +401,7 @@ function StepLandingPage() {
       return;
     }
     if (isVariable && !selectedVar) return;
-    const sig = `${name}|${phone}|${address}|${thana}|${selectedVar?.id ?? 0}`;
+    const sig = `${name}|${phone}|${address}|${zoneLabel}|${selectedVar?.id ?? 0}`;
     if (sig === lastDraftSigRef.current) return;
     let cancelled = false;
     const run = async () => {
@@ -422,7 +421,7 @@ function StepLandingPage() {
               phone,
               address_1: address,
               address_2: "",
-              city: thana || "",
+              city: zoneLabel,
               country: "BD",
             },
             customer_note: `Landing: ${slug}`,
@@ -444,19 +443,13 @@ function StepLandingPage() {
       clearTimeout(t);
       document.removeEventListener("visibilitychange", onHide);
     };
-  }, [form.name, form.phone, form.address, form.thana, form.email, selectedVar, isVariable, product.id, slug, submitting, draftFn]);
+  }, [form.name, form.phone, form.address, form.zone, form.email, selectedVar, isVariable, product.id, slug, submitting, draftFn]);
 
 
 
 
 
   // Autofill from last order
-  const policeFn = useServerFn(getPublicPoliceStations);
-  const policeQ = useQuery({
-    queryKey: ["checkout", "police-stations"],
-    queryFn: () => policeFn(),
-    staleTime: 24 * 60 * 60_000,
-  });
   const { phone: sessionPhone } = useCustomerSession();
   const lastOrderFn = useServerFn(getLastOrderByPhone);
   const lastOrderQ = useQuery({
@@ -468,33 +461,33 @@ function StepLandingPage() {
   useEffect(() => {
     const b = lastOrderQ.data?.billing;
     if (!b) return;
-    const opts = policeQ.data?.items ?? [];
-    const raw = (b.thana || "").trim();
-    const canonicalThana =
-      raw && opts.length
-        ? (opts.find((o) => o.toLowerCase() === raw.toLowerCase()) ?? raw)
-        : raw;
+    // The previous order stored the zone label in `city`; legacy thana values
+    // are treated as unknown so the shopper picks explicitly.
+    const prevZone: DeliveryZone | "" = /inside/i.test(b.thana || "")
+      ? "inside"
+      : /outside/i.test(b.thana || "")
+        ? "outside"
+        : "";
     setForm((f) => {
       const next = {
         name: f.name || b.name || "",
         phone: f.phone || b.phone || sessionPhone || "",
         address: f.address || b.address || "",
-        thana: f.thana || canonicalThana || "",
+        zone: f.zone || prevZone,
         email: f.email || b.email || "",
       };
-      // Bail out if nothing actually changed — otherwise React commits a
-      // new state object every time policeQ.data.items refetches or a new
-      // array reference lands, triggering a full parent re-render at scale.
+      // Bail out if nothing actually changed — otherwise React commits a new
+      // state object on every refetch, triggering a full parent re-render.
       if (
         next.name === f.name &&
         next.phone === f.phone &&
         next.address === f.address &&
-        next.thana === f.thana &&
+        next.zone === f.zone &&
         next.email === f.email
       ) return f;
       return next;
     });
-  }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
+  }, [lastOrderQ.data, sessionPhone]);
 
 
   // Stable identity — Field's onChange lands on stable inputs and doesn't
@@ -509,18 +502,10 @@ function StepLandingPage() {
     });
   }, []);
 
-  // Shipping — 80 inside Dhaka City, 130 elsewhere
-  const dhakaCitySet = useMemo(
-    () => new Set((policeQ.data?.dhakaCity ?? []).map((s) => s.trim().toLowerCase())),
-    [policeQ.data?.dhakaCity],
-  );
-  // trim() + toLowerCase() ran twice on every keystroke; memoize on `thana`
-  // so form typing on unrelated fields doesn't touch this at all.
-  const insideDhaka = useMemo(() => {
-    const t = form.thana.trim().toLowerCase();
-    return t.length > 0 && dhakaCitySet.has(t);
-  }, [form.thana, dhakaCitySet]);
-  const shipping = insideDhaka ? 80 : 130;
+  // Shipping — the chosen zone is the only input: 80 inside Dhaka, 130 outside.
+  const insideDhaka = form.zone === "inside";
+  const shipping = form.zone ? ZONE_FEE[form.zone] : ZONE_FEE.outside;
+
 
   const subtotal = effectivePrice;
   const total = subtotal + shipping;
@@ -607,7 +592,7 @@ function StepLandingPage() {
             phone: parsed.data.phone,
             address_1: parsed.data.address,
             address_2: "",
-            city: parsed.data.thana,
+            city: ZONE_LABEL[parsed.data.zone],
             country: "BD",
           },
           shipping_amount: shipping,
@@ -1012,18 +997,16 @@ function StepLandingPage() {
                 aria-invalid={!!errors.address || undefined}
               />
             </Field>
-            <Field label="Thana / Upazila" error={errors.thana}>
-              <div id="step-thana" tabIndex={-1} className="outline-none">
-                <ThanaCombobox
-                  value={form.thana}
-                  onChange={(v) => update({ thana: v })}
-                  options={policeQ.data?.items ?? []}
-                  grouped={policeQ.data?.grouped}
-                  loading={policeQ.isLoading}
-                  buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
+            <Field label="Delivery area" error={errors.zone}>
+              <div id="step-zone" tabIndex={-1} className="outline-none">
+                <DeliveryZonePicker
+                  value={form.zone}
+                  onChange={(zone) => update({ zone })}
+                  invalid={!!errors.zone}
                 />
               </div>
             </Field>
+
             <Field label="Email (optional)" error={errors.email}>
               <input
                 name="email"

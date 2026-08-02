@@ -12,10 +12,9 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { submitPendingOrder, saveDraftOrder } from "@/lib/otp.functions";
 import { collectTracking } from "@/lib/tracking";
-import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { useCustomerSession } from "@/lib/customer-session";
-import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
+import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { toast } from "sonner";
 import { COUPONS, couponDiscount, couponRejectionMessage } from "@/lib/coupons";
 
@@ -54,7 +53,7 @@ const ERR = {
   phone: "Please enter a valid Bangladeshi mobile number (01XXXXXXXXX).",
   email: "Please enter a valid email address.",
   address: "Please enter a valid delivery address.",
-  thana: "Please select your thana / upazila.",
+  zone: "Please choose your delivery area.",
   notes: "Delivery notes are too long.",
 } as const;
 
@@ -63,12 +62,12 @@ const schema = z.object({
   phone: z.string().refine((v) => isValidBdPhone(normalizeBdPhone(v)), ERR.phone),
   email: z.string().trim().max(120).email(ERR.email).optional().or(z.literal("")),
   address: z.string().max(300).refine(isValidAddress, ERR.address),
-  thana: z.string().trim().min(1, ERR.thana).max(80),
+  zone: z.enum(["inside", "outside"], { message: ERR.zone }),
   notes: z.string().trim().max(500, ERR.notes).optional().or(z.literal("")),
 });
 
-type FormData = z.infer<typeof schema>;
-const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: "", notes: "" };
+type FormData = { name: string; phone: string; email: string; address: string; zone: DeliveryZone | ""; notes: string };
+const EMPTY: FormData = { name: "", phone: "", email: "", address: "", zone: "", notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
 // Coupon catalogue is shared with the server pricing path (see
@@ -110,12 +109,8 @@ function CheckoutPage() {
   const [couponOpen, setCouponOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(true);
 
-  const policeFn = useServerFn(getPublicPoliceStations);
-  const policeQ = useQuery({
-    queryKey: ["checkout", "police-stations"],
-    queryFn: () => policeFn(),
-    staleTime: 24 * 60 * 60_000,
-  });
+
+
 
   useEffect(() => {
     try {
@@ -143,7 +138,7 @@ function CheckoutPage() {
     const address = form.address.trim();
     if (!name || name.length < 2 || !isValidBdPhone(phone) || address.length < 5) return;
     const itemsSig = items.map((i) => `${i.productId}:${i.variationId ?? 0}:${i.quantity}`).sort().join("|");
-    const sig = `${name}|${phone}|${address}|${form.thana}|${itemsSig}`;
+    const sig = `${name}|${phone}|${address}|${form.zone}|${itemsSig}`;
     if (sig === lastDraftSigRef.current) return;
     let cancelled = false;
     const run = async () => {
@@ -167,7 +162,7 @@ function CheckoutPage() {
               phone,
               address_1: address,
               address_2: "",
-              city: form.thana || "",
+              city: form.zone ? ZONE_LABEL[form.zone] : "",
               country: "BD",
             },
             customer_note: form.notes || "",
@@ -189,7 +184,7 @@ function CheckoutPage() {
       clearTimeout(t);
       document.removeEventListener("visibilitychange", onHide);
     };
-  }, [form.name, form.phone, form.address, form.thana, form.email, form.notes, items, submitting, draftFn]);
+  }, [form.name, form.phone, form.address, form.zone, form.email, form.notes, items, submitting, draftFn]);
 
 
 
@@ -205,23 +200,22 @@ function CheckoutPage() {
   useEffect(() => {
     const b = lastOrderQ.data?.billing;
     if (!b) return;
-    const opts = policeQ.data?.items ?? [];
-    const raw = (b.thana || "").trim();
-    // Snap to a canonical option (case/whitespace-insensitive) so shipping
-    // detection and the combobox recognise the value.
-    const canonicalThana =
-      raw && opts.length
-        ? (opts.find((o) => o.toLowerCase() === raw.toLowerCase()) ?? raw)
-        : raw;
+    // The previous order stored the zone label in `city`; anything else (legacy
+    // thana values) is treated as unknown so the shopper picks explicitly.
+    const prevZone: DeliveryZone | "" = /inside/i.test(b.thana || "")
+      ? "inside"
+      : /outside/i.test(b.thana || "")
+        ? "outside"
+        : "";
     setForm((f) => ({
       name: f.name || b.name || "",
       phone: f.phone || b.phone || sessionPhone || "",
       email: f.email || b.email || "",
       address: f.address || b.address || "",
-      thana: f.thana || canonicalThana || "",
+      zone: f.zone || prevZone,
       notes: f.notes || "",
     }));
-  }, [lastOrderQ.data, sessionPhone, policeQ.data?.items]);
+  }, [lastOrderQ.data, sessionPhone]);
 
 
   const update = (patch: Partial<FormData>) => {
@@ -234,13 +228,11 @@ function CheckoutPage() {
     });
   };
 
-  // Shipping rule: 80 BDT inside Dhaka City (Steadfast district id=1), 130 BDT elsewhere.
-  const dhakaCitySet = useMemo(
-    () => new Set((policeQ.data?.dhakaCity ?? []).map((s) => s.trim().toLowerCase())),
-    [policeQ.data?.dhakaCity],
-  );
-  const insideDhaka = form.thana.trim().length > 0 && dhakaCitySet.has(form.thana.trim().toLowerCase());
-  const shipping = items.length === 0 ? 0 : insideDhaka ? 80 : 130;
+  // Shipping rule: the chosen zone is the only input — 80 BDT inside Dhaka,
+  // 130 BDT outside. The server re-derives it from the same rule.
+  const insideDhaka = form.zone === "inside";
+  const shipping = items.length === 0 ? 0 : form.zone ? ZONE_FEE[form.zone] : ZONE_FEE.outside;
+
 
   const coupon = useMemo(() => {
     if (!couponCode) return null;
@@ -319,7 +311,7 @@ function CheckoutPage() {
             phone: parsed.data.phone,
             address_1: parsed.data.address,
             address_2: "",
-            city: parsed.data.thana,
+            city: ZONE_LABEL[parsed.data.zone],
             country: "BD",
           },
           shipping_amount: shipping,
@@ -475,16 +467,16 @@ function CheckoutPage() {
               maxLength={300}
             />
           </Field>
-          <Field label="Thana / Upazila" error={errors.thana}>
-            <ThanaCombobox
-              value={form.thana}
-              onChange={(v) => update({ thana: v })}
-              options={policeQ.data?.items ?? []}
-              grouped={policeQ.data?.grouped}
-              loading={policeQ.isLoading}
-              buttonClassName={`flex h-11 w-full items-center justify-between gap-2 rounded-[3px] border bg-background px-3 text-left text-sm outline-none transition-colors ${errors.thana ? "border-destructive" : "border-border focus:border-primary"}`}
-            />
+          <Field label="Delivery area" error={errors.zone}>
+            <div id="checkout-zone" tabIndex={-1} className="outline-none">
+              <DeliveryZonePicker
+                value={form.zone}
+                onChange={(zone) => update({ zone })}
+                invalid={!!errors.zone}
+              />
+            </div>
           </Field>
+
           <Field label="Email (optional)" error={errors.email}>
             <input
               name="email"
