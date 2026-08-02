@@ -134,9 +134,10 @@ export function DealsStrip({ products }: { products: WooProduct[] | undefined })
   if (!list.length) return null;
 
   return (
-    <section aria-label="Mega Deals" className="pb-3">
+    <section aria-label="Mega Deals" className="pb-3" data-vr="deals-live">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
-        <div className="flex items-stretch gap-2">
+        <div className="flex items-stretch gap-2" data-vr="deals-row-live">
+
           {/* Left banner — matches product card size */}
           <div className="relative flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary to-[#5a0405] text-white shadow-sm md:w-[84px]">
             <div
