@@ -53,9 +53,17 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Anonymous, cookie-less document GETs are identical for every visitor, so
+      // a 15s shared copy turns a traffic burst into one SSR render instead of N.
+      const shareable = isShareableDocumentRequest(request);
+      if (shareable) {
+        const cached = await getCachedDocument(request);
+        if (cached) return cached;
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      return shareable ? putCachedDocument(request, normalized, ctx) : normalized;
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
@@ -65,3 +73,4 @@ export default {
     }
   },
 };
+
