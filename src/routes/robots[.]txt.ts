@@ -17,11 +17,8 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /verify-otp
 Disallow: /orders
-Disallow: /order-confirmed
-Disallow: /order-pending
-Disallow: /order-review
+Disallow: /order-status
 Disallow: /order-blocked
-Disallow: /order-callback-choice
 
 Sitemap: ${SITE_URL}/sitemap.xml
 `;

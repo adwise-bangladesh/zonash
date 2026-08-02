@@ -1,6 +1,6 @@
 /**
  * Order lookup for the post-checkout verification flow
- * (order-review, order-callback-choice, order-pending, order-confirmed).
+ * (unified /order-status timeline page).
  *
  * SECURITY: WooCommerce order ids are sequential, so this endpoint used to be
  * an IDOR — anyone could walk `id=1,2,3…` and harvest every customer's name,

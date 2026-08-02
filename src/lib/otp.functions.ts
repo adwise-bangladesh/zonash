@@ -544,7 +544,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // We do NOT error out: silent errors leak the fact that the identity is
     // flagged and let a bot iterate to bypass. Instead we let the order be
     // created as normal `pending`, skip OTP + SMS, and force the customer
-    // onto the /order-review page ("we'll call to confirm"). Admins see the
+    // onto the /order-status timeline ("we will call to confirm"). Admins see the
     // block hit as a private note and can action it from the dashboard.
     let blockedHit: { kind: string; value: string } | null = null;
     try {

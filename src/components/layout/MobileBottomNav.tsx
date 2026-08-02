@@ -33,11 +33,10 @@ export function MobileBottomNav() {
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/step/") ||
     pathname.startsWith("/verify-otp") ||
-    pathname.startsWith("/order-confirmed") ||
+    pathname.startsWith("/order-status") ||
     pathname.startsWith("/thank-you") ||
     pathname.startsWith("/thankyou") ||
-    pathname.startsWith("/order-pending") ||
-    pathname.startsWith("/order-review") ||
+    pathname.startsWith("/order-blocked") ||
     /^\/products\/[^/]+$/.test(pathname);
   if (hidden) return null;
 

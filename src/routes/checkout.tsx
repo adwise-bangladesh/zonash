@@ -355,19 +355,10 @@ function CheckoutPage() {
             to: "/order-blocked",
             search: { order: res.order_id, number: res.order_number } as never,
           });
-        } else if (res.decision === "confirmed") {
-          await navigate({
-            to: "/order-callback-choice",
-            search: { order: res.order_id, number: res.order_number } as never,
-          });
         } else {
           await navigate({
-            to: "/order-review",
-            search: {
-              order: res.order_id,
-              reason: res.reason ?? "",
-              duplicates: JSON.stringify(res.duplicates ?? []),
-            } as never,
+            to: "/order-status",
+            search: { order: res.order_id, number: res.order_number } as never,
           });
         }
       } else {

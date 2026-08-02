@@ -15,10 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OrdersRouteImport } from './routes/orders'
-import { Route as OrderReviewRouteImport } from './routes/order-review'
-import { Route as OrderPendingRouteImport } from './routes/order-pending'
-import { Route as OrderConfirmedRouteImport } from './routes/order-confirmed'
-import { Route as OrderCallbackChoiceRouteImport } from './routes/order-callback-choice'
+import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as OrderBlockedRouteImport } from './routes/order-blocked'
 import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -64,24 +61,9 @@ const OrdersRoute = OrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrderReviewRoute = OrderReviewRouteImport.update({
-  id: '/order-review',
-  path: '/order-review',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrderPendingRoute = OrderPendingRouteImport.update({
-  id: '/order-pending',
-  path: '/order-pending',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrderConfirmedRoute = OrderConfirmedRouteImport.update({
-  id: '/order-confirmed',
-  path: '/order-confirmed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrderCallbackChoiceRoute = OrderCallbackChoiceRouteImport.update({
-  id: '/order-callback-choice',
-  path: '/order-callback-choice',
+const OrderStatusRoute = OrderStatusRouteImport.update({
+  id: '/order-status',
+  path: '/order-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderBlockedRoute = OrderBlockedRouteImport.update({
@@ -162,10 +144,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
-  '/order-callback-choice': typeof OrderCallbackChoiceRoute
-  '/order-confirmed': typeof OrderConfirmedRoute
-  '/order-pending': typeof OrderPendingRoute
-  '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -188,10 +167,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
-  '/order-callback-choice': typeof OrderCallbackChoiceRoute
-  '/order-confirmed': typeof OrderConfirmedRoute
-  '/order-pending': typeof OrderPendingRoute
-  '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -215,10 +191,7 @@ export interface FileRoutesById {
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
-  '/order-callback-choice': typeof OrderCallbackChoiceRoute
-  '/order-confirmed': typeof OrderConfirmedRoute
-  '/order-pending': typeof OrderPendingRoute
-  '/order-review': typeof OrderReviewRoute
+  '/order-status': typeof OrderStatusRoute
   '/orders': typeof OrdersRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
@@ -243,10 +216,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
-    | '/order-callback-choice'
-    | '/order-confirmed'
-    | '/order-pending'
-    | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -269,10 +239,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
-    | '/order-callback-choice'
-    | '/order-confirmed'
-    | '/order-pending'
-    | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -295,10 +262,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
-    | '/order-callback-choice'
-    | '/order-confirmed'
-    | '/order-pending'
-    | '/order-review'
+    | '/order-status'
     | '/orders'
     | '/robots.txt'
     | '/search'
@@ -322,10 +286,7 @@ export interface RootRouteChildren {
   CheckoutRoute: typeof CheckoutRoute
   LuxuryRoute: typeof LuxuryRoute
   OrderBlockedRoute: typeof OrderBlockedRoute
-  OrderCallbackChoiceRoute: typeof OrderCallbackChoiceRoute
-  OrderConfirmedRoute: typeof OrderConfirmedRoute
-  OrderPendingRoute: typeof OrderPendingRoute
-  OrderReviewRoute: typeof OrderReviewRoute
+  OrderStatusRoute: typeof OrderStatusRoute
   OrdersRoute: typeof OrdersRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
@@ -386,32 +347,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/order-review': {
-      id: '/order-review'
-      path: '/order-review'
-      fullPath: '/order-review'
-      preLoaderRoute: typeof OrderReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/order-pending': {
-      id: '/order-pending'
-      path: '/order-pending'
-      fullPath: '/order-pending'
-      preLoaderRoute: typeof OrderPendingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/order-confirmed': {
-      id: '/order-confirmed'
-      path: '/order-confirmed'
-      fullPath: '/order-confirmed'
-      preLoaderRoute: typeof OrderConfirmedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/order-callback-choice': {
-      id: '/order-callback-choice'
-      path: '/order-callback-choice'
-      fullPath: '/order-callback-choice'
-      preLoaderRoute: typeof OrderCallbackChoiceRouteImport
+    '/order-status': {
+      id: '/order-status'
+      path: '/order-status'
+      fullPath: '/order-status'
+      preLoaderRoute: typeof OrderStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-blocked': {
@@ -522,10 +462,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutRoute: CheckoutRoute,
   LuxuryRoute: LuxuryRoute,
   OrderBlockedRoute: OrderBlockedRoute,
-  OrderCallbackChoiceRoute: OrderCallbackChoiceRoute,
-  OrderConfirmedRoute: OrderConfirmedRoute,
-  OrderPendingRoute: OrderPendingRoute,
-  OrderReviewRoute: OrderReviewRoute,
+  OrderStatusRoute: OrderStatusRoute,
   OrdersRoute: OrdersRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
@@ -544,13 +481,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
