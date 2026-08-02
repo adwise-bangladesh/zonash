@@ -112,6 +112,7 @@ describe("no admin data is reachable", () => {
       "/api/users",
       "/api/pos",
       "/api/steadfast",
+      "/api/public/webhooks/steadfast",
     ];
     for (const p of paths) {
       const res = await get(p);
