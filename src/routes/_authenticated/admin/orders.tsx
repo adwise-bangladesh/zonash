@@ -54,7 +54,7 @@ import { sendOrderToSteadfast, bulkSendOrdersToSteadfast } from "@/lib/steadfast
 import { getPoliceStations } from "@/lib/steadfast.functions";
 import { verifyCustomerPhone } from "@/lib/hoorin.functions";
 import { getCustomerHistory } from "@/lib/customer-history.functions";
-import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
+import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
 import type { HoorinReport } from "@/lib/hoorin.server";
 import {
   lookupBlocksForOrder,

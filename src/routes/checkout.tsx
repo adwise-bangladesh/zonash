@@ -15,7 +15,7 @@ import { collectTracking } from "@/lib/tracking";
 import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { useCustomerSession } from "@/lib/customer-session";
-import { ThanaCombobox } from "@/components/admin/ThanaCombobox";
+import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/checkout")({
