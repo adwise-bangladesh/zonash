@@ -94,9 +94,17 @@ export function putCachedDocument(request: Request, response: Response, ctx: unk
     // CDN layer sitting in front of the worker.
     headers.set("Vary", "Cookie");
     const stored = new Response(copy.body, { status: 200, headers });
-    const put = cache.put(key, stored).catch(() => {});
+    // Retained in `pendingPuts` as well as handed to `waitUntil`: an unreferenced
+    // floating promise can be dropped when the request context tears down, which
+    // silently turns every request into a miss.
+    const put = cache
+      .put(key, stored)
+      .catch(() => {})
+      .finally(() => pendingPuts.delete(put));
+    pendingPuts.add(put);
     const waitUntil = (ctx as WaitUntilCtx | null)?.waitUntil;
     if (typeof waitUntil === "function") waitUntil.call(ctx, put);
+
   } catch {
     // Caching is best-effort; never fail a real response because of it.
   }
