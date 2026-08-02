@@ -60,6 +60,22 @@ describe("isShareableDocumentRequest", () => {
     );
     expect(isShareableDocumentRequest(req("https://z.test/checkout"))).toBe(false);
   });
+
+  it("bypasses the cache on an explicit revalidation (hard reload)", () => {
+    expect(isShareableDocumentRequest(req("https://z.test/", { "cache-control": "no-cache" }))).toBe(
+      false,
+    );
+    expect(isShareableDocumentRequest(req("https://z.test/", { pragma: "no-cache" }))).toBe(false);
+  });
+
+  it("only shares real document navigations", () => {
+    expect(
+      isShareableDocumentRequest(req("https://z.test/", { accept: "application/json" })),
+    ).toBe(false);
+    expect(
+      isShareableDocumentRequest(req("https://z.test/", { accept: "text/html,*/*;q=0.8" })),
+    ).toBe(true);
+  });
 });
 
 describe("document cache", () => {
