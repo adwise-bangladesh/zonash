@@ -130,8 +130,18 @@ export function InfiniteFeed({
   // IntersectionObserver down and rebuilt it twice per page load (fetch start +
   // fetch end); during that gap a fast scroller passed the sentinel with no
   // observer attached and the feed stalled until the next scroll event.
+  //
+  // The sync happens in an effect, not inline during render: React 19 can start
+  // a concurrent render, abandon it and keep the committed tree. Writing the ref
+  // in the render body let an abandoned render's values (a stale
+  // `fetchNextPage`, an `isFetchingNextPage` that never happened) survive as the
+  // observer's view of the world — a real "feed stops loading" class of bug
+  // under the interrupt-heavy rendering that fast scrolling produces.
   const state = useRef({ hasNextPage, isFetchingNextPage, fetchNextPage });
-  state.current = { hasNextPage, isFetchingNextPage, fetchNextPage };
+  useEffect(() => {
+    state.current = { hasNextPage, isFetchingNextPage, fetchNextPage };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
 
   useEffect(() => {
     const el = sentinel.current;
