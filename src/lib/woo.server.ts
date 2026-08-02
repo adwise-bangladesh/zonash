@@ -753,7 +753,7 @@ export type WooVariation = {
   regular_price: string;
   sale_price: string;
   stock_status: string;
-  image?: { id: number; src: string; alt: string };
+  image?: { id: number; src: string; alt: string; srcset?: string; w?: string };
   attributes: { id: number; name: string; option: string }[];
   menu_order?: number;
 };

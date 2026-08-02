@@ -12,7 +12,7 @@ import {
 import { getProductVariations } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
 import { parsePriceHtmlMin } from "@/lib/price-range";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, registerProductImages } from "@/lib/product-image";
 import { pickDefaultVariation } from "@/lib/pick-default-variation";
 import type { CartItem } from "@/lib/cart";
 import { lineKey, useCartActions } from "@/lib/cart";
@@ -94,18 +94,21 @@ function QuickCardImpl({
     };
   }, [isVariable, defaultVariation, p]);
 
-  const cardImage =
-    (isVariable && defaultVariation?.image?.src) || p.images[0]?.src;
+  const cardImageObj =
+    (isVariable && defaultVariation?.image) || p.images[0];
+  const cardImage = cardImageObj?.src;
+  registerProductImages(p.images);
+  if (cardImageObj) registerProductImages([cardImageObj]);
   const cardImageAlt =
     (isVariable && defaultVariation?.image?.alt) || p.images[0]?.alt || p.name;
   const cardImageKey = cardImage ?? "empty";
 
   const responsive = useMemo(
     () =>
-      buildResponsiveImage(cardImage, {
+      buildResponsiveImage(cardImageObj, {
         sizes: "(min-width: 768px) 120px, 25vw",
       }),
-    [cardImage],
+    [cardImageObj],
   );
 
   const trackedKey = lineKey(p.id, isVariable ? defaultVariation?.id : undefined);
