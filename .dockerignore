@@ -1,0 +1,15 @@
+node_modules
+.output
+.nitro
+dist
+.git
+.github
+.lovable
+.vscode
+*.log
+.env
+.env.*
+!.env.example
+/tmp
+/scripts/loadtest.js
+supabase/.temp
