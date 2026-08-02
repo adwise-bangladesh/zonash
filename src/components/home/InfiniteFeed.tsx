@@ -93,7 +93,8 @@ export function InfiniteFeed({
   // the client made React discard and re-render the entire tree on hydration.
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useSuspenseInfiniteQuery({
-      ...(recommended ? recommendedInfiniteOptions : {}),
+      // Config below mirrors `recommendedInfiniteOptions` (same key, page size
+      // and staleTime) so the awaited SSR prefetch hydrates this exact entry.
       queryKey,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
