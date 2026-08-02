@@ -369,9 +369,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     }
   };
 
-  if (!cacheable) return run();
+  /**
+   * Transport-level failures (DNS, TLS, connection reset, 8s timeout abort)
+   * never reach the `!res.ok` branch, so they are counted here. HTTP failures
+   * are already counted at their throw site — re-counting them would trip the
+   * breaker at half the configured threshold.
+   */
+  const guarded = (): Promise<T> =>
+    run().catch((err: unknown) => {
+      if (!(err instanceof WooError)) recordFailure(err);
+      throw err;
+    });
 
-  const p = run()
+  if (!cacheable) return guarded();
+
+  const p = guarded()
     .catch((err: unknown) => {
       errorSet(cacheKey, err);
       throw err;
@@ -379,6 +391,7 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     .finally(() => {
       inflight.delete(cacheKey);
     });
+
   // Attach a no-op rejection handler so a coalesced failure never surfaces as
   // an unhandled rejection when the awaiting caller has already bailed out.
   p.catch(() => {});
