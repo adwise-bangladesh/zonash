@@ -17,29 +17,34 @@ import type { WooProduct } from "@/lib/woo.server";
  * empty do we pay for a second request (popular products) — previously both
  * calls ran on every homepage render.
  */
-const dealsQuery = queryOptions({
+type DealsData = { products: WooProduct[]; error: string | null };
+const DEALS_UNAVAILABLE: DealsData = {
+  products: [],
+  error: "Products are temporarily unavailable.",
+};
+
+const dealsQuery = queryOptions<DealsData>({
   queryKey: ["home", "deals"],
-  queryFn: async () => {
-    const unavailable = {
-      products: [] as WooProduct[],
-      error: "Products are temporarily unavailable.",
-    };
+  queryFn: async (): Promise<DealsData> => {
     const mega = await listProductsByCategorySlug({
       data: { slug: "mega-sale", perPage: 16 },
-    }).catch(() => unavailable);
-    if (mega.products?.length) {
-      return { products: mega.products as WooProduct[], error: null as string | null };
-    }
+    }).catch(() => DEALS_UNAVAILABLE);
+    if (mega.products?.length) return { products: mega.products, error: null };
+
     const fallback = await listProducts({
       data: { page: 1, perPage: 16, orderby: "popularity" },
-    }).catch(() => unavailable);
+    }).catch(() => DEALS_UNAVAILABLE);
+    const products = fallback.products ?? [];
     return {
-      products: (fallback.products ?? []) as WooProduct[],
-      error: (mega.error ?? fallback.error ?? null) as string | null,
+      // A mega-sale hiccup that the popularity fallback covered is not a user
+      // facing failure — surfacing it printed an alert above a full strip.
+      products,
+      error: products.length ? null : (fallback.error ?? mega.error ?? null),
     };
   },
   staleTime: 60_000,
 });
+
 const catQuery = queryOptions({
   queryKey: ["home", "categories"],
   queryFn: () => listCategories(),
