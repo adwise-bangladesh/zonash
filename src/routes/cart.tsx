@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { AlertCircle, ArrowRight, ChevronDown, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_QTY, itemKey, lineKey, useCart, type CartItem } from "@/lib/cart";
 import { repriceCartLines } from "@/lib/woo.functions";
-import { getPublicPoliceStations } from "@/lib/steadfast.functions";
 import { formatBDT } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
@@ -254,7 +253,6 @@ function CartPage() {
   const { items, subtotal, setQty, remove, repriceMany, hydrated } = useCart();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const policeFn = useServerFn(getPublicPoliceStations);
 
   useEffect(() => {
     window.scrollTo(0, 0);

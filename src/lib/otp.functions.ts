@@ -623,7 +623,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
 
 
 
-    const serverShipping = await computeServerShipping(data.billing.city);
+    const serverShipping = computeServerShipping(data.billing.city);
     const serverGrandTotal = Math.max(0, serverSubtotal - validDiscount) + serverShipping.amount;
 
 
