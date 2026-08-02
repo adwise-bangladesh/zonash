@@ -13,13 +13,18 @@
 /** Mirrors `DealsStrip`: 58/84px banner + horizontally scrolling deal cards. */
 export function DealsStripSkeleton() {
   return (
-    <section aria-hidden="true" className="pb-3">
+    <section aria-hidden="true" className="pb-3" data-vr="deals">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
-        <div className="flex items-stretch gap-2">
+        <div className="flex items-stretch gap-2" data-vr="deals-row">
           {/* Left banner — same footprint as a deal card (w + aspect + label row) */}
           <div className="flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg md:w-[84px]">
             <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-            <div className="flex h-[23px] items-center justify-center skeleton-shimmer md:h-[27px]" />
+            {/*
+              Real label row: `px-1 py-1.5` + `leading-none` 11px / md 13px
+              text = 23px / 25px. The md value was 27px, i.e. the desktop
+              strip shrank 2px on swap.
+            */}
+            <div className="flex h-[23px] items-center justify-center skeleton-shimmer md:h-[25px]" />
           </div>
 
           {/* Deal cards: `-mr-2.5 … pr-2.5` reproduces the scroller's bleed so
@@ -28,11 +33,12 @@ export function DealsStripSkeleton() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
+                data-vr="deal-card"
                 className="skeleton-row-fade flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-white md:w-[84px]"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-                <div className="flex h-[23px] items-center justify-center bg-white md:h-[27px]">
+                <div className="flex h-[23px] items-center justify-center bg-white md:h-[25px]">
                   <div className="h-2.5 w-8 skeleton-shimmer rounded" />
                 </div>
               </div>
@@ -43,6 +49,7 @@ export function DealsStripSkeleton() {
     </section>
   );
 }
+
 
 /** Mirrors `CategoryTabs`: sticky bar, `gap-4 py-2 pl-[5px]`, 14px pills. */
 export function CategoryTabsSkeleton() {
