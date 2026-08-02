@@ -8,7 +8,7 @@
  *   3. never links to or leaks staff-only surfaces.
  *
  * Run against the dev server (default) or any deployment:
- *   BASE_URL=https://zonash.lovable.app bunx vitest run src/tests
+ *   STOREFRONT_URL=https://zonash.lovable.app bunx vitest run src/tests
  */
 import { describe, expect, it, beforeAll } from "vitest";
 
