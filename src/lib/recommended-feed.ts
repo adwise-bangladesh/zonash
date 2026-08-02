@@ -18,6 +18,19 @@ export type RecommendedPage = { products: WooProduct[]; error?: string | null };
 /** How many curated/featured products may lead the feed. */
 const FEATURED_LIMIT = FEED_PER_PAGE;
 
+/**
+ * Mega Sale products own the deals strip at the top of the homepage; repeating
+ * them in "Recommended for you" made the same card appear twice on one screen.
+ */
+const MEGA_SALE_SLUG = "mega-sale";
+
+function isMegaSale(p: WooProduct): boolean {
+  const cats = (p as { categories?: { slug?: string }[] }).categories;
+  if (!Array.isArray(cats)) return false;
+  for (const c of cats) if (c?.slug === MEGA_SALE_SLUG) return true;
+  return false;
+}
+
 export async function fetchRecommendedPage(page: number): Promise<RecommendedPage> {
   const popular = {
     page,
@@ -27,7 +40,9 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
   };
 
   if (page > 1) {
-    return (await listProducts({ data: popular })) as RecommendedPage;
+    const res = (await listProducts({ data: popular })) as RecommendedPage;
+    const raw = res?.products ?? [];
+    return { ...res, products: raw.filter((p) => !isMegaSale(p)), rawCount: raw.length };
   }
 
   const [featuredRes, popularRes] = await Promise.all([
@@ -43,8 +58,9 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
     listProducts({ data: popular }),
   ]);
 
-  const featured = (featuredRes as RecommendedPage)?.products ?? [];
-  const rest = (popularRes as RecommendedPage)?.products ?? [];
+  const featured = ((featuredRes as RecommendedPage)?.products ?? []).filter((p) => !isMegaSale(p));
+  const rawRest = (popularRes as RecommendedPage)?.products ?? [];
+  const rest = rawRest.filter((p) => !isMegaSale(p));
   const seen = new Set<number>(featured.map((p) => p.id));
 
   // Page 1 must return exactly FEED_PER_PAGE like every later page: the
@@ -56,6 +72,9 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
 
   return {
     products: merged.slice(0, FEED_PER_PAGE),
+    // Pagination follows the unfiltered popularity page length so filtering
+    // Mega Sale items out never looks like the end of the catalog.
+    rawCount: rawRest.length,
     // Only the popularity call is load-bearing: a featured outage degrades to
     // the plain best-seller list instead of blanking the section.
     error: (popularRes as RecommendedPage)?.error ?? null,
