@@ -5,8 +5,15 @@ import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
 import { DealsStrip } from "@/components/home/DealsStrip";
-import { InfiniteFeedSection } from "@/components/home/InfiniteFeed";
+import { InfiniteFeedSection, FeedGridSkeleton } from "@/components/home/InfiniteFeed";
+import {
+  AppHeaderSkeleton,
+  CategoryTabsSkeleton,
+  PromoIconsSkeleton,
+  DealsStripSkeleton,
+} from "@/components/home/skeletons";
 import { SoftBoundary } from "@/components/SoftBoundary";
+
 
 import { TrustRow } from "@/components/home/TrustRow";
 import { recommendedInfiniteOptions } from "@/lib/recommended-feed";
