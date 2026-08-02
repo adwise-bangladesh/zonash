@@ -3,7 +3,7 @@ import { formatBDT } from "@/lib/format";
 /**
  * Delivery zone picker.
  *
- * Replaces the old thana / upazila combobox: shoppers pick one of two zones and
+ * Shoppers pick one of two delivery zones and
  * the zone alone decides the delivery charge (80 BDT inside Dhaka, 130 BDT
  * outside). The exact locality still arrives in the free-text address field, so
  * nothing is lost for the courier.
