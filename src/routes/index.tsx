@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { listProducts, listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
