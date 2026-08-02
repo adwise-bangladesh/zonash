@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OrderReviewRouteImport } from './routes/order-review'
 import { Route as OrderPendingRouteImport } from './routes/order-pending'
@@ -57,6 +58,11 @@ const SupportRoute = SupportRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/orders': typeof OrdersRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/orders': typeof OrdersRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/order-pending': typeof OrderPendingRoute
   '/order-review': typeof OrderReviewRoute
   '/orders': typeof OrdersRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/support': typeof SupportRoute
   '/verify-otp': typeof VerifyOtpRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/order-pending'
     | '/order-review'
     | '/orders'
+    | '/robots.txt'
     | '/search'
     | '/support'
     | '/verify-otp'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/order-pending'
     | '/order-review'
     | '/orders'
+    | '/robots.txt'
     | '/search'
     | '/support'
     | '/verify-otp'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/order-pending'
     | '/order-review'
     | '/orders'
+    | '/robots.txt'
     | '/search'
     | '/support'
     | '/verify-otp'
@@ -449,6 +461,7 @@ export interface RootRouteChildren {
   OrderPendingRoute: typeof OrderPendingRoute
   OrderReviewRoute: typeof OrderReviewRoute
   OrdersRoute: typeof OrdersRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
   SupportRoute: typeof SupportRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -760,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrderPendingRoute: OrderPendingRoute,
   OrderReviewRoute: OrderReviewRoute,
   OrdersRoute: OrdersRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
   SupportRoute: SupportRoute,
   VerifyOtpRoute: VerifyOtpRoute,
