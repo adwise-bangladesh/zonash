@@ -27,9 +27,12 @@ const ROOT = process.cwd();
 
 /** Staff-only surfaces. Everything a customer never sees. */
 const TARGETS = [
-  // Dashboard routes + the staff login page.
-  "src/routes/_authenticated/admin",
+  // Dashboard routes, the staff auth gate, and the staff login page.
+  // (Customers authenticate with a signed phone-session cookie, not Supabase
+  // auth, so nothing customer-facing lives under _authenticated/.)
+  "src/routes/_authenticated",
   "src/routes/auth.tsx",
+
   // Dashboard-only UI.
   "src/components/admin",
   // Dashboard-only server functions.
