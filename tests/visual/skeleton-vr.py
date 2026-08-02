@@ -66,6 +66,12 @@ KILL_ANIMATIONS = """
     transition: none !important;
     caret-color: transparent !important;
   }
+  /* The fixed bottom nav overlays whatever element we screenshot, and its
+   * position relative to that element depends on scroll offset — pure noise
+   * for a skeleton diff. Hide app chrome, keep the subject. */
+  nav[class*="fixed"][class*="bottom-0"] {
+    display: none !important;
+  }
   .skeleton-row-fade, .skeleton-shimmer {
     opacity: 1 !important;
     transform: none !important;
