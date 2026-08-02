@@ -69,10 +69,11 @@ type FormData = z.infer<typeof schema>;
 const EMPTY: FormData = { name: "", phone: "", email: "", address: "", thana: "", notes: "" };
 
 const STORAGE_KEY = "zonash:checkout:form";
-const COUPONS: Record<string, { label: string; type: "percent" | "flat"; value: number }> = {
-  ZONASH10: { label: "10% off", type: "percent", value: 10 },
-  SAVE50: { label: "50 Tk off", type: "flat", value: 50 },
-};
+// Coupon catalogue is shared with the server pricing path (see
+// src/lib/coupons.ts) so the UI can never advertise a code or a discount the
+// server refuses. Usage caps live server-side and are reported back through
+// `coupon_rejected` on the submit response.
+
 
 function splitName(full: string): { first: string; last: string } {
   const parts = full.trim().split(/\s+/);
@@ -243,9 +244,9 @@ function CheckoutPage() {
     if (!couponCode) return null;
     const c = COUPONS[couponCode];
     if (!c) return null;
-    const value = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
-    return { code: couponCode, discount: Math.min(value, subtotal) };
+    return { code: couponCode, discount: couponDiscount(c, subtotal) };
   }, [couponCode, subtotal]);
+
   const discount = coupon?.discount ?? 0;
   const regularTotal = useMemo(
     () =>
