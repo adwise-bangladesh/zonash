@@ -33,6 +33,7 @@ import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as ApiPublicRobotsDottxtRouteImport } from './routes/api/public/robots[.]txt'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
 import { Route as AuthenticatedAdminProfileRouteImport } from './routes/_authenticated/admin/profile'
@@ -163,6 +164,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const ApiPublicRobotsDottxtRoute = ApiPublicRobotsDottxtRouteImport.update({
+  id: '/api/public/robots.txt',
+  path: '/api/public/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/robots.txt': typeof ApiPublicRobotsDottxtRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/robots.txt': typeof ApiPublicRobotsDottxtRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/robots.txt': typeof ApiPublicRobotsDottxtRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
@@ -360,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin/profile'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/public/robots.txt'
     | '/admin/'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/profile'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/public/robots.txt'
     | '/admin'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
@@ -430,6 +441,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/profile'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
+    | '/api/public/robots.txt'
     | '/_authenticated/admin/'
     | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
@@ -458,6 +470,7 @@ export interface RootRouteChildren {
   StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   StepIndexRoute: typeof StepIndexRoute
+  ApiPublicRobotsDottxtRoute: typeof ApiPublicRobotsDottxtRoute
   ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
@@ -632,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/api/public/robots.txt': {
+      id: '/api/public/robots.txt'
+      path: '/api/public/robots.txt'
+      fullPath: '/api/public/robots.txt'
+      preLoaderRoute: typeof ApiPublicRobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -769,9 +789,20 @@ const rootRouteChildren: RootRouteChildren = {
   StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   StepIndexRoute: StepIndexRoute,
+  ApiPublicRobotsDottxtRoute: ApiPublicRobotsDottxtRoute,
   ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
