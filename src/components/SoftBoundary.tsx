@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, Fragment, type ReactNode } from "react";
 
 type Fallback = ReactNode | ((retry: () => void) => ReactNode);
 
@@ -45,6 +45,7 @@ export class SoftBoundary extends Component<
     if (this.state.failed) {
       return typeof fallback === "function" ? fallback(this.retry) : (fallback ?? null);
     }
-    return <div key={this.state.attempt}>{children}</div>;
+    // Fragment (not a wrapper element) keeps the parent grid/flex layout intact.
+    return <Fragment key={this.state.attempt}>{children}</Fragment>;
   }
 }
