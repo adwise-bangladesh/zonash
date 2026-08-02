@@ -330,8 +330,15 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     const text = await res.text();
     if (!res.ok) {
       console.error(`WooCommerce request failed [${res.status}]: ${text.slice(0, 500)}`);
-      throw new WooError(res.status, text);
+      const wooErr = new WooError(res.status, text);
+      // 429/5xx feed the breaker; 4xx (missing slug, bad param) do not — a
+      // healthy origin answering "not found" must never trip it.
+      recordFailure(wooErr);
+      throw wooErr;
     }
+    // A real 2xx from origin: the breaker counts this toward recovery.
+    recordSuccess();
+
     try {
       const parsed = text ? (JSON.parse(text) as T) : (undefined as T);
       if (cacheable) {
