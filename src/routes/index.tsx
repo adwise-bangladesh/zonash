@@ -315,8 +315,5 @@ function Home() {
         )}
       </main>
     </div>
-
-      </main>
-    </div>
   );
 }
