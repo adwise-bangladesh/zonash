@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from io import BytesIO
 from pathlib import Path
 
 from PIL import Image, ImageChops
@@ -156,7 +157,19 @@ def approx(a, b, tol=0.51) -> bool:
 async def capture_case(page, case: str, name: str, update: bool, f: Failures) -> None:
     el = page.locator(f'[data-vr-case="{case}"]')
     await el.wait_for(state="visible")
-    compare(name, await el.screenshot(), update, f)
+    # Below-the-fold cases came back as a blank white bitmap: Chromium can
+    # screenshot an element that has never been composited. Scroll it in and
+    # give the compositor a frame, then refuse a uniform capture outright so a
+    # blank frame can never be promoted into a baseline.
+    await el.scroll_into_view_if_needed()
+    await page.wait_for_timeout(120)
+    shot = await el.screenshot()
+    with Image.open(BytesIO(shot)) as im:
+        extrema = im.convert("L").getextrema()
+    if extrema[0] == extrema[1]:
+        f.check(False, f"visual {name}", "capture is a uniform (blank) frame")
+        return
+    compare(name, shot, update, f)
 
 
 async def geometry_pair(
