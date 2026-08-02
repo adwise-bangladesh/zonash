@@ -117,7 +117,8 @@ export function InfiniteFeed({
 
   useEffect(() => {
     const el = sentinel.current;
-    if (!el) return;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+
     const io = new IntersectionObserver(
       (entries) => {
         const s = state.current;
