@@ -45,10 +45,12 @@ const dealsQuery = queryOptions<DealsData>({
     const mega = await listProductsByCategorySlug({
       data: { slug: "mega-sale", perPage: 16 },
     }).catch(() => DEALS_UNAVAILABLE);
-    const products = mega.products ?? [];
+    // Defensive: a malformed/partial payload must not reach `shuffle`.
+    const raw = Array.isArray(mega?.products) ? mega.products : [];
+    const products = raw.filter((p) => p && typeof p.id === "number" && !!p.slug);
     // No mega-sale products => no section at all. Only a real transport error
     // is surfaced; an empty category is a valid, silent "hide me".
-    if (!products.length) return { products: [], error: mega.error ?? null };
+    if (!products.length) return { products: [], error: mega?.error ?? null };
     return { products: shuffle(products), error: null };
   },
   staleTime: 60_000,
