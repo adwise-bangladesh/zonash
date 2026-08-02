@@ -13,7 +13,7 @@ import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
 import { FEED_PER_PAGE } from "@/lib/home-feed";
 
-export type RecommendedPage = { products: WooProduct[]; error?: string | null };
+export type RecommendedPage = { products: WooProduct[]; error?: string | null; rawCount?: number };
 
 /** How many curated/featured products may lead the feed. */
 const FEATURED_LIMIT = FEED_PER_PAGE;
