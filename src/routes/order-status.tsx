@@ -136,10 +136,18 @@ function OrderStatusPage() {
               ))}
             </ol>
           ) : (
-            <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
-              We can't show this order's history right now. Your order is safe — contact support
-              below with reference #{ref} and we'll update you.
-            </p>
+            <div className="mt-3">
+              <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                Sign in with your mobile number to see this order's history. Your order is safe —
+                reference #{ref}.
+              </p>
+              <Link
+                to="/orders"
+                className="mt-3 flex h-11 items-center justify-center rounded-2xl border border-border text-sm font-semibold"
+              >
+                Verify my number
+              </Link>
+            </div>
           )}
         </section>
 

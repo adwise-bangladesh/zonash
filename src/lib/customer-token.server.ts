@@ -91,7 +91,12 @@ export async function issueCustomerSession(phone: string): Promise<void> {
   const token = `${payload}.${await sign(payload)}`;
   setCookie(COOKIE, token, {
     httpOnly: true,
-    sameSite: "lax",
+    // `lax` is dropped on cross-site requests, which is exactly what an
+    // embedded preview (app iframe under a different top-level site) does —
+    // the cookie was set but never sent back, so every authenticated read
+    // (order timeline, /orders) looked unauthenticated. `none` + `secure`
+    // keeps it working in both the iframe and the published site.
+    sameSite: "none",
     secure: true,
     path: "/",
     maxAge: Math.floor(TTL_MS / 1000),
