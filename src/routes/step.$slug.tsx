@@ -27,7 +27,7 @@ import { collectTracking } from "@/lib/tracking";
 import { useCustomerSession } from "@/lib/customer-session";
 import { formatBDT } from "@/lib/format";
 import { optionLabel } from "@/lib/attr-key";
-import { buildResponsiveImage } from "@/lib/product-image";
+import { buildResponsiveImage, registerProductImages } from "@/lib/product-image";
 import {
   SOURCE_META,
   fakeReviewCount,
@@ -290,6 +290,8 @@ function StepLandingPage() {
   // even when images and name are byte-identical.
   const gallery = useMemo(() => {
     const list: { src: string; alt: string }[] = [];
+    registerProductImages(product.images);
+    if (selectedVar?.image) registerProductImages([selectedVar.image]);
     if (selectedVar?.image?.src) list.push({ src: selectedVar.image.src, alt: product.name });
     for (const img of product.images ?? []) {
       if (!list.some((x) => x.src === img.src)) list.push({ src: img.src, alt: img.alt || product.name });

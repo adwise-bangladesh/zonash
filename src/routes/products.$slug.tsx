@@ -446,6 +446,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // `v.attributes`, so normalise once here instead of guarding at 6 call sites.
   const variations = useMemo<WooVariation[]>(() => {
     const raw = variationsQuery.data?.variations;
+    if (Array.isArray(raw)) registerProductImages(raw.map((v) => v?.image).filter(Boolean) as { src?: string; w?: string }[]);
     if (!Array.isArray(raw)) return [];
     return raw
       .filter((v): v is WooVariation => !!v && typeof v.id === "number")
