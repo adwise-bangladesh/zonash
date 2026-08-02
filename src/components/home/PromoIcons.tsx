@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Flame, Gift, CreditCard, TrendingUp, Crown } from "lucide-react";
+import { Flame, Gift, CreditCard, TrendingUp, Crown, Sparkles, Gem, Heart, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type Promo =
