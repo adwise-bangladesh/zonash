@@ -19,7 +19,7 @@ import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
-import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
+import { buildResponsiveImage, onImageSrcSetError, registerProductImages } from "@/lib/product-image";
 import { canonicalUrl, waLink } from "@/lib/site";
 import { attrKey, optionLabel } from "@/lib/attr-key";
 
@@ -418,14 +418,16 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // the parent gallery); duplicates produced repeated slides and a dot strip
   // that never matched the visible slide.
   const gallery = useMemo(
-    () =>
+    () => (
+      registerProductImages(p.images),
       Array.from(
         new Set(
           (p.images ?? [])
             .map((i) => (typeof i?.src === "string" ? i.src.trim() : ""))
             .filter((s) => s.length > 0),
         ),
-      ),
+      )
+    ),
     [p.images],
   );
   const { add, count: cartCount } = useCart();
