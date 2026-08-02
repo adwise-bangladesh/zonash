@@ -28,6 +28,15 @@ const CACHE_CONTROL = `public, max-age=0, s-maxage=${TTL_SECONDS}, stale-while-r
 
 type WaitUntilCtx = { waitUntil?: (p: Promise<unknown>) => void };
 
+/** In-flight cache writes, kept referenced so they are not dropped mid-flight. */
+const pendingPuts = new Set<Promise<unknown>>();
+
+/** Test-only: settle outstanding cache writes. */
+export function flushPendingDocumentPuts(): Promise<unknown> {
+  return Promise.all([...pendingPuts]);
+}
+
+
 function edgeCache(): Cache | null {
   try {
     return (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default ?? null;
