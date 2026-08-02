@@ -280,15 +280,23 @@ function FeedFallback({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/**
+ * Reads the deals query *inside* the boundary. Reading it in `Home` would put
+ * the throw above the boundary, where only the route errorComponent can catch
+ * it — the whole point of the guard is that a WooCommerce failure here costs
+ * one strip, not the page.
+ */
+function DealsSection() {
+  const { data: deals } = useSuspenseQuery(dealsQuery);
+  // Stable identity: a fresh `[]` per render defeated the memoized deal cards.
+  const products = deals?.products?.length ? deals.products : EMPTY_PRODUCTS;
+  return <DealsStrip products={products} />;
+}
 
 function Home() {
-  const { data: deals } = useSuspenseQuery(dealsQuery);
   const { data: catData } = useSuspenseQuery(catQuery);
-  // Stable identities: a fresh `[]` per render defeated the memoized cards
-  // downstream (DealsStrip / CategoryTabs recompute prices + srcsets).
-  const dealsProducts = deals?.products?.length ? deals.products : EMPTY_PRODUCTS;
   const categories = catData?.categories;
-  const errorMessage = deals?.error ?? (categories?.length ? null : (catData?.error ?? null));
+  const errorMessage = categories?.length ? null : (catData?.error ?? null);
 
   return (
     <div className="min-h-dvh bg-surface-muted/40">
@@ -313,9 +321,10 @@ function Home() {
             text, so the page keeps the same silhouette.
           */}
           <SoftBoundary label="deals">
-            <DealsStrip products={dealsProducts} />
+            <DealsSection />
           </SoftBoundary>
         </div>
+
 
         {/*
           The feed reads through a suspense query: a rejected page throws during
