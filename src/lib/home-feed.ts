@@ -59,7 +59,7 @@ export function getFeedNextPageParam<P extends FeedProduct>(
   allPages: FeedPage<P>[],
   perPage: number,
 ): number | undefined {
-  const n = last?.products?.length ?? 0;
+  const n = last?.rawCount ?? last?.products?.length ?? 0;
   if (n === 0 || n < perPage) return undefined;
   return allPages.length + 1;
 }
