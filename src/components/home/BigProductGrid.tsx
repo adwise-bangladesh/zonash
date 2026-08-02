@@ -32,7 +32,7 @@ const BigCard = memo(function BigCard({
   // The storefront is capped at a 480px frame, so a card column never exceeds
   // ~240px. Without a srcset the browser downloaded the full-size WordPress
   // original (often 1000px+) for every card in the feed.
-  const responsive = buildResponsiveImage(image?.src, {
+  const responsive = buildResponsiveImage(image, {
     sizes: columns === 3 ? "(min-width: 480px) 160px, 33vw" : "(min-width: 480px) 240px, 50vw",
   });
 

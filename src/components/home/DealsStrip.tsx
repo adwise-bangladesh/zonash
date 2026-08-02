@@ -80,7 +80,7 @@ const DealCard = memo(function DealCard({
   const seed = () => onSeed(p);
   // 58–84px thumbnails were previously served as the full-size
   // WordPress original — up to 12 of them on first paint.
-  const responsive = buildResponsiveImage(image?.src, {
+  const responsive = buildResponsiveImage(image, {
     sizes: "(min-width: 768px) 84px, 58px",
   });
   return (

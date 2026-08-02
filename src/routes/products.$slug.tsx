@@ -78,7 +78,7 @@ export const Route = createFileRoute("/products/$slug")({
         links: [{ rel: "canonical", href: url }],
       };
     }
-    const img = p.images?.[0]?.src;
+    const img = p.images?.[0];
     const responsive = buildResponsiveImage(img);
     const imageOrigin = /^https:\/\/[^/]+/.exec(img ?? "")?.[0] ?? "";
 

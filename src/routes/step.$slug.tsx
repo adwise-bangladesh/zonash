@@ -69,7 +69,7 @@ export const Route = createFileRoute("/step/$slug")({
     ) as { product: WooProduct | null } | undefined;
     const p = data?.product;
     if (!p) return { meta: [{ title: "Order now — Zonash" }] };
-    const img = p.images?.[0]?.src;
+    const img = p.images?.[0];
     const responsive = buildResponsiveImage(img);
     const desc =
       (p.short_description ?? "").replace(/<[^>]+>/g, "").slice(0, 155) ||
