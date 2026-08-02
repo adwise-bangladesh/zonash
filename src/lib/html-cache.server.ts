@@ -96,6 +96,10 @@ export function putCachedDocument(request: Request, response: Response, ctx: unk
   if (response.status !== 200) return response;
   if (response.headers.has("set-cookie")) return response;
   if (!(response.headers.get("content-type") ?? "").includes("text/html")) return response;
+  // An already-compressed body must not be stored: the runtime compresses on the
+  // way out, so a stored gzip/br body would be re-encoded and the visitor would
+  // get "content decoding failed" instead of the homepage.
+  if (response.headers.has("content-encoding")) return response;
 
   try {
     const copy = response.clone();
