@@ -258,11 +258,11 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
         return await fetch(url.toString(), {
           method,
           headers: {
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": wooKey,
+            ...target.headers,
             "Content-Type": "application/json",
             Accept: "application/json",
           },
+
           body: req.body ? JSON.stringify(req.body) : undefined,
           signal: controller.signal,
         });
