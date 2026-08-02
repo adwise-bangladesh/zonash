@@ -64,3 +64,31 @@ describe("dedupeFeedPages", () => {
     expect(dedupeFeedPages(pages).map((p) => p.id)).toEqual([1, 2]);
   });
 });
+
+// --- recommended feed cursor (row offsets, not page numbers) -----------------
+import { getRecommendedNextParam } from "./recommended-feed";
+
+describe("getRecommendedNextParam", () => {
+  const page = (rawCount: number, popConsumed: number) => ({
+    products: [],
+    rawCount,
+    popConsumed,
+  });
+
+  it("resumes at the exact row the merged first page stopped at", () => {
+    const first = page(PER_PAGE, 9);
+    expect(getRecommendedNextParam(first, [first])).toBe(9);
+  });
+
+  it("accumulates consumed rows across pages", () => {
+    const pages = [page(PER_PAGE, 9), page(PER_PAGE, PER_PAGE)];
+    expect(getRecommendedNextParam(pages[1]!, pages)).toBe(9 + PER_PAGE);
+  });
+
+  it("stops on a short or empty upstream page", () => {
+    const short = page(PER_PAGE - 1, PER_PAGE - 1);
+    expect(getRecommendedNextParam(short, [short])).toBeUndefined();
+    const empty = page(0, 0);
+    expect(getRecommendedNextParam(empty, [empty])).toBeUndefined();
+  });
+});

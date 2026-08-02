@@ -5,15 +5,45 @@
  *  1. Featured products the store owner curated, best sellers first.
  *  2. Everything else by WooCommerce `popularity` (total sales), desc.
  *
- * Page 1 merges the two lists (featured first) and every later page continues
- * the popularity walk. Duplicates between the two lists are dropped here and
- * again by `dedupeFeedPages`, so a featured product never renders twice.
+ * Pagination is a ROW CURSOR, not a page number. Page 1 merges the curated list
+ * with as many best sellers as fit in one screenful, which means it consumes
+ * only part of the first upstream popularity page. Numbering the next request
+ * "popularity page 2" therefore skipped every best seller the merge did not
+ * have room for — with a full featured list that silently hid ~18 products from
+ * the catalog, permanently, on every visit. The cursor is the number of
+ * popularity rows already consumed, so the next request resumes exactly where
+ * the previous one stopped.
  */
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
-import { FEED_PER_PAGE, getFeedNextPageParam, recommendedFeedKey } from "@/lib/home-feed";
+import { FEED_PER_PAGE, recommendedFeedKey } from "@/lib/home-feed";
 
-export type RecommendedPage = { products: WooProduct[]; error?: string | null; rawCount?: number };
+export type RecommendedPage = {
+  products: WooProduct[];
+  error?: string | null;
+  /** Unfiltered upstream row count — the "is there more?" signal. */
+  rawCount?: number;
+  /** Popularity rows this page consumed (advances the cursor). */
+  popConsumed?: number;
+};
+
+/**
+ * Next cursor = total popularity rows consumed so far.
+ *
+ * Stops when the last upstream page came back short (or empty): a partial page
+ * is the tail of the catalog, and a zero page after local filtering must not
+ * spin the sentinel forever.
+ */
+export function getRecommendedNextParam(
+  last: RecommendedPage | undefined,
+  all: readonly RecommendedPage[],
+): number | undefined {
+  const raw = last?.rawCount ?? 0;
+  if (raw === 0 || raw < FEED_PER_PAGE) return undefined;
+  let consumed = 0;
+  for (const p of all) consumed += p?.popConsumed ?? p?.rawCount ?? 0;
+  return consumed > 0 ? consumed : undefined;
+}
 
 /**
  * Single source of truth for the recommended infinite query.
@@ -25,16 +55,23 @@ export type RecommendedPage = { products: WooProduct[]; error?: string | null; r
  */
 export const recommendedInfiniteOptions = {
   queryKey: [...recommendedFeedKey],
-  initialPageParam: 1,
+  initialPageParam: 0,
   queryFn: ({ pageParam }: { pageParam: number }) => fetchRecommendedPage(pageParam),
   getNextPageParam: (last: RecommendedPage, all: RecommendedPage[]) =>
-    getFeedNextPageParam(last, all, FEED_PER_PAGE),
+    getRecommendedNextParam(last, all),
   staleTime: 60_000,
   retry: 1,
 } as const;
 
-/** How many curated/featured products may lead the feed. */
-const FEATURED_LIMIT = FEED_PER_PAGE;
+/**
+ * How many curated/featured products may lead the feed.
+ *
+ * Half a screenful, deliberately: if the curated list could fill page 1 on its
+ * own the page would consume ZERO popularity rows, the cursor would not advance
+ * and the feed would end after one screen. Featured products are ordinary
+ * products, so anything past this cap still surfaces in the popularity walk.
+ */
+const FEATURED_LIMIT = Math.floor(FEED_PER_PAGE / 2);
 
 /**
  * Mega Sale products own the deals strip at the top of the homepage; repeating
@@ -49,18 +86,28 @@ function isMegaSale(p: WooProduct): boolean {
   return false;
 }
 
-export async function fetchRecommendedPage(page: number): Promise<RecommendedPage> {
+/**
+ * @param cursor Popularity rows already consumed (0 = first screenful).
+ */
+export async function fetchRecommendedPage(cursor: number): Promise<RecommendedPage> {
+  const offset = Math.max(0, Math.trunc(cursor || 0));
   const popular = {
-    page,
+    page: 1,
+    offset,
     perPage: FEED_PER_PAGE,
     orderby: "popularity" as const,
     order: "desc" as const,
   };
 
-  if (page > 1) {
+  if (offset > 0) {
     const res = (await listProducts({ data: popular })) as RecommendedPage;
     const raw = res?.products ?? [];
-    return { ...res, products: raw.filter((p) => !isMegaSale(p)), rawCount: raw.length };
+    return {
+      ...res,
+      products: raw.filter((p) => !isMegaSale(p)),
+      rawCount: raw.length,
+      popConsumed: raw.length,
+    };
   }
 
   const [featuredRes, popularRes] = await Promise.all([
@@ -78,21 +125,29 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
 
   const featured = ((featuredRes as RecommendedPage)?.products ?? []).filter((p) => !isMegaSale(p));
   const rawRest = (popularRes as RecommendedPage)?.products ?? [];
-  const rest = rawRest.filter((p) => !isMegaSale(p));
   const seen = new Set<number>(featured.map((p) => p.id));
 
-  // Page 1 must return exactly FEED_PER_PAGE like every later page: the
-  // infinite feed decides "is there another page?" from the page length, and
-  // an oversized first page also rendered a visibly denser first screen.
-  // Overflow is simply dropped — page 2 continues the popularity walk and
-  // `dedupeFeedPages` removes anything that reappears.
-  const merged = [...featured, ...rest.filter((p) => !seen.has(p.id))];
+  // Page 1 stays exactly one screenful (FEED_PER_PAGE) like every later page —
+  // the feed judges "is there more?" off page length, and an oversized first
+  // page also rendered a visibly denser first screen. Instead of DROPPING the
+  // overflow, we record how many popularity rows were actually consumed so the
+  // next request continues from that row.
+  const merged = featured.slice(0, FEATURED_LIMIT);
+  let popConsumed = 0;
+  for (const p of rawRest) {
+    if (merged.length >= FEED_PER_PAGE) break;
+    popConsumed++;
+    if (isMegaSale(p) || seen.has(p.id)) continue;
+    seen.add(p.id);
+    merged.push(p);
+  }
 
   return {
-    products: merged.slice(0, FEED_PER_PAGE),
+    products: merged,
     // Pagination follows the unfiltered popularity page length so filtering
     // Mega Sale items out never looks like the end of the catalog.
     rawCount: rawRest.length,
+    popConsumed,
     // Only the popularity call is load-bearing: a featured outage degrades to
     // the plain best-seller list instead of blanking the section.
     error: (popularRes as RecommendedPage)?.error ?? null,

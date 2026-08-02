@@ -253,7 +253,7 @@ function Home() {
         </h1>
 
         <div className="bg-background">
-          <PromoIcons />
+          <PromoIcons categories={categories} />
 
           {/*
             Optional chrome, two independent guards:

@@ -28,6 +28,14 @@ const CARD_PRODUCT_FIELDS =
 const listProductsSchema = z.object({
   page: z.number().int().min(1).max(500).default(1),
   perPage: z.number().int().min(1).max(50).default(12),
+  /**
+   * Row offset into the result set. WooCommerce ignores `page` when `offset` is
+   * present, which is exactly what a cursor-style feed needs: a merged first
+   * page (curated + popular) can consume a partial upstream page and the next
+   * request resumes at the exact row it stopped at instead of skipping the
+   * remainder. Capped like the deep-pagination guard below.
+   */
+  offset: z.number().int().min(0).max(1000).optional(),
   search: z.string().max(200).optional(),
   category: z.string().max(200).optional(),
   featured: z.boolean().optional(),
@@ -78,6 +86,7 @@ export const listProducts = createServerFn({ method: "GET" })
 
       const baseQuery = {
         page: data.page,
+        ...(typeof data.offset === "number" ? { offset: data.offset } : {}),
         per_page: data.perPage,
         category: categoryId,
         featured: data.featured,
