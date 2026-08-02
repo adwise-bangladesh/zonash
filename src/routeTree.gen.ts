@@ -33,7 +33,6 @@ import { Route as DevVrSkeletonsRouteImport } from './routes/dev-vr.skeletons'
 import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as ApiPublicWebhooksWooRouteImport } from './routes/api/public/webhooks/woo'
-import { Route as ApiPublicWebhooksSteadfastRouteImport } from './routes/api/public/webhooks/steadfast'
 
 const VerifyOtpRoute = VerifyOtpRouteImport.update({
   id: '/verify-otp',
@@ -155,12 +154,6 @@ const ApiPublicWebhooksWooRoute = ApiPublicWebhooksWooRouteImport.update({
   path: '/api/public/webhooks/woo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicWebhooksSteadfastRoute =
-  ApiPublicWebhooksSteadfastRouteImport.update({
-    id: '/api/public/webhooks/steadfast',
-    path: '/api/public/webhooks/steadfast',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -186,7 +179,6 @@ export interface FileRoutesByFullPath {
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/step/': typeof StepIndexRoute
-  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesByTo {
@@ -213,7 +205,6 @@ export interface FileRoutesByTo {
   '/step/$slug': typeof StepSlugRoute
   '/products': typeof ProductsIndexRoute
   '/step': typeof StepIndexRoute
-  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRoutesById {
@@ -241,7 +232,6 @@ export interface FileRoutesById {
   '/step/$slug': typeof StepSlugRoute
   '/products/': typeof ProductsIndexRoute
   '/step/': typeof StepIndexRoute
-  '/api/public/webhooks/steadfast': typeof ApiPublicWebhooksSteadfastRoute
   '/api/public/webhooks/woo': typeof ApiPublicWebhooksWooRoute
 }
 export interface FileRouteTypes {
@@ -270,7 +260,6 @@ export interface FileRouteTypes {
     | '/step/$slug'
     | '/products/'
     | '/step/'
-    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -297,7 +286,6 @@ export interface FileRouteTypes {
     | '/step/$slug'
     | '/products'
     | '/step'
-    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   id:
     | '__root__'
@@ -324,7 +312,6 @@ export interface FileRouteTypes {
     | '/step/$slug'
     | '/products/'
     | '/step/'
-    | '/api/public/webhooks/steadfast'
     | '/api/public/webhooks/woo'
   fileRoutesById: FileRoutesById
 }
@@ -352,7 +339,6 @@ export interface RootRouteChildren {
   StepSlugRoute: typeof StepSlugRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
   StepIndexRoute: typeof StepIndexRoute
-  ApiPublicWebhooksSteadfastRoute: typeof ApiPublicWebhooksSteadfastRoute
   ApiPublicWebhooksWooRoute: typeof ApiPublicWebhooksWooRoute
 }
 
@@ -526,13 +512,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksWooRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/webhooks/steadfast': {
-      id: '/api/public/webhooks/steadfast'
-      path: '/api/public/webhooks/steadfast'
-      fullPath: '/api/public/webhooks/steadfast'
-      preLoaderRoute: typeof ApiPublicWebhooksSteadfastRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -560,9 +539,18 @@ const rootRouteChildren: RootRouteChildren = {
   StepSlugRoute: StepSlugRoute,
   ProductsIndexRoute: ProductsIndexRoute,
   StepIndexRoute: StepIndexRoute,
-  ApiPublicWebhooksSteadfastRoute: ApiPublicWebhooksSteadfastRoute,
   ApiPublicWebhooksWooRoute: ApiPublicWebhooksWooRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
