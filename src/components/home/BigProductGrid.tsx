@@ -125,7 +125,8 @@ export function BigProductGrid({
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
     <section aria-label="Products" className="pb-6">
-      <div className={gridClass}>
+      <div className={gridClass} data-vr="feed-grid-live">
+
         {list.map((p, i) => (
           <BigCard key={p.id} p={p} priority={i < 2} columns={columns} onSeed={seedProduct} />
         ))}
