@@ -250,7 +250,21 @@ export async function wooFetch<T = unknown>(req: WooRequest): Promise<T> {
     // Replay a very recent failure instead of hammering a struggling origin.
     const recentError = errorGet(cacheKey);
     if (recentError !== undefined) throw recentError;
+    // Global breaker: while WooCommerce is unhealthy, prefer a slightly stale
+    // payload and otherwise fail instantly (no 8s timeout per request, no
+    // origin traffic) instead of letting every distinct URL discover the
+    // outage on its own.
+    if (!allowRequest()) {
+      const stale = staleGet(cacheKey);
+      if (stale !== undefined) return stale as T;
+      throw new WooCircuitOpenError();
+    }
+  } else if (!allowRequest()) {
+    // Writes are not cacheable and must not be silently swallowed, but there is
+    // no point posting into a dead origin either.
+    throw new WooCircuitOpenError();
   }
+
 
 
   const run = async (): Promise<T> => {
