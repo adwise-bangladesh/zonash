@@ -56,11 +56,19 @@ VIEWPORTS = {
 PIXEL_TOLERANCE = 8
 MAX_DIFF_RATIO = 0.002
 
+# Killing `animation` alone freezes `skeleton-row-fade` wherever its opacity
+# happened to be when the stylesheet landed — that made one capture in three
+# come out 70% transparent. Pin the end state explicitly.
 KILL_ANIMATIONS = """
   *, *::before, *::after {
     animation: none !important;
     transition: none !important;
     caret-color: transparent !important;
+  }
+  .skeleton-row-fade, .skeleton-shimmer {
+    opacity: 1 !important;
+    transform: none !important;
+    background-position: 0 0 !important;
   }
 """
 
