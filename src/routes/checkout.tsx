@@ -17,7 +17,7 @@ import { getLastOrderByPhone } from "@/lib/customer-auth.functions";
 import { useCustomerSession } from "@/lib/customer-session";
 import { ThanaCombobox } from "@/components/checkout/ThanaCombobox";
 import { toast } from "sonner";
-import { COUPONS, couponDiscount, COUPON_REJECTION_MESSAGE } from "@/lib/coupons";
+import { COUPONS, couponDiscount, couponRejectionMessage } from "@/lib/coupons";
 
 
 export const Route = createFileRoute("/checkout")({
