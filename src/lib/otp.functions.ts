@@ -151,6 +151,13 @@ type SubmitResult =
       decision?: "confirmed" | "review" | "blocked";
       reason?: string;
       duplicates?: Duplicate[];
+      /**
+       * Set when a coupon code was sent but the server refused it (unknown
+       * code, global cap, per-phone cap). The client shows the reason so the
+       * customer is never surprised by a full-price total.
+       */
+      coupon_rejected?: string;
+
     }
   | { ok: false; error: string };
 
@@ -186,20 +193,10 @@ async function deriveIdempotencyKey(
   return `d:${await sha256Hex(`${phone}::${norm}::${fingerprint}`)}`;
 }
 
-// Server-side coupon table (source of truth). Keep in sync with UI copy in
-// src/routes/checkout.tsx; if it drifts, this authoritative version wins.
-// `max_uses` = global cap; `max_per_phone` = per-customer cap. Omit either
-// (or set to null) to skip that limit.
-type CouponRule = {
-  type: "percent" | "flat";
-  value: number;
-  max_uses?: number | null;
-  max_per_phone?: number | null;
-};
-const SERVER_COUPONS: Record<string, CouponRule> = {
-  ZONASH10: { type: "percent", value: 10, max_uses: 1000, max_per_phone: 3 },
-  SAVE50:   { type: "flat",    value: 50, max_uses: 500,  max_per_phone: 1 },
-};
+// Coupon code/label/value now live in the shared, client-safe catalogue
+// (`src/lib/coupons.ts`) so the checkout UI and this server pricing path can
+// never drift apart. Usage caps stay server-side in `coupons.server.ts`.
+
 
 // SMS cost cap per phone per rolling 24h. Prevents runaway BDBulkSMS bills
 // from a customer (or bot) that keeps re-triggering OTP sends.
@@ -295,29 +292,32 @@ async function resolveCouponDiscount(
   phone: string,
 ): Promise<{ code: string | null; discount: number; reason?: string }> {
   if (!code) return { code: null, discount: 0 };
-  const key = code.trim().toUpperCase();
-  const c = SERVER_COUPONS[key];
-  if (!c || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+  const { findCoupon, couponDiscount } = await import("./coupons");
+  const hit = findCoupon(code);
+  if (!hit || subtotal <= 0) return { code: null, discount: 0, reason: "invalid" };
+  const { key, coupon } = hit;
 
   try {
+    const { COUPON_CAPS } = await import("./coupons.server");
+    const caps = COUPON_CAPS[key] ?? {};
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (c.max_uses != null) {
+    if (caps.max_uses != null) {
       const { count } = await supabaseAdmin
         .from("coupon_usage" as never)
         .select("id", { head: true, count: "exact" })
         .eq("coupon_code", key);
-      if ((count ?? 0) >= c.max_uses) {
+      if ((count ?? 0) >= caps.max_uses) {
         return { code: null, discount: 0, reason: "max_uses_reached" };
       }
     }
-    if (c.max_per_phone != null && phone) {
+    if (caps.max_per_phone != null && phone) {
       const { count } = await supabaseAdmin
         .from("coupon_usage" as never)
         .select("id", { head: true, count: "exact" })
         .eq("coupon_code", key)
         .eq("phone", phone);
-      if ((count ?? 0) >= c.max_per_phone) {
+      if ((count ?? 0) >= caps.max_per_phone) {
         return { code: null, discount: 0, reason: "max_per_phone_reached" };
       }
     }
@@ -327,9 +327,9 @@ async function resolveCouponDiscount(
     return { code: null, discount: 0, reason: "cap_check_failed" };
   }
 
-  const raw = c.type === "percent" ? Math.round((subtotal * c.value) / 100) : c.value;
-  return { code: key, discount: Math.max(0, Math.min(raw, subtotal)) };
+  return { code: key, discount: couponDiscount(coupon, subtotal) };
 }
+
 
 /**
  * Count how many OTP SMS have been sent to this phone in the last 24h,
@@ -623,11 +623,16 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
     const serverSubtotal = priced.subtotal;
-    const { code: validCoupon, discount: validDiscount } = await resolveCouponDiscount(
-      data.coupon_code,
-      serverSubtotal,
-      phone,
-    );
+    const {
+      code: validCoupon,
+      discount: validDiscount,
+      reason: couponReason,
+    } = await resolveCouponDiscount(data.coupon_code, serverSubtotal, phone);
+    // Surfaced to the client so the customer learns *why* a coupon they saw
+    // applied in the UI was dropped, instead of silently paying full price.
+    const coupon_rejected =
+      data.coupon_code && !validCoupon ? (couponReason ?? "invalid") : undefined;
+
 
 
     const serverShipping = await computeServerShipping(data.billing.city);
@@ -794,6 +799,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         total: created.total,
         phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
         sms_ok: false,
+        coupon_rejected,
+
         skip_otp: true,
         decision: "blocked",
         reason: "account-blocked",
@@ -865,6 +872,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
           total: created.total,
           phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
           sms_ok: false,
+          coupon_rejected,
+
           skip_otp: true,
           decision: verdict.decision,
           reason: verdict.decisionReason,
@@ -944,6 +953,8 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       total: created.total,
       phone_masked: `${phone.slice(0, 3)}****${phone.slice(-2)}`,
       sms_ok: smsOk,
+      coupon_rejected,
+
     };
     };
 

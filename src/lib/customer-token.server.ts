@@ -16,14 +16,33 @@ const COOKIE = "zonash_cs";
 const TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years ("unlimited")
 const PHONE_RE = /^01[3-9]\d{8}$/;
 
+/**
+ * Fail-closed: the cookie signing key MUST be its own dedicated secret.
+ *
+ * This used to fall back to `SUPABASE_SERVICE_ROLE_KEY` and then
+ * `WC_WEBHOOK_SECRET`, which welded the customer-session trust boundary to a
+ * database-admin key and a third-party webhook secret — and an empty final
+ * fallback meant a misconfigured deploy would sign cookies with a zero-length
+ * key, making sessions forgeable. Now a missing/short secret simply disables
+ * sessions (customers re-verify by OTP) and logs loudly once.
+ */
+const MIN_SECRET_LEN = 16;
+let warned = false;
 function secret(): string {
-  return (
-    process.env.CUSTOMER_SESSION_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.WC_WEBHOOK_SECRET ||
-    ""
-  );
+  const s = process.env.CUSTOMER_SESSION_SECRET ?? "";
+  if (s.length < MIN_SECRET_LEN) {
+    if (!warned) {
+      warned = true;
+      console.error(
+        "CUSTOMER_SESSION_SECRET is missing or too short (min 16 chars). " +
+          "Customer sessions are disabled until it is configured.",
+      );
+    }
+    return "";
+  }
+  return s;
 }
+
 
 /**
  * The HMAC key is derived once per isolate. `importKey` is a KDF-ish call that

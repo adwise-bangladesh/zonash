@@ -47,10 +47,18 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
   const rest = (popularRes as RecommendedPage)?.products ?? [];
   const seen = new Set<number>(featured.map((p) => p.id));
 
+  // Page 1 must return exactly FEED_PER_PAGE like every later page: the
+  // infinite feed decides "is there another page?" from the page length, and
+  // an oversized first page also rendered a visibly denser first screen.
+  // Overflow is simply dropped — page 2 continues the popularity walk and
+  // `dedupeFeedPages` removes anything that reappears.
+  const merged = [...featured, ...rest.filter((p) => !seen.has(p.id))];
+
   return {
-    products: [...featured, ...rest.filter((p) => !seen.has(p.id))],
+    products: merged.slice(0, FEED_PER_PAGE),
     // Only the popularity call is load-bearing: a featured outage degrades to
     // the plain best-seller list instead of blanking the section.
     error: (popularRes as RecommendedPage)?.error ?? null,
   };
 }
+
