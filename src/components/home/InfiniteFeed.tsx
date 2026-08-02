@@ -16,7 +16,6 @@ import { BigProductGrid } from "./BigProductGrid";
 type Orderby = "date" | "price" | "popularity" | "rating" | "title";
 type Order = "asc" | "desc";
 
-
 /** Grid placeholder used while a feed variant (sort change, first load) streams in. */
 export function FeedGridSkeleton({ columns = 3 }: { columns?: 2 | 3 }) {
   return (
@@ -108,7 +107,6 @@ export function InfiniteFeed({
       retry: 1,
     });
 
-
   // Latest fetch state is read through a ref so the observer is created ONCE
   // per feed variant. Keying the effect on `isFetchingNextPage` tore the
   // IntersectionObserver down and rebuilt it twice per page load (fetch start +
@@ -133,7 +131,6 @@ export function InfiniteFeed({
     io.observe(el);
     return () => io.disconnect();
   }, [queryKey]);
-
 
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
   // every render (scroll, hover, focus). Memoize on the page array identity so

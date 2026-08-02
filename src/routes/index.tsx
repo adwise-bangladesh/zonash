@@ -236,7 +236,6 @@ function HomeSkeleton() {
       {/* Product grid (matches BigProductGrid — 2 columns for the feed) */}
       <div className="grid grid-cols-2 gap-2 px-[5px]">
         {Array.from({ length: 8 }).map((_, i) => (
-
           <div
             key={i}
             className="skeleton-row-fade flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-border/60"

@@ -98,4 +98,3 @@ export async function fetchRecommendedPage(page: number): Promise<RecommendedPag
     error: (popularRes as RecommendedPage)?.error ?? null,
   };
 }
-
