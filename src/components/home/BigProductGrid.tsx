@@ -83,16 +83,7 @@ const BigCard = memo(function BigCard({
       </div>
 
       <div className="flex flex-col gap-1.5 p-2.5">
-        {availability.kind === "supplier" && (
-          <span className="inline-flex w-fit items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-            <Truck className="h-2.5 w-2.5" aria-hidden="true" /> {availability.delivery}
-          </span>
-        )}
-        {availability.kind === "out" && (
-          <span className="inline-flex w-fit items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-            Out of Stock
-          </span>
-        )}
+
         {/* Fixed two-line box. Bengali glyphs are taller than Latin, so a
             `min-h` + line-clamp box leaked a sliver of the third line; an exact
             height (2 x line-height) with overflow hidden crops cleanly. */}
