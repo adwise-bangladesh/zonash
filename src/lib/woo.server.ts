@@ -645,8 +645,18 @@ export function categorySlugMap(): Promise<Map<string, number>> {
  */
 const VAR_REGULAR_TTL_MS = 600_000;
 const MAX_VAR_REGULAR_ENTRIES = 1_000;
-const varRegularCache = new Map<number, { at: number; value: string | null }>();
-const varRegularInflight = new Map<number, Promise<string | null>>();
+/**
+ * Derived per-product variation summary: cheapest regular price (for the
+ * strikethrough) plus the WooCommerce *default* variation, so a card shows the
+ * exact same option, label and price the product page opens with.
+ */
+export type VarSummary = {
+  minRegular: string | null;
+  def: NonNullable<WooProduct["default_variation"]> | null;
+};
+const varRegularCache = new Map<number, { at: number; value: VarSummary }>();
+const varRegularInflight = new Map<number, Promise<VarSummary>>();
+
 
 /**
  * Hard ceiling on how long enrichment may hold the SSR response.
