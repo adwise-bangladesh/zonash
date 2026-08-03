@@ -17,6 +17,7 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { getOrderTimeline, type TimelineStage } from "@/lib/order-timeline.functions";
+import type { WorkflowStage } from "@/lib/order-workflow";
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
