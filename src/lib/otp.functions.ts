@@ -1369,6 +1369,10 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
         { key: "_zonash_ip", value: server.ip ?? "" },
         { key: "_zonash_ua", value: server.user_agent ?? "" },
         { key: "_zonash_channel", value: "storefront-draft" },
+        ...workflowMetaEntries("draft", [], {
+          note: "Checkout form filled but not submitted.",
+          actor: "customer",
+        }).meta,
       ],
     };
 
