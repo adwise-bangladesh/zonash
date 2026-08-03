@@ -179,16 +179,14 @@ function VerifyOtpPage() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Verify your number" />
 
-      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+      <main className="mx-auto w-full max-w-[400px] flex-1 px-4 pb-10 pt-1">
         <AuthHero
           icon={MessageSquareLock}
-          title="Enter verification code"
-          subtitle={`We texted a ${CODE_LEN}-digit code to ${prettyPhone}.`}
-          step={2}
+          title="Enter code"
+          subtitle={`Sent to ${prettyPhone}`}
         />
 
-        {/* Code card */}
-        <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="mt-5">
           <OtpBoxes
             inputRef={hiddenRef}
             code={code}
@@ -209,28 +207,20 @@ function VerifyOtpPage() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Verifying…
               </span>
-            ) : (
-              <span className="text-muted-foreground">Auto-detects when your SMS arrives</span>
-            )}
+            ) : null}
           </div>
 
           <button
             type="button"
             onClick={onResend}
             disabled={cooldown > 0 || resending}
-            className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            className="mx-auto mt-2 flex min-h-11 w-fit items-center justify-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium text-primary disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} aria-hidden="true" />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
-
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2.5">
-            <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Your order stays reserved while you verify. Never share this code with anyone.
-            </p>
-          </div>
         </section>
+
 
 
         <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
