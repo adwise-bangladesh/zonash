@@ -1,14 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { memo, useMemo, useRef } from "react";
-import { Gem, Truck } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
-import { availabilityOf } from "@/lib/stock";
 import { cardTitle } from "@/lib/card-title";
 import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
+import { sortStorefrontProducts } from "@/lib/stock-order";
+import { readRecentlyViewed } from "@/lib/recently-viewed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 // Memoized: the feed grows to 180+ cards, and any parent state change
 // (scroll sentinel, tab switch, timer elsewhere) would otherwise re-render
