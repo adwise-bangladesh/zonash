@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 import { useSuspenseQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { listProducts, listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
+import { listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
@@ -47,11 +47,14 @@ function shuffle<T>(input: readonly T[]): T[] {
   return out;
 }
 
+/** Cards actually rendered by the strip — fetching more was wasted payload. */
+const DEALS_LIMIT = 12;
+
 const dealsQuery = queryOptions<DealsData>({
   queryKey: ["home", "deals"],
   queryFn: async (): Promise<DealsData> => {
     const mega = await listProductsByCategorySlug({
-      data: { slug: "mega-sale", perPage: 16 },
+      data: { slug: "mega-sale", perPage: DEALS_LIMIT },
     }).catch(() => DEALS_UNAVAILABLE);
     // Defensive: a malformed/partial payload must not reach `shuffle`.
     const raw = Array.isArray(mega?.products) ? mega.products : [];
@@ -62,12 +65,34 @@ const dealsQuery = queryOptions<DealsData>({
     return { products: shuffle(products), error: null };
   },
   staleTime: 60_000,
+  // One retry, not React Query's default three: the loader awaits this query,
+  // so a Woo outage would hold SSR for three backoff rounds per visitor.
+  retry: 1,
 });
 
-const catQuery = queryOptions({
+type CatData = { categories: WooCategory[]; error: string | null };
+const CATS_UNAVAILABLE: CatData = {
+  categories: [],
+  error: "Categories are temporarily unavailable.",
+};
+
+const catQuery = queryOptions<CatData>({
   queryKey: ["home", "categories"],
-  queryFn: () => listCategories(),
+  // The server function already degrades to `{ categories: [], error }`, but a
+  // transport failure (offline, aborted request on a client navigation) still
+  // rejects. `Home` reads this above every boundary, so an un-caught rejection
+  // replaced the entire healthy homepage with the route error screen.
+  queryFn: async (): Promise<CatData> => {
+    try {
+      const res = await listCategories();
+      const categories = Array.isArray(res?.categories) ? res.categories : [];
+      return { categories, error: res?.error ?? null };
+    } catch {
+      return CATS_UNAVAILABLE;
+    }
+  },
   staleTime: 5 * 60_000,
+  retry: 1,
 });
 
 export const Route = createFileRoute("/")({
