@@ -16,6 +16,8 @@ import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
 import { availabilityOf, isBuyable } from "@/lib/stock";
+import { pushRecentlyViewed } from "@/lib/recently-viewed";
+
 import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
