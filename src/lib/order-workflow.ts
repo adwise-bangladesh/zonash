@@ -486,9 +486,12 @@ export function workflowMetaEntries(
       { key: META_STAGE, value: stage },
       { key: META_STATUS, value: status },
       { key: META_HISTORY, value: JSON.stringify(next) },
+      { key: META_UPDATED_AT, value: event.at },
+      { key: META_VERSION, value: WORKFLOW_SCHEMA_VERSION },
     ],
   };
 }
+
 
 /**
  * Derive a workflow status from a legacy order that has no workflow meta yet,
