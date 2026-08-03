@@ -728,7 +728,21 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
             { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
             { key: "_zonash_draft", value: "0" },
+            { key: "_zonash_placed_at", value: placedAt },
+            { key: "_zonash_country", value: server.country ?? "" },
+            { key: "_zonash_promoted_from_draft", value: data.draft_order_id ? "1" : "0" },
+            { key: "_zonash_delivery_zone", value: serverShipping.insideDhaka ? "inside-dhaka" : "outside-dhaka" },
+            { key: "_zonash_shipping_label", value: serverShipping.label },
+            { key: "_zonash_items_count", value: String(data.items.length) },
+            { key: "_zonash_gps", value: hasGps ? `${tGps!.lat},${tGps!.lng}` : "" },
+            { key: "_zonash_gps_lat", value: hasGps ? String(tGps!.lat) : "" },
+            { key: "_zonash_gps_lng", value: hasGps ? String(tGps!.lng) : "" },
+            {
+              key: "_zonash_gps_accuracy",
+              value: hasGps && typeof tGps!.accuracy === "number" ? String(Math.round(tGps!.accuracy)) : "",
+            },
             ...wfPlaced.meta,
+
           ],
         };
 
