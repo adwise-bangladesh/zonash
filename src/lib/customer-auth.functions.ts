@@ -95,7 +95,7 @@ export const requestCustomerLoginOtp = createServerFn({ method: "POST" })
       const { sendSms } = await import("./sms.server");
       const res = await sendSms({
         phone,
-        message: `<#> Zonash: ${code} is your sign-in code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
+        message: `আপনার OTP কোড: ${code}`,
       });
       smsOk = res.ok;
       if (!smsOk) console.error("customer login OTP SMS failed", res.message);
