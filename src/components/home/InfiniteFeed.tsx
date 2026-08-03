@@ -137,10 +137,10 @@ export function InfiniteFeed({
   // `fetchNextPage`, an `isFetchingNextPage` that never happened) survive as the
   // observer's view of the world — a real "feed stops loading" class of bug
   // under the interrupt-heavy rendering that fast scrolling produces.
-  const state = useRef({ hasNextPage, isFetchingNextPage, fetchNextPage });
+  const state = useRef({ hasNextPage, isFetchingNextPage, isError, fetchNextPage });
   useEffect(() => {
-    state.current = { hasNextPage, isFetchingNextPage, fetchNextPage };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+    state.current = { hasNextPage, isFetchingNextPage, isError, fetchNextPage };
+  }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
 
   useEffect(() => {
@@ -150,9 +150,11 @@ export function InfiniteFeed({
     const io = new IntersectionObserver(
       (entries) => {
         const s = state.current;
-        if (entries[0]?.isIntersecting && s.hasNextPage && !s.isFetchingNextPage) {
-          void s.fetchNextPage();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        // `isError` must gate this: a failed page keeps `hasNextPage` true, so
+        // an in-view sentinel re-requested the same failing page on every
+        // observer callback — a request storm against an already-degraded Woo.
+        if (s.hasNextPage && !s.isFetchingNextPage && !s.isError) void s.fetchNextPage();
       },
       { rootMargin: "600px 0px" },
     );
@@ -170,13 +172,13 @@ export function InfiniteFeed({
   // sentinels; keeping one stable observer removed that accidental priming.)
   // Measuring the sentinel directly restores it without touching the observer.
   useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
+    if (!hasNextPage || isFetchingNextPage || isError) return;
     const el = sentinel.current;
     if (!el || typeof window === "undefined") return;
     if (el.getBoundingClientRect().top <= window.innerHeight + 600) {
       void fetchNextPage();
     }
-  }, [data?.pages, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [data?.pages, hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
 
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
