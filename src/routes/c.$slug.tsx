@@ -143,12 +143,12 @@ function SubcategoryStrip({
 
       {many ? (
         <ul
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-[5px] px-[5px] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {subs.map((s) => (
             <li
               key={s.id}
-              className="shrink-0 basis-[calc((100%-2rem-2.2rem)/5.4)] snap-start"
+              className="shrink-0 basis-[calc((100%-2.5rem)/5.4)] snap-start"
             >
               <SubCard parentSlug={parentSlug} sub={s} />
             </li>
@@ -156,7 +156,7 @@ function SubcategoryStrip({
         </ul>
       ) : (
         <ul
-          className="grid gap-2 px-4"
+          className="grid gap-2 px-[5px]"
           style={{ gridTemplateColumns: `repeat(${subs.length}, minmax(0, 1fr))` }}
         >
           {subs.map((s) => (
@@ -341,7 +341,7 @@ function CategoryProductFeed({
 
 function FeedSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-2 px-2.5 pt-2 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 px-[5px] pt-2 md:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
         // Mirrors the real card box model (square image + ~80px meta block).
         // The old flat aspect-[3/4] block was ~19px shorter per row, so the
@@ -371,7 +371,7 @@ function CollectionSkeleton() {
       <div className="h-14 border-b border-border/60 bg-background" />
       <div className="h-[38px] border-b border-border bg-background" aria-hidden="true" />
       <div className="bg-background pt-1">
-        <div className="flex gap-2 overflow-hidden px-4 pb-2">
+        <div className="flex gap-2 overflow-hidden px-[5px] pb-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="basis-[calc((100%-2.5rem)/5.4)] shrink-0">
               <div className="aspect-square w-full skeleton-shimmer rounded-2xl" />
