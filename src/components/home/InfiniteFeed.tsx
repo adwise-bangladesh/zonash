@@ -103,7 +103,7 @@ export function InfiniteFeed({
   // Suspense (not `useInfiniteQuery`) so the server waits for the streamed
   // first page: rendering an empty feed on the server and a populated one on
   // the client made React discard and re-render the entire tree on hydration.
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching, isError, refetch } =
     useSuspenseInfiniteQuery(
       recommended
         ? // Reuse the SSR-prefetched config verbatim. Re-declaring it here (as
@@ -137,10 +137,10 @@ export function InfiniteFeed({
   // `fetchNextPage`, an `isFetchingNextPage` that never happened) survive as the
   // observer's view of the world — a real "feed stops loading" class of bug
   // under the interrupt-heavy rendering that fast scrolling produces.
-  const state = useRef({ hasNextPage, isFetchingNextPage, fetchNextPage });
+  const state = useRef({ hasNextPage, isFetchingNextPage, isError, fetchNextPage });
   useEffect(() => {
-    state.current = { hasNextPage, isFetchingNextPage, fetchNextPage };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+    state.current = { hasNextPage, isFetchingNextPage, isError, fetchNextPage };
+  }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
 
   useEffect(() => {
@@ -150,9 +150,11 @@ export function InfiniteFeed({
     const io = new IntersectionObserver(
       (entries) => {
         const s = state.current;
-        if (entries[0]?.isIntersecting && s.hasNextPage && !s.isFetchingNextPage) {
-          void s.fetchNextPage();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        // `isError` must gate this: a failed page keeps `hasNextPage` true, so
+        // an in-view sentinel re-requested the same failing page on every
+        // observer callback — a request storm against an already-degraded Woo.
+        if (s.hasNextPage && !s.isFetchingNextPage && !s.isError) void s.fetchNextPage();
       },
       { rootMargin: "600px 0px" },
     );
@@ -170,22 +172,31 @@ export function InfiniteFeed({
   // sentinels; keeping one stable observer removed that accidental priming.)
   // Measuring the sentinel directly restores it without touching the observer.
   useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage) return;
+    if (!hasNextPage || isFetchingNextPage || isError) return;
     const el = sentinel.current;
     if (!el || typeof window === "undefined") return;
     if (el.getBoundingClientRect().top <= window.innerHeight + 600) {
       void fetchNextPage();
     }
-  }, [data?.pages, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [data?.pages, hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
 
   // Dedupe is O(pages x per_page); at page 10 that is 180 items re-scanned on
   // every render (scroll, hover, focus). Memoize on the page array identity so
   // it only runs when a new page actually lands.
   const products = useMemo(() => {
-    const all = dedupeFeedPages<WooProduct>(
-      data?.pages as { products: WooProduct[] }[] | undefined,
-    );
+    const pages = Array.isArray(data?.pages)
+      ? (data.pages as { products?: WooProduct[] }[])
+      : undefined;
+    // Validate the upstream shape here, once: a malformed page (products
+    // missing, or an object where an array was promised) must not reach the
+    // grid as `undefined.id`.
+    const safe = pages?.map((p) => ({
+      products: Array.isArray(p?.products)
+        ? p.products.filter((x): x is WooProduct => !!x && typeof x.id === "number" && !!x.slug)
+        : [],
+    }));
+    const all = dedupeFeedPages<WooProduct>(safe);
     return excludeId ? all.filter((p) => p.id !== excludeId) : all;
   }, [data?.pages, excludeId]);
 
@@ -213,9 +224,10 @@ export function InfiniteFeed({
             <button
               type="button"
               onClick={() => void refetch()}
-              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted"
+              disabled={isFetching}
+              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-60"
             >
-              Try again
+              {isFetching ? "Retrying…" : "Try again"}
             </button>
           </div>
         )}
