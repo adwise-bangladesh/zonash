@@ -659,6 +659,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       billingPayload.email = data.billing.email.trim();
     }
 
+    // Structured location + device facts, stored as first-class meta keys so
+    // the dashboard and courier tooling never have to parse the raw tracking
+    // blob. The full snapshot still lives in `_zonash_tracking`.
+    const tGps = (
+      data.tracking as
+        | { gps?: { lat?: number; lng?: number; accuracy?: number } }
+        | undefined
+    )?.gps;
+    const hasGps = !!tGps && typeof tGps.lat === "number" && typeof tGps.lng === "number";
+    const placedAt = new Date().toISOString();
+
     // Workflow layer (stage + granular status). Tracked locally through this
     // handler so follow-up transitions never need an extra Woo read.
     let wfHistory: WorkflowEvent[] = [];
@@ -667,8 +678,10 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         ? "Promoted from checkout draft; awaiting phone verification."
         : "Submitted by customer; awaiting phone verification.",
       actor: "storefront",
+      at: placedAt,
     });
     wfHistory = wfPlaced.history;
+
 
     let created!: { id: number; number: string; total: string; currency: string };
     try {
