@@ -13,6 +13,7 @@ import {
   type WorkflowEvent,
   type WorkflowStatus,
 } from "./order-workflow";
+import { formatOpsNote, type NoteFacts } from "./order-notes";
 
 type SetOpts = {
   /** Internal note stored in history and (optionally) as a Woo private note. */
@@ -28,9 +29,17 @@ type SetOpts = {
   wooStatus?: string | null;
   /** Don't touch the Woo status at all — only workflow meta. */
   keepWooStatus?: boolean;
-  /** Also post a private order note with this text. */
+  /**
+   * One professional sentence. When set, a uniform private order note is
+   * composed automatically (preferred over passing `privateNote` by hand).
+   */
+  summary?: string;
+  /** Extra key/value context appended to the composed private note. */
+  facts?: NoteFacts;
+  /** Fully custom private note. Overrides `summary`. */
   privateNote?: string;
 };
+
 
 export async function setWorkflowStatus(
   orderId: number,
