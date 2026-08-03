@@ -84,7 +84,13 @@ function OrderStatusPage() {
               </div>
               <div className="truncate text-lg font-bold">#{ref}</div>
             </div>
-            <StatusPill label={t?.statusLabel} status={t?.status} loading={isLoading} />
+            <StatusPill label={t?.statusLabel} stage={t?.stage} loading={isLoading} />
+          </div>
+          {t ? (
+            <div className="mt-2 text-[11.5px] text-muted-foreground">
+              Stage: <span className="font-semibold text-foreground">{t.stageLabel}</span>
+            </div>
+          ) : null}
           </div>
         </div>
 
