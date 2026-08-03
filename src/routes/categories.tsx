@@ -72,7 +72,9 @@ export const Route = createFileRoute("/categories")({
   // blocking navigation on a round trip.
   loader: async ({ context, deps }) => {
     const primary = await context.queryClient.ensureQueryData(categoriesQuery);
-    const first = normalizeCategories(primary?.categories)[0]?.slug;
+    const list = normalizeCategories(primary?.categories);
+    // Only branching parents have a right pane worth warming.
+    const first = (list.find((c) => c.hasSubs) ?? list[0])?.slug;
     const slug = deps.parent ?? first;
     if (slug) {
       const warm = context.queryClient
@@ -175,7 +177,7 @@ function CategoriesPage() {
 
   const railRef = React.useRef<HTMLUListElement>(null);
   const didScrollRef = React.useRef(false);
-  const activeSlug = parent ?? cats[0]?.slug;
+  const activeSlug = parent ?? cats.find((c) => c.hasSubs)?.slug ?? cats[0]?.slug;
 
   // Keep the active rail item visible; skip animation on first paint.
   React.useEffect(() => {
@@ -195,9 +197,14 @@ function CategoriesPage() {
   const selectCategory = React.useCallback(
     (slug: string) => {
       if (slug === activeSlug) return;
+      const target = cats.find((c) => c.slug === slug);
+      if (target && !target.hasSubs) {
+        void navigate({ to: "/c/$slug", params: { slug } });
+        return;
+      }
       void navigate({ search: { parent: slug }, replace: true });
     },
-    [activeSlug, navigate],
+    [activeSlug, cats, navigate],
   );
 
   // Warm the sub-category cache on hover/focus — served from cache on click.
