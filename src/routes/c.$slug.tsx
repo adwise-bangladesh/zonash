@@ -105,11 +105,12 @@ function CollectionPage() {
   return (
     <div className="min-h-screen bg-surface-muted/40">
       <AppHeader />
+      <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
       <main>
         {/* Every indexable page needs exactly one h1; the visual design has no
             title bar, so it is screen-reader/crawler only. */}
         <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
-        <div className="bg-background pt-2">
+        <div className="bg-background pt-1">
           {strip.length > 0 && (
             <SubcategoryStrip
               parentSlug={slug}
@@ -118,9 +119,6 @@ function CollectionPage() {
             />
           )}
         </div>
-
-
-        <SortTabs active={sort} to="/c/$slug" params={{ slug }} />
 
         <CategoryProductFeed categoryId={parent?.id ?? null} sort={sort} />
       </main>
