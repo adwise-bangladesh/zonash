@@ -110,7 +110,7 @@ function CollectionPage() {
         {/* Every indexable page needs exactly one h1; the visual design has no
             title bar, so it is screen-reader/crawler only. */}
         <h1 className="sr-only">{parent?.name ?? slug} — Zonash</h1>
-        <div className="bg-background pt-1">
+        <div className="bg-background py-3">
           {strip.length > 0 && (
             <SubcategoryStrip
               parentSlug={slug}
