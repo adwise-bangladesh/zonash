@@ -32,7 +32,7 @@ const subsQuery = (slug: string) =>
   });
 
 /** Defensive: never trust the shape of an upstream WooCommerce payload. */
-type SafeCategory = { slug: string; name: string; imageSrc: string | null };
+type SafeCategory = { slug: string; name: string; imageSrc: string | null; hasSubs: boolean };
 
 function normalizeCategories(input: unknown): SafeCategory[] {
   if (!Array.isArray(input)) return [];
@@ -40,7 +40,12 @@ function normalizeCategories(input: unknown): SafeCategory[] {
   const out: SafeCategory[] = [];
   for (const raw of input) {
     if (!raw || typeof raw !== "object") continue;
-    const c = raw as { slug?: unknown; name?: unknown; image?: { src?: unknown } | null };
+    const c = raw as {
+      slug?: unknown;
+      name?: unknown;
+      has_subs?: unknown;
+      image?: { src?: unknown } | null;
+    };
     const slug = typeof c.slug === "string" ? c.slug.trim() : "";
     if (!slug || !SLUG_RE.test(slug) || seen.has(slug)) continue;
     const name = typeof c.name === "string" && c.name.trim() ? c.name.trim() : slug;
@@ -50,10 +55,13 @@ function normalizeCategories(input: unknown): SafeCategory[] {
       slug,
       name,
       imageSrc: src.startsWith("https://") ? src : null,
+      // Absent on sub-category payloads; only the rail reads it.
+      hasSubs: c.has_subs === true,
     });
   }
   return out;
 }
+
 
 export const Route = createFileRoute("/categories")({
   validateSearch: (s) => searchSchema.parse(s),
