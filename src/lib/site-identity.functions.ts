@@ -3,7 +3,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 
-export const getSiteLogo = createServerFn({ method: "GET" }).handler(async () => {
-  const { resolveSiteLogo } = await import("./site-logo.server");
-  return resolveSiteLogo();
+export const getSiteIdentity = createServerFn({ method: "GET" }).handler(async () => {
+  const { resolveSiteIdentity } = await import("./site-identity.server");
+  return resolveSiteIdentity();
 });

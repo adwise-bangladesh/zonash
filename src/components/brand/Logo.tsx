@@ -7,7 +7,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { siteLogoQueryOptions } from "@/lib/site-logo";
+import { FALLBACK_SITE_TITLE, siteIdentityQueryOptions } from "@/lib/site-identity";
 
 function ZonashMark({ size = 30 }: { size?: number }) {
   return (
@@ -54,18 +54,20 @@ function ZonashMark({ size = 30 }: { size?: number }) {
 }
 
 export function Logo({ className, size = 30 }: { className?: string; size?: number }) {
-  // The logo comes from WordPress (custom logo / site icon) and is cached in
-  // Postgres + memory server-side, then prefetched in the root loader — so this
-  // resolves from the dehydrated cache on first paint with no client fetch.
-  const { data } = useQuery(siteLogoQueryOptions());
+  // Branding comes from WordPress (site title, tagline, custom logo / site icon)
+  // and is cached in Postgres + memory server-side, then prefetched in the root
+  // loader — so this resolves from the dehydrated cache with no client fetch.
+  const { data } = useQuery(siteIdentityQueryOptions());
+  const title = data?.title ?? FALLBACK_SITE_TITLE;
+  const logo = data?.logo;
 
-  if (data?.url) {
-    const ratio = data.width && data.height ? data.width / data.height : null;
+  if (logo?.url) {
+    const ratio = logo.width && logo.height ? logo.width / logo.height : null;
     const height = Math.round(size * 1.25);
     return (
       <img
-        src={data.url}
-        alt={data.alt ?? "Zonash"}
+        src={logo.url}
+        alt={logo.alt ?? title}
         height={height}
         {...(ratio ? { width: Math.round(height * ratio) } : {})}
         decoding="async"
@@ -76,20 +78,32 @@ export function Logo({ className, size = 30 }: { className?: string; size?: numb
     );
   }
 
-  return <WordmarkLogo className={className} size={size} />;
+  return <WordmarkLogo className={className} size={size} title={title} tagline={data?.tagline ?? null} />;
 }
 
 /** Built-in fallback wordmark, used until/unless WordPress provides a logo. */
-function WordmarkLogo({ className, size = 30 }: { className?: string; size?: number }) {
+function WordmarkLogo({
+  className,
+  size = 30,
+  title = FALLBACK_SITE_TITLE,
+  tagline,
+}: {
+  className?: string;
+  size?: number;
+  title?: string;
+  tagline?: string | null;
+}) {
+  // A long WP tagline would break the lockup — keep the wordmark's short strap.
+  const strap = tagline && tagline.length <= 22 ? tagline : "Fine Jewelry";
   return (
     <span
       className={`group inline-flex items-center gap-[9px] text-primary ${className ?? ""}`}
-      aria-label="Zonash"
+      aria-label={title}
     >
       <ZonashMark size={size} />
       <span className="flex flex-col leading-none">
         <span
-          className="text-ink"
+          className="text-ink whitespace-nowrap"
           style={{
             fontFamily: '"Cormorant Garamond", "Instrument Serif", Georgia, serif',
             fontWeight: 500,
@@ -99,10 +113,10 @@ function WordmarkLogo({ className, size = 30 }: { className?: string; size?: num
             lineHeight: 1,
           }}
         >
-          Zonash
+          {title}
         </span>
         <span
-          className="mt-[3px] text-primary/70"
+          className="mt-[3px] text-primary/70 whitespace-nowrap"
           style={{
             fontFamily: '"Figtree", ui-sans-serif, system-ui, sans-serif',
             fontWeight: 500,
@@ -112,9 +126,10 @@ function WordmarkLogo({ className, size = 30 }: { className?: string; size?: num
             lineHeight: 1,
           }}
         >
-          Fine&nbsp;Jewelry
+          {strap}
         </span>
       </span>
     </span>
   );
 }
+

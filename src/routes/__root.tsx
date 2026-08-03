@@ -18,7 +18,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
 import { CustomerSessionProvider } from "@/lib/customer-session";
 import { installBackGestureListener } from "@/lib/nav-transition";
-import { siteLogoQueryOptions } from "@/lib/site-logo";
+import {
+  EMPTY_SITE_IDENTITY,
+  FALLBACK_SITE_TAGLINE,
+  FALLBACK_SITE_TITLE,
+  siteIdentityQueryOptions,
+  type SiteIdentity,
+} from "@/lib/site-identity";
 
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
@@ -51,36 +57,43 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Warm the WordPress site logo once per SSR render so the header paints the
-  // real brand mark with no client round-trip. Never blocks: the server layer
-  // is cached and any failure falls back to the built-in wordmark.
-  loader: async ({ context }) => {
+  // Warm WordPress site identity (title, tagline, logo, icon) once per SSR
+  // render so the header and head tags paint with no client round-trip. Never
+  // blocks: the server layer is cached and failures fall back to built-ins.
+  loader: async ({ context }): Promise<{ identity: SiteIdentity }> => {
     try {
-      await context.queryClient.ensureQueryData(siteLogoQueryOptions());
+      const identity = await context.queryClient.ensureQueryData(siteIdentityQueryOptions());
+      return { identity };
     } catch {
       /* branding is non-critical */
+      return { identity: EMPTY_SITE_IDENTITY };
     }
   },
-  head: () => ({
+  head: ({ loaderData }) => {
+    const identity = loaderData?.identity ?? EMPTY_SITE_IDENTITY;
+    const siteName = identity.title ?? FALLBACK_SITE_TITLE;
+    const tagline = identity.tagline ?? FALLBACK_SITE_TAGLINE;
+    const siteTitle = `${siteName} — ${tagline}`;
+    const description =
+      identity.tagline ??
+      "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections.";
+    const iconUrl = identity.icon.url;
+
+    return {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Zonash — Fine Jewelry, Timeless Design" },
-      {
-        name: "description",
-        content:
-          "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections.",
-      },
-      { property: "og:title", content: "Zonash — Fine Jewelry, Timeless Design" },
-      {
-        property: "og:description",
-        content:
-          "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections.",
-      },
+      { title: siteTitle },
+      { name: "description", content: description },
+      { name: "application-name", content: siteName },
+      { name: "apple-mobile-web-app-title", content: siteName },
+      { property: "og:site_name", content: siteName },
+      { property: "og:title", content: siteTitle },
+      { property: "og:description", content: description },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Zonash — Fine Jewelry, Timeless Design" },
-      { name: "twitter:description", content: "Zonash crafts modern heirloom jewelry — rings, necklaces, earrings and bracelets in gold, diamonds and precious stones. Shop the latest collections." },
+      { name: "twitter:title", content: siteTitle },
+      { name: "twitter:description", content: description },
       // No og:image/twitter:image here: the root default was a stale Lovable
       // preview screenshot that overrode every page's real cover. Leaf routes
       // supply their own product/category image; pages without one fall back
@@ -89,7 +102,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // Favicon follows the WordPress Site Icon when one is set.
+      iconUrl
+        ? { rel: "icon", href: iconUrl }
+        : { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      ...(iconUrl ? [{ rel: "apple-touch-icon", href: iconUrl }] : []),
+
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       // Woo product data + images travel through the connector gateway; warming
@@ -103,7 +121,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600&family=Tiro+Bangla:ital@0;1&display=swap",
       },
     ],
-  }),
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
