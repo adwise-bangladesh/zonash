@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
+import { ChatLink } from "@/components/support/ChatLink";
 
 const SUPPORT_TEL = "+8801926644575";
 const SUPPORT_EMAIL = "support@zonash.com";
@@ -265,6 +266,13 @@ function Support() {
           </div>
         </section>
 
+        <ChatLink
+          variant="row"
+          className="mt-6"
+          label="Live chat with support"
+          hint="Chat inside the app · 10 AM – 10 PM"
+          context={{ topic: "Support page", from: "/support" }}
+        />
         {WA_CTA}
         {CONTACT}
         {KEEP_SHOPPING}

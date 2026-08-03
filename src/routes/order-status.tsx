@@ -171,6 +171,7 @@ function OrderStatusPage() {
         <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
           <SupportFooter
             label="Need help with this order?"
+            chatTopic={`Order #${ref}`}
             waMessage={buildSupportMessage({
               page: "Order status",
               orderNumber: ref,

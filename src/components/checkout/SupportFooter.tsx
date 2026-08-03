@@ -1,6 +1,7 @@
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { SUPPORT_TEL, SUPPORT_WA_NUMBER } from "@/lib/site";
+import { ChatLink } from "@/components/support/ChatLink";
 
 /**
  * Slim support strip used on checkout / verification flow pages.
@@ -10,9 +11,12 @@ import { SUPPORT_TEL, SUPPORT_WA_NUMBER } from "@/lib/site";
 export function SupportFooter({
   label = "Need help?",
   waMessage,
+  chatTopic,
 }: {
   label?: string;
   waMessage?: string;
+  /** Short context shown to the agent, e.g. "Order #24705". */
+  chatTopic?: string;
 }) {
   const waHref = `https://wa.me/${SUPPORT_WA_NUMBER}${
     waMessage ? `?text=${encodeURIComponent(waMessage)}` : ""
@@ -22,7 +26,8 @@ export function SupportFooter({
       <span className="text-[11px] text-muted-foreground">
         {label} <span className="text-foreground/70">Daily 10am – 10pm</span>
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <ChatLink label="Live chat" context={{ topic: chatTopic, from: "support-footer" }} />
         <a
           href={`tel:${SUPPORT_TEL}`}
           className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3.5 py-1.5 text-[12px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"

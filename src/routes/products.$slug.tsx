@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError, registerProductImages } from "@/lib/product-image";
 import { canonicalUrl, waLink } from "@/lib/site";
 import { attrKey, optionLabel } from "@/lib/attr-key";
+import { ChatLink } from "@/components/support/ChatLink";
 
 
 // Below-the-fold related-products feed — split out of the critical bundle so
@@ -955,6 +956,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </svg>
                 Order on WhatsApp
               </a>
+            </div>
+
+            <div className="mt-2 flex justify-center">
+              <ChatLink
+                label="Live chat with support"
+                context={{ topic: `Product: ${p.name}`, from: `/products/${p.slug}` }}
+              />
             </div>
           </CollapsibleSection>
 
