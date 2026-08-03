@@ -85,3 +85,19 @@ export function optionLabel(
   }
   return s.replace(/[-_]+/g, " ").trim();
 }
+
+/**
+ * Human-readable label for a whole variation ("2 Pcs · Gold").
+ *
+ * Variation rows carry option SLUGS, so each one is mapped back through the
+ * parent's `attributes[].options` labels via `optionLabel`.
+ */
+export function variationLabel(
+  product: LabelSource | null | undefined,
+  variation: { attributes?: { name: string; option: string }[] } | null | undefined,
+): string {
+  const parts = (variation?.attributes ?? [])
+    .map((a) => optionLabel(product, a.name, a.option))
+    .filter((s) => !!s && s.trim() !== "");
+  return parts.join(" · ");
+}
