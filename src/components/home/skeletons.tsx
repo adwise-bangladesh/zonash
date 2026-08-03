@@ -16,16 +16,12 @@ export function DealsStripSkeleton() {
     <section aria-hidden="true" className="pb-3" data-vr="deals">
       <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-transparent shadow-sm md:p-3">
         <div className="flex items-stretch gap-2" data-vr="deals-row">
-          {/* Left banner — same footprint as a deal card (w + aspect + label row) */}
-          <div className="flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg md:w-[84px]">
-            <div className="aspect-square w-full skeleton-shimmer rounded-none" />
-            {/*
-              Real label row: `px-1 py-1.5` + `leading-none` 11px / md 13px
-              text = 23px / 25px. The md value was 27px, i.e. the desktop
-              strip shrank 2px on swap.
-            */}
-            <div className="flex h-[23px] items-center justify-center skeleton-shimmer md:h-[25px]" />
-          </div>
+          {/* Left banner — one solid block matching the real banner's footprint
+              (card width, stretched to the row height by `items-stretch`).
+              Splitting it into a square thumb + label bar read as two stacked
+              boxes, unlike the real single gradient panel. */}
+          <div className="w-[58px] shrink-0 overflow-hidden rounded-lg skeleton-shimmer md:w-[84px]" />
+
 
           {/* Deal cards: `-mr-2.5 … pr-2.5` reproduces the scroller's bleed so
               the last visible card is clipped exactly as in the real strip. */}
