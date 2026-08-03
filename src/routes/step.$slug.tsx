@@ -707,7 +707,12 @@ function StepLandingPage() {
 
       {/* Title + price */}
       <section className="bg-gradient-to-b from-primary/[0.05] via-background to-background px-4 pb-4 pt-4">
-        <h1 className="text-[19px] font-bold leading-tight text-foreground">{product.name}</h1>
+        <h1 className="text-[19px] font-bold leading-tight text-foreground">
+          {product.name}
+          {selectedVarLabel && (
+            <span className="text-muted-foreground"> — {selectedVarLabel}</span>
+          )}
+        </h1>
         <div className="mt-1 flex items-center justify-between gap-2">
           {(selectedVar?.sku || product.sku) ? (
             <div className="text-[11px] font-medium text-muted-foreground">

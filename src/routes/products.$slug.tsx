@@ -800,7 +800,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </span>
               )}
             </div>
-            <h1 className="text-[17px] font-semibold leading-snug text-foreground">{p.name}</h1>
+            <h1 className="text-[17px] font-semibold leading-snug text-foreground">
+              {p.name}
+              {matchedVariationLabel && (
+                <span className="text-muted-foreground"> — {matchedVariationLabel}</span>
+              )}
+            </h1>
             <div className="mt-3 flex flex-wrap items-baseline gap-2">
               <span className="text-[26px] font-extrabold leading-none text-primary">
                 {formatBDT(priceNum)}
