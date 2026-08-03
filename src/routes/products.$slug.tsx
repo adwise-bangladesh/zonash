@@ -21,7 +21,7 @@ import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError, registerProductImages } from "@/lib/product-image";
 import { canonicalUrl, waLink } from "@/lib/site";
-import { attrKey, optionLabel } from "@/lib/attr-key";
+import { attrKey, optionLabel, variationLabel } from "@/lib/attr-key";
 import { ChatLink } from "@/components/support/ChatLink";
 
 
@@ -569,6 +569,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
     return map;
   }, [isVariable, variations, selected]);
+
+  // Label for the selected variation, appended to the title so the page reads
+  // exactly like the card the shopper tapped ("Name — 2 Pcs").
+  const matchedVariationLabel = useMemo(
+    () => (matchedVariation ? variationLabel(p, matchedVariation) : ""),
+    [p, matchedVariation],
+  );
 
   // ---------- Pricing / stock (variation-aware) ----------
   const activePriceStr =

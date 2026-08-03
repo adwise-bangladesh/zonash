@@ -184,8 +184,23 @@ export const listProducts = createServerFn({ method: "GET" })
       // length was used as the page-full signal, so a short text page topped up
       // by SKU hits (e.g. 20 + 5 = 25 >= 24) advertised another page that only
       // ever came back empty — a dead "Load more" button.
+      // Price sorting must agree with what the card shows. WooCommerce orders
+      // variable products by their MINIMUM variation price, while the card
+      // prices the DEFAULT variation — so a price-sorted page could look
+      // shuffled. Re-sort the enriched page by the displayed price.
+      const enriched = await enrichVariableRegular(products);
+      if (data.orderby === "price") {
+        const { resolveCardPrices } = await import("./price-range");
+        const priceOf = (pr: WooProduct) => {
+          const { sell } = resolveCardPrices(pr);
+          const n = typeof sell === "string" ? Number.parseFloat(sell) : sell;
+          return Number.isFinite(n as number) ? (n as number) : Number.POSITIVE_INFINITY;
+        };
+        const dir = data.order === "desc" ? -1 : 1;
+        enriched.sort((x, y) => (priceOf(x) - priceOf(y)) * dir);
+      }
       return {
-        products: await enrichVariableRegular(products),
+        products: enriched,
         hasMore: textRows.length >= data.perPage,
         error: null as string | null,
       };
