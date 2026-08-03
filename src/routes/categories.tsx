@@ -32,7 +32,7 @@ const subsQuery = (slug: string) =>
   });
 
 /** Defensive: never trust the shape of an upstream WooCommerce payload. */
-type SafeCategory = { slug: string; name: string; imageSrc: string | null };
+type SafeCategory = { slug: string; name: string; imageSrc: string | null; hasSubs: boolean };
 
 function normalizeCategories(input: unknown): SafeCategory[] {
   if (!Array.isArray(input)) return [];
@@ -40,7 +40,12 @@ function normalizeCategories(input: unknown): SafeCategory[] {
   const out: SafeCategory[] = [];
   for (const raw of input) {
     if (!raw || typeof raw !== "object") continue;
-    const c = raw as { slug?: unknown; name?: unknown; image?: { src?: unknown } | null };
+    const c = raw as {
+      slug?: unknown;
+      name?: unknown;
+      has_subs?: unknown;
+      image?: { src?: unknown } | null;
+    };
     const slug = typeof c.slug === "string" ? c.slug.trim() : "";
     if (!slug || !SLUG_RE.test(slug) || seen.has(slug)) continue;
     const name = typeof c.name === "string" && c.name.trim() ? c.name.trim() : slug;
@@ -50,10 +55,13 @@ function normalizeCategories(input: unknown): SafeCategory[] {
       slug,
       name,
       imageSrc: src.startsWith("https://") ? src : null,
+      // Absent on sub-category payloads; only the rail reads it.
+      hasSubs: c.has_subs === true,
     });
   }
   return out;
 }
+
 
 export const Route = createFileRoute("/categories")({
   validateSearch: (s) => searchSchema.parse(s),
@@ -64,7 +72,9 @@ export const Route = createFileRoute("/categories")({
   // blocking navigation on a round trip.
   loader: async ({ context, deps }) => {
     const primary = await context.queryClient.ensureQueryData(categoriesQuery);
-    const first = normalizeCategories(primary?.categories)[0]?.slug;
+    const list = normalizeCategories(primary?.categories);
+    // Only branching parents have a right pane worth warming.
+    const first = (list.find((c) => c.hasSubs) ?? list[0])?.slug;
     const slug = deps.parent ?? first;
     if (slug) {
       const warm = context.queryClient
@@ -167,7 +177,7 @@ function CategoriesPage() {
 
   const railRef = React.useRef<HTMLUListElement>(null);
   const didScrollRef = React.useRef(false);
-  const activeSlug = parent ?? cats[0]?.slug;
+  const activeSlug = parent ?? cats.find((c) => c.hasSubs)?.slug ?? cats[0]?.slug;
 
   // Keep the active rail item visible; skip animation on first paint.
   React.useEffect(() => {
@@ -187,9 +197,14 @@ function CategoriesPage() {
   const selectCategory = React.useCallback(
     (slug: string) => {
       if (slug === activeSlug) return;
+      const target = cats.find((c) => c.slug === slug);
+      if (target && !target.hasSubs) {
+        void navigate({ to: "/c/$slug", params: { slug } });
+        return;
+      }
       void navigate({ search: { parent: slug }, replace: true });
     },
-    [activeSlug, navigate],
+    [activeSlug, cats, navigate],
   );
 
   // Warm the sub-category cache on hover/focus — served from cache on click.
@@ -292,43 +307,63 @@ function CategoriesPage() {
               <ul ref={railRef} onKeyDown={onRailKeyDown} className="pb-24">
                 {cats.map((c) => {
                   const isActive = !parentMissing && c.slug === active.slug;
-                  return (
-                    <li key={c.slug} data-slug={c.slug}>
-                      <button
-                        type="button"
-                        onClick={() => selectCategory(c.slug)}
-                        onPointerEnter={() => prefetchSubs(c.slug)}
-                        onFocus={() => prefetchSubs(c.slug)}
-                        aria-pressed={isActive}
-                        aria-current={isActive ? "true" : undefined}
-                        className={`relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
-                          isActive ? "bg-background" : "text-foreground active:bg-background/60"
+                  const itemClass = `relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+                    isActive ? "bg-background" : "text-foreground active:bg-background/60"
+                  }`;
+                  const inner = (
+                    <>
+                      {isActive && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary"
+                        />
+                      )}
+                      <span
+                        className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${
+                          isActive ? "ring-primary/50" : "ring-border"
                         }`}
                       >
-                        {isActive && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary"
-                          />
-                        )}
-                        <span
-                          className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${
-                            isActive ? "ring-primary/50" : "ring-border"
-                          }`}
+                        <CategoryThumb src={c.imageSrc} alt="" size={40} iconClass="h-4 w-4" />
+                      </span>
+                      <span
+                        className={`block w-full truncate text-[10px] font-semibold leading-tight ${
+                          isActive ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        {c.name}
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li key={c.slug} data-slug={c.slug}>
+                      {c.hasSubs ? (
+                        <button
+                          type="button"
+                          onClick={() => selectCategory(c.slug)}
+                          onPointerEnter={() => prefetchSubs(c.slug)}
+                          onFocus={() => prefetchSubs(c.slug)}
+                          aria-pressed={isActive}
+                          aria-current={isActive ? "true" : undefined}
+                          className={itemClass}
                         >
-                          <CategoryThumb src={c.imageSrc} alt="" size={40} iconClass="h-4 w-4" />
-                        </span>
-                        <span
-                          className={`block w-full truncate text-[10px] font-semibold leading-tight ${
-                            isActive ? "text-primary" : "text-foreground"
-                          }`}
+                          {inner}
+                        </button>
+                      ) : (
+                        // Leaf category: there are no subcategories to browse, so
+                        // the rail goes straight to its product page.
+                        <Link
+                          to="/c/$slug"
+                          params={{ slug: c.slug }}
+                          preload="intent"
+                          className={itemClass}
                         >
-                          {c.name}
-                        </span>
-                      </button>
+                          {inner}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
+
               </ul>
             </nav>
           </aside>

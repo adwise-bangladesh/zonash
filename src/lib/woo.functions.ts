@@ -442,18 +442,30 @@ export const listPrimaryCategories = createServerFn({ method: "GET" })
       // Derived from the shared taxonomy snapshot: memoized per isolate (5 min)
       // and single-flighted, so a burst of visitors triggers one pagination pass
       // instead of one per request.
-      const categories = await cachedDerived<WooCategory[]>("categories:primary", 300_000, async () => {
-        const all = await categoryIndex();
-        const parents = all.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
-        const withChildren = new Set(all.filter((c) => c.parent > 0).map((c) => c.parent));
-        const nested = parents.filter((p) => withChildren.has(p.id));
-        // Hide childless parents only while at least one parent has children.
-        // A flat taxonomy (no subcategories anywhere) must still render a
-        // usable browser instead of a permanently empty page.
-        const visible = nested.length > 0 ? nested : parents;
-        // Only fields the browser actually renders leave the server.
-        return visible.map((p) => ({ id: p.id, name: p.name, slug: p.slug, count: 0, image: p.image }));
-      });
+      const categories = await cachedDerived<(WooCategory & { has_subs: boolean })[]>(
+        "categories:primary:v2",
+        300_000,
+        async () => {
+          const all = await categoryIndex();
+          const parents = all.filter((c) => c.parent === 0 && c.slug !== "uncategorized");
+          const withChildren = new Set(all.filter((c) => c.parent > 0).map((c) => c.parent));
+          // A parent is worth showing when it either branches into subcategories
+          // (the rail then browses them) or holds products of its own (the rail
+          // links straight to its product page). Anything with neither is an
+          // empty dead end and stays hidden.
+          const visible = parents.filter((p) => withChildren.has(p.id) || (p.count ?? 0) > 0);
+          // Only fields the browser actually renders leave the server.
+          return visible.map((p) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            count: p.count ?? 0,
+            image: p.image,
+            has_subs: withChildren.has(p.id),
+          }));
+        },
+      );
+
 
       return { categories, error: null as string | null };
     } catch (e) {
