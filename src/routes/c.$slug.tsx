@@ -323,7 +323,7 @@ function CategoryProductFeed({
   }
 
   return (
-    <div className="pt-2">
+    <div>
       <BigProductGrid products={products} />
       <div ref={sentinel} className="flex items-center justify-center py-6 text-muted-foreground">
         {isFetchingNextPage && (
