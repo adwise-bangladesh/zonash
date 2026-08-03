@@ -428,6 +428,7 @@ export const PRODUCT_FIELDS = [
   "stock_status",
   "backorders",
   "backorders_allowed",
+  "stock_quantity",
   "short_description",
   "description",
   "images",
@@ -705,7 +706,8 @@ async function fetchVarSummary(product: WooProduct): Promise<VarSummary> {
       status: "publish",
       // `attributes` + `purchasable` are what let us pick the SAME default
       // variation the product page opens with, and label it identically.
-      _fields: "id,price,regular_price,sale_price,stock_status,purchasable,attributes,menu_order",
+      _fields:
+        "id,price,regular_price,sale_price,stock_status,backorders,stock_quantity,purchasable,attributes,menu_order",
     },
     timeoutMs: 6000,
   });
@@ -835,6 +837,7 @@ export type WooProduct = {
   stock_status: string;
   backorders?: string;
   backorders_allowed?: boolean;
+  stock_quantity?: number | null;
   short_description: string;
   description: string;
   images: { id: number; src: string; alt: string; srcset?: string; w?: string }[];
@@ -876,6 +879,9 @@ export type WooVariation = {
   regular_price: string;
   sale_price: string;
   stock_status: string;
+  backorders?: string;
+  backorders_allowed?: boolean;
+  stock_quantity?: number | null;
   image?: { id: number; src: string; alt: string; srcset?: string; w?: string };
   attributes: { id: number; name: string; option: string }[];
   menu_order?: number;

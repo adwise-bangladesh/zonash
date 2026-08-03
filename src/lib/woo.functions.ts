@@ -23,7 +23,7 @@ function asArray<T>(value: unknown): T[] {
  * for the render set only.
  */
 const CARD_PRODUCT_FIELDS =
-  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images,attributes,default_attributes";
+  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,backorders,stock_quantity,images,attributes,default_attributes";
 
 const listProductsSchema = z.object({
   page: z.number().int().min(1).max(500).default(1),
@@ -324,7 +324,7 @@ export const getProductBySlug = createServerFn({ method: "GET" })
  * AND dehydrated into the SSR HTML of every single visitor.
  */
 const VARIATION_FIELDS =
-  "id,sku,price,regular_price,sale_price,stock_status,image,attributes,menu_order";
+  "id,sku,price,regular_price,sale_price,stock_status,backorders,stock_quantity,image,attributes,menu_order";
 
 export const getProductVariations = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => z.object({ productId: z.number().int().positive() }).parse(raw))
@@ -347,6 +347,8 @@ export const getProductVariations = createServerFn({ method: "GET" })
         regular_price: v.regular_price,
         sale_price: v.sale_price,
         stock_status: v.stock_status,
+        backorders: v.backorders,
+        stock_quantity: v.stock_quantity ?? null,
         menu_order: v.menu_order,
         attributes: Array.isArray(v.attributes)
           ? v.attributes.map((a) => ({ id: a.id, name: a.name, option: a.option }))
