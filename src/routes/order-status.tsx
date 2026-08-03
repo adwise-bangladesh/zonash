@@ -191,18 +191,18 @@ function OrderStatusPage() {
 
 function StatusPill({
   label,
-  status,
+  stage,
   loading,
 }: {
   label?: string;
-  status?: string;
+  stage?: WorkflowStage;
   loading: boolean;
 }) {
   if (loading) {
     return <span className="h-7 w-24 animate-pulse rounded-full bg-muted" />;
   }
-  const bad = status === "cancelled" || status === "failed" || status === "refunded";
-  const good = status === "confirmed" || status === "processing" || status === "completed";
+  const bad = stage === "cancelled" || stage === "failed" || stage === "returns";
+  const good = stage === "delivered" || stage === "shipping" || stage === "fulfillment";
   const cls = bad
     ? "border-destructive/25 bg-destructive/10 text-destructive"
     : good
@@ -220,8 +220,9 @@ function StatusPill({
 function StageRow({ stage, last }: { stage: TimelineStage; last: boolean }) {
   const done = stage.state === "done";
   const current = stage.state === "current";
-  const cancelled = stage.key === "cancelled";
-  const dot = cancelled
+  const bad =
+    stage.key === "cancelled" || stage.key === "failed" || stage.key === "returns";
+  const dot = bad
     ? "border-destructive/40 bg-destructive/10 text-destructive"
     : done
       ? "border-primary/30 bg-primary/10 text-primary"
