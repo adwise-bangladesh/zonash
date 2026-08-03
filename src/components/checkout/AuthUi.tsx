@@ -4,50 +4,31 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
 
 /**
- * Hero card used on the customer auth screens. Mirrors the /support hero
- * language (primary card, 2xl radius, soft ring) with a 2-step indicator.
+ * Minimal heading for the customer auth screens: a quiet icon, one title and
+ * one supporting line. No decorative hero, no step chrome.
  */
 export const AuthHero = memo(function AuthHero({
   icon: Icon,
   title,
   subtitle,
-  step,
 }: {
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   title: string;
   subtitle: string;
+  /** Accepted for call-site compatibility; no longer rendered. */
   step?: 1 | 2;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-primary px-4 py-5 text-primary-foreground shadow-sm ring-1 ring-inset ring-primary-foreground/10">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-primary-foreground/10"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-12 -left-6 h-24 w-24 rounded-full bg-primary-foreground/[0.07]"
-      />
-      <div className="relative flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary-foreground/15 ring-1 ring-inset ring-primary-foreground/20">
-          <Icon className="h-5 w-5" strokeWidth={1.9} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-bold leading-tight">{title}</h2>
-          <p className="mt-1 text-[12px] leading-relaxed text-primary-foreground/85">{subtitle}</p>
-        </div>
-      </div>
-      {step && (
-        <div className="relative mt-4 flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-1 flex-1 rounded-full bg-primary-foreground/90" />
-          <span
-            className={`h-1 flex-1 rounded-full ${step >= 2 ? "bg-primary-foreground/90" : "bg-primary-foreground/25"}`}
-          />
-          <span className="ml-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary-foreground/75">
-            Step {step} of 2
-          </span>
-        </div>
-      )}
+    <section className="px-1 pt-6 pb-1 text-center">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary text-primary">
+        <Icon className="h-5 w-5" strokeWidth={1.8} />
+      </span>
+      <h2 className="mt-3 font-display text-[19px] font-bold leading-tight tracking-tight">
+        {title}
+      </h2>
+      <p className="mx-auto mt-1 max-w-[19rem] text-[12.5px] leading-relaxed text-muted-foreground">
+        {subtitle}
+      </p>
     </section>
   );
 });
