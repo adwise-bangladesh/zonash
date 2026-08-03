@@ -525,6 +525,15 @@ export async function cachedDerived<T>(key: string, ttlMs: number, compute: () =
 }
 
 /**
+ * Categories that must never surface anywhere in the storefront (rails, tabs,
+ * sub-category panes, product breadcrumbs, sitemap). `all-products` is a
+ * catch-all bucket in WooCommerce that duplicates the whole catalog, so it is
+ * filtered at the projection layer — the single choke point every category
+ * list and every product's category array passes through.
+ */
+export const HIDDEN_CATEGORY_SLUGS = new Set(["all-products"]);
+
+/**
  * Category projection: WooCommerce categories carry description HTML, yoast
  * blobs and a fully expanded image object. The category browser reads only
  * name/slug/image.src, so everything else is dropped before it is embedded in
@@ -538,7 +547,8 @@ export function trimCategories<T extends { id?: number; name?: string; slug?: st
   for (const raw of list as T[]) {
     if (!raw || typeof raw !== "object") continue;
     const slug = typeof raw.slug === "string" ? raw.slug : "";
-    if (!slug) continue;
+    if (!slug || HIDDEN_CATEGORY_SLUGS.has(slug)) continue;
+
     const src = typeof raw.image?.src === "string" ? raw.image.src : "";
     out.push({
       id: typeof raw.id === "number" ? raw.id : 0,
