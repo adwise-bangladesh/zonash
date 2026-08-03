@@ -422,9 +422,15 @@ export type WorkflowEvent = {
 export const META_STAGE = "_zonash_stage";
 export const META_STATUS = "_zonash_workflow_status";
 export const META_HISTORY = "_zonash_stage_history";
+/** ISO timestamp of the last workflow transition. */
+export const META_UPDATED_AT = "_zonash_workflow_updated_at";
+/** Schema version of the workflow meta payload, so readers can migrate safely. */
+export const META_VERSION = "_zonash_workflow_version";
+export const WORKFLOW_SCHEMA_VERSION = "1";
 
 /** Keep history bounded so Woo meta stays small. */
 const HISTORY_CAP = 40;
+
 
 export function isWorkflowStatus(v: unknown): v is WorkflowStatus {
   return typeof v === "string" && v in WORKFLOW_STATUSES;
