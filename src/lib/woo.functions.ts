@@ -23,7 +23,7 @@ function asArray<T>(value: unknown): T[] {
  * for the render set only.
  */
 const CARD_PRODUCT_FIELDS =
-  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images";
+  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images,attributes,default_attributes";
 
 const listProductsSchema = z.object({
   page: z.number().int().min(1).max(500).default(1),
