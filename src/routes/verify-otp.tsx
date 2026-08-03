@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { MessageSquareLock, Loader2, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
+import { MessageSquareLock, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
