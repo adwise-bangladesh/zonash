@@ -1002,7 +1002,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         const { sendSms } = await import("./sms.server");
         const res = await sendSms({
           phone,
-          message: `<#> Zonash: ${code} is your order #${created.number} code. Valid 5 min.\n\n@zonash.lovable.app #${code}`,
+          message: `আপনার অর্ডার ভেরিফিকেশন OTP কোড: ${code}`,
         });
         smsOk = res.ok;
         if (!smsOk) console.error("OTP SMS failed", res.message);
