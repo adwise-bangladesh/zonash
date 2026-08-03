@@ -652,6 +652,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       billingPayload.email = data.billing.email.trim();
     }
 
+    // Workflow layer (stage + granular status). Tracked locally through this
+    // handler so follow-up transitions never need an extra Woo read.
+    let wfHistory: WorkflowEvent[] = [];
+    const wfPlaced = workflowMetaEntries("order_placed", wfHistory, {
+      note: data.draft_order_id
+        ? "Promoted from checkout draft; awaiting phone verification."
+        : "Submitted by customer; awaiting phone verification.",
+      actor: "storefront",
+    });
+    wfHistory = wfPlaced.history;
+
     let created!: { id: number; number: string; total: string; currency: string };
     try {
       const { wooFetch } = await import("./woo.server");
