@@ -120,8 +120,21 @@ export function BigProductGrid({
   columns?: 2 | 3;
 }) {
   const seedProduct = useSeedProductCache();
-  const list = useMemo(() => (products ?? []).filter((p) => p && p.slug), [products]);
+  // Recently viewed lives in localStorage, so it stays empty for the SSR pass
+  // and the first client render (no hydration mismatch) and only floats cards
+  // once the effect has run.
+  const [recent, setRecent] = useState<number[]>([]);
+  useEffect(() => setRecent(readRecentlyViewed()), []);
+  const list = useMemo(
+    () =>
+      sortStorefrontProducts(
+        (products ?? []).filter((p) => p && p.slug),
+        recent,
+      ),
+    [products, recent],
+  );
   if (!list.length) return null;
+
   const gridClass =
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
