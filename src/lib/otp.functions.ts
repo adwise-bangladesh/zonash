@@ -1219,23 +1219,30 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         extraMeta: [
           { key: "_zonash_otp_state", value: "verified" },
           { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+          { key: "_zonash_verification_method", value: "sms-otp" },
           { key: "_zonash_decision", value: decision },
           { key: "_zonash_decision_reason", value: decisionReason },
+          { key: "_zonash_decision_at", value: new Date().toISOString() },
           { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
           { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
+          { key: "_zonash_duplicates_count", value: String(duplicates.length) },
           { key: "_zonash_awaiting_call_choice", value: decision === "confirmed" ? "1" : "0" },
         ],
-        privateNote:
-          `Phone number verified by one-time code. Verification verdict: ${decision}. ` +
-          `Workflow stage: ${
+        summary:
+          "Customer's mobile number verified by one-time SMS code; automated verification checks completed",
+        facts: {
+          "Verification method": "SMS one-time code",
+          "Verification verdict": decision,
+          Reason: decisionReason || "",
+          "Duplicate orders": duplicates.length
+            ? duplicates.map((d) => `#${d.number}`).join(", ")
+            : "none",
+          "Next step":
             nextStatus === "manual_review"
-              ? "Created — Manual Review"
-              : "Verification — Pending Verification"
-          }; WooCommerce status remains pending until the customer states a callback preference.` +
-          (decisionReason ? ` Reason: ${decisionReason}.` : "") +
-          (duplicates.length
-            ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
-            : ""),
+              ? "call the customer and clear the manual review before dispatch"
+              : "awaiting the customer's callback preference on the order status page",
+        },
+
       });
     } catch (e) {
       console.error("verifyOrderOtp workflow write failed", e);
