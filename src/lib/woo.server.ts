@@ -14,6 +14,9 @@
 // Direct mode wins when configured, so a self-hosted deploy never silently
 // falls back to the gateway.
 
+import { pickDefaultVariation } from "./pick-default-variation";
+import { variationLabel } from "./attr-key";
+
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/woocommerce";
 
 type WooTarget = { base: string; headers: Record<string, string> };
@@ -852,6 +855,18 @@ export type WooProduct = {
    * had no way to show the crossed-out price. Filled by `enrichVariableRegular`.
    */
   min_regular_price?: string;
+  /**
+   * Derived: the WooCommerce default variation for a variable product, so list
+   * cards show the same option label and price the product page opens with.
+   * Filled by `enrichVariableRegular`.
+   */
+  default_variation?: {
+    id: number;
+    label: string;
+    price: string;
+    regular_price: string;
+    sale_price: string;
+  };
 };
 
 export type WooVariation = {
