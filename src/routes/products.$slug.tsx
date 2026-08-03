@@ -15,7 +15,7 @@ import {
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
-import { availabilityOf } from "@/lib/stock";
+import { availabilityOf, isBuyable } from "@/lib/stock";
 import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
@@ -502,7 +502,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   // in-stock variation's option so pricing/CTA is coherent.
   useEffect(() => {
     if (!isVariable || variations.length === 0) return;
-    const first = variations.find((v) => v.stock_status === "instock") ?? variations[0];
+    const first = variations.find((v) => isBuyable(v)) ?? variations[0];
     setSelected((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -561,9 +561,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
         }
         const optKey = nk(a.option);
         const entry = byOpt.get(optKey) ?? { enabled: false, best: undefined };
-        const inStockV = v.stock_status === "instock";
-        if (inStockV) entry.enabled = true;
-        if (!entry.best || (inStockV && entry.best.stock_status !== "instock")) entry.best = v;
+        // "Enabled" means orderable, which includes supplier (backorder)
+        // stock — those ship in 7-10 days rather than being unavailable.
+        const buyableV = isBuyable(v);
+        if (buyableV) entry.enabled = true;
+        if (!entry.best || (buyableV && !isBuyable(entry.best))) entry.best = v;
         byOpt.set(optKey, entry);
       }
     }
