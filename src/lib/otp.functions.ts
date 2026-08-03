@@ -672,7 +672,19 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
 
     // Workflow layer (stage + granular status). Tracked locally through this
     // handler so follow-up transitions never need an extra Woo read.
-    let wfHistory: WorkflowEvent[] = [];
+    // When the order started life as a checkout draft, keep that first event in
+    // the history so the customer timeline opens with "Order drafted".
+    let wfHistory: WorkflowEvent[] = data.draft_order_id
+      ? [
+          {
+            stage: "created",
+            status: "draft",
+            at: placedAt,
+            note: "Checkout details saved before submission.",
+            actor: "customer",
+          },
+        ]
+      : [];
     const wfPlaced = workflowMetaEntries("order_placed", wfHistory, {
       note: data.draft_order_id
         ? "Promoted from checkout draft; awaiting phone verification."
@@ -681,6 +693,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       at: placedAt,
     });
     wfHistory = wfPlaced.history;
+
 
 
     let created!: { id: number; number: string; total: string; currency: string };
