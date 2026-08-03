@@ -185,9 +185,18 @@ export function InfiniteFeed({
   // every render (scroll, hover, focus). Memoize on the page array identity so
   // it only runs when a new page actually lands.
   const products = useMemo(() => {
-    const all = dedupeFeedPages<WooProduct>(
-      data?.pages as { products: WooProduct[] }[] | undefined,
-    );
+    const pages = Array.isArray(data?.pages)
+      ? (data.pages as { products?: WooProduct[] }[])
+      : undefined;
+    // Validate the upstream shape here, once: a malformed page (products
+    // missing, or an object where an array was promised) must not reach the
+    // grid as `undefined.id`.
+    const safe = pages?.map((p) => ({
+      products: Array.isArray(p?.products)
+        ? p.products.filter((x): x is WooProduct => !!x && typeof x.id === "number" && !!x.slug)
+        : [],
+    }));
+    const all = dedupeFeedPages<WooProduct>(safe);
     return excludeId ? all.filter((p) => p.id !== excludeId) : all;
   }, [data?.pages, excludeId]);
 
@@ -215,9 +224,10 @@ export function InfiniteFeed({
             <button
               type="button"
               onClick={() => void refetch()}
-              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted"
+              disabled={isFetching}
+              className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-60"
             >
-              Try again
+              {isFetching ? "Retrying…" : "Try again"}
             </button>
           </div>
         )}
