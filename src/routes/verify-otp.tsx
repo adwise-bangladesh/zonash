@@ -9,7 +9,6 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 
-
 import { useCustomerSession } from "@/lib/customer-session";
 
 const searchSchema = z.object({
@@ -23,7 +22,10 @@ export const Route = createFileRoute("/verify-otp")({
   head: () => ({
     meta: [
       { title: "Verify your number — Zonash" },
-      { name: "description", content: "Enter the 4-digit code we texted you to confirm your Zonash order." },
+      {
+        name: "description",
+        content: "Enter the 4-digit code we texted you to confirm your Zonash order.",
+      },
       { name: "robots", content: "noindex" },
       { property: "og:title", content: "Verify your number — Zonash" },
       {
@@ -91,9 +93,11 @@ function VerifyOtpPage() {
     if (!("OTPCredential" in window) || !navigator.credentials?.get) return;
     let alive = true;
     const ac = new AbortController();
-    (navigator.credentials as unknown as {
-      get: (o: unknown) => Promise<{ code?: string } | null>;
-    })
+    (
+      navigator.credentials as unknown as {
+        get: (o: unknown) => Promise<{ code?: string } | null>;
+      }
+    )
       .get({ otp: { transport: ["sms"] }, signal: ac.signal })
       .then((cred) => {
         if (alive && cred?.code) setCode(cred.code.replace(/\D/g, "").slice(0, CODE_LEN));
@@ -112,43 +116,45 @@ function VerifyOtpPage() {
     return () => clearInterval(t);
   }, [ticking]);
 
-  const submit = useCallback(async (full: string) => {
-    if (full.length !== CODE_LEN || inFlight.current) return;
-    inFlight.current = true;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await verifyFn({ data: { order_id: order, code: full } });
-      if (!res.ok) {
-        setError(res.error);
-        setCode("");
-        hiddenRef.current?.focus();
+  const submit = useCallback(
+    async (full: string) => {
+      if (full.length !== CODE_LEN || inFlight.current) return;
+      inFlight.current = true;
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await verifyFn({ data: { order_id: order, code: full } });
+        if (!res.ok) {
+          setError(res.error);
+          setCode("");
+          hiddenRef.current?.focus();
+          setSubmitting(false);
+          inFlight.current = false;
+          return;
+        }
+        // Persist the customer session. The phone comes from the server (the row
+        // the OTP was issued for) and only falls back to the URL param — a
+        // missing/edited `phone` search param used to silently skip login.
+        const verifiedPhone =
+          res.phone && /^01[3-9]\d{8}$/.test(res.phone)
+            ? res.phone
+            : phone && /^01[3-9]\d{8}$/.test(phone)
+              ? phone
+              : null;
+        if (verifiedPhone) setPhone(verifiedPhone);
+
+        navigate({
+          to: "/order-status",
+          search: { order, number: number ?? String(order) } as never,
+        });
+      } catch {
+        setError("Verification failed. Please try again.");
         setSubmitting(false);
         inFlight.current = false;
-        return;
       }
-      // Persist the customer session. The phone comes from the server (the row
-      // the OTP was issued for) and only falls back to the URL param — a
-      // missing/edited `phone` search param used to silently skip login.
-      const verifiedPhone =
-        res.phone && /^01[3-9]\d{8}$/.test(res.phone)
-          ? res.phone
-          : phone && /^01[3-9]\d{8}$/.test(phone)
-            ? phone
-            : null;
-      if (verifiedPhone) setPhone(verifiedPhone);
-
-
-      navigate({
-        to: "/order-status",
-        search: { order, number: number ?? String(order) } as never,
-      });
-    } catch {
-      setError("Verification failed. Please try again.");
-      setSubmitting(false);
-      inFlight.current = false;
-    }
-  }, [order, number, phone, verifyFn, setPhone, navigate]);
+    },
+    [order, number, phone, verifyFn, setPhone, navigate],
+  );
 
   useEffect(() => {
     if (code.length === CODE_LEN) void submit(code);
@@ -180,11 +186,7 @@ function VerifyOtpPage() {
       <CheckoutHeader title="Verify your number" />
 
       <main className="mx-auto w-full max-w-[400px] flex-1 px-4 pb-10 pt-1">
-        <AuthHero
-          icon={MessageSquareLock}
-          title="Enter code"
-          subtitle={`Sent to ${prettyPhone}`}
-        />
+        <AuthHero icon={MessageSquareLock} title="Enter code" subtitle={`Sent to ${prettyPhone}`} />
 
         <section className="mt-5">
           <OtpBoxes
@@ -216,12 +218,13 @@ function VerifyOtpPage() {
             disabled={cooldown > 0 || resending}
             className="mx-auto mt-2 flex min-h-11 w-fit items-center justify-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium text-primary disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
         </section>
-
-
 
         <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
           <SupportFooter
@@ -238,4 +241,3 @@ function VerifyOtpPage() {
     </div>
   );
 }
-
