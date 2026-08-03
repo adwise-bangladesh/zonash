@@ -469,6 +469,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
     }
   }, [isVariable, variationsQuery.data?.error, variationsFailed]);
 
+  // Remember this view so storefront grids can float it to the top of the
+  // ready-stock block next time.
+  useEffect(() => {
+    pushRecentlyViewed(p.id);
+  }, [p.id]);
+
+
   // Attribute options come from product.attributes (variation: true).
   const variationAttrs = useMemo(
     () => (p.attributes ?? []).filter((a) => a.variation && (a.options?.length ?? 0) > 0),
