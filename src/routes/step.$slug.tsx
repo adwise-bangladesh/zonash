@@ -34,6 +34,7 @@ import {
   type ReviewSource,
 } from "@/lib/step-reviews";
 import { useOnScreen } from "@/hooks/use-on-screen";
+import { availabilityOf, isBuyable } from "@/lib/stock";
 import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, DEFAULT_ZONE, zoneFromAddress, cachedGpsZone, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { NotFoundView } from "@/components/NotFoundView";
 import { ChatLink } from "@/components/support/ChatLink";
@@ -224,7 +225,7 @@ function StepLandingPage() {
   // a 40% off 500tk item is a better deal than 10% off 5000tk.
   // Tiebreakers: larger absolute savings, then lower menu_order.
   const bestDealId = useMemo(() => {
-    const inStock = variations.filter((v) => v.stock_status !== "outofstock");
+    const inStock = variations.filter((v) => isBuyable(v));
     if (inStock.length === 0) return null;
     let best: (typeof inStock)[number] | null = null;
     let bestPct = 0;
@@ -277,13 +278,13 @@ function StepLandingPage() {
     const regular = isVariable
       ? priceNum(selectedVar?.regular_price ?? "")
       : priceNum(product.regular_price);
-    const inStock = isVariable
-      ? (selectedVar ? selectedVar.stock_status !== "outofstock" : false)
-      : product.stock_status !== "outofstock";
+    // WooCommerce is the only stock system — see src/lib/stock.ts.
+    const availability = availabilityOf(isVariable ? selectedVar : product);
+    const inStock = isVariable ? (selectedVar ? availability.buyable : false) : availability.buyable;
     const showStrike = regular > price && regular > 0;
-    return { price, regular, inStock, showStrike };
+    return { price, regular, inStock, showStrike, availability };
   }, [isVariable, selectedVar, product]);
-  const { price: effectivePrice, regular: effectiveRegular, showStrike, inStock } = active;
+  const { price: effectivePrice, regular: effectiveRegular, showStrike, inStock, availability } = active;
 
   // Gallery — depend only on the fields that actually shape the list.
   // Using the whole `product` object invalidates on every react-query
@@ -731,10 +732,23 @@ function StepLandingPage() {
           <span className="font-semibold text-foreground">{parseFloat(product.average_rating) > 0 ? product.average_rating : "4.8"}</span>
           <span>({reviewsCountDisplay.toLocaleString()}+ reviews)</span>
           <span aria-hidden>·</span>
-          <span className={inStock ? "font-semibold text-success" : "font-semibold text-destructive"}>
-            {inStock ? "In stock" : "Out of stock"}
+          <span
+            className={`font-semibold ${
+              availability.kind === "ready"
+                ? "text-success"
+                : availability.kind === "supplier"
+                  ? "text-warning"
+                  : "text-destructive"
+            }`}
+          >
+            {availability.label}
           </span>
         </div>
+        {availability.delivery && (
+          <p className="mt-1 text-[11.5px] text-muted-foreground">
+            Delivery: <span className="font-semibold text-foreground">{availability.delivery}</span>
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap items-baseline gap-2">
           <span className="text-[28px] font-extrabold leading-none text-primary tabular-nums">
             {formatBDT(effectivePrice)}

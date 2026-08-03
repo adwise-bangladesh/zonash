@@ -1,3 +1,4 @@
+import { isBuyable } from "@/lib/stock";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { attrKey, attrNameKey } from "@/lib/attr-key";
 
@@ -25,8 +26,7 @@ export function pickDefaultVariation(
   const isPurchasable = (v: WooVariation) =>
     (v as { purchasable?: boolean }).purchasable !== false;
   const isInStock = (v: WooVariation) =>
-    v.stock_status === "instock" ||
-    (v as { backorders_allowed?: boolean }).backorders_allowed === true;
+    isBuyable(v);
   const hasImage = (v: WooVariation) => !!v.image?.src;
   const hasPrice = (v: WooVariation) => priceOf(v) > 0;
 
