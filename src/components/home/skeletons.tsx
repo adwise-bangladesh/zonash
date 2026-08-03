@@ -14,7 +14,7 @@
 export function DealsStripSkeleton() {
   return (
     <section aria-hidden="true" className="pb-3" data-vr="deals">
-      <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-border/60 shadow-sm md:p-3">
+      <div className="mx-[5px] overflow-hidden rounded-2xl bg-white p-2.5 ring-1 ring-transparent shadow-sm md:p-3">
         <div className="flex items-stretch gap-2" data-vr="deals-row">
           {/* Left banner — same footprint as a deal card (w + aspect + label row) */}
           <div className="flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg md:w-[84px]">
@@ -34,7 +34,7 @@ export function DealsStripSkeleton() {
               <div
                 key={i}
                 data-vr="deal-card"
-                className="skeleton-row-fade flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-white md:w-[84px]"
+                className="skeleton-row-fade flex w-[58px] shrink-0 flex-col overflow-hidden rounded-lg border border-transparent bg-white md:w-[84px]"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <div className="aspect-square w-full skeleton-shimmer rounded-none" />
