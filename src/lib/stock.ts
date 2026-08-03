@@ -83,7 +83,7 @@ export function availabilityOf(source: StockSource): Availability {
     return READY;
   }
 
-  return source?.backorders_allowed === true ? SUPPLIER : SUPPLIER;
+  return SUPPLIER;
 }
 
 /** Convenience: can this product/variation be added to the cart? */
