@@ -1181,7 +1181,7 @@ function StepLandingPage() {
             variant="row"
             label="Live chat with support"
             hint="Ask anything about this product · 10 AM – 10 PM"
-            context={{ topic: `Product: ${p.name}`, from: `/step/${p.slug}` }}
+            context={{ topic: `Product: ${product.name}`, from: `/step/${slug}` }}
           />
         </div>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10.5px] text-muted-foreground">
