@@ -767,32 +767,24 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // block-hit context via meta + private note.
     if (blockedHit) {
       try {
-        const { wooFetch } = await import("./woo.server");
-        await wooFetch({
-          path: `/orders/${created.id}`,
-          method: "PUT",
-          body: {
-            status: "cancelled",
-            meta_data: [
-              { key: "_zonash_otp_state", value: "skipped_blocked" },
-              { key: "_zonash_decision", value: "blocked" },
-              { key: "_zonash_decision_reason", value: "account-blocked" },
-              { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-            ],
-          },
-          timeoutMs: 12_000,
+        const { setWorkflowStatus } = await import("./order-workflow.server");
+        const res = await setWorkflowStatus(created.id, "cancelled_fraud", {
+          priorHistory: wfHistory,
+          actor: "system",
+          note: `Blocked identity matched on ${blockedHit.kind}.`,
+          extraMeta: [
+            { key: "_zonash_otp_state", value: "skipped_blocked" },
+            { key: "_zonash_decision", value: "blocked" },
+            { key: "_zonash_decision_reason", value: "account-blocked" },
+            { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
+            { key: "_zonash_awaiting_call_choice", value: "0" },
+          ],
+          privateNote:
+            `Order cancelled automatically by the security screen. ` +
+            `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
+            `Workflow stage: Cancelled — Cancelled - Fraud. Phone verification skipped; no SMS was sent.`,
         });
-        await wooFetch({
-          path: `/orders/${created.id}/notes`,
-          method: "POST",
-          body: {
-            note:
-              `Order automatically cancelled. Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
-              `Phone verification skipped and no SMS was sent.`,
-            customer_note: false,
-          },
-        });
+        if (!res.ok) console.error("blocked-cancel workflow write failed");
       } catch (e) {
         console.error("blocked-cancel meta write failed", e);
       }
