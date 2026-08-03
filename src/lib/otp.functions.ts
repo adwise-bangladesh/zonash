@@ -22,6 +22,8 @@ import {
   workflowMetaEntries,
   type WorkflowEvent,
 } from "./order-workflow";
+import { formatOpsNote } from "./order-notes";
+
 
 // ---------- helpers ----------
 
@@ -657,6 +659,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       billingPayload.email = data.billing.email.trim();
     }
 
+    // Structured location + device facts, stored as first-class meta keys so
+    // the dashboard and courier tooling never have to parse the raw tracking
+    // blob. The full snapshot still lives in `_zonash_tracking`.
+    const tGps = (
+      data.tracking as
+        | { gps?: { lat?: number; lng?: number; accuracy?: number } }
+        | undefined
+    )?.gps;
+    const hasGps = !!tGps && typeof tGps.lat === "number" && typeof tGps.lng === "number";
+    const placedAt = new Date().toISOString();
+
     // Workflow layer (stage + granular status). Tracked locally through this
     // handler so follow-up transitions never need an extra Woo read.
     let wfHistory: WorkflowEvent[] = [];
@@ -665,8 +678,10 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         ? "Promoted from checkout draft; awaiting phone verification."
         : "Submitted by customer; awaiting phone verification.",
       actor: "storefront",
+      at: placedAt,
     });
     wfHistory = wfPlaced.history;
+
 
     let created!: { id: number; number: string; total: string; currency: string };
     try {
@@ -713,7 +728,21 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
             { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
             { key: "_zonash_draft", value: "0" },
+            { key: "_zonash_placed_at", value: placedAt },
+            { key: "_zonash_country", value: server.country ?? "" },
+            { key: "_zonash_promoted_from_draft", value: data.draft_order_id ? "1" : "0" },
+            { key: "_zonash_delivery_zone", value: serverShipping.insideDhaka ? "inside-dhaka" : "outside-dhaka" },
+            { key: "_zonash_shipping_label", value: serverShipping.label },
+            { key: "_zonash_items_count", value: String(data.items.length) },
+            { key: "_zonash_gps", value: hasGps ? `${tGps!.lat},${tGps!.lng}` : "" },
+            { key: "_zonash_gps_lat", value: hasGps ? String(tGps!.lat) : "" },
+            { key: "_zonash_gps_lng", value: hasGps ? String(tGps!.lng) : "" },
+            {
+              key: "_zonash_gps_accuracy",
+              value: hasGps && typeof tGps!.accuracy === "number" ? String(Math.round(tGps!.accuracy)) : "",
+            },
             ...wfPlaced.meta,
+
           ],
         };
 
@@ -750,20 +779,39 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
 
-    // Draft-vs-live audit note.
+    // Order-placed audit note.
     try {
       const { wooFetch } = await import("./woo.server");
       await wooFetch({
         path: `/orders/${created.id}/notes`,
         method: "POST",
         body: {
-          note: data.draft_order_id
-            ? "Order submitted by customer. Promoted from checkout draft; awaiting phone verification."
-            : "Order submitted by customer. Awaiting phone verification.",
+          note: formatOpsNote({
+            status: "order_placed",
+            summary: data.draft_order_id
+              ? "Order submitted from the storefront and promoted in place from an existing checkout draft; awaiting phone verification"
+              : "Order submitted from the storefront; awaiting phone verification",
+            wooStatus: "pending",
+            actor: "customer (storefront)",
+            facts: {
+              Channel: "storefront",
+              "Payment method": "Cash on Delivery",
+              "Delivery zone": serverShipping.insideDhaka ? "Inside Dhaka" : "Outside Dhaka",
+              "Server-verified total": `${serverGrandTotal.toFixed(2)} (items ${serverSubtotal.toFixed(2)} + shipping ${serverShipping.amount.toFixed(2)}${validDiscount > 0 ? ` - discount ${validDiscount.toFixed(2)}` : ""})`,
+              Coupon: validCoupon ?? "",
+              "Coupon rejected": coupon_rejected ?? "",
+              "Risk score": assessment.score,
+              "Risk signals": assessment.signals.join(", "),
+              "GPS fix": hasGps ? `${tGps!.lat}, ${tGps!.lng}` : "not shared",
+              "Device fingerprint": clientFingerprint || "unavailable",
+              IP: server.ip ?? "unavailable",
+            },
+          }),
           customer_note: false,
         },
       });
     } catch { /* ignore */ }
+
 
     // ---------- Blocked identity → cancel order, route to /order-blocked ----------
     // Order exists as `pending`. Immediately move it to `cancelled` in Woo,
@@ -782,12 +830,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_decision", value: "blocked" },
             { key: "_zonash_decision_reason", value: "account-blocked" },
             { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
+            { key: "_zonash_blocked_at", value: new Date().toISOString() },
             { key: "_zonash_awaiting_call_choice", value: "0" },
           ],
-          privateNote:
-            `Order cancelled automatically by the security screen. ` +
-            `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
-            `Workflow stage: Cancelled — Cancelled - Fraud. Phone verification skipped; no SMS was sent.`,
+          summary:
+            "Order cancelled automatically by the security screen: the customer matched an active blocklist entry",
+          facts: {
+            "Blocklist match": `${blockedHit.kind} = ${blockedHit.value}`,
+            "Phone verification": "skipped — no SMS sent",
+            "Action required": "none; unblock the identity in the dashboard to allow future orders",
+          },
+
         });
         if (!res.ok) console.error("blocked-cancel workflow write failed");
       } catch (e) {
@@ -849,21 +902,30 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             extraMeta: [
               { key: "_zonash_otp_state", value: "skipped_session" },
               { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+              { key: "_zonash_verification_method", value: "trusted-session" },
               { key: "_zonash_decision", value: verdict.decision },
               { key: "_zonash_decision_reason", value: verdict.decisionReason },
+              { key: "_zonash_decision_at", value: new Date().toISOString() },
               { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
               { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+              { key: "_zonash_duplicates_count", value: String(verdict.duplicates.length) },
               { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
             ],
-            privateNote:
-              `Phone verification skipped — trusted customer session matched the billing number. ` +
-              `Verification verdict: ${verdict.decision}. Workflow stage: ${
-                nextStatus === "manual_review" ? "Created — Manual Review" : "Verification — Pending Verification"
-              }.` +
-              (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
-              (verdict.duplicates.length
-                ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
-                : ""),
+            summary:
+              "Phone verification satisfied by a trusted signed-in session matching the billing number; no one-time code was sent",
+            facts: {
+              "Verification method": "trusted session (OTP skipped)",
+              "Verification verdict": verdict.decision,
+              Reason: verdict.decisionReason || "",
+              "Duplicate orders": verdict.duplicates.length
+                ? verdict.duplicates.map((d) => `#${d.number}`).join(", ")
+                : "none",
+              "Next step":
+                nextStatus === "manual_review"
+                  ? "call the customer and clear the manual review before dispatch"
+                  : "awaiting the customer's callback preference on the order status page",
+            },
+
           });
         } catch (e) {
           console.error("skip-OTP meta write failed", e);
@@ -1157,23 +1219,30 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
         extraMeta: [
           { key: "_zonash_otp_state", value: "verified" },
           { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+          { key: "_zonash_verification_method", value: "sms-otp" },
           { key: "_zonash_decision", value: decision },
           { key: "_zonash_decision_reason", value: decisionReason },
+          { key: "_zonash_decision_at", value: new Date().toISOString() },
           { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
           { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
+          { key: "_zonash_duplicates_count", value: String(duplicates.length) },
           { key: "_zonash_awaiting_call_choice", value: decision === "confirmed" ? "1" : "0" },
         ],
-        privateNote:
-          `Phone number verified by one-time code. Verification verdict: ${decision}. ` +
-          `Workflow stage: ${
+        summary:
+          "Customer's mobile number verified by one-time SMS code; automated verification checks completed",
+        facts: {
+          "Verification method": "SMS one-time code",
+          "Verification verdict": decision,
+          Reason: decisionReason || "",
+          "Duplicate orders": duplicates.length
+            ? duplicates.map((d) => `#${d.number}`).join(", ")
+            : "none",
+          "Next step":
             nextStatus === "manual_review"
-              ? "Created — Manual Review"
-              : "Verification — Pending Verification"
-          }; WooCommerce status remains pending until the customer states a callback preference.` +
-          (decisionReason ? ` Reason: ${decisionReason}.` : "") +
-          (duplicates.length
-            ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
-            : ""),
+              ? "call the customer and clear the manual review before dispatch"
+              : "awaiting the customer's callback preference on the order status page",
+        },
+
       });
     } catch (e) {
       console.error("verifyOrderOtp workflow write failed", e);
@@ -1288,10 +1357,15 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
           { key: "_zonash_awaiting_call_choice", value: "0" },
           { key: "_zonash_call_requested", value: "1" },
           { key: "_zonash_call_requested_at", value: nowIso },
+          { key: "_zonash_customer_choice", value: "callback" },
+          { key: "_zonash_customer_choice_at", value: nowIso },
         ],
-        privateNote:
-          "Customer requested a confirmation call before dispatch. Workflow stage: Verification — Callback Requested. " +
-          "WooCommerce status retained as pending; please call the customer before handing the parcel to a courier.",
+        summary:
+          "Customer requested a confirmation call before dispatch from the order status page",
+        facts: {
+          "Customer choice": "call me before dispatch",
+          "Next step": "call the customer to confirm, then move the order into fulfillment",
+        },
       });
       return { ok: true as const, decision: "pending" as const };
     }
@@ -1304,27 +1378,20 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
         { key: "_zonash_awaiting_call_choice", value: "0" },
         { key: "_zonash_call_requested", value: "0" },
         { key: "_zonash_confirmed_at", value: nowIso },
+        { key: "_zonash_customer_choice", value: "confirm-now" },
+        { key: "_zonash_customer_choice_at", value: nowIso },
       ],
+      summary:
+        "Customer confirmed the order from the order status page and declined a confirmation call",
+      facts: {
+        "Customer choice": "confirm now, no call",
+        "Next step": "ready to enter fulfillment",
+      },
     });
     const applied = (res.wooStatus === "processing" ? "processing" : "confirmed") as
       | "confirmed"
       | "processing";
-    try {
-      const { wooFetch } = await import("./woo.server");
-      await wooFetch({
-        path: `/orders/${data.order_id}/notes`,
-        method: "POST",
-        body: {
-          note:
-            `Customer confirmed the order from the storefront and declined a callback. ` +
-            `Workflow stage: Verification — Verified. WooCommerce status set to ${applied}. ` +
-            `Ready to enter fulfillment.`,
-          customer_note: false,
-        },
-      });
-    } catch {
-      /* notes are best-effort */
-    }
+
     return { ok: true as const, decision: "confirmed" as const, applied };
   });
 
@@ -1365,6 +1432,10 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
     };
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
+    const draftGps = (data.tracking as { gps?: { lat?: number; lng?: number } } | undefined)?.gps;
+    const draftHasGps =
+      !!draftGps && typeof draftGps.lat === "number" && typeof draftGps.lng === "number";
+
 
     const billingPayload: Record<string, unknown> = {
       first_name: data.billing.first_name,
@@ -1402,7 +1473,14 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
         { key: "_zonash_fingerprint", value: clientFingerprint },
         { key: "_zonash_ip", value: server.ip ?? "" },
         { key: "_zonash_ua", value: server.user_agent ?? "" },
+        { key: "_zonash_country", value: server.country ?? "" },
         { key: "_zonash_channel", value: "storefront-draft" },
+        { key: "_zonash_draft_saved_at", value: new Date().toISOString() },
+        { key: "_zonash_items_count", value: String(data.items.length) },
+        { key: "_zonash_gps", value: draftHasGps ? `${draftGps!.lat},${draftGps!.lng}` : "" },
+        { key: "_zonash_gps_lat", value: draftHasGps ? String(draftGps!.lat) : "" },
+        { key: "_zonash_gps_lng", value: draftHasGps ? String(draftGps!.lng) : "" },
+
         ...workflowMetaEntries("draft", [], {
           note: "Checkout form filled but not submitted.",
           actor: "customer",
