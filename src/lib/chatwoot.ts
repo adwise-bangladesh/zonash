@@ -44,11 +44,23 @@ export function loadChatwoot(): Promise<ChatwootApi> {
   if (window.$chatwoot) return Promise.resolve(window.$chatwoot);
 
   return new Promise((resolve, reject) => {
-    const onReady = () => {
-      if (window.$chatwoot) resolve(window.$chatwoot);
-      else reject(new Error("chatwoot-missing"));
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      if (!window.$chatwoot) return;
+      settled = true;
+      clearInterval(poll);
+      resolve(window.$chatwoot);
     };
-    window.addEventListener("chatwoot:ready", onReady, { once: true });
+    // `chatwoot:ready` is the documented signal, but it can fire before this
+    // listener attaches on a warm cache — poll as a safety net.
+    const poll = setInterval(finish, 250);
+    setTimeout(() => {
+      clearInterval(poll);
+      if (!settled) reject(new Error("chatwoot-timeout"));
+    }, 15_000);
+    window.addEventListener("chatwoot:ready", finish, { once: true });
+
 
     if (document.getElementById(SCRIPT_ID)) return;
 
