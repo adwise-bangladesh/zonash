@@ -211,7 +211,7 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
       <main className="mx-auto w-full max-w-[400px] flex-1 px-4 pb-10 pt-1">
         <AuthHero
           icon={step === "phone" ? Package : ShieldCheck}
-          title={step === "phone" ? "Sign in" : "Enter code"}
+          title={step === "phone" ? "Welcome back" : "Enter code"}
           subtitle={
             step === "phone"
               ? "We'll text a 4-digit code to your mobile number."
