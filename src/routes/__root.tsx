@@ -18,7 +18,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
 import { CustomerSessionProvider } from "@/lib/customer-session";
 import { installBackGestureListener } from "@/lib/nav-transition";
-import { siteLogoQueryOptions } from "@/lib/site-logo";
+import {
+  EMPTY_SITE_IDENTITY,
+  FALLBACK_SITE_TAGLINE,
+  FALLBACK_SITE_TITLE,
+  siteIdentityQueryOptions,
+  type SiteIdentity,
+} from "@/lib/site-identity";
 
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
