@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/lib/cart";
 import { CustomerSessionProvider } from "@/lib/customer-session";
 import { installBackGestureListener } from "@/lib/nav-transition";
+import { siteLogoQueryOptions } from "@/lib/site-logo";
 
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { GpsGate } from "@/components/GpsGate";
@@ -50,6 +51,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Warm the WordPress site logo once per SSR render so the header paints the
+  // real brand mark with no client round-trip. Never blocks: the server layer
+  // is cached and any failure falls back to the built-in wordmark.
+  loader: async ({ context }) => {
+    try {
+      await context.queryClient.ensureQueryData(siteLogoQueryOptions());
+    } catch {
+      /* branding is non-critical */
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
