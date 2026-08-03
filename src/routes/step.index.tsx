@@ -7,6 +7,7 @@ import { z } from "zod";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
 import { formatBDT } from "@/lib/format";
+import { cardTitle } from "@/lib/card-title";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { NotFoundView } from "@/components/NotFoundView";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -170,7 +171,7 @@ function ProductCard({ product }: { product: WooProduct }) {
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2.5">
         <h2 className="line-clamp-2 text-[12.5px] font-semibold leading-snug text-foreground">
-          {product.name}
+          {cardTitle(product)}
         </h2>
         <div className="mt-auto flex items-baseline gap-1.5 pt-1">
           <span className="text-[13.5px] font-extrabold text-primary tabular-nums">

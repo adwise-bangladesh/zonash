@@ -21,7 +21,7 @@ import { SoftBoundary } from "@/components/SoftBoundary";
 import { toast } from "sonner";
 import { buildResponsiveImage, onImageSrcSetError, registerProductImages } from "@/lib/product-image";
 import { canonicalUrl, waLink } from "@/lib/site";
-import { attrKey, optionLabel } from "@/lib/attr-key";
+import { attrKey, optionLabel, variationLabel } from "@/lib/attr-key";
 import { ChatLink } from "@/components/support/ChatLink";
 
 
@@ -570,6 +570,13 @@ function ProductDetail({ p }: { p: WooProduct }) {
     return map;
   }, [isVariable, variations, selected]);
 
+  // Label for the selected variation, appended to the title so the page reads
+  // exactly like the card the shopper tapped ("Name — 2 Pcs").
+  const matchedVariationLabel = useMemo(
+    () => (matchedVariation ? variationLabel(p, matchedVariation) : ""),
+    [p, matchedVariation],
+  );
+
   // ---------- Pricing / stock (variation-aware) ----------
   const activePriceStr =
     matchedVariation?.price || (p.sale_price && p.on_sale ? p.sale_price : p.price);
@@ -800,7 +807,12 @@ function ProductDetail({ p }: { p: WooProduct }) {
                 </span>
               )}
             </div>
-            <h1 className="text-[17px] font-semibold leading-snug text-foreground">{p.name}</h1>
+            <h1 className="text-[17px] font-semibold leading-snug text-foreground">
+              {p.name}
+              {matchedVariationLabel && (
+                <span className="text-muted-foreground"> — {matchedVariationLabel}</span>
+              )}
+            </h1>
             <div className="mt-3 flex flex-wrap items-baseline gap-2">
               <span className="text-[26px] font-extrabold leading-none text-primary">
                 {formatBDT(priceNum)}

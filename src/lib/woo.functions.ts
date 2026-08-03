@@ -23,7 +23,7 @@ function asArray<T>(value: unknown): T[] {
  * for the render set only.
  */
 const CARD_PRODUCT_FIELDS =
-  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images";
+  "id,name,slug,type,price,regular_price,sale_price,price_html,on_sale,stock_status,images,attributes,default_attributes";
 
 const listProductsSchema = z.object({
   page: z.number().int().min(1).max(500).default(1),
@@ -184,8 +184,32 @@ export const listProducts = createServerFn({ method: "GET" })
       // length was used as the page-full signal, so a short text page topped up
       // by SKU hits (e.g. 20 + 5 = 25 >= 24) advertised another page that only
       // ever came back empty — a dead "Load more" button.
+      // Price sorting must agree with what the card shows. WooCommerce orders
+      // variable products by their MINIMUM variation price, while the card
+      // prices the DEFAULT variation — so a price-sorted page could look
+      // shuffled. Re-sort the enriched page by the displayed price.
+      const enriched = await enrichVariableRegular(products);
+      if (data.orderby === "price") {
+        const { resolveCardPrices } = await import("./price-range");
+        const priceOf = (pr: WooProduct) => {
+          const { sell } = resolveCardPrices(pr);
+          const n = typeof sell === "string" ? Number.parseFloat(sell) : sell;
+          return Number.isFinite(n as number) ? (n as number) : Number.POSITIVE_INFINITY;
+        };
+        const dir = data.order === "desc" ? -1 : 1;
+        enriched.sort((x, y) => {
+          const a = priceOf(x);
+          const b = priceOf(y);
+          // Products with no resolvable price always sink to the bottom,
+          // whichever direction is active.
+          if (!Number.isFinite(a) || !Number.isFinite(b)) {
+            return Number.isFinite(a) ? -1 : Number.isFinite(b) ? 1 : 0;
+          }
+          return (a - b) * dir;
+        });
+      }
       return {
-        products: await enrichVariableRegular(products),
+        products: enriched,
         hasMore: textRows.length >= data.perPage,
         error: null as string | null,
       };

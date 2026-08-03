@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star, Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { cardTitle } from "@/lib/card-title";
 import { beginProductPush } from "@/lib/nav-transition";
 import { parsePriceHtmlMin } from "@/lib/price-range";
 import { getProductVariations } from "@/lib/woo.functions";
@@ -81,7 +82,7 @@ export function ProductCard({ p }: { p: WooProduct }) {
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2.5 sm:p-3">
         <p className="line-clamp-2 h-[32px] overflow-hidden text-[12px] font-medium leading-[16px] text-foreground">
-          {p.name}
+          {cardTitle(p)}
         </p>
         <div className="mt-auto flex items-baseline gap-2">
           <span className="text-sm font-bold text-ink sm:text-base">{formatBDT(sellPrice)}</span>

@@ -72,8 +72,25 @@ export function resolveCardPrices(p: {
   price_html?: string;
   on_sale?: boolean;
   min_regular_price?: string;
+  default_variation?: { price: string; regular_price: string; sale_price: string } | null;
 }): { sell: number | string | undefined; regular: number | string | undefined } {
   if (p.type === "variable") {
+    // Prefer the resolved default variation: it is exactly what the product
+    // page opens with, so the card price never disagrees with the detail page.
+    const dv = p.default_variation;
+    if (dv) {
+      const sale = Number.parseFloat(dv.sale_price || "");
+      const base = Number.parseFloat(dv.price || "");
+      const reg = Number.parseFloat(dv.regular_price || "");
+      const sell = Number.isFinite(sale) && sale > 0 ? sale : base;
+      if (Number.isFinite(sell) && sell > 0) {
+        return {
+          sell,
+          regular: Number.isFinite(reg) && reg > sell ? reg : undefined,
+        };
+      }
+    }
+
     const parsed = parsePriceHtmlMin(p.price_html);
     const sell = parsed.sale ?? p.price;
     // Woo's variable `price_html` range has no <del>, so the strikethrough

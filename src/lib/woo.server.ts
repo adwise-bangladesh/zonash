@@ -14,6 +14,9 @@
 // Direct mode wins when configured, so a self-hosted deploy never silently
 // falls back to the gateway.
 
+import { pickDefaultVariation } from "./pick-default-variation";
+import { variationLabel } from "./attr-key";
+
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/woocommerce";
 
 type WooTarget = { base: string; headers: Record<string, string> };
@@ -645,8 +648,18 @@ export function categorySlugMap(): Promise<Map<string, number>> {
  */
 const VAR_REGULAR_TTL_MS = 600_000;
 const MAX_VAR_REGULAR_ENTRIES = 1_000;
-const varRegularCache = new Map<number, { at: number; value: string | null }>();
-const varRegularInflight = new Map<number, Promise<string | null>>();
+/**
+ * Derived per-product variation summary: cheapest regular price (for the
+ * strikethrough) plus the WooCommerce *default* variation, so a card shows the
+ * exact same option, label and price the product page opens with.
+ */
+export type VarSummary = {
+  minRegular: string | null;
+  def: NonNullable<WooProduct["default_variation"]> | null;
+};
+const varRegularCache = new Map<number, { at: number; value: VarSummary }>();
+const varRegularInflight = new Map<number, Promise<VarSummary>>();
+
 
 /**
  * Hard ceiling on how long enrichment may hold the SSR response.
@@ -661,7 +674,7 @@ const varRegularInflight = new Map<number, Promise<string | null>>();
  */
 const ENRICH_DEADLINE_MS = 2_500;
 
-function varRegularGet(id: number): string | null | undefined {
+function varRegularGet(id: number): VarSummary | undefined {
   const e = varRegularCache.get(id);
   if (!e) return undefined;
   if (Date.now() - e.at > VAR_REGULAR_TTL_MS) {
@@ -671,7 +684,7 @@ function varRegularGet(id: number): string | null | undefined {
   return e.value;
 }
 
-function varRegularSet(id: number, value: string | null) {
+function varRegularSet(id: number, value: VarSummary) {
   varRegularCache.delete(id);
   if (varRegularCache.size >= MAX_VAR_REGULAR_ENTRIES) {
     const drop = Math.ceil(MAX_VAR_REGULAR_ENTRIES * 0.1);
@@ -684,13 +697,20 @@ function varRegularSet(id: number, value: string | null) {
   varRegularCache.set(id, { at: Date.now(), value });
 }
 
-async function fetchVarRegular(id: number): Promise<string | null> {
+async function fetchVarSummary(product: WooProduct): Promise<VarSummary> {
   const vars = await wooFetch<WooVariation[]>({
-    path: `/products/${id}/variations`,
-    query: { per_page: 100, status: "publish", _fields: "price,regular_price" },
+    path: `/products/${product.id}/variations`,
+    query: {
+      per_page: 100,
+      status: "publish",
+      // `attributes` + `purchasable` are what let us pick the SAME default
+      // variation the product page opens with, and label it identically.
+      _fields: "id,price,regular_price,sale_price,stock_status,purchasable,attributes,menu_order",
+    },
     timeoutMs: 6000,
   });
-  if (!Array.isArray(vars) || !vars.length) return null;
+  if (!Array.isArray(vars) || !vars.length) return { minRegular: null, def: null };
+
   let best: { price: number; regular: number } | null = null;
   for (const v of vars) {
     const price = Number.parseFloat(v?.price ?? "");
@@ -700,51 +720,65 @@ async function fetchVarRegular(id: number): Promise<string | null> {
       best = { price, regular: Number.isFinite(reg) ? reg : 0 };
     }
   }
-  // Only meaningful when it is actually a markdown.
-  return best && best.regular > best.price ? String(best.regular) : null;
+
+  const picked = pickDefaultVariation(product, vars);
+  const def = picked
+    ? {
+        id: picked.id,
+        label: variationLabel(product, picked),
+        price: picked.price ?? "",
+        regular_price: picked.regular_price ?? "",
+        sale_price: picked.sale_price ?? "",
+      }
+    : null;
+
+  return {
+    // Only meaningful when it is actually a markdown.
+    minRegular: best && best.regular > best.price ? String(best.regular) : null,
+    def,
+  };
 }
 
-/** Memoized + single-flighted resolve of one product's regular price. */
-function resolveVarRegular(id: number): Promise<string | null> {
-  const pending = varRegularInflight.get(id);
+/** Memoized + single-flighted resolve of one product's variation summary. */
+function resolveVarSummary(product: WooProduct): Promise<VarSummary> {
+  const pending = varRegularInflight.get(product.id);
   if (pending) return pending;
-  const p = fetchVarRegular(id)
+  const p = fetchVarSummary(product)
     .then((value) => {
-      varRegularSet(id, value);
+      varRegularSet(product.id, value);
       return value;
     })
-    // A variation lookup failure just means no strikethrough on that card.
-    // Deliberately NOT memoized: `wooFetch`'s own 5s negative cache already
-    // absorbs the stampede, and a 10-minute negative entry would hide a real
-    // price for far too long after recovery.
-    .catch(() => null)
+    // A variation lookup failure just means an un-enriched card (parent range,
+    // no variation label). Deliberately NOT memoized: `wooFetch`'s own 5s
+    // negative cache already absorbs the stampede, and a 10-minute negative
+    // entry would hide real data for far too long after recovery.
+    .catch(() => ({ minRegular: null, def: null }) as VarSummary)
     .finally(() => {
-      varRegularInflight.delete(id);
+      varRegularInflight.delete(product.id);
     });
-  varRegularInflight.set(id, p);
+  varRegularInflight.set(product.id, p);
   return p;
 }
 
 /**
- * Fill `min_regular_price` for variable products in a list payload.
+ * Fill `min_regular_price` and `default_variation` for variable products.
  *
- * Woo's `/products` response returns an empty `regular_price` and a plain
- * price range (no `<del>`) for variable products, so cards could only ever
- * render the sale price. Variations carry the real regular price.
+ * Woo's `/products` response returns an empty `regular_price`, a plain price
+ * range (no `<del>`) and no per-variation data for variable products, so cards
+ * could neither show the crossed-out price nor the default option customers
+ * actually land on. Variations carry both.
  *
- * Scale notes: this used to issue one upstream call per variable product on
- * every list request, with only `wooFetch`'s 30s window in front of it, and no
- * coalescing across the products of a single page. It is now backed by a
- * 10-minute per-product memo (positive *and* negative), single-flighted per
- * product id across concurrent requests, and bounded by an overall deadline.
+ * Scale notes: backed by a 10-minute per-product memo (positive *and*
+ * negative), single-flighted per product id across concurrent requests, and
+ * bounded by an overall deadline.
  */
 export async function enrichVariableRegular(products: WooProduct[]): Promise<WooProduct[]> {
-  const found = new Map<number, string>();
-  const misses: number[] = [];
+  const found = new Map<number, VarSummary>();
+  const misses: WooProduct[] = [];
   const seen = new Set<number>();
 
   for (const p of products) {
-    if (p?.type !== "variable" || p.min_regular_price) continue;
+    if (p?.type !== "variable") continue;
     // A page can legitimately repeat an id (SKU probe merged into text hits
     // upstream of a de-dupe); resolving it twice cost two map lookups and, on
     // a cold isolate, could race two inflight entries.
@@ -752,10 +786,10 @@ export async function enrichVariableRegular(products: WooProduct[]): Promise<Woo
     seen.add(p.id);
     const memo = varRegularGet(p.id);
     if (memo !== undefined) {
-      if (memo) found.set(p.id, memo);
+      found.set(p.id, memo);
       continue;
     }
-    misses.push(p.id);
+    misses.push(p);
   }
 
   if (misses.length) {
@@ -766,19 +800,23 @@ export async function enrichVariableRegular(products: WooProduct[]): Promise<Woo
       // still populates the memo for the next request, so nothing is wasted.
       if (Date.now() >= deadline) break;
       const slice = misses.slice(i, i + BATCH);
-      const results = await Promise.all(slice.map((id) => resolveVarRegular(id)));
-      for (let j = 0; j < slice.length; j++) {
-        const value = results[j];
-        if (value) found.set(slice[j], value);
-      }
+      const results = await Promise.all(slice.map((p) => resolveVarSummary(p)));
+      for (let j = 0; j < slice.length; j++) found.set(slice[j].id, results[j]);
     }
   }
 
   if (!found.size) return products;
-  return products.map((p) =>
-    found.has(p.id) ? { ...p, min_regular_price: found.get(p.id) } : p,
-  );
+  return products.map((p) => {
+    const s = found.get(p.id);
+    if (!s) return p;
+    return {
+      ...p,
+      min_regular_price: p.min_regular_price || s.minRegular || undefined,
+      default_variation: s.def ?? p.default_variation,
+    };
+  });
 }
+
 
 
 // ---------- Types (partial, only what we use) ----------
@@ -817,6 +855,18 @@ export type WooProduct = {
    * had no way to show the crossed-out price. Filled by `enrichVariableRegular`.
    */
   min_regular_price?: string;
+  /**
+   * Derived: the WooCommerce default variation for a variable product, so list
+   * cards show the same option label and price the product page opens with.
+   * Filled by `enrichVariableRegular`.
+   */
+  default_variation?: {
+    id: number;
+    label: string;
+    price: string;
+    regular_price: string;
+    sale_price: string;
+  };
 };
 
 export type WooVariation = {

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { memo, useMemo, useRef } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { cardTitle } from "@/lib/card-title";
 import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
@@ -87,7 +88,7 @@ const BigCard = memo(function BigCard({
             `min-h` + line-clamp box leaked a sliver of the third line; an exact
             height (2 x line-height) with overflow hidden crops cleanly. */}
         <p className="line-clamp-2 h-[34px] overflow-hidden text-[13px] font-medium leading-[17px] text-ink">
-          {p.name}
+          {cardTitle(p)}
         </p>
         {(rating > 0 || soldish > 0) && (
           <p className="text-[11px] text-primary/80">
