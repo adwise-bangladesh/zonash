@@ -139,7 +139,7 @@ function SubcategoryStrip({
 }) {
   const many = subs.length > 5;
   return (
-    <nav aria-label={label} className="pb-2">
+    <nav aria-label={label}>
 
       {many ? (
         <ul
