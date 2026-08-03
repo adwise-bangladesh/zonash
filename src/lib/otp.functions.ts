@@ -1242,92 +1242,54 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
       return { ok: false as const, error: "This order is under manual review." };
     }
 
-    const { wooFetch } = await import("./woo.server");
+    const { setWorkflowStatus } = await import("./order-workflow.server");
     const nowIso = new Date().toISOString();
 
     if (data.wants_call) {
-      // Keep pending; annotate.
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}`,
-          method: "PUT",
-          body: {
-            status: "pending",
-            meta_data: [
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-              { key: "_zonash_call_requested", value: "1" },
-              { key: "_zonash_call_requested_at", value: nowIso },
-            ],
-          },
-          timeoutMs: 12_000,
-        });
-      } catch (e) {
-        console.error("finalizeOrderChoice(pending) failed", e);
-      }
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}/notes`,
-          method: "POST",
-          body: {
-            note: "Customer requested a confirmation call. Order retained as pending; please contact the customer before dispatch.",
-            customer_note: false,
-          },
-        });
-      } catch {
-        /* ignore */
-      }
+      // Callback requested → stays in the Verification stage, Woo stays pending.
+      await setWorkflowStatus(data.order_id, "callback_requested", {
+        actor: "customer",
+        note: "Customer asked for a confirmation call before dispatch.",
+        extraMeta: [
+          { key: "_zonash_awaiting_call_choice", value: "0" },
+          { key: "_zonash_call_requested", value: "1" },
+          { key: "_zonash_call_requested_at", value: nowIso },
+        ],
+        privateNote:
+          "Customer requested a confirmation call before dispatch. Workflow stage: Verification — Callback Requested. " +
+          "WooCommerce status retained as pending; please call the customer before handing the parcel to a courier.",
+      });
       return { ok: true as const, decision: "pending" as const };
     }
 
-    // No call needed → confirm.
-    let applied: "confirmed" | "processing" = "confirmed";
+    // No call needed → Verification / Verified (Woo confirmed, processing fallback).
+    const res = await setWorkflowStatus(data.order_id, "verified", {
+      actor: "customer",
+      note: "Customer confirmed the order and declined a callback.",
+      extraMeta: [
+        { key: "_zonash_awaiting_call_choice", value: "0" },
+        { key: "_zonash_call_requested", value: "0" },
+        { key: "_zonash_confirmed_at", value: nowIso },
+      ],
+    });
+    const applied = (res.wooStatus === "processing" ? "processing" : "confirmed") as
+      | "confirmed"
+      | "processing";
     try {
-      await wooFetch({
-        path: `/orders/${data.order_id}`,
-        method: "PUT",
-        body: {
-          status: "confirmed",
-          meta_data: [
-            { key: "_zonash_awaiting_call_choice", value: "0" },
-            { key: "_zonash_call_requested", value: "0" },
-            { key: "_zonash_confirmed_at", value: nowIso },
-          ],
-        },
-        timeoutMs: 12_000,
-      });
-    } catch (e) {
-      console.error("finalizeOrderChoice(confirmed) failed — falling back to processing", e);
-      applied = "processing";
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}`,
-          method: "PUT",
-          body: {
-            status: "processing",
-            meta_data: [
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-              { key: "_zonash_call_requested", value: "0" },
-              { key: "_zonash_confirmed_at", value: nowIso },
-              { key: "_zonash_status_fallback", value: "confirmed->processing" },
-            ],
-          },
-          timeoutMs: 12_000,
-        });
-      } catch (e2) {
-        console.error("finalizeOrderChoice fallback also failed", e2);
-      }
-    }
-    try {
+      const { wooFetch } = await import("./woo.server");
       await wooFetch({
         path: `/orders/${data.order_id}/notes`,
         method: "POST",
         body: {
-          note: `Customer confirmed the order from the storefront and declined a callback. Status set to ${applied}.`,
+          note:
+            `Customer confirmed the order from the storefront and declined a callback. ` +
+            `Workflow stage: Verification — Verified. WooCommerce status set to ${applied}. ` +
+            `Ready to enter fulfillment.`,
           customer_note: false,
         },
       });
     } catch {
-      /* ignore */
+      /* notes are best-effort */
     }
     return { ok: true as const, decision: "confirmed" as const, applied };
   });
