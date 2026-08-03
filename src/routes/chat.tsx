@@ -4,7 +4,7 @@ import { Loader2, Phone, RefreshCw } from "lucide-react";
 
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
-import { chatwootWidgetUrl } from "@/lib/chatwoot";
+import { loadChatwoot } from "@/lib/chatwoot";
 import { SUPPORT_TEL, canonicalUrl, waLink } from "@/lib/site";
 
 const CANONICAL = canonicalUrl("/chat");
@@ -40,30 +40,112 @@ export const Route = createFileRoute("/chat")({
   component: ChatPage,
 });
 
+/**
+ * Docks the Chatwoot panel into this screen (instead of a floating bubble),
+ * and hides host-side branding/bubble chrome.
+ */
+const DOCK_CSS = `
+.woot-widget-bubble,
+.woot-widget-bubble.woot-elements--right,
+.woot--bubble-holder,
+.woot-widget-holder__branding,
+.woot--branding { display: none !important; }
+.woot-widget-holder {
+  position: fixed !important;
+  top: var(--cw-top, 96px) !important;
+  bottom: var(--cw-bottom, 12px) !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(100% - 24px, 456px) !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  border: 1px solid hsl(var(--border)) !important;
+  overflow: hidden !important;
+  z-index: 30 !important;
+}
+.woot-widget-holder iframe { height: 100% !important; }
+`;
+
 function ChatPage() {
   const { topic } = Route.useSearch();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [nonce, setNonce] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slotRef = useRef<HTMLDivElement | null>(null);
 
-  // The widget lives on a different origin, so `onError` never fires for a
-  // blocked/slow load. A deadline is the only reliable failure signal.
+  // Keep the docked panel aligned with our own layout box.
   useEffect(() => {
-    setState("loading");
-    timer.current = setTimeout(() => {
-      setState((s) => (s === "loading" ? "error" : s));
-    }, 12_000);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
+    const sync = () => {
+      const el = slotRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      document.documentElement.style.setProperty("--cw-top", `${Math.max(r.top, 0)}px`);
+      document.documentElement.style.setProperty(
+        "--cw-bottom",
+        `${Math.max(window.innerHeight - r.bottom, 0)}px`,
+      );
     };
-  }, [nonce]);
+    sync();
+    window.addEventListener("resize", sync);
+    const t = setInterval(sync, 500);
+    return () => {
+      window.removeEventListener("resize", sync);
+      clearInterval(t);
+    };
+  }, []);
 
-  const waHref = waLink(
-    `Hi Zonash, I need help.${topic ? `\n${topic}` : ""}`,
+  useEffect(() => {
+    let cancelled = false;
+    setState("loading");
+
+    const deadline = setTimeout(() => {
+      if (!cancelled) setState((s) => (s === "loading" ? "error" : s));
+    }, 15_000);
+
+    loadChatwoot()
+      .then((cw) => {
+        if (cancelled) return;
+        try {
+          if (topic) cw.setCustomAttributes?.({ topic });
+        } catch {
+          /* attributes are best-effort */
+        }
+        // Open straight into the conversation view — no welcome screen.
+        cw.toggle("open");
+        setState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setState("error");
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(deadline);
+    };
+  }, [nonce, topic]);
+
+  // Close the panel when leaving the chat screen.
+  useEffect(
+    () => () => {
+      try {
+        window.$chatwoot?.toggle("close");
+      } catch {
+        /* ignore */
+      }
+      document.documentElement.style.removeProperty("--cw-top");
+      document.documentElement.style.removeProperty("--cw-bottom");
+    },
+    [],
   );
+
+  const waHref = waLink(`Hi Zonash, I need help.${topic ? `\n${topic}` : ""}`);
 
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
+      <style>{DOCK_CSS}</style>
       <CheckoutHeader title="Live chat" backTo="/support" />
 
       <h1 className="sr-only">Live chat with Zonash support</h1>
@@ -91,18 +173,11 @@ function ChatPage() {
           </a>
         </div>
 
-        <div className="relative mt-2 flex-1 overflow-hidden rounded-2xl border border-border bg-card">
-          {state !== "error" && (
-            <iframe
-              key={nonce}
-              title="Zonash live chat"
-              src={chatwootWidgetUrl()}
-              onLoad={() => setState("ready")}
-              allow="microphone; camera; clipboard-write"
-              className="h-full w-full border-0"
-            />
-          )}
-
+        {/* Layout slot the Chatwoot panel is docked into. */}
+        <div
+          ref={slotRef}
+          className="relative mt-2 flex-1 overflow-hidden rounded-2xl border border-border bg-card"
+        >
           {state === "loading" && (
             <div className="absolute inset-0 grid place-items-center gap-2 bg-card">
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
