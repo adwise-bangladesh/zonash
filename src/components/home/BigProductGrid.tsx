@@ -30,8 +30,8 @@ const BigCard = memo(function BigCard({
   const rating = Number.parseFloat(String(p.average_rating ?? ""));
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
-  const availability = availabilityOf(p);
   const seed = () => onSeed(p);
+
   const imgRef = useRef<HTMLImageElement>(null);
 
   // The storefront is capped at a 480px frame, so a card column never exceeds
