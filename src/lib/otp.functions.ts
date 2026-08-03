@@ -16,6 +16,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import {
+  META_HISTORY,
+  parseHistory,
+  workflowMetaEntries,
+  type WorkflowEvent,
+} from "./order-workflow";
 
 // ---------- helpers ----------
 
@@ -651,6 +657,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       billingPayload.email = data.billing.email.trim();
     }
 
+    // Workflow layer (stage + granular status). Tracked locally through this
+    // handler so follow-up transitions never need an extra Woo read.
+    let wfHistory: WorkflowEvent[] = [];
+    const wfPlaced = workflowMetaEntries("order_placed", wfHistory, {
+      note: data.draft_order_id
+        ? "Promoted from checkout draft; awaiting phone verification."
+        : "Submitted by customer; awaiting phone verification.",
+      actor: "storefront",
+    });
+    wfHistory = wfPlaced.history;
+
     let created!: { id: number; number: string; total: string; currency: string };
     try {
       const { wooFetch } = await import("./woo.server");
@@ -696,6 +713,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
             { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
             { key: "_zonash_draft", value: "0" },
+            ...wfPlaced.meta,
           ],
         };
 
@@ -754,32 +772,24 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
     // block-hit context via meta + private note.
     if (blockedHit) {
       try {
-        const { wooFetch } = await import("./woo.server");
-        await wooFetch({
-          path: `/orders/${created.id}`,
-          method: "PUT",
-          body: {
-            status: "cancelled",
-            meta_data: [
-              { key: "_zonash_otp_state", value: "skipped_blocked" },
-              { key: "_zonash_decision", value: "blocked" },
-              { key: "_zonash_decision_reason", value: "account-blocked" },
-              { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-            ],
-          },
-          timeoutMs: 12_000,
+        const { setWorkflowStatus } = await import("./order-workflow.server");
+        const res = await setWorkflowStatus(created.id, "cancelled_fraud", {
+          priorHistory: wfHistory,
+          actor: "system",
+          note: `Blocked identity matched on ${blockedHit.kind}.`,
+          extraMeta: [
+            { key: "_zonash_otp_state", value: "skipped_blocked" },
+            { key: "_zonash_decision", value: "blocked" },
+            { key: "_zonash_decision_reason", value: "account-blocked" },
+            { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
+            { key: "_zonash_awaiting_call_choice", value: "0" },
+          ],
+          privateNote:
+            `Order cancelled automatically by the security screen. ` +
+            `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
+            `Workflow stage: Cancelled — Cancelled - Fraud. Phone verification skipped; no SMS was sent.`,
         });
-        await wooFetch({
-          path: `/orders/${created.id}/notes`,
-          method: "POST",
-          body: {
-            note:
-              `Order automatically cancelled. Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
-              `Phone verification skipped and no SMS was sent.`,
-            customer_note: false,
-          },
-        });
+        if (!res.ok) console.error("blocked-cancel workflow write failed");
       } catch (e) {
         console.error("blocked-cancel meta write failed", e);
       }
@@ -822,35 +832,38 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         });
 
         try {
-          const { wooFetch } = await import("./woo.server");
-          await wooFetch({
-            path: `/orders/${created.id}`,
-            method: "PUT",
-            body: {
-              meta_data: [
-                { key: "_zonash_otp_state", value: "skipped_session" },
-                { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
-                { key: "_zonash_decision", value: verdict.decision },
-                { key: "_zonash_decision_reason", value: verdict.decisionReason },
-                { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
-                { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
-                { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
-              ],
-            },
-            timeoutMs: 12_000,
+          const { setWorkflowStatus } = await import("./order-workflow.server");
+          // Record the implicit verification, then the verdict — both land in
+          // one PUT so the customer timeline shows real, ordered timestamps.
+          const wfVerified = workflowMetaEntries("otp_verified", wfHistory, {
+            note: "Verified from a trusted signed-in session; no code required.",
+            actor: "system",
           });
-          await wooFetch({
-            path: `/orders/${created.id}/notes`,
-            method: "POST",
-            body: {
-              note:
-                `Phone verification skipped (trusted customer session). Decision: ${verdict.decision}.` +
-                (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
-                (verdict.duplicates.length
-                  ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
-                  : ""),
-              customer_note: false,
-            },
+          wfHistory = wfVerified.history;
+          const nextStatus =
+            verdict.decision === "confirmed" ? "pending_verification" : "manual_review";
+          await setWorkflowStatus(created.id, nextStatus, {
+            priorHistory: wfHistory,
+            actor: "system",
+            note: verdict.decisionReason || undefined,
+            extraMeta: [
+              { key: "_zonash_otp_state", value: "skipped_session" },
+              { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+              { key: "_zonash_decision", value: verdict.decision },
+              { key: "_zonash_decision_reason", value: verdict.decisionReason },
+              { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
+              { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+              { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
+            ],
+            privateNote:
+              `Phone verification skipped — trusted customer session matched the billing number. ` +
+              `Verification verdict: ${verdict.decision}. Workflow stage: ${
+                nextStatus === "manual_review" ? "Created — Manual Review" : "Verification — Pending Verification"
+              }.` +
+              (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
+              (verdict.duplicates.length
+                ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
+                : ""),
           });
         } catch (e) {
           console.error("skip-OTP meta write failed", e);
@@ -1121,46 +1134,49 @@ export const verifyOrderOtp = createServerFn({ method: "POST" })
 
     // Apply verdict + audit note to Woo. Confirmed orders stay `pending` until
     // the customer picks a callback preference in `finalizeOrderChoice`.
-    const { wooFetch } = await import("./woo.server");
-    const appliedStatus = "pending";
     try {
-      await wooFetch({
-        path: `/orders/${data.order_id}`,
-        method: "PUT",
-        body: {
-          status: appliedStatus,
-          meta_data: [
-            { key: "_zonash_otp_state", value: "verified" },
-            { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
-            { key: "_zonash_decision", value: decision },
-            { key: "_zonash_decision_reason", value: decisionReason },
-            { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
-            { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
-            { key: "_zonash_awaiting_call_choice", value: decision === "confirmed" ? "1" : "0" },
-          ],
-        },
-        timeoutMs: 12_000,
+      const { wooFetch } = await import("./woo.server");
+      const existing = await wooFetch<{ meta_data?: { key: string; value: unknown }[] }>({
+        path: `/orders/${data.order_id}?_fields=id,status,meta_data`,
+        method: "GET",
+        timeoutMs: 8_000,
+      }).catch(() => ({ meta_data: [] as { key: string; value: unknown }[] }));
+      const prior = parseHistory(
+        (existing.meta_data ?? []).find((m) => m.key === META_HISTORY)?.value,
+      );
+      const wfVerified = workflowMetaEntries("otp_verified", prior, {
+        note: "One-time code confirmed.",
+        actor: "customer",
+      });
+      const nextStatus = decision === "confirmed" ? "pending_verification" : "manual_review";
+      const { setWorkflowStatus } = await import("./order-workflow.server");
+      await setWorkflowStatus(data.order_id, nextStatus, {
+        priorHistory: wfVerified.history,
+        actor: "system",
+        note: decisionReason || undefined,
+        extraMeta: [
+          { key: "_zonash_otp_state", value: "verified" },
+          { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+          { key: "_zonash_decision", value: decision },
+          { key: "_zonash_decision_reason", value: decisionReason },
+          { key: "_zonash_hoorin_report", value: JSON.stringify(hoorinReport ?? {}) },
+          { key: "_zonash_duplicates", value: JSON.stringify(duplicates) },
+          { key: "_zonash_awaiting_call_choice", value: decision === "confirmed" ? "1" : "0" },
+        ],
+        privateNote:
+          `Phone number verified by one-time code. Verification verdict: ${decision}. ` +
+          `Workflow stage: ${
+            nextStatus === "manual_review"
+              ? "Created — Manual Review"
+              : "Verification — Pending Verification"
+          }; WooCommerce status remains pending until the customer states a callback preference.` +
+          (decisionReason ? ` Reason: ${decisionReason}.` : "") +
+          (duplicates.length
+            ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
+            : ""),
       });
     } catch (e) {
-      console.error("Woo PUT pending failed", e);
-    }
-
-    try {
-      await wooFetch({
-        path: `/orders/${data.order_id}/notes`,
-        method: "POST",
-        body: {
-          note:
-            `Phone verified via one-time code. Decision: ${decision}; status set to ${appliedStatus}.` +
-            (decisionReason ? ` Reason: ${decisionReason}.` : "") +
-            (duplicates.length
-              ? ` Duplicate orders detected: ${duplicates.map((d) => `#${d.number}`).join(", ")}.`
-              : ""),
-          customer_note: false,
-        },
-      });
-    } catch {
-      /* ignore */
+      console.error("verifyOrderOtp workflow write failed", e);
     }
 
 
@@ -1226,92 +1242,54 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
       return { ok: false as const, error: "This order is under manual review." };
     }
 
-    const { wooFetch } = await import("./woo.server");
+    const { setWorkflowStatus } = await import("./order-workflow.server");
     const nowIso = new Date().toISOString();
 
     if (data.wants_call) {
-      // Keep pending; annotate.
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}`,
-          method: "PUT",
-          body: {
-            status: "pending",
-            meta_data: [
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-              { key: "_zonash_call_requested", value: "1" },
-              { key: "_zonash_call_requested_at", value: nowIso },
-            ],
-          },
-          timeoutMs: 12_000,
-        });
-      } catch (e) {
-        console.error("finalizeOrderChoice(pending) failed", e);
-      }
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}/notes`,
-          method: "POST",
-          body: {
-            note: "Customer requested a confirmation call. Order retained as pending; please contact the customer before dispatch.",
-            customer_note: false,
-          },
-        });
-      } catch {
-        /* ignore */
-      }
+      // Callback requested → stays in the Verification stage, Woo stays pending.
+      await setWorkflowStatus(data.order_id, "callback_requested", {
+        actor: "customer",
+        note: "Customer asked for a confirmation call before dispatch.",
+        extraMeta: [
+          { key: "_zonash_awaiting_call_choice", value: "0" },
+          { key: "_zonash_call_requested", value: "1" },
+          { key: "_zonash_call_requested_at", value: nowIso },
+        ],
+        privateNote:
+          "Customer requested a confirmation call before dispatch. Workflow stage: Verification — Callback Requested. " +
+          "WooCommerce status retained as pending; please call the customer before handing the parcel to a courier.",
+      });
       return { ok: true as const, decision: "pending" as const };
     }
 
-    // No call needed → confirm.
-    let applied: "confirmed" | "processing" = "confirmed";
+    // No call needed → Verification / Verified (Woo confirmed, processing fallback).
+    const res = await setWorkflowStatus(data.order_id, "verified", {
+      actor: "customer",
+      note: "Customer confirmed the order and declined a callback.",
+      extraMeta: [
+        { key: "_zonash_awaiting_call_choice", value: "0" },
+        { key: "_zonash_call_requested", value: "0" },
+        { key: "_zonash_confirmed_at", value: nowIso },
+      ],
+    });
+    const applied = (res.wooStatus === "processing" ? "processing" : "confirmed") as
+      | "confirmed"
+      | "processing";
     try {
-      await wooFetch({
-        path: `/orders/${data.order_id}`,
-        method: "PUT",
-        body: {
-          status: "confirmed",
-          meta_data: [
-            { key: "_zonash_awaiting_call_choice", value: "0" },
-            { key: "_zonash_call_requested", value: "0" },
-            { key: "_zonash_confirmed_at", value: nowIso },
-          ],
-        },
-        timeoutMs: 12_000,
-      });
-    } catch (e) {
-      console.error("finalizeOrderChoice(confirmed) failed — falling back to processing", e);
-      applied = "processing";
-      try {
-        await wooFetch({
-          path: `/orders/${data.order_id}`,
-          method: "PUT",
-          body: {
-            status: "processing",
-            meta_data: [
-              { key: "_zonash_awaiting_call_choice", value: "0" },
-              { key: "_zonash_call_requested", value: "0" },
-              { key: "_zonash_confirmed_at", value: nowIso },
-              { key: "_zonash_status_fallback", value: "confirmed->processing" },
-            ],
-          },
-          timeoutMs: 12_000,
-        });
-      } catch (e2) {
-        console.error("finalizeOrderChoice fallback also failed", e2);
-      }
-    }
-    try {
+      const { wooFetch } = await import("./woo.server");
       await wooFetch({
         path: `/orders/${data.order_id}/notes`,
         method: "POST",
         body: {
-          note: `Customer confirmed the order from the storefront and declined a callback. Status set to ${applied}.`,
+          note:
+            `Customer confirmed the order from the storefront and declined a callback. ` +
+            `Workflow stage: Verification — Verified. WooCommerce status set to ${applied}. ` +
+            `Ready to enter fulfillment.`,
           customer_note: false,
         },
       });
     } catch {
-      /* ignore */
+      /* notes are best-effort */
     }
     return { ok: true as const, decision: "confirmed" as const, applied };
   });
@@ -1391,6 +1369,10 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
         { key: "_zonash_ip", value: server.ip ?? "" },
         { key: "_zonash_ua", value: server.user_agent ?? "" },
         { key: "_zonash_channel", value: "storefront-draft" },
+        ...workflowMetaEntries("draft", [], {
+          note: "Checkout form filled but not submitted.",
+          actor: "customer",
+        }).meta,
       ],
     };
 

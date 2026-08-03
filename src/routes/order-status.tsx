@@ -17,6 +17,7 @@ import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { getOrderTimeline, type TimelineStage } from "@/lib/order-timeline.functions";
+import type { WorkflowStage } from "@/lib/order-workflow";
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
@@ -84,8 +85,13 @@ function OrderStatusPage() {
               </div>
               <div className="truncate text-lg font-bold">#{ref}</div>
             </div>
-            <StatusPill label={t?.statusLabel} status={t?.status} loading={isLoading} />
+            <StatusPill label={t?.statusLabel} stage={t?.stage} loading={isLoading} />
           </div>
+          {t ? (
+            <div className="mt-2 text-[11.5px] text-muted-foreground">
+              Stage: <span className="font-semibold text-foreground">{t.stageLabel}</span>
+            </div>
+          ) : null}
         </div>
 
         {t?.awaiting_call_choice ? (
@@ -186,18 +192,18 @@ function OrderStatusPage() {
 
 function StatusPill({
   label,
-  status,
+  stage,
   loading,
 }: {
   label?: string;
-  status?: string;
+  stage?: WorkflowStage;
   loading: boolean;
 }) {
   if (loading) {
     return <span className="h-7 w-24 animate-pulse rounded-full bg-muted" />;
   }
-  const bad = status === "cancelled" || status === "failed" || status === "refunded";
-  const good = status === "confirmed" || status === "processing" || status === "completed";
+  const bad = stage === "cancelled" || stage === "failed" || stage === "returns";
+  const good = stage === "delivered" || stage === "shipping" || stage === "fulfillment";
   const cls = bad
     ? "border-destructive/25 bg-destructive/10 text-destructive"
     : good
@@ -215,8 +221,9 @@ function StatusPill({
 function StageRow({ stage, last }: { stage: TimelineStage; last: boolean }) {
   const done = stage.state === "done";
   const current = stage.state === "current";
-  const cancelled = stage.key === "cancelled";
-  const dot = cancelled
+  const bad =
+    stage.key === "cancelled" || stage.key === "failed" || stage.key === "returns";
+  const dot = bad
     ? "border-destructive/40 bg-destructive/10 text-destructive"
     : done
       ? "border-primary/30 bg-primary/10 text-primary"
@@ -233,7 +240,7 @@ function StageRow({ stage, last }: { stage: TimelineStage; last: boolean }) {
         />
       )}
       <span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border ${dot}`}>
-        {cancelled ? (
+        {bad ? (
           <XCircle className="h-3.5 w-3.5" />
         ) : done ? (
           <Check className="h-3.5 w-3.5" />

@@ -1,10 +1,11 @@
 /**
  * Unified post-checkout order timeline.
  *
- * Replaces the separate review / callback / pending / confirmed screens with a
- * single status page. Everything is derived server-side from the WooCommerce
- * order (status + `_zonash_*` meta) so the customer sees the same truth the
- * ops team sees, with professional, human-readable notes.
+ * Renders the two-layer workflow model: business stages (Created, Verification,
+ * Fulfillment, Shipping, Delivered, Returns, Cancelled, Failed) each containing
+ * the granular statuses recorded in `_zonash_stage_history`. Orders written
+ * before the workflow layer existed are derived from the WooCommerce status and
+ * the legacy `_zonash_*` decision meta, so nothing regresses.
  *
  * SECURITY: same gate as `getPublicOrderById` — a signed httpOnly customer
  * session cookie whose phone matches the order's billing phone. Responses are
@@ -12,14 +13,23 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import {
+  META_HISTORY,
+  META_STATUS,
+  STAGE_LABEL,
+  WORKFLOW_STATUSES,
+  deriveLegacyStatus,
+  isWorkflowStatus,
+  parseHistory,
+  stageOf,
+  stageState,
+  visibleStages,
+  type WorkflowEvent,
+  type WorkflowStage,
+  type WorkflowStatus,
+} from "./order-workflow";
 
-export type TimelineStageKey =
-  | "created"
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+export type TimelineStageKey = WorkflowStage;
 
 export type TimelineEvent = {
   title: string;
@@ -40,11 +50,27 @@ export type OrderTimeline = {
   number: string;
   status: string;
   statusLabel: string;
+  /** Granular workflow status, e.g. `pending_verification`. */
+  workflowStatus: WorkflowStatus;
+  stage: WorkflowStage;
+  stageLabel: string;
   total: string;
   awaiting_call_choice: boolean;
   call_requested: boolean;
   stages: TimelineStage[];
 };
+
+function toTimelineEvent(e: WorkflowEvent): TimelineEvent {
+  const def = WORKFLOW_STATUSES[e.status];
+  const tone =
+    def.tone === "danger" ? "danger" : def.tone === "warn" ? "warn" : "default";
+  return {
+    title: def.label,
+    detail: def.note,
+    ...(e.at ? { at: e.at } : {}),
+    tone,
+  };
+}
 
 export const getOrderTimeline = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) =>
@@ -88,7 +114,7 @@ export const getOrderTimeline = createServerFn({ method: "GET" })
         return v === "1" || v === "true" || v === "yes";
       };
 
-      const status = String(o.status ?? "");
+      const wooStatus = String(o.status ?? "");
       const createdAt = String(o.date_created ?? "");
       const otpVerifiedAt = get("_zonash_otp_verified_at");
       const confirmedAt = get("_zonash_confirmed_at");
@@ -96,177 +122,89 @@ export const getOrderTimeline = createServerFn({ method: "GET" })
       const callRequestedAt = get("_zonash_call_requested_at");
       const awaiting = truthy("_zonash_awaiting_call_choice");
       const decision = get("_zonash_decision");
-      const reason = get("_zonash_decision_reason");
       const blocked = decision === "blocked" || !!get("_zonash_blocked_hit");
 
-      // ---------- Created ----------
-      const created: TimelineEvent[] = [
-        {
-          title: "Order drafted",
-          detail: "Your details were saved and the order was reserved for you.",
-          at: createdAt,
-        },
-      ];
-      if (otpVerifiedAt) {
-        created.push({
-          title: "Phone number verified",
-          detail: "The one-time code sent to your mobile was confirmed.",
-          at: otpVerifiedAt,
+      // ---------- Resolve the workflow status ----------
+      const rawStatus = get(META_STATUS);
+      let status: WorkflowStatus;
+      let history: WorkflowEvent[];
+
+      if (isWorkflowStatus(rawStatus)) {
+        status = rawStatus;
+        history = parseHistory(get(META_HISTORY));
+        if (history.length === 0) {
+          history = [{ stage: stageOf(status), status, at: createdAt }];
+        }
+      } else {
+        // Legacy order — synthesise the history from the timestamps we have.
+        status = deriveLegacyStatus({
+          wooStatus,
+          decision,
+          blocked,
+          callRequested,
+          awaitingChoice: awaiting,
+          otpVerified: !!otpVerifiedAt || !!decision,
         });
-      } else if (decision) {
-        created.push({
-          title: "Phone number verified",
-          detail: "Verified from your signed-in session — no code was required.",
-        });
+        const synth: WorkflowEvent[] = [
+          { stage: "created", status: "draft", at: createdAt },
+          { stage: "created", status: "order_placed", at: createdAt },
+        ];
+        if (otpVerifiedAt || decision) {
+          synth.push({
+            stage: "created",
+            status: "otp_verified",
+            at: otpVerifiedAt || createdAt,
+          });
+        }
+        if (callRequested) {
+          synth.push({
+            stage: "verification",
+            status: "callback_requested",
+            at: callRequestedAt || createdAt,
+          });
+        }
+        if (confirmedAt && (wooStatus === "confirmed" || wooStatus === "processing")) {
+          synth.push({ stage: "verification", status: "verified", at: confirmedAt });
+        }
+        const last = synth[synth.length - 1];
+        if (!last || last.status !== status) {
+          synth.push({ stage: stageOf(status), status, at: "" });
+        }
+        history = synth;
       }
 
-      // ---------- Pending ----------
-      const pending: TimelineEvent[] = [];
-      if (blocked) {
-        pending.push({
-          title: "Security review failed",
-          detail:
-            "Our fraud-prevention checks flagged this order, so it was cancelled automatically.",
-          tone: "danger",
-        });
-      } else if (decision === "review") {
-        pending.push({
-          title: "Manual review required",
-          detail:
-            reason ||
-            "Our verification checks need a quick look from our team before dispatch.",
-          tone: "warn",
-        });
-        pending.push({
-          title: "Confirmation call scheduled",
-          detail: "An agent will call you on this number to confirm your order.",
-        });
-      }
-      if (callRequested) {
-        pending.push({
-          title: "Confirmation call requested",
-          detail: "You asked us to call before dispatch. The order stays pending until we speak.",
-          at: callRequestedAt,
-        });
-      }
-      if (awaiting) {
-        pending.push({
-          title: "Awaiting your choice",
-          detail: "Tell us whether you'd like a confirmation call before we dispatch.",
-        });
+      const stage = stageOf(status);
+      const rail = visibleStages(stage);
+
+      const stages: TimelineStage[] = rail.map((s) => ({
+        key: s,
+        label: STAGE_LABEL[s],
+        state: stageState(s, stage, rail),
+        events: history.filter((e) => e.stage === s).map(toTimelineEvent),
+      }));
+
+      // The "current" stage should never look empty to the customer.
+      for (const s of stages) {
+        if (s.state === "current" && s.events.length === 0) {
+          const def = WORKFLOW_STATUSES[status];
+          s.events.push({ title: def.label, detail: def.note, tone: "default" });
+        }
       }
 
-      // ---------- Confirmed and beyond ----------
-      const confirmed: TimelineEvent[] = [];
-      if (status === "confirmed" || status === "processing") {
-        confirmed.push({
-          title: "Order confirmed",
-          detail: "We're packing your parcel. Cash on Delivery — pay only on arrival.",
-          at: confirmedAt,
-        });
-      }
-      const shipped: TimelineEvent[] = [];
-      if (status === "shipped" || status === "completed") {
-        shipped.push({
-          title: "Handed to courier",
-          detail: "Your parcel is on the way. Our courier partner will call before delivery.",
-        });
-      }
-      const delivered: TimelineEvent[] = [];
-      if (status === "completed") {
-        delivered.push({ title: "Delivered", detail: "Thank you for shopping with Zonash." });
-      }
-      const cancelled: TimelineEvent[] = [];
-      if (status === "cancelled" || status === "failed" || status === "refunded") {
-        cancelled.push({
-          title: status === "refunded" ? "Order refunded" : "Order cancelled",
-          detail: blocked
-            ? "Cancelled by our security system. Contact support if you believe this is a mistake."
-            : "This order will not be delivered. Contact support if you'd like it reinstated.",
-          tone: "danger",
-        });
-      }
-
-      const isTerminalBad = cancelled.length > 0;
-      const isConfirmed = confirmed.length > 0;
-      const isShipped = shipped.length > 0;
-      const isDelivered = delivered.length > 0;
-
-      const stages: TimelineStage[] = [
-        { key: "created", label: "Created", state: "done", events: created },
-        {
-          key: "pending",
-          label: "Pending",
-          state: isTerminalBad
-            ? "done"
-            : isConfirmed || isShipped
-              ? "done"
-              : "current",
-          events:
-            pending.length > 0
-              ? pending
-              : [
-                  {
-                    title: "Verification complete",
-                    detail: "No issues found — your order moved straight through.",
-                  },
-                ],
-        },
-        {
-          key: "confirmed",
-          label: "Confirmed",
-          state: isConfirmed || isShipped || isDelivered
-            ? isShipped || isDelivered
-              ? "done"
-              : "current"
-            : "upcoming",
-          events: confirmed,
-        },
-        {
-          key: "shipped",
-          label: "Shipped",
-          state: isShipped ? (isDelivered ? "done" : "current") : "upcoming",
-          events: shipped,
-        },
-        {
-          key: "delivered",
-          label: "Delivered",
-          state: isDelivered ? "current" : "upcoming",
-          events: delivered,
-        },
-      ];
-      if (isTerminalBad) {
-        stages.splice(2, stages.length - 2, {
-          key: "cancelled",
-          label: status === "refunded" ? "Refunded" : "Cancelled",
-          state: "current",
-          events: cancelled,
-        });
-      }
-
-      const labels: Record<string, string> = {
-        "checkout-draft": "Draft",
-        pending: "Pending",
-        "otp-pending": "Verifying",
-        confirmed: "Confirmed",
-        processing: "Confirmed",
-        shipped: "Shipped",
-        completed: "Delivered",
-        cancelled: "Cancelled",
-        failed: "Cancelled",
-        refunded: "Refunded",
-        "on-hold": "On hold",
-      };
+      const def = WORKFLOW_STATUSES[status];
 
       return {
         timeline: {
           id: Number(o.id),
           number: String(o.number ?? o.id),
-          status,
-          statusLabel: labels[status] ?? status.replace(/-/g, " "),
+          status: wooStatus,
+          statusLabel: def.label,
+          workflowStatus: status,
+          stage,
+          stageLabel: STAGE_LABEL[stage],
           total: String(o.total ?? "0"),
-          awaiting_call_choice: awaiting && !isTerminalBad,
-          call_requested: callRequested,
+          awaiting_call_choice: status === "pending_verification" && awaiting,
+          call_requested: status === "callback_requested" || callRequested,
           stages,
         },
       };
