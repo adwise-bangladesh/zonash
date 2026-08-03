@@ -115,16 +115,14 @@ function QuickCardImpl({
   const inCart = !!cartLine;
 
   // Availability ----------------------------------------------------
-  const productSoldOut = p.stock_status !== "instock" && !p.backorders_allowed;
+  const productSoldOut = !isBuyable(p);
   const productNotPurchasable =
     (p as { purchasable?: boolean }).purchasable === false;
   const variationsLoaded = isVariable && variationsQuery.isSuccess;
   const variableUnavailable =
     variationsLoaded &&
     (!defaultVariation ||
-      (defaultVariation.stock_status !== "instock" &&
-        !(defaultVariation as { backorders_allowed?: boolean })
-          .backorders_allowed) ||
+      !isBuyable(defaultVariation) ||
       (defaultVariation as { purchasable?: boolean }).purchasable === false ||
       !(
         parseFloat(defaultVariation.price || "0") > 0 ||
@@ -164,8 +162,7 @@ function QuickCardImpl({
         const v = pickDefaultVariation(p, variations);
         if (
           !v ||
-          (v.stock_status !== "instock" &&
-            !(v as { backorders_allowed?: boolean }).backorders_allowed) ||
+          !isBuyable(v) ||
           (v as { purchasable?: boolean }).purchasable === false
         ) {
           setState("idle");
@@ -195,7 +192,7 @@ function QuickCardImpl({
     }
   }
 
-  const unavailableLabel = productSoldOut ? "Sold out" : "Unavailable";
+  const unavailableLabel = productSoldOut ? "Out of Stock" : "Unavailable";
 
   return (
     <div

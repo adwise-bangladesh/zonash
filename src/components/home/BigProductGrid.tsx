@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { memo, useMemo, useRef } from "react";
 import { Gem, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/format";
+import { availabilityOf } from "@/lib/stock";
 import { cardTitle } from "@/lib/card-title";
 import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
@@ -27,6 +28,7 @@ const BigCard = memo(function BigCard({
   const rating = Number.parseFloat(String(p.average_rating ?? ""));
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
+  const availability = availabilityOf(p);
   const seed = () => onSeed(p);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -79,9 +81,14 @@ const BigCard = memo(function BigCard({
       </div>
 
       <div className="flex flex-col gap-1.5 p-2.5">
-        {p.stock_status !== "instock" && p.backorders_allowed && (
+        {availability.kind === "supplier" && (
           <span className="inline-flex w-fit items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-            <Truck className="h-2.5 w-2.5" aria-hidden="true" /> Slower delivery
+            <Truck className="h-2.5 w-2.5" aria-hidden="true" /> {availability.delivery}
+          </span>
+        )}
+        {availability.kind === "out" && (
+          <span className="inline-flex w-fit items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+            Out of Stock
           </span>
         )}
         {/* Fixed two-line box. Bengali glyphs are taller than Latin, so a

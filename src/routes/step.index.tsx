@@ -7,6 +7,7 @@ import { z } from "zod";
 import { listProducts } from "@/lib/woo.functions";
 import type { WooProduct } from "@/lib/woo.server";
 import { formatBDT } from "@/lib/format";
+import { availabilityOf } from "@/lib/stock";
 import { cardTitle } from "@/lib/card-title";
 import { buildResponsiveImage } from "@/lib/product-image";
 import { NotFoundView } from "@/components/NotFoundView";
@@ -141,7 +142,8 @@ function ProductCard({ product }: { product: WooProduct }) {
   const imgObj = product.images?.[0];
   const img = imgObj?.src;
   const responsive = imgObj ? buildResponsiveImage(imgObj) : null;
-  const outOfStock = product.stock_status === "outofstock";
+  const availability = availabilityOf(product);
+  const outOfStock = !availability.buyable;
 
   return (
     <Link
@@ -164,7 +166,7 @@ function ProductCard({ product }: { product: WooProduct }) {
         {outOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-background/70">
             <span className="rounded-md bg-foreground px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-background">
-              Sold out
+              Out of Stock
             </span>
           </div>
         )}
