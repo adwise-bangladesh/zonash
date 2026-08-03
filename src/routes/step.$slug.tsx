@@ -257,6 +257,12 @@ function StepLandingPage() {
     setSelectedVarId(bestDealId ?? variations[0]?.id ?? null);
   }, [isVariable, variations, bestDealId, selectedVarId]);
 
+  // Feed the "recently viewed" boost used by storefront grids.
+  useEffect(() => {
+    pushRecentlyViewed(product.id);
+  }, [product.id]);
+
+
 
   const selectedVar = useMemo(
     () => variations.find((v) => v.id === selectedVarId) ?? null,
