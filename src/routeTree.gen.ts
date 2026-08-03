@@ -19,6 +19,7 @@ import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as OrderBlockedRouteImport } from './routes/order-blocked'
 import { Route as LuxuryRouteImport } from './routes/luxury'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
@@ -81,6 +82,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
+  '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
+  '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
+  '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
   '/luxury': typeof LuxuryRoute
   '/order-blocked': typeof OrderBlockedRoute
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cart'
     | '/categories'
+    | '/chat'
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cart'
     | '/categories'
+    | '/chat'
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cart'
     | '/categories'
+    | '/chat'
     | '/checkout'
     | '/luxury'
     | '/order-blocked'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CartRoute: typeof CartRoute
   CategoriesRoute: typeof CategoriesRoute
+  ChatRoute: typeof ChatRoute
   CheckoutRoute: typeof CheckoutRoute
   LuxuryRoute: typeof LuxuryRoute
   OrderBlockedRoute: typeof OrderBlockedRoute
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categories': {
       id: '/categories'
       path: '/categories'
@@ -459,6 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CartRoute: CartRoute,
   CategoriesRoute: CategoriesRoute,
+  ChatRoute: ChatRoute,
   CheckoutRoute: CheckoutRoute,
   LuxuryRoute: LuxuryRoute,
   OrderBlockedRoute: OrderBlockedRoute,

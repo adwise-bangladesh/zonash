@@ -36,6 +36,7 @@ import {
 import { useOnScreen } from "@/hooks/use-on-screen";
 import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, DEFAULT_ZONE, zoneFromAddress, cachedGpsZone, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { NotFoundView } from "@/components/NotFoundView";
+import { ChatLink } from "@/components/support/ChatLink";
 
 // ---------- data ----------
 
@@ -1176,6 +1177,12 @@ function StepLandingPage() {
               <path d="M9 18l6-6-6-6" />
             </svg>
           </a>
+          <ChatLink
+            variant="row"
+            label="Live chat with support"
+            hint="Ask anything about this product · 10 AM – 10 PM"
+            context={{ topic: `Product: ${product.name}`, from: `/step/${slug}` }}
+          />
         </div>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10.5px] text-muted-foreground">
           <span className="relative flex h-1.5 w-1.5">

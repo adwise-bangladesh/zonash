@@ -31,6 +31,7 @@ export function MobileBottomNav() {
 
     pathname.startsWith("/collection/") ||
     pathname.startsWith("/checkout") ||
+    pathname.startsWith("/chat") ||
     pathname.startsWith("/step/") ||
     pathname.startsWith("/verify-otp") ||
     pathname.startsWith("/order-status") ||
