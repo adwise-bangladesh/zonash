@@ -103,7 +103,7 @@ export function InfiniteFeed({
   // Suspense (not `useInfiniteQuery`) so the server waits for the streamed
   // first page: rendering an empty feed on the server and a populated one on
   // the client made React discard and re-render the entire tree on hydration.
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching, isError, refetch } =
     useSuspenseInfiniteQuery(
       recommended
         ? // Reuse the SSR-prefetched config verbatim. Re-declaring it here (as
