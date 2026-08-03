@@ -827,35 +827,38 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
         });
 
         try {
-          const { wooFetch } = await import("./woo.server");
-          await wooFetch({
-            path: `/orders/${created.id}`,
-            method: "PUT",
-            body: {
-              meta_data: [
-                { key: "_zonash_otp_state", value: "skipped_session" },
-                { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
-                { key: "_zonash_decision", value: verdict.decision },
-                { key: "_zonash_decision_reason", value: verdict.decisionReason },
-                { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
-                { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
-                { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
-              ],
-            },
-            timeoutMs: 12_000,
+          const { setWorkflowStatus } = await import("./order-workflow.server");
+          // Record the implicit verification, then the verdict — both land in
+          // one PUT so the customer timeline shows real, ordered timestamps.
+          const wfVerified = workflowMetaEntries("otp_verified", wfHistory, {
+            note: "Verified from a trusted signed-in session; no code required.",
+            actor: "system",
           });
-          await wooFetch({
-            path: `/orders/${created.id}/notes`,
-            method: "POST",
-            body: {
-              note:
-                `Phone verification skipped (trusted customer session). Decision: ${verdict.decision}.` +
-                (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
-                (verdict.duplicates.length
-                  ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
-                  : ""),
-              customer_note: false,
-            },
+          wfHistory = wfVerified.history;
+          const nextStatus =
+            verdict.decision === "confirmed" ? "pending_verification" : "manual_review";
+          await setWorkflowStatus(created.id, nextStatus, {
+            priorHistory: wfHistory,
+            actor: "system",
+            note: verdict.decisionReason || undefined,
+            extraMeta: [
+              { key: "_zonash_otp_state", value: "skipped_session" },
+              { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+              { key: "_zonash_decision", value: verdict.decision },
+              { key: "_zonash_decision_reason", value: verdict.decisionReason },
+              { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
+              { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+              { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
+            ],
+            privateNote:
+              `Phone verification skipped — trusted customer session matched the billing number. ` +
+              `Verification verdict: ${verdict.decision}. Workflow stage: ${
+                nextStatus === "manual_review" ? "Created — Manual Review" : "Verification — Pending Verification"
+              }.` +
+              (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
+              (verdict.duplicates.length
+                ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
+                : ""),
           });
         } catch (e) {
           console.error("skip-OTP meta write failed", e);
