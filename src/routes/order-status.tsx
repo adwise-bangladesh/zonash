@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -16,8 +16,12 @@ import {
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
 import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
-import { getOrderTimeline, type TimelineStage } from "@/lib/order-timeline.functions";
-import type { WorkflowStage } from "@/lib/order-workflow";
+import {
+  getOrderTimeline,
+  type OrderTimeline,
+  type TimelineStage,
+} from "@/lib/order-timeline.functions";
+import { WORKFLOW_STATUSES, type WorkflowStage } from "@/lib/order-workflow";
 import { finalizeOrderChoice } from "@/lib/otp.functions";
 
 const searchSchema = z.object({
@@ -36,12 +40,49 @@ export const Route = createFileRoute("/order-status")({
   component: OrderStatusPage,
 });
 
+type TimelineResult = { timeline: OrderTimeline | null };
+
+/**
+ * Optimistic timeline after the customer picks a callback preference.
+ * The Woo write behind `finalizeOrderChoice` takes a few seconds, so the UI
+ * must reflect the choice immediately instead of looking unresponsive.
+ */
+function applyChoice(prev: TimelineResult | undefined, wants_call: boolean): TimelineResult | undefined {
+  const t = prev?.timeline;
+  if (!t) return prev;
+  const status = wants_call ? "callback_requested" : "verified";
+  const def = WORKFLOW_STATUSES[status];
+  const at = new Date().toISOString();
+  return {
+    timeline: {
+      ...t,
+      workflowStatus: status,
+      statusLabel: def.label,
+      awaiting_call_choice: false,
+      call_requested: wants_call,
+      stages: t.stages.map((s) =>
+        s.key === "verification"
+          ? {
+              ...s,
+              events: [
+                ...s.events,
+                { title: def.label, detail: def.note, at, tone: "default" as const },
+              ],
+            }
+          : s,
+      ),
+    },
+  };
+}
+
 function OrderStatusPage() {
   const { order, number } = Route.useSearch();
   const qc = useQueryClient();
   const timelineFn = useServerFn(getOrderTimeline);
   const finalizeFn = useServerFn(finalizeOrderChoice);
   const [busy, setBusy] = useState<null | "yes" | "no">(null);
+  // Synchronous guard: double-taps must never fire two Woo writes.
+  const busyRef = useRef(false);
 
   const queryKey = ["order-timeline", order] as const;
   const { data, isLoading } = useQuery({
@@ -52,23 +93,31 @@ function OrderStatusPage() {
   const t = data?.timeline ?? null;
 
   const choose = async (wants_call: boolean) => {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(wants_call ? "yes" : "no");
+    const previous = qc.getQueryData<TimelineResult>(queryKey);
+    qc.setQueryData<TimelineResult>(queryKey, (old) => applyChoice(old, wants_call));
     try {
       const res = await finalizeFn({ data: { order_id: order, wants_call } });
       if (!res.ok) {
+        if (previous) qc.setQueryData(queryKey, previous);
         toast.error(res.error);
-        setBusy(null);
         return;
       }
-      await qc.invalidateQueries({ queryKey });
-      await qc.invalidateQueries({ queryKey: ["public-order", order] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey }),
+        qc.invalidateQueries({ queryKey: ["public-order", order] }),
+      ]);
     } catch {
+      if (previous) qc.setQueryData(queryKey, previous);
       toast.error("Something went wrong. Please try again.");
     } finally {
+      busyRef.current = false;
       setBusy(null);
     }
   };
+
 
   const ref = t?.number ?? number ?? String(order);
 
