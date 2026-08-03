@@ -3,12 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
-import { MessageSquareLock, Loader2, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
+import { MessageSquareLock, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { verifyOrderOtp, resendOrderOtp } from "@/lib/otp.functions";
 import { CheckoutHeader } from "@/components/layout/CheckoutHeader";
 import { AuthHero, OtpBoxes } from "@/components/checkout/AuthUi";
 import { SupportFooter, buildSupportMessage } from "@/components/checkout/SupportFooter";
-
 
 import { useCustomerSession } from "@/lib/customer-session";
 
@@ -23,7 +22,10 @@ export const Route = createFileRoute("/verify-otp")({
   head: () => ({
     meta: [
       { title: "Verify your number — Zonash" },
-      { name: "description", content: "Enter the 4-digit code we texted you to confirm your Zonash order." },
+      {
+        name: "description",
+        content: "Enter the 4-digit code we texted you to confirm your Zonash order.",
+      },
       { name: "robots", content: "noindex" },
       { property: "og:title", content: "Verify your number — Zonash" },
       {
@@ -91,9 +93,11 @@ function VerifyOtpPage() {
     if (!("OTPCredential" in window) || !navigator.credentials?.get) return;
     let alive = true;
     const ac = new AbortController();
-    (navigator.credentials as unknown as {
-      get: (o: unknown) => Promise<{ code?: string } | null>;
-    })
+    (
+      navigator.credentials as unknown as {
+        get: (o: unknown) => Promise<{ code?: string } | null>;
+      }
+    )
       .get({ otp: { transport: ["sms"] }, signal: ac.signal })
       .then((cred) => {
         if (alive && cred?.code) setCode(cred.code.replace(/\D/g, "").slice(0, CODE_LEN));
@@ -112,43 +116,45 @@ function VerifyOtpPage() {
     return () => clearInterval(t);
   }, [ticking]);
 
-  const submit = useCallback(async (full: string) => {
-    if (full.length !== CODE_LEN || inFlight.current) return;
-    inFlight.current = true;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await verifyFn({ data: { order_id: order, code: full } });
-      if (!res.ok) {
-        setError(res.error);
-        setCode("");
-        hiddenRef.current?.focus();
+  const submit = useCallback(
+    async (full: string) => {
+      if (full.length !== CODE_LEN || inFlight.current) return;
+      inFlight.current = true;
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await verifyFn({ data: { order_id: order, code: full } });
+        if (!res.ok) {
+          setError(res.error);
+          setCode("");
+          hiddenRef.current?.focus();
+          setSubmitting(false);
+          inFlight.current = false;
+          return;
+        }
+        // Persist the customer session. The phone comes from the server (the row
+        // the OTP was issued for) and only falls back to the URL param — a
+        // missing/edited `phone` search param used to silently skip login.
+        const verifiedPhone =
+          res.phone && /^01[3-9]\d{8}$/.test(res.phone)
+            ? res.phone
+            : phone && /^01[3-9]\d{8}$/.test(phone)
+              ? phone
+              : null;
+        if (verifiedPhone) setPhone(verifiedPhone);
+
+        navigate({
+          to: "/order-status",
+          search: { order, number: number ?? String(order) } as never,
+        });
+      } catch {
+        setError("Verification failed. Please try again.");
         setSubmitting(false);
         inFlight.current = false;
-        return;
       }
-      // Persist the customer session. The phone comes from the server (the row
-      // the OTP was issued for) and only falls back to the URL param — a
-      // missing/edited `phone` search param used to silently skip login.
-      const verifiedPhone =
-        res.phone && /^01[3-9]\d{8}$/.test(res.phone)
-          ? res.phone
-          : phone && /^01[3-9]\d{8}$/.test(phone)
-            ? phone
-            : null;
-      if (verifiedPhone) setPhone(verifiedPhone);
-
-
-      navigate({
-        to: "/order-status",
-        search: { order, number: number ?? String(order) } as never,
-      });
-    } catch {
-      setError("Verification failed. Please try again.");
-      setSubmitting(false);
-      inFlight.current = false;
-    }
-  }, [order, number, phone, verifyFn, setPhone, navigate]);
+    },
+    [order, number, phone, verifyFn, setPhone, navigate],
+  );
 
   useEffect(() => {
     if (code.length === CODE_LEN) void submit(code);
@@ -179,16 +185,10 @@ function VerifyOtpPage() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title="Verify your number" />
 
-      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
-        <AuthHero
-          icon={MessageSquareLock}
-          title="Enter verification code"
-          subtitle={`We texted a ${CODE_LEN}-digit code to ${prettyPhone}.`}
-          step={2}
-        />
+      <main className="mx-auto w-full max-w-[400px] flex-1 px-4 pb-10 pt-1">
+        <AuthHero icon={MessageSquareLock} title="Enter code" subtitle={`Sent to ${prettyPhone}`} />
 
-        {/* Code card */}
-        <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <section className="mt-5">
           <OtpBoxes
             inputRef={hiddenRef}
             code={code}
@@ -209,29 +209,22 @@ function VerifyOtpPage() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Verifying…
               </span>
-            ) : (
-              <span className="text-muted-foreground">Auto-detects when your SMS arrives</span>
-            )}
+            ) : null}
           </div>
 
           <button
             type="button"
             onClick={onResend}
             disabled={cooldown > 0 || resending}
-            className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            className="mx-auto mt-2 flex min-h-11 w-fit items-center justify-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium text-primary disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
             {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? "Sending…" : "Resend code"}
           </button>
-
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2.5">
-            <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Your order stays reserved while you verify. Never share this code with anyone.
-            </p>
-          </div>
         </section>
-
 
         <div className="mt-6 pb-[env(safe-area-inset-bottom)]">
           <SupportFooter
@@ -248,4 +241,3 @@ function VerifyOtpPage() {
     </div>
   );
 }
-

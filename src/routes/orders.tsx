@@ -208,38 +208,31 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <CheckoutHeader title={step === "phone" ? "Sign in" : "Verify code"} />
 
-      <main className="mx-auto w-full max-w-[480px] flex-1 px-3 pb-10 pt-3">
+      <main className="mx-auto w-full max-w-[400px] flex-1 px-4 pb-10 pt-1">
         <AuthHero
           icon={step === "phone" ? Package : ShieldCheck}
-          title={step === "phone" ? "Track your orders" : "Enter verification code"}
+          title={step === "phone" ? "Sign in" : "Enter code"}
           subtitle={
             step === "phone"
-              ? "Sign in with your mobile number — no password needed."
-              : `We texted a 4-digit code to ${prettyPhone}.`
+              ? "We'll text a 4-digit code to your mobile number."
+              : `Sent to ${prettyPhone}`
           }
-          step={step === "phone" ? 1 : 2}
         />
 
         {step === "phone" ? (
           <form
-            className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
+            className="mt-5"
             onSubmit={(e) => {
               e.preventDefault();
               if (!busy && valid) void sendCode(false);
             }}
           >
-            <label
-              htmlFor="orders-phone"
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              Mobile number
-            </label>
             <div
-              className={`mt-1.5 flex items-stretch overflow-hidden rounded-2xl border transition-colors ${
+              className={`flex items-stretch overflow-hidden rounded-xl border bg-background transition-colors ${
                 error ? "border-destructive/60" : "border-border focus-within:border-primary"
-              } bg-background`}
+              }`}
             >
-              <span className="grid select-none place-items-center border-r border-border bg-muted/60 px-3 text-[14px] font-semibold text-muted-foreground">
+              <span className="grid select-none place-items-center border-r border-border px-3 text-[14px] font-medium text-muted-foreground">
                 +880
               </span>
               <input
@@ -255,40 +248,31 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 autoComplete="tel-national"
                 aria-label="Mobile number without country code"
                 aria-invalid={!!error}
-                className="h-12 min-w-0 flex-1 bg-transparent px-3.5 text-[15px] font-medium tracking-[0.02em] tabular-nums outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60"
+                className="h-12 min-w-0 flex-1 bg-transparent px-3.5 text-[15px] font-medium tracking-[0.02em] tabular-nums outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/50"
               />
               {valid && (
                 <span className="grid place-items-center pr-3 text-primary" aria-hidden="true">
-                  <CheckCircle2 className="h-4.5 w-4.5" />
+                  <CheckCircle2 className="h-4 w-4" />
                 </span>
               )}
             </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              10 digits after +880 — a leading 0 is removed automatically.
-            </p>
             {error && <p className="mt-2 text-[12px] font-medium text-destructive">{error}</p>}
             <button
               disabled={busy || !valid}
               type="submit"
-              className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+              className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Send code <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  Continue <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </button>
-            <div className="mt-3 flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2.5">
-              <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                We only use your number to look up your orders. No password, no spam.
-              </p>
-            </div>
           </form>
         ) : (
-          <section className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <section className="mt-5">
             <OtpBoxes
               inputRef={codeRef}
               code={code}
@@ -306,14 +290,9 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying…
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <Sparkles className="h-3 w-3 text-primary" aria-hidden="true" />
-                  Auto-detects when SMS arrives
-                </span>
-              )}
+              ) : null}
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-2 flex items-center justify-center gap-4 text-[12.5px] font-medium">
               <button
                 type="button"
                 onClick={() => {
@@ -321,18 +300,18 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
                   setCode("");
                   setError(null);
                 }}
-                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
+                className={`rounded-full px-1 py-1 text-muted-foreground ${focusRing}`}
               >
                 Change number
               </button>
+              <span aria-hidden="true" className="h-3 w-px bg-border" />
               <button
                 type="button"
                 onClick={() => sendCode(true)}
                 disabled={cooldown > 0 || busy}
-                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-primary/10 text-[13px] font-semibold text-primary transition-transform active:scale-[0.99] disabled:bg-muted disabled:text-muted-foreground ${focusRing}`}
+                className={`rounded-full px-1 py-1 text-primary disabled:text-muted-foreground ${focusRing}`}
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                {cooldown > 0 ? `${cooldown}s` : "Resend"}
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
               </button>
             </div>
           </section>
@@ -341,11 +320,12 @@ function PhoneLoginGate({ onSignedIn }: { onSignedIn: (p: string) => void }) {
         <Link
           to="/products"
           preload="intent"
-          className={`mt-6 flex h-11 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground transition-transform active:scale-[0.99] ${focusRing}`}
+          className={`mx-auto mt-8 flex h-11 w-fit items-center justify-center rounded-full px-4 text-[13px] font-medium text-muted-foreground ${focusRing}`}
         >
           Continue shopping
         </Link>
       </main>
+
     </div>
   );
 }
