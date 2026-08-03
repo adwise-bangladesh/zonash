@@ -197,7 +197,16 @@ export const listProducts = createServerFn({ method: "GET" })
           return Number.isFinite(n as number) ? (n as number) : Number.POSITIVE_INFINITY;
         };
         const dir = data.order === "desc" ? -1 : 1;
-        enriched.sort((x, y) => (priceOf(x) - priceOf(y)) * dir);
+        enriched.sort((x, y) => {
+          const a = priceOf(x);
+          const b = priceOf(y);
+          // Products with no resolvable price always sink to the bottom,
+          // whichever direction is active.
+          if (!Number.isFinite(a) || !Number.isFinite(b)) {
+            return Number.isFinite(a) ? -1 : Number.isFinite(b) ? 1 : 0;
+          }
+          return (a - b) * dir;
+        });
       }
       return {
         products: enriched,
