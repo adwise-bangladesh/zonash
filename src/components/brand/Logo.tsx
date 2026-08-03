@@ -7,7 +7,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { siteLogoQueryOptions } from "@/lib/site-logo";
+import { FALLBACK_SITE_TITLE, siteIdentityQueryOptions } from "@/lib/site-identity";
 
 function ZonashMark({ size = 30 }: { size?: number }) {
   return (
