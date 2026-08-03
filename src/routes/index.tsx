@@ -271,7 +271,7 @@ function Home() {
     <div className="min-h-dvh bg-surface-muted/40">
       <AppHeader />
       <CategoryTabs categories={categories} />
-      <main className="animate-fade-in">
+      <main>
         {/*
           The visual design intentionally leads with the category bar rather
           than a headline, so the document's single H1 is exposed to crawlers
