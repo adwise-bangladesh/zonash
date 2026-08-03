@@ -18,6 +18,8 @@ import { formatBDT } from "@/lib/format";
 import { itemKey, lineKey, useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
 import type { WooProduct } from "@/lib/woo.server";
+import { sortStorefrontProducts } from "@/lib/stock-order";
+
 import { QuickCard, VARIATIONS_STALE_MS } from "@/components/collection/QuickCard";
 import { NotFoundView } from "@/components/NotFoundView";
 
