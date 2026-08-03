@@ -239,7 +239,7 @@ function StageRow({ stage, last }: { stage: TimelineStage; last: boolean }) {
         />
       )}
       <span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border ${dot}`}>
-        {cancelled ? (
+        {bad ? (
           <XCircle className="h-3.5 w-3.5" />
         ) : done ? (
           <Check className="h-3.5 w-3.5" />
