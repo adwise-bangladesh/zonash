@@ -46,6 +46,11 @@ const promos: Promo[] = [
   },
 ];
 
+/**
+ * Slugs that always link straight to their category page, even when the
+ * homepage's category list (top-level only) doesn't mention them.
+ */
+const PINNED_SLUGS = new Set(["gift-boxes", "gift-cards"]);
 
 
 /**
@@ -72,10 +77,11 @@ export function PromoIcons({
 
     const known = new Set(cats.map((c) => c.slug as string));
     return promos.map<Promo>((p) => {
-      if (p.to !== "/c/$slug" || known.has(p.slug)) return p;
+      if (p.to !== "/c/$slug" || known.has(p.slug) || PINNED_SLUGS.has(p.slug)) return p;
       return { label: p.label, icon: p.icon, tint: p.tint, to: "/products", q: p.label };
     });
   }, [categories]);
+
 
 
   return (
