@@ -22,6 +22,8 @@ import {
   workflowMetaEntries,
   type WorkflowEvent,
 } from "./order-workflow";
+import { formatOpsNote } from "./order-notes";
+
 
 // ---------- helpers ----------
 
