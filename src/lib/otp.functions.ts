@@ -1432,6 +1432,10 @@ export const saveDraftOrder = createServerFn({ method: "POST" })
     };
     const clientFingerprint =
       (data.tracking as { fingerprint?: string } | undefined)?.fingerprint ?? "";
+    const draftGps = (data.tracking as { gps?: { lat?: number; lng?: number } } | undefined)?.gps;
+    const draftHasGps =
+      !!draftGps && typeof draftGps.lat === "number" && typeof draftGps.lng === "number";
+
 
     const billingPayload: Record<string, unknown> = {
       first_name: data.billing.first_name,
