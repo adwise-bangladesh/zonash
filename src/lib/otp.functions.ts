@@ -708,6 +708,7 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_risk_signals", value: assessment.signals.join(",") },
             { key: "_zonash_velocity", value: JSON.stringify(assessment.counts) },
             { key: "_zonash_draft", value: "0" },
+            ...wfPlaced.meta,
           ],
         };
 
