@@ -15,6 +15,7 @@ import {
 import { getProductBySlug, getProductVariations } from "@/lib/woo.functions";
 import type { WooProduct, WooVariation } from "@/lib/woo.server";
 import { useCart } from "@/lib/cart";
+import { availabilityOf } from "@/lib/stock";
 import { formatBDT } from "@/lib/format";
 import { NotFoundView } from "@/components/NotFoundView";
 import { SoftBoundary } from "@/components/SoftBoundary";
@@ -109,8 +110,7 @@ export const Route = createFileRoute("/products/$slug")({
     )
       .map((v) => parseFloat(v?.price ?? ""))
       .filter((n) => Number.isFinite(n) && n > 0);
-    const availability =
-      p.stock_status === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+    const availability = availabilityOf(p).schema;
     const offers =
       variationPrices.length > 1
         ? {
@@ -589,8 +589,11 @@ function ProductDetail({ p }: { p: WooProduct }) {
       : 0;
   const showOld = oldPrice > priceNum;
   const discount = showOld ? Math.round(((oldPrice - priceNum) / oldPrice) * 100) : 0;
-  const stockStatus = matchedVariation?.stock_status ?? p.stock_status;
-  const inStock = stockStatus === "instock";
+  // WooCommerce is the only stock system: the variation's status wins when one
+  // is matched, otherwise the parent product's. See src/lib/stock.ts for the
+  // customer-facing mapping (Ready Stock / Available to Order / Out of Stock).
+  const availability = availabilityOf(matchedVariation ?? p);
+  const inStock = availability.buyable;
   const activeImage = matchedVariation?.image?.src;
   const activeSku = ((matchedVariation?.sku || p.sku || "") + "").trim();
 
@@ -662,7 +665,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const handleAdd = useCallback(() => {
     if (busyRef.current) return;
     if (!readyToBuy) {
-      toast.error(inStock ? "Please select all options" : "This item is sold out");
+      toast.error(inStock ? "Please select all options" : "This item is out of stock");
       return;
     }
     // No setBusy here on purpose: this path is fully synchronous, so React
@@ -683,7 +686,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
   const handleBuyNow = useCallback(async () => {
     if (busyRef.current) return;
     if (!readyToBuy) {
-      toast.error(inStock ? "Please select all options" : "This item is sold out");
+      toast.error(inStock ? "Please select all options" : "This item is out of stock");
       return;
     }
     busyRef.current = true;
@@ -739,7 +742,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
       if (opts) lines.push(`Variation: ${opts}`);
     }
     lines.push(`Quantity: ${qty}`);
-    lines.push(`Availability: ${inStock ? "In stock" : "Sold out"}`);
+    lines.push(`Availability: ${availability.label}`);
     lines.push(`Link: ${url}`);
     lines.push("");
     lines.push("Please confirm my order 🙏");
@@ -754,7 +757,7 @@ function ProductDetail({ p }: { p: WooProduct }) {
     discount,
     matchedVariation,
     qty,
-    inStock,
+    availability.label,
   ]);
 
   const waOrderUrl = waLink(detailsText);
@@ -829,15 +832,31 @@ function ProductDetail({ p }: { p: WooProduct }) {
               )}
               <span
                 className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                  inStock ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  availability.kind === "ready"
+                    ? "bg-success/10 text-success"
+                    : availability.kind === "supplier"
+                      ? "bg-warning/10 text-warning"
+                      : "bg-destructive/10 text-destructive"
                 }`}
               >
                 <span
-                  className={`h-1 w-1 rounded-full ${inStock ? "bg-success" : "bg-destructive"}`}
+                  className={`h-1 w-1 rounded-full ${
+                    availability.kind === "ready"
+                      ? "bg-success"
+                      : availability.kind === "supplier"
+                        ? "bg-warning"
+                        : "bg-destructive"
+                  }`}
                 />
-                {inStock ? "In stock" : "Sold out"}
+                {availability.label}
               </span>
             </div>
+            {availability.delivery && (
+              <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                Delivery:{" "}
+                <span className="font-semibold text-foreground">{availability.delivery}</span>
+              </p>
+            )}
           </div>
 
           {isVariable && variationAttrs.length > 0 && (
@@ -885,11 +904,22 @@ function ProductDetail({ p }: { p: WooProduct }) {
               <InfoRow
                 label="Availability"
                 value={
-                  <span className={inStock ? "text-success" : "text-destructive"}>
-                    {inStock ? "In stock" : "Sold out"}
+                  <span
+                    className={
+                      availability.kind === "ready"
+                        ? "text-success"
+                        : availability.kind === "supplier"
+                          ? "text-warning"
+                          : "text-destructive"
+                    }
+                  >
+                    {availability.label}
                   </span>
                 }
               />
+              {availability.delivery && (
+                <InfoRow label="Delivery time" value={availability.delivery} />
+              )}
               <InfoRow label="Price" value={formatBDT(priceNum)} />
               {showOld && (
                 <>
