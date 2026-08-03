@@ -18,6 +18,8 @@ import { formatBDT } from "@/lib/format";
 import { itemKey, lineKey, useCart } from "@/lib/cart";
 import type { CartItem } from "@/lib/cart";
 import type { WooProduct } from "@/lib/woo.server";
+import { sortStorefrontProducts } from "@/lib/stock-order";
+
 import { QuickCard, VARIATIONS_STALE_MS } from "@/components/collection/QuickCard";
 import { NotFoundView } from "@/components/NotFoundView";
 
@@ -145,10 +147,14 @@ function ProductFeed({ categoryId }: { categoryId: number }) {
     staleTime: 60_000,
   });
 
+  // Same storefront ordering as every other grid: ready stock first, then
+  // supplier stock, then out of stock.
   const products = useMemo<WooProduct[]>(
-    () => data?.pages.flatMap((p) => p.products as WooProduct[]) ?? [],
+    () =>
+      sortStorefrontProducts(data?.pages.flatMap((p) => p.products as WooProduct[]) ?? []),
     [data],
   );
+
   // Stable dep — pages count + first/last id captures "new page arrived"
   // without joining every id on each render.
   const prefetchKey = useMemo(() => {

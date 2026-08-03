@@ -1,14 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { memo, useMemo, useRef } from "react";
-import { Gem, Truck } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Gem } from "lucide-react";
 import { formatBDT } from "@/lib/format";
-import { availabilityOf } from "@/lib/stock";
 import { cardTitle } from "@/lib/card-title";
 import { beginProductPush } from "@/lib/nav-transition";
 import { resolveCardPrices } from "@/lib/price-range";
 import { buildResponsiveImage, onImageSrcSetError } from "@/lib/product-image";
 import { useSeedProductCache } from "@/lib/seed-product-cache";
+import { sortStorefrontProducts } from "@/lib/stock-order";
+import { readRecentlyViewed } from "@/lib/recently-viewed";
 import type { WooProduct } from "@/lib/woo.server";
+
 
 // Memoized: the feed grows to 180+ cards, and any parent state change
 // (scroll sentinel, tab switch, timer elsewhere) would otherwise re-render
@@ -28,8 +30,8 @@ const BigCard = memo(function BigCard({
   const rating = Number.parseFloat(String(p.average_rating ?? ""));
   const soldish = p.rating_count ?? 0;
   const image = p.images?.[0];
-  const availability = availabilityOf(p);
   const seed = () => onSeed(p);
+
   const imgRef = useRef<HTMLImageElement>(null);
 
   // The storefront is capped at a 480px frame, so a card column never exceeds
@@ -81,16 +83,7 @@ const BigCard = memo(function BigCard({
       </div>
 
       <div className="flex flex-col gap-1.5 p-2.5">
-        {availability.kind === "supplier" && (
-          <span className="inline-flex w-fit items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-            <Truck className="h-2.5 w-2.5" aria-hidden="true" /> {availability.delivery}
-          </span>
-        )}
-        {availability.kind === "out" && (
-          <span className="inline-flex w-fit items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-            Out of Stock
-          </span>
-        )}
+
         {/* Fixed two-line box. Bengali glyphs are taller than Latin, so a
             `min-h` + line-clamp box leaked a sliver of the third line; an exact
             height (2 x line-height) with overflow hidden crops cleanly. */}
@@ -127,8 +120,21 @@ export function BigProductGrid({
   columns?: 2 | 3;
 }) {
   const seedProduct = useSeedProductCache();
-  const list = useMemo(() => (products ?? []).filter((p) => p && p.slug), [products]);
+  // Recently viewed lives in localStorage, so it stays empty for the SSR pass
+  // and the first client render (no hydration mismatch) and only floats cards
+  // once the effect has run.
+  const [recent, setRecent] = useState<number[]>([]);
+  useEffect(() => setRecent(readRecentlyViewed()), []);
+  const list = useMemo(
+    () =>
+      sortStorefrontProducts(
+        (products ?? []).filter((p) => p && p.slug),
+        recent,
+      ),
+    [products, recent],
+  );
   if (!list.length) return null;
+
   const gridClass =
     columns === 3 ? "grid grid-cols-3 gap-1.5 px-[5px]" : "grid grid-cols-2 gap-2 px-[5px]";
   return (
