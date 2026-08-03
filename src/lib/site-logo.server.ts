@@ -59,7 +59,7 @@ async function writeDb(logo: SiteLogo): Promise<void> {
  * the store origin isn't in env. Product permalinks always carry it.
  */
 async function resolveOrigin(): Promise<string | null> {
-  const fromEnv = process.env.WC_STORE_URL;
+  const fromEnv = process.env.WC_STORE_URL || process.env.WP_SITE_URL;
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
   try {
     const rows = await wooFetch<{ permalink?: string }[]>({
@@ -68,10 +68,12 @@ async function resolveOrigin(): Promise<string | null> {
       timeoutMs: 5000,
     });
     const permalink = Array.isArray(rows) ? rows[0]?.permalink : undefined;
-    return permalink ? new URL(permalink).origin : null;
-  } catch {
-    return null;
+    if (permalink) return new URL(permalink).origin;
+  } catch (err) {
+    console.warn("[site-logo] origin lookup via Woo failed", err);
   }
+  // Last resort: the production WordPress host. Overridable with WP_SITE_URL.
+  return "https://zonash.com";
 }
 
 async function json<T>(url: string, timeoutMs = 5000): Promise<T | null> {
@@ -94,9 +96,12 @@ async function fetchFromWordPress(): Promise<SiteLogo> {
 
   // The unauthenticated REST index exposes the custom-logo attachment id and
   // the site icon, so no application password is needed for branding.
-  const index = await json<{ site_logo?: number; site_icon_url?: string }>(`${origin}/wp-json/`);
+  const index = await json<{ site_logo?: number; site_icon?: number; site_icon_url?: string }>(`${origin}/wp-json/`);
 
-  const logoId = typeof index?.site_logo === "number" ? index.site_logo : null;
+  // Themes often leave the custom logo unset (0) but always have a site icon.
+  const logoId =
+    (typeof index?.site_logo === "number" && index.site_logo > 0 ? index.site_logo : 0) ||
+    (typeof index?.site_icon === "number" && index.site_icon > 0 ? index.site_icon : 0);
   if (logoId) {
     const media = await json<{
       source_url?: string;
