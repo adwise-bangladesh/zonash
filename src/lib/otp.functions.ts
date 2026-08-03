@@ -1230,17 +1230,51 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
       .select("*")
       .eq("wc_order_id", data.order_id)
       .maybeSingle();
-    if (!rowRaw) return { ok: false as const, error: "Order not found." };
-    const row = rowRaw as {
-      verified_at: string | null;
-      decision: string | null;
-    };
-    if (!row.verified_at) {
-      return { ok: false as const, error: "This order has not been verified yet." };
+
+    if (rowRaw) {
+      const row = rowRaw as { verified_at: string | null; decision: string | null };
+      if (!row.verified_at) {
+        return { ok: false as const, error: "This order has not been verified yet." };
+      }
+      if (row.decision && row.decision !== "confirmed") {
+        return { ok: false as const, error: "This order is under manual review." };
+      }
+    } else {
+      // No OTP row: the customer was verified through a trusted signed-in
+      // session (OTP skipped). Authorise from the signed session cookie +
+      // the verification meta written on the order itself.
+      const { readCustomerSession } = await import("./customer-token.server");
+      const sessionPhone = await readCustomerSession();
+      if (!sessionPhone) {
+        return { ok: false as const, error: "Please verify your mobile number first." };
+      }
+      const { wooFetch } = await import("./woo.server");
+      const o = await wooFetch<{
+        id?: number;
+        billing?: { phone?: string };
+        meta_data?: { key: string; value: unknown }[];
+      }>({
+        path: `/orders/${data.order_id}?_fields=id,billing,meta_data`,
+        method: "GET",
+        timeoutMs: 10_000,
+      }).catch(() => null);
+      if (!o?.id) return { ok: false as const, error: "Order not found." };
+      if (normalizePhone(o.billing?.phone ?? "") !== normalizePhone(sessionPhone)) {
+        return { ok: false as const, error: "Order not found." };
+      }
+      const meta = new Map(
+        (o.meta_data ?? []).map((m) => [String(m.key), String(m.value ?? "")]),
+      );
+      const otpState = meta.get("_zonash_otp_state") ?? "";
+      if (otpState !== "verified" && otpState !== "skipped_session") {
+        return { ok: false as const, error: "This order has not been verified yet." };
+      }
+      const decision = meta.get("_zonash_decision") ?? "";
+      if (decision && decision !== "confirmed") {
+        return { ok: false as const, error: "This order is under manual review." };
+      }
     }
-    if (row.decision && row.decision !== "confirmed") {
-      return { ok: false as const, error: "This order is under manual review." };
-    }
+
 
     const { setWorkflowStatus } = await import("./order-workflow.server");
     const nowIso = new Date().toISOString();
