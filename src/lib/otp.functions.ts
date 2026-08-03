@@ -779,20 +779,39 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
       };
     }
 
-    // Draft-vs-live audit note.
+    // Order-placed audit note.
     try {
       const { wooFetch } = await import("./woo.server");
       await wooFetch({
         path: `/orders/${created.id}/notes`,
         method: "POST",
         body: {
-          note: data.draft_order_id
-            ? "Order submitted by customer. Promoted from checkout draft; awaiting phone verification."
-            : "Order submitted by customer. Awaiting phone verification.",
+          note: formatOpsNote({
+            status: "order_placed",
+            summary: data.draft_order_id
+              ? "Order submitted from the storefront and promoted in place from an existing checkout draft; awaiting phone verification"
+              : "Order submitted from the storefront; awaiting phone verification",
+            wooStatus: "pending",
+            actor: "customer (storefront)",
+            facts: {
+              Channel: "storefront",
+              "Payment method": "Cash on Delivery",
+              "Delivery zone": serverShipping.insideDhaka ? "Inside Dhaka" : "Outside Dhaka",
+              "Server-verified total": `${serverGrandTotal.toFixed(2)} (items ${serverSubtotal.toFixed(2)} + shipping ${serverShipping.amount.toFixed(2)}${validDiscount > 0 ? ` - discount ${validDiscount.toFixed(2)}` : ""})`,
+              Coupon: validCoupon ?? "",
+              "Coupon rejected": coupon_rejected ?? "",
+              "Risk score": assessment.score,
+              "Risk signals": assessment.signals.join(", "),
+              "GPS fix": hasGps ? `${tGps!.lat}, ${tGps!.lng}` : "not shared",
+              "Device fingerprint": clientFingerprint || "unavailable",
+              IP: server.ip ?? "unavailable",
+            },
+          }),
           customer_note: false,
         },
       });
     } catch { /* ignore */ }
+
 
     // ---------- Blocked identity → cancel order, route to /order-blocked ----------
     // Order exists as `pending`. Immediately move it to `cancelled` in Woo,
