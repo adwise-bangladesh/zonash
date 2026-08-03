@@ -91,7 +91,6 @@ function OrderStatusPage() {
               Stage: <span className="font-semibold text-foreground">{t.stageLabel}</span>
             </div>
           ) : null}
-          </div>
         </div>
 
         {t?.awaiting_call_choice ? (
