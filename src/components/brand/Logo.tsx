@@ -6,6 +6,9 @@
  * jewelry-house feel; a single hairline underline anchors the mark.
  */
 
+import { useQuery } from "@tanstack/react-query";
+import { siteLogoQueryOptions } from "@/lib/site-logo";
+
 function ZonashMark({ size = 30 }: { size?: number }) {
   return (
     <svg
@@ -51,6 +54,33 @@ function ZonashMark({ size = 30 }: { size?: number }) {
 }
 
 export function Logo({ className, size = 30 }: { className?: string; size?: number }) {
+  // The logo comes from WordPress (custom logo / site icon) and is cached in
+  // Postgres + memory server-side, then prefetched in the root loader — so this
+  // resolves from the dehydrated cache on first paint with no client fetch.
+  const { data } = useQuery(siteLogoQueryOptions());
+
+  if (data?.url) {
+    const ratio = data.width && data.height ? data.width / data.height : null;
+    const height = Math.round(size * 1.25);
+    return (
+      <img
+        src={data.url}
+        alt={data.alt ?? "Zonash"}
+        height={height}
+        {...(ratio ? { width: Math.round(height * ratio) } : {})}
+        decoding="async"
+        fetchPriority="high"
+        className={`block w-auto object-contain ${className ?? ""}`}
+        style={{ height: `${height}px`, maxWidth: "190px" }}
+      />
+    );
+  }
+
+  return <WordmarkLogo className={className} size={size} />;
+}
+
+/** Built-in fallback wordmark, used until/unless WordPress provides a logo. */
+function WordmarkLogo({ className, size = 30 }: { className?: string; size?: number }) {
   return (
     <span
       className={`group inline-flex items-center gap-[9px] text-primary ${className ?? ""}`}
