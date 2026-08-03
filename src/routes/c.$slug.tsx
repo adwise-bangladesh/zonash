@@ -148,7 +148,7 @@ function SubcategoryStrip({
           {subs.map((s) => (
             <li
               key={s.id}
-              className="shrink-0 basis-[calc((100%-2.5rem)/5.4)] snap-start"
+              className="shrink-0 basis-[calc((100%-2rem-2.2rem)/5.4)] snap-start"
             >
               <SubCard parentSlug={parentSlug} sub={s} />
             </li>
