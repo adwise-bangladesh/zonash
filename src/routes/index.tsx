@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 import { useSuspenseQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { listCategories, listProductsByCategorySlug } from "@/lib/woo.functions";
+import {
+  listCategories,
+  listProductsByCategorySlug,
+  type WooCategory,
+} from "@/lib/woo.functions";
 import { AppHeader } from "@/components/AppHeader";
 import { CategoryTabs } from "@/components/home/CategoryTabs";
 import { PromoIcons } from "@/components/home/PromoIcons";
