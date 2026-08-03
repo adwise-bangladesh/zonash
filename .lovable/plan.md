@@ -1,98 +1,70 @@
-# Admin Header + POS Upgrade
+# Storefront order workflow: stages + statuses
 
-## 1. Global search bar
+Adopt your two-layer model now, on the storefront only. WooCommerce keeps a small set of milestone statuses; the detailed workflow status lives in a separate field the storefront writes and reads. The admin dashboard can consume the same field later without any rework.
 
-Replace the placeholder search input with a **command-palette-style global search** wired to WooCommerce.
+## The two layers
 
-- **Scope**: Name, Mobile, Order ID (`#12345`), Consignment ID (Steadfast tracking/invoice), Email.
-- **Behaviour**:
-  - 300 ms debounce, min 2 chars.
-  - Detects intent from input:
-    - Pure digits ≥ 5 → try Order ID + Mobile + Consignment ID in parallel.
-    - Contains `@` → email search.
-    - Starts with `#` → strip and treat as Order ID.
-    - Otherwise → name + mobile fuzzy.
-  - Results dropdown shows up to 8 orders (order #, customer, phone, status pill, total).
-  - Click → open the existing `OrderDrawer` for that order.
-  - `⌘K` / `Ctrl+K` shortcut opens/focuses; `Esc` closes.
-- **Server**: new `searchOrders` server fn that fans out WooCommerce queries:
-  - `GET /orders?search={q}` for name/email/phone
-  - `GET /orders/{id}` when numeric
-  - `GET /orders?meta_key=_steadfast_consignment_id&meta_value={q}` for consignment lookup
-  - De-duplicate by order ID, sort by date desc.
+**Layer 1 — WooCommerce status (milestones only, unchanged compatibility):**
+`checkout-draft`, `pending`, `processing`/`confirmed`, `completed`, `cancelled`, `refunded`, `failed`.
 
-## 2. Header enhancements
+**Layer 2 — workflow stage + status (new, source of truth for display):**
+stored on the order as `_zonash_stage` and `_zonash_workflow_status`, plus `_zonash_stage_history` (append-only JSON list of `{stage, status, at, note, actor}`).
 
-Redesign `AdminShell` topbar into these zones (left → right):
+Full catalogue (exactly your list):
 
 ```text
-[☰] [Search…                    ⌘K]   [Clock]  [⛶ Fullscreen]  [🔔 Issues N]  [+ New Order ▾]  [avatar]
+created        draft, order_placed, otp_verified, manual_review
+verification   pending_verification, awaiting_call, callback_requested,
+               unreachable, verification_failed, verified
+fulfillment    awaiting_payment, paid, print_invoice, picking,
+               quality_check, packing, packed
+shipping       ready_for_pickup, pickup_scheduled, picked_up, in_transit,
+               at_delivery_hub, out_for_delivery, delivery_attempted,
+               delivery_on_hold
+delivered      delivered
+returns        return_requested, return_approved, return_in_transit,
+               return_received, refund_pending, refunded
+cancelled      cancelled_by_customer, cancelled_by_admin, cancelled_unreachable,
+               cancelled_duplicate, cancelled_fraud, cancelled_out_of_stock
+failed         payment_failed, courier_rejected, address_invalid, system_error
 ```
 
-- **Live clock**: shows `Sat, 18 Jul · 09:42 AM` — updates every 30 s, uses Asia/Dhaka timezone.
-- **Fullscreen toggle**: uses `document.documentElement.requestFullscreen()` / `exitFullscreen()`; swaps icon between `Maximize2` and `Minimize2`.
-- **Issues badge**: mirrors the sidebar shake-badge but as a top-bar bell icon. Same `useIssuesCount` hook (already built). Clicking navigates to `/admin/returns`.
-- **New Order dropdown**: `[+ New Order ▾]` opens a small menu:
-  - Phone call → `/admin/pos?channel=phone`
-  - WhatsApp → `/admin/pos?channel=whatsapp`
-  - Messenger → `/admin/pos?channel=messenger`
-  - Instagram → `/admin/pos?channel=instagram`
-  - In-store → `/admin/pos?channel=instore`
-  - Other → `/admin/pos?channel=other`
+Each workflow status carries a fixed customer-facing label, a short customer-facing note, and the Woo milestone status it implies. Internal-only statuses (picking, quality_check, print_invoice, manual_review reasons) get a neutral customer label so the timeline never leaks ops detail.
 
-## 3. POS page — `/admin/pos`
+## What the storefront writes
 
-A focused single-page order creation flow for staff to punch in manual orders.
+The checkout/OTP flow stops inventing ad-hoc meta combinations and instead sets one workflow status per transition (keeping today's existing meta for backwards compatibility):
 
-**Layout**: two-column desktop, single column mobile.
+| Moment | Woo status | Workflow status |
+| --- | --- | --- |
+| Checkout form autosave | `checkout-draft` | `created / draft` |
+| Place Order clicked, OTP sent | `pending` | `created / order_placed` |
+| OTP code verified | `pending` | `created / otp_verified` |
+| Session phone matched, OTP skipped | `pending` | `created / otp_verified` |
+| Fraud/duplicate/GPS+fingerprint match | `pending` | `created / manual_review` |
+| Verified + trusted, awaiting call choice | `pending` | `verification / pending_verification` |
+| Customer asks for a call | `pending` | `verification / callback_requested` |
+| Customer confirms without call | `confirmed`/`processing` | `verification / verified` |
+| Blocked customer | `cancelled` | `cancelled / cancelled_fraud` |
 
-- **Left — Cart / product search**
-  - Search box: name / SKU with debounced WooCommerce product lookup.
-  - Result rows: image, name, SKU, price, "+ Add" button. Handles variations (pick variation before add).
-  - Cart list: qty +/−, unit price editable, per-line remove, live subtotal.
-  - Shipping: same Dhaka Inside / Outside toggle used in checkout (80 / 130 BDT fixed).
-  - Discount field (flat BDT).
+Courier and warehouse statuses (fulfillment, shipping, returns) are not written by the storefront — they arrive later from the dashboard and courier webhooks. The storefront only needs to *render* them, which it will as soon as the field is present.
 
-- **Right — Customer & meta**
-  - Channel pill pre-filled from `?channel=` (editable).
-  - Customer: Name, Mobile, Email (optional), Address, Thana, Notes — the same minimal set as checkout.
-  - Auto-verify: as soon as a valid mobile is entered, call `getCustomerStats` + Hoorin ratio pill inline (helps staff spot risky callers before confirming).
-  - Payment: fixed to Cash on Delivery.
-  - Totals card: items + shipping − discount = grand total.
-  - Buttons: **Save as draft** (status `on-hold`) / **Confirm order** (status `processing`).
+## What the storefront reads
 
-- **Server fn**: `createManualOrder` — builds a WooCommerce `POST /orders` payload with:
-  - `set_paid: false`, `payment_method: cod`, `payment_method_title: "Cash on Delivery"`
-  - `meta_data: [{ key: "_zonash_channel", value: channel }, { key: "_zonash_created_by", value: staff name }]`
-  - `customer_note`, billing/shipping blocks, `line_items`, `shipping_lines`, `fee_lines` (discount as negative fee).
-- On success → toast + redirect to `/admin/orders` with new order preselected (via `?open={orderId}`).
+`/order-status` timeline is rebuilt from the stage catalogue instead of hardcoded stage logic:
 
-## 4. Additional recommended improvements
+- All eight stages come from one shared definition, so a status written by the future dashboard (e.g. `shipping / out_for_delivery`) renders correctly with zero extra code.
+- The stage rail shows only stages that are relevant to the order: created → verification → fulfillment → shipping → delivered normally; returns/cancelled/failed replace the tail when terminal.
+- Each stage lists its events from `_zonash_stage_history`, so the customer sees real timestamps in real order instead of derived guesses.
+- Legacy orders with no workflow meta fall back to today's derivation, so existing orders keep working.
+- Status pill and the call-choice card read the workflow status rather than raw Woo status.
 
-Bundled in the same pass:
+## Technical notes
 
-1. **Persist orders-page filters in URL** — status tab, page, and search now live in TanStack `validateSearch`, so refresh and share-links keep state.
-2. **Toast on new inbound orders** — every 60 s, quietly refetch order counts; when count of `processing` increases, toast "🛎️ New order received" and animate the sidebar Orders row.
-3. **Keyboard shortcuts**: `⌘K` search, `⌘N` new order menu, `g o` → orders, `g d` → dashboard.
-4. **`?open={orderId}` deep link** on `/admin/orders` opens the drawer automatically — used by search results, POS success redirect, and shareable links.
-5. **Header compaction on scroll** — reduces topbar height from 56 → 44 px after 40 px scroll for more vertical room on order lists.
-
-## Technical file changes
-
-```text
-src/components/admin/AdminShell.tsx           — new topbar layout, clock, fullscreen, bell, New-Order menu
-src/components/admin/GlobalSearch.tsx         — new command-palette search + dropdown
-src/components/admin/NewOrderMenu.tsx         — new dropdown with channel choices
-src/lib/orders.functions.ts                   — add searchOrders({ q, signal })
-src/lib/pos.functions.ts                      — new createManualOrder server fn
-src/routes/_authenticated/admin/pos.tsx       — new POS page
-src/routes/_authenticated/admin/orders.tsx    — support ?open= deep link + URL-persisted filters
-```
-
-No DB migration required — POS orders live in WooCommerce like every other order; the `_zonash_channel` / `_zonash_created_by` order meta drives analytics later.
-
-## Out of scope (for this milestone)
-
-- POS receipt printing (can reuse the existing label print later).
-- Inventory reservation before order confirmation.
-- Split payments / partial COD.
+- New `src/lib/order-workflow.ts` — pure, shared: stage/status enums, labels, customer notes, Woo-status mapping, ordering, `resolveWorkflow()` fallback for legacy orders. No server imports, so both storefront and the later dashboard can import it.
+- New `src/lib/order-workflow.server.ts` — `setWorkflowStatus(orderId, status, {note, actor})`: writes `_zonash_stage`, `_zonash_workflow_status`, appends to `_zonash_stage_history` (capped, e.g. last 40 entries), and sets the mapped Woo status in the same PUT — one call, no extra round trip, keeps the existing draft-demotion guard.
+- `src/lib/otp.functions.ts` — replace scattered status/meta writes with `setWorkflowStatus` calls at the transitions in the table above. Keep existing `_zonash_*` meta writes so nothing that reads them breaks.
+- `src/lib/order-timeline.functions.ts` — derive stages from the catalogue + history; keep the current derivation as the legacy fallback path.
+- `src/routes/order-status.tsx` — render N stages generically (already close to this), add icons/tones for shipping/returns/failed stages.
+- Private WooCommerce order notes stay as they are today, one professional line per transition.
+- No database migration needed: workflow state lives on the Woo order, matching where the rest of the storefront's order truth already lives.
