@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getProductVariations } from "@/lib/woo.functions";
 import { formatBDT } from "@/lib/format";
+import { isBuyable } from "@/lib/stock";
 import { parsePriceHtmlMin } from "@/lib/price-range";
 import { buildResponsiveImage, registerProductImages } from "@/lib/product-image";
 import { pickDefaultVariation } from "@/lib/pick-default-variation";
