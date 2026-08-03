@@ -72,8 +72,8 @@ async function resolveOrigin(): Promise<string | null> {
   } catch (err) {
     console.warn("[site-logo] origin lookup via Woo failed", err);
   }
-  // Last resort: the production WordPress host. Overridable with WP_SITE_URL.
-  return "https://zonash.com";
+  // Last resort: the production WordPress store host. Override with WP_SITE_URL.
+  return "https://shop.zonash.com";
 }
 
 async function json<T>(url: string, timeoutMs = 5000): Promise<T | null> {
