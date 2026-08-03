@@ -46,6 +46,11 @@ const promos: Promo[] = [
   },
 ];
 
+/**
+ * Slugs that always link straight to their category page, even when the
+ * homepage's category list (top-level only) doesn't mention them.
+ */
+const PINNED_SLUGS = new Set(["gift-boxes", "gift-cards"]);
 
 
 /**
