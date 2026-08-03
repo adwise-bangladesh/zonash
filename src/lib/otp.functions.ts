@@ -902,21 +902,30 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             extraMeta: [
               { key: "_zonash_otp_state", value: "skipped_session" },
               { key: "_zonash_otp_verified_at", value: new Date().toISOString() },
+              { key: "_zonash_verification_method", value: "trusted-session" },
               { key: "_zonash_decision", value: verdict.decision },
               { key: "_zonash_decision_reason", value: verdict.decisionReason },
+              { key: "_zonash_decision_at", value: new Date().toISOString() },
               { key: "_zonash_hoorin_report", value: JSON.stringify(verdict.hoorinReport ?? {}) },
               { key: "_zonash_duplicates", value: JSON.stringify(verdict.duplicates) },
+              { key: "_zonash_duplicates_count", value: String(verdict.duplicates.length) },
               { key: "_zonash_awaiting_call_choice", value: verdict.decision === "confirmed" ? "1" : "0" },
             ],
-            privateNote:
-              `Phone verification skipped — trusted customer session matched the billing number. ` +
-              `Verification verdict: ${verdict.decision}. Workflow stage: ${
-                nextStatus === "manual_review" ? "Created — Manual Review" : "Verification — Pending Verification"
-              }.` +
-              (verdict.decisionReason ? ` Reason: ${verdict.decisionReason}.` : "") +
-              (verdict.duplicates.length
-                ? ` Duplicate orders detected: ${verdict.duplicates.map((d) => `#${d.number}`).join(", ")}.`
-                : ""),
+            summary:
+              "Phone verification satisfied by a trusted signed-in session matching the billing number; no one-time code was sent",
+            facts: {
+              "Verification method": "trusted session (OTP skipped)",
+              "Verification verdict": verdict.decision,
+              Reason: verdict.decisionReason || "",
+              "Duplicate orders": verdict.duplicates.length
+                ? verdict.duplicates.map((d) => `#${d.number}`).join(", ")
+                : "none",
+              "Next step":
+                nextStatus === "manual_review"
+                  ? "call the customer and clear the manual review before dispatch"
+                  : "awaiting the customer's callback preference on the order status page",
+            },
+
           });
         } catch (e) {
           console.error("skip-OTP meta write failed", e);
