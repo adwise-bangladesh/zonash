@@ -464,7 +464,10 @@ export function trimProduct(p: WooProduct): WooProduct {
       // the client from guessing square crops that 404 on portrait uploads.
       ...(compactGeneratedSizes(i.srcset) ? { w: compactGeneratedSizes(i.srcset) } : {}),
     })),
-    categories: (p.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+    categories: (p.categories ?? [])
+      .filter((c) => c && !HIDDEN_CATEGORY_SLUGS.has(c.slug))
+      .map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
+
     tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
   };
 }
