@@ -35,6 +35,8 @@ import {
 } from "@/lib/step-reviews";
 import { useOnScreen } from "@/hooks/use-on-screen";
 import { availabilityOf, isBuyable } from "@/lib/stock";
+import { pushRecentlyViewed } from "@/lib/recently-viewed";
+
 import { DeliveryZonePicker, ZONE_FEE, ZONE_LABEL, DEFAULT_ZONE, zoneFromAddress, cachedGpsZone, type DeliveryZone } from "@/components/checkout/DeliveryZone";
 import { NotFoundView } from "@/components/NotFoundView";
 import { ChatLink } from "@/components/support/ChatLink";
