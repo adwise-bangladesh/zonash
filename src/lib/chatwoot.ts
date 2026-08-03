@@ -3,9 +3,9 @@
  *
  * We do NOT inject the Chatwoot SDK globally: the floating bubble would sit on
  * top of the sticky add-to-cart bars on every page and ship ~120KB of JS to
- * every visitor. Instead the widget is embedded once, inside our own `/chat`
- * screen, through Chatwoot's standalone widget URL. That keeps the storefront
- * bundle untouched and lets the chat screen match the app design.
+ * every visitor. Instead the SDK is loaded lazily, only on our own `/chat`
+ * screen, where we dock the widget panel into the page and open it straight
+ * into the conversation view.
  *
  * Both values below are public (the website token is designed to ship in
  * client-side script tags), so they belong in code, not in secrets.
@@ -20,15 +20,64 @@ export type ChatContext = {
   from?: string;
 };
 
+type ChatwootApi = {
+  toggle: (state?: "open" | "close") => void;
+  setCustomAttributes?: (attrs: Record<string, string>) => void;
+};
+
+declare global {
+  interface Window {
+    chatwootSettings?: Record<string, unknown>;
+    chatwootSDK?: { run: (opts: { websiteToken: string; baseUrl: string }) => void };
+    $chatwoot?: ChatwootApi;
+  }
+}
+
+const SCRIPT_ID = "chatwoot-sdk";
+
 /**
- * Standalone widget URL. Chatwoot persists the contact/conversation in its own
- * origin storage, so returning visitors resume the same thread automatically.
+ * Loads the Chatwoot SDK once per page-load and resolves when `$chatwoot` is
+ * available. Safe to call repeatedly — subsequent calls reuse the same script.
  */
-export function chatwootWidgetUrl(locale = "en"): string {
-  const u = new URL("/widget", CHATWOOT_BASE_URL);
-  u.searchParams.set("website_token", CHATWOOT_WEBSITE_TOKEN);
-  u.searchParams.set("locale", locale);
-  return u.toString();
+export function loadChatwoot(): Promise<ChatwootApi> {
+  if (typeof window === "undefined") return Promise.reject(new Error("ssr"));
+  if (window.$chatwoot) return Promise.resolve(window.$chatwoot);
+
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      if (window.$chatwoot) resolve(window.$chatwoot);
+      else reject(new Error("chatwoot-missing"));
+    };
+    window.addEventListener("chatwoot:ready", onReady, { once: true });
+
+    if (document.getElementById(SCRIPT_ID)) return;
+
+    // The bubble is hidden: our page provides its own entry point/back button.
+    window.chatwootSettings = {
+      hideMessageBubble: true,
+      position: "right",
+      type: "standard",
+      showPopoutButton: false,
+      darkMode: "auto",
+    };
+
+    const s = document.createElement("script");
+    s.id = SCRIPT_ID;
+    s.src = `${CHATWOOT_BASE_URL}/packs/js/sdk.js`;
+    s.async = true;
+    s.onload = () => {
+      try {
+        window.chatwootSDK?.run({
+          websiteToken: CHATWOOT_WEBSITE_TOKEN,
+          baseUrl: CHATWOOT_BASE_URL,
+        });
+      } catch {
+        reject(new Error("chatwoot-run-failed"));
+      }
+    };
+    s.onerror = () => reject(new Error("chatwoot-script-failed"));
+    document.head.appendChild(s);
+  });
 }
 
 /** Build the in-app chat link, carrying optional context for the agent. */
