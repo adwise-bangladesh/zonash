@@ -830,12 +830,17 @@ export const submitPendingOrder = createServerFn({ method: "POST" })
             { key: "_zonash_decision", value: "blocked" },
             { key: "_zonash_decision_reason", value: "account-blocked" },
             { key: "_zonash_blocked_hit", value: `${blockedHit.kind}:${blockedHit.value}` },
+            { key: "_zonash_blocked_at", value: new Date().toISOString() },
             { key: "_zonash_awaiting_call_choice", value: "0" },
           ],
-          privateNote:
-            `Order cancelled automatically by the security screen. ` +
-            `Blocked identity matched on ${blockedHit.kind}: ${blockedHit.value}. ` +
-            `Workflow stage: Cancelled — Cancelled - Fraud. Phone verification skipped; no SMS was sent.`,
+          summary:
+            "Order cancelled automatically by the security screen: the customer matched an active blocklist entry",
+          facts: {
+            "Blocklist match": `${blockedHit.kind} = ${blockedHit.value}`,
+            "Phone verification": "skipped — no SMS sent",
+            "Action required": "none; unblock the identity in the dashboard to allow future orders",
+          },
+
         });
         if (!res.ok) console.error("blocked-cancel workflow write failed");
       } catch (e) {
