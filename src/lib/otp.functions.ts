@@ -1357,10 +1357,15 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
           { key: "_zonash_awaiting_call_choice", value: "0" },
           { key: "_zonash_call_requested", value: "1" },
           { key: "_zonash_call_requested_at", value: nowIso },
+          { key: "_zonash_customer_choice", value: "callback" },
+          { key: "_zonash_customer_choice_at", value: nowIso },
         ],
-        privateNote:
-          "Customer requested a confirmation call before dispatch. Workflow stage: Verification — Callback Requested. " +
-          "WooCommerce status retained as pending; please call the customer before handing the parcel to a courier.",
+        summary:
+          "Customer requested a confirmation call before dispatch from the order status page",
+        facts: {
+          "Customer choice": "call me before dispatch",
+          "Next step": "call the customer to confirm, then move the order into fulfillment",
+        },
       });
       return { ok: true as const, decision: "pending" as const };
     }
@@ -1373,27 +1378,20 @@ export const finalizeOrderChoice = createServerFn({ method: "POST" })
         { key: "_zonash_awaiting_call_choice", value: "0" },
         { key: "_zonash_call_requested", value: "0" },
         { key: "_zonash_confirmed_at", value: nowIso },
+        { key: "_zonash_customer_choice", value: "confirm-now" },
+        { key: "_zonash_customer_choice_at", value: nowIso },
       ],
+      summary:
+        "Customer confirmed the order from the order status page and declined a confirmation call",
+      facts: {
+        "Customer choice": "confirm now, no call",
+        "Next step": "ready to enter fulfillment",
+      },
     });
     const applied = (res.wooStatus === "processing" ? "processing" : "confirmed") as
       | "confirmed"
       | "processing";
-    try {
-      const { wooFetch } = await import("./woo.server");
-      await wooFetch({
-        path: `/orders/${data.order_id}/notes`,
-        method: "POST",
-        body: {
-          note:
-            `Customer confirmed the order from the storefront and declined a callback. ` +
-            `Workflow stage: Verification — Verified. WooCommerce status set to ${applied}. ` +
-            `Ready to enter fulfillment.`,
-          customer_note: false,
-        },
-      });
-    } catch {
-      /* notes are best-effort */
-    }
+
     return { ok: true as const, decision: "confirmed" as const, applied };
   });
 
