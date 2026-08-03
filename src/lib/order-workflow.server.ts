@@ -106,17 +106,30 @@ export async function setWorkflowStatus(
     }
   }
 
-  if (opts.privateNote) {
+  const composedNote =
+    opts.privateNote ??
+    (opts.summary
+      ? formatOpsNote({
+          status,
+          summary: opts.summary,
+          wooStatus: applied ?? null,
+          ...(opts.actor ? { actor: opts.actor } : {}),
+          ...(opts.facts ? { facts: opts.facts } : {}),
+        })
+      : undefined);
+
+  if (composedNote) {
     try {
       await wooFetch({
         path: `/orders/${orderId}/notes`,
         method: "POST",
-        body: { note: opts.privateNote, customer_note: false },
+        body: { note: composedNote, customer_note: false },
       });
     } catch {
       /* notes are best-effort */
     }
   }
+
 
   return { ok: true, ...(applied ? { wooStatus: applied } : {}) };
 }
