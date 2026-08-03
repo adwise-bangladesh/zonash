@@ -300,43 +300,63 @@ function CategoriesPage() {
               <ul ref={railRef} onKeyDown={onRailKeyDown} className="pb-24">
                 {cats.map((c) => {
                   const isActive = !parentMissing && c.slug === active.slug;
-                  return (
-                    <li key={c.slug} data-slug={c.slug}>
-                      <button
-                        type="button"
-                        onClick={() => selectCategory(c.slug)}
-                        onPointerEnter={() => prefetchSubs(c.slug)}
-                        onFocus={() => prefetchSubs(c.slug)}
-                        aria-pressed={isActive}
-                        aria-current={isActive ? "true" : undefined}
-                        className={`relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
-                          isActive ? "bg-background" : "text-foreground active:bg-background/60"
+                  const itemClass = `relative flex w-full flex-col items-center gap-1 px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+                    isActive ? "bg-background" : "text-foreground active:bg-background/60"
+                  }`;
+                  const inner = (
+                    <>
+                      {isActive && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary"
+                        />
+                      )}
+                      <span
+                        className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${
+                          isActive ? "ring-primary/50" : "ring-border"
                         }`}
                       >
-                        {isActive && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute left-0 top-1/2 h-7 w-[2px] -translate-y-1/2 rounded-r bg-primary"
-                          />
-                        )}
-                        <span
-                          className={`block h-10 w-10 shrink-0 overflow-hidden rounded-[3px] ring-1 ${
-                            isActive ? "ring-primary/50" : "ring-border"
-                          }`}
+                        <CategoryThumb src={c.imageSrc} alt="" size={40} iconClass="h-4 w-4" />
+                      </span>
+                      <span
+                        className={`block w-full truncate text-[10px] font-semibold leading-tight ${
+                          isActive ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        {c.name}
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li key={c.slug} data-slug={c.slug}>
+                      {c.hasSubs ? (
+                        <button
+                          type="button"
+                          onClick={() => selectCategory(c.slug)}
+                          onPointerEnter={() => prefetchSubs(c.slug)}
+                          onFocus={() => prefetchSubs(c.slug)}
+                          aria-pressed={isActive}
+                          aria-current={isActive ? "true" : undefined}
+                          className={itemClass}
                         >
-                          <CategoryThumb src={c.imageSrc} alt="" size={40} iconClass="h-4 w-4" />
-                        </span>
-                        <span
-                          className={`block w-full truncate text-[10px] font-semibold leading-tight ${
-                            isActive ? "text-primary" : "text-foreground"
-                          }`}
+                          {inner}
+                        </button>
+                      ) : (
+                        // Leaf category: there are no subcategories to browse, so
+                        // the rail goes straight to its product page.
+                        <Link
+                          to="/c/$slug"
+                          params={{ slug: c.slug }}
+                          preload="intent"
+                          className={itemClass}
                         >
-                          {c.name}
-                        </span>
-                      </button>
+                          {inner}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
+
               </ul>
             </nav>
           </aside>
