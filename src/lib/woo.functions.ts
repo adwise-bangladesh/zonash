@@ -388,14 +388,18 @@ export type WooCategory = {
 export const listCategories = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
-      const cats = await (await import("./woo.server")).wooFetch<WooCategory[]>({
+      const { wooFetch, HIDDEN_CATEGORY_SLUGS } = await import("./woo.server");
+      const cats = await wooFetch<WooCategory[]>({
         path: "/products/categories",
         query: { per_page: 50, hide_empty: true, orderby: "count", order: "desc", _fields: CATEGORY_FIELDS },
       });
       return {
-        categories: asArray<WooCategory>(cats).filter((c) => c?.slug && c.slug !== "uncategorized"),
+        categories: asArray<WooCategory>(cats).filter(
+          (c) => c?.slug && c.slug !== "uncategorized" && !HIDDEN_CATEGORY_SLUGS.has(c.slug),
+        ),
         error: null as string | null,
       };
+
     } catch (e) {
       console.error("listCategories failed", e);
       return { categories: [] as WooCategory[], error: "Categories are temporarily unavailable." };
